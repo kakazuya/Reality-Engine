@@ -813,20 +813,17 @@ def test_a_subsidiary_page_is_scoped_as_subsidiary():
 
 
 def test_stock_row_takes_the_deck_period_and_flow_stays_no_period():
-    page = "Gross Advances Mortgage (Total) GNPA 66.9 ₹Cr"
-    stock = build([reply(measure="gnpa", printed_label="Mortgage (Total) GNPA", value_text="66.9",
-                         unit="₹Cr")], page_text=page)
-    # build() has no deck_asof parameter: call directly
+    page = "Branch network 1,234 branches"
     stock = obs.build_observations(symbol="SURYODAY", doc_key=DECK, page=25, known_at=KNOWN_AT,
                                    page_text=page, reply_rows=[reply(
-                                       measure="gnpa", printed_label="Mortgage (Total) GNPA",
-                                       value_text="66.9", unit="₹Cr")], deck_asof="March 31, 2026")
+                                       measure="count.branches", printed_label="Branch network",
+                                       value_text="1,234", unit="branches")], deck_asof="March 31, 2026")
     assert stock[0]["period"] == "March 31, 2026"
     assert stock[0]["period_source"] == "deck_asof"
     flow = obs.build_observations(symbol="SURYODAY", doc_key=DECK, page=25, known_at=KNOWN_AT,
                                   page_text=page, reply_rows=[reply(
-                                      measure="revenue.value", printed_label="Mortgage (Total) GNPA",
-                                      value_text="66.9", unit="₹Cr")], deck_asof="March 31, 2026")
+                                      measure="revenue.value", printed_label="Branch network",
+                                      value_text="1,234", unit="Rs Cr")], deck_asof="March 31, 2026")
     assert flow[0]["period"] == ""
     assert "no_period" in flow[0]["status_reason"]
 
@@ -1256,7 +1253,7 @@ T248_TREE = frozenset({
 
 
 def test_every_measure_has_a_driver_node_or_a_stated_none():
-    assert len(obs.MEASURES) == 305        # 276 before T-238 stage N's 29 deck driver measures
+    assert len(obs.MEASURES) == 306        # 276 before stage N's 29 deck driver measures, 306 after N2's order.quantity
     assert len({m[0] for m in obs.MEASURES}) == len(obs.MEASURES)
     for mid, _name, _family, node in obs.MEASURES:
         assert node in T248_TREE or node.startswith("none: "), f"{mid}: {node!r}"
@@ -1321,10 +1318,14 @@ def test_unit_families_energy_and_bps():
 
 
 def test_outlets_atms_and_stores_take_the_deck_period():
-    for mid in ("count.outlets", "count.atms", "count.stores", "count.branches", "gnpa_pct", "gnpa.value"):
+    # T-238 stage N2: the closed list of deck as-of snapshot measures
+    for mid in ("count.outlets", "count.atms", "count.stores", "count.branches", "count.plants",
+                "count.shares", "shareholding_pct", "capacity.total"):
         assert obs.is_stock_measure(mid), mid
     assert not obs.is_stock_measure("capacity.utilisation")
-    assert not obs.is_stock_measure("count.countries")
+    for mid in ("count.countries", "count.customers", "count.employees", "order.intake", "order.book",
+                "gnpa_pct", "gnpa.value", "loans", "aum.value", "revenue_growth_yoy"):
+        assert not obs.is_stock_measure(mid), mid
 
 
 def test_an_energy_row_verifies_only_with_its_printed_unit():
@@ -1981,6 +1982,127 @@ def test_stage_n_recheck_applies_the_deck_basis_and_renames_the_period_source():
         assert (basis, basis_source) == ("consolidated", "deck")
         assert status == "verified"
         assert stats["deck_asof_renamed"] == 1 and stats["basis_deck"] == 1
+        con.close()
+    finally:
+        _cleanup_store()
+
+
+# --------------------------------------------------------------------------- T-238 stage N2 (the hand-read fixes)
+
+
+def test_stage_n2_the_slide_title_is_the_title_line_not_a_tile_footnote_or_column_label():
+    # KPIL: the title prints no year; FY25 sits only in the footnote tiles below it
+    kpil = ("About Kalpataru Projects International Ltd. (KPIL)\n"
+            "(1) Consolidated Revenue for FY25, (2) Data as of 31st March 2025, (3) Rating from CRISIL")
+    assert obs.slide_period(kpil) == ""
+    # REPL: "FY 24" comes from the page footer strip, not the slide title
+    repl = ("Page 3 of 12\nRobust Order book (1/2)\nInvestor's Highlights Q4/12 M FY 24\n"
+            "Akkalkot Tirtha Kshetra Development")
+    assert obs.slide_period(repl) == ""
+    # INFOBEAN: "9M 2025-26" is a column label over one tile, not the slide title
+    bean = ("9M 2025-26\n156\nMembers with more \nthan 5 years with us\nOverview\nFinancials\n"
+            "42\nLarge enterprise clients")
+    assert obs.slide_period(bean) == ""
+    assert obs.fiscal_periods("9M 2025-26 Performance") == ["9M 2025-26"]   # never the truncated "9M 2025"
+    # a real title still dates the page, including a subtitle line under a generic stub
+    assert obs.slide_period("Key Developments in Q4FY24\nOrder book as of 31st March 2024") == "Q4FY24"
+    assert obs.slide_period("Investor Presentation\nQ1 FY27 Operational Highlights") == "Q1 FY27"
+
+
+def test_stage_n2_deck_asof_covers_only_the_snapshot_measures():
+    for mid in ("count.customers", "count.countries", "count.employees", "order.intake",
+                "order.book", "ebitda_margin", "revenue_growth_yoy"):
+        rows = obs.build_observations(symbol="NAVKARCORP", doc_key=DECK, page=7, known_at=KNOWN_AT,
+                                      page_text="InfoBeans at a glance 42 Large enterprise clients",
+                                      reply_rows=[reply(measure=mid, printed_label="Large enterprise clients",
+                                                        value_text="42", unit="")], deck_asof="Q2 FY26")
+        assert rows[0]["period"] == "" and "no_period" in rows[0]["status_reason"], mid
+    for mid in ("shareholding_pct", "count.shares", "count.plants", "count.outlets"):
+        rows = obs.build_observations(symbol="NAVKARCORP", doc_key=DECK, page=7, known_at=KNOWN_AT,
+                                      page_text="Shareholding Pattern Promoter & Promoter Group 52.3%",
+                                      reply_rows=[reply(measure=mid, printed_label="Shareholding Pattern",
+                                                        value_text="52.3", unit="%")], deck_asof="Q2 FY26")
+        assert rows[0]["period"] == "Q2 FY26" and rows[0]["period_source"] == "deck_asof", mid
+
+
+def test_stage_n2_a_growth_row_takes_the_later_period_of_the_printed_pair():
+    page = "Y-o-Y (%)\nFY23\nFY24\n28.50%\n340.43\n437.45\nOther Income"
+    rows = build([reply(measure="other_income_growth_yoy", printed_label="Other Income",
+                        printed_axis="Y-o-Y (%)", value_text="28.50%", unit="%", period="FY23")],
+                 page_text=page)
+    assert rows[0]["period"] == "FY24"
+    # three fiscal years print no single pair: the row's own period is left alone
+    three = "FY23 FY24 FY25\n28.50%\nOther Income"
+    rows = build([reply(measure="other_income_growth_yoy", printed_label="Other Income",
+                        value_text="28.50%", unit="%", period="FY23")], page_text=three)
+    assert rows[0]["period"] == "FY23"
+
+
+def test_stage_n2_an_order_quantity_is_never_sales_volume():
+    label = "manufacturing and supply of 697 Boggie Open Military (BOM) Wagons"
+    assert obs.canonical_measure("volume.sales", label, "", "Secured a contract", "Wagons", "") == "order.quantity"
+    assert obs.canonical_measure("volume.sales", "Wagons sold", "", "", "Wagons", "") == "volume.sales"
+    measures = obs.measure_index()
+    assert measures["order.quantity"]["unit_family"] == "count"
+
+
+def test_stage_n2_a_client_heading_scopes_the_row_and_names_the_customer():
+    page = "Q1 FY27 Operational Highlights\n2 Orders from Nesco Limited\nTotal Order Value: ₹1.94 Cr"
+    rows = build([reply(measure="order.intake", printed_label="Total Order Value", value_text="₹1.94 Cr",
+                        unit="Cr", period="Q1 FY27", series_title="2 Orders from Nesco Limited",
+                        entity_scope="company")], page_text=page)
+    assert rows[0]["entity_scope"] == "customer"
+    assert rows[0]["customer"] == "Nesco Limited"
+
+
+def test_stage_n2_a_client_project_on_an_order_book_page_is_never_company_land():
+    page = ("Robust Order book (1/2)\nInvestor's Highlights Q4/12 M FY 24\n"
+            "Akkalkot Tirtha Kshetra Development\nthe designated city area spans 1023 acres")
+    rows = build([reply(measure="land_area", printed_label="the designated city area spans",
+                        value_text="1023", unit="acres",
+                        series_title="Akkalkot Tirtha Kshetra Development", entity_scope="company")],
+                 page_text=page)
+    assert rows[0]["entity_scope"] == "customer"
+    assert rows[0]["customer"] == "Akkalkot Tirtha Kshetra Development"
+    assert rows[0]["period"] == ""                    # the footer's FY 24 never dates this figure
+
+
+def test_stage_n2_a_peak_demand_figure_is_never_the_company():
+    page = "Vision 2047 Peak demand 708 GW Coal is Critical for India's Base load power needs"
+    rows = build([reply(measure="demand.peak", printed_label="Peak demand", value_text="708", unit="GW",
+                        period="2047", entity_scope="company")], page_text=page)
+    assert rows[0]["entity_scope"] == "industry"      # the row's own heading names no country
+    india = build([reply(measure="demand.peak", printed_label="Peak demand India", value_text="708",
+                         unit="GW", period="2047", entity_scope="company")],
+                  page_text="Peak demand India 708 GW 2047")
+    assert india[0]["entity_scope"] == "country"      # the heading names the country
+    # a country scope the reader already gives (the ADANIPOWER page) is kept, not overwritten
+    kept = build([reply(measure="demand.peak", printed_label="Peak demand", value_text="708", unit="GW",
+                        period="2047", entity_scope="country")], page_text=page)
+    assert kept[0]["entity_scope"] == "country"
+
+
+def test_stage_n2_recheck_reverts_a_stale_slide_title_and_a_non_stock_deck_as_of():
+    page = ("About Kalpataru Projects International Ltd. (KPIL)\n"
+            "(1) Consolidated Revenue for FY25, (2) Data as of 31st March 2025\n"
+            "Global Reach 75 Countries\nLarge enterprise clients 42")
+    try:
+        _make_store(title="About KPIL", pages=(page,), first_page=14)
+        con = obs.create_db(":memory:")
+        rows = build([reply(measure="count.countries", printed_label="Global Reach", value_text="75",
+                            unit="Countries")], page_text=page)
+        rows[0].update({"period": "FY25", "period_source": "slide_title", "status": "verified",
+                        "status_reason": ""})
+        customer = build([reply(measure="count.customers", printed_label="Large enterprise clients",
+                                value_text="42", unit="")], page_text=page)
+        customer[0].update({"period": "Q2 FY26", "period_source": "deck_asof", "status": "verified",
+                            "status_reason": ""})
+        obs.write_rows(con, rows + customer)
+        stats = obs.recheck_db(con, [str(STORE)])
+        cursor = con.execute("SELECT period, period_source, status FROM observation ORDER BY observation_id")
+        assert [(p, s) for p, s, _status in cursor.fetchall()] == [("", ""), ("", "")]
+        assert con.execute("SELECT COUNT(*) FROM observation WHERE status='unverified'").fetchone()[0] == 2
+        assert stats["slide_title_cleared"] == 1 and stats["deck_asof_cleared"] == 1
         con.close()
     finally:
         _cleanup_store()
