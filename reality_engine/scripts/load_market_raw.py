@@ -9,7 +9,7 @@ never overwritten; the one exception is ``corporate_actions``, which only gets
 new rows (INSERT OR IGNORE on its unique key).
 
 Tables:
-  mkt_nse_eq_daily        NSE CM bhavcopy + MTO delivery (2019-01 .. 2021-10)
+  mkt_nse_eq_daily        NSE CM bhavcopy + MTO delivery (2010-01 .. 2021-10; 2010-11 files have no ISIN/TOTALTRADES)
   mkt_nse_full_daily      NSE sec_bhavdata_full, every series + delivery (~2019-10 ..)
   mkt_bse_deals           BSE bulk / block deals
   mkt_bse_insider         BSE PIT disclosures (2019 .. 2022; raw columns kept in raw_json)
@@ -160,7 +160,8 @@ CREATE TABLE IF NOT EXISTS mkt_nse_insider (
     securities_qty REAL, securities_value REAL, buy_qty REAL, buy_value REAL,
     sell_qty REAL, sell_value REAL, before_shares TEXT, before_pct TEXT,
     after_shares TEXT, after_pct TEXT, acq_from TEXT, acq_to TEXT,
-    intimation_date TEXT, disseminated_at TEXT, exchange TEXT, xbrl TEXT, raw_json TEXT);
+    intimation_date TEXT, disseminated_at TEXT, exchange TEXT, xbrl TEXT, raw_json TEXT,
+    acq_from_raw TEXT, acq_to_raw TEXT, intimation_date_raw TEXT);
 CREATE INDEX IF NOT EXISTS idx_mkt_insider_sym ON mkt_nse_insider(symbol, disseminated_at);
 
 CREATE TABLE IF NOT EXISTS mkt_nse_sast (
@@ -281,9 +282,9 @@ def parse_nse_cm(path: Path):
     for r in df.itertuples(index=False):
         sym, ser = str(r.SYMBOL).strip(), str(r.SERIES).strip()
         dq, dp = deliv.get((sym, ser), (None, None))
-        rows.append((date, sym, ser, (r.ISIN or "").strip() or None, num(r.OPEN), num(r.HIGH), num(r.LOW),
+        rows.append((date, sym, ser, (getattr(r, "ISIN", "") or "").strip() or None, num(r.OPEN), num(r.HIGH), num(r.LOW),
                      num(r.CLOSE), num(r.LAST), num(r.PREVCLOSE), inum(r.TOTTRDQTY), num(r.TOTTRDVAL),
-                     inum(r.TOTALTRADES), dq, dp))
+                     inum(getattr(r, "TOTALTRADES", None)), dq, dp))   # 2010-11 files lack ISIN and TOTALTRADES
     return "mkt_nse_eq_daily", 15, rows
 
 
@@ -358,8 +359,9 @@ def parse_insider(path: Path):
                      num(x.get("sellquantity")), num(x.get("sellValue")), x.get("befAcqSharesNo"),
                      x.get("befAcqSharesPer"), x.get("afterAcqSharesNo"), x.get("afterAcqSharesPer"),
                      ts(x.get("acqfromDt")), ts(x.get("acqtoDt")), ts(x.get("intimDt")), ts(x.get("date")),
-                     x.get("exchange"), x.get("xbrl"), json.dumps(x)))
-    return "mkt_nse_insider", 26, rows
+                     x.get("exchange"), x.get("xbrl"), json.dumps(x),
+                     x.get("acqfromDt"), x.get("acqtoDt"), x.get("intimDt")))   # raw date strings as published
+    return "mkt_nse_insider", 29, rows
 
 
 def parse_sast(path: Path):
