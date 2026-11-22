@@ -136,7 +136,14 @@
   split (main 17.w, stage M 17.v). Both behave: OCR pages read/check the OCR words (`text_source='ocr'`,
   `ocr_read_pages`) while transcript pages stay text-only with `PROMPT_TRANSCRIPT`; a page can be either.
   Acceptance suite 174 passed, 1 environmental error (`tmp_path` basetemp ACL-locked in this sandbox), typecheck
-  clean; test_observations.py 138 passed. The supervisor commit is the only commit path.
+  clean; test_observations.py 138 passed. The supervisor commit is the only commit path (9906698a).
+- 23:5x: that commit has one parent, so it is the merge *result*, not a merge commit: `git merge-tree` of main into
+  HEAD still conflicts on the 4 files (our side already holds the resolved content). The controller must record the
+  merge outside the sandbox, which is conflict-free with this tree (the merge exits 1 on those 4 files, expected):
+  `git merge --no-commit main`; then `git checkout 9906698a -- reality_engine/v2/observations.py
+  docs/V2_SCHEMA_CONTRACT.md docs/DEVELOPER_GUIDE.md reality_engine/tests/test_observations.py`; then
+  `git add -A && git commit` (then `git diff 9906698a` is empty and main is a parent). A detached `git` launch was
+  refused (`launch_detached_requires_write_scope_data_or_full`).
 
 
 
