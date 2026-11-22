@@ -6,23 +6,37 @@ followed each signal: forward excess return versus the Nifty 500 TRI and versus 
 stock's own random dates, by size, sector, year and market phase, plus a look-back from
 every +/-30% excess move and same-direction signal pairs. Delisted companies stay in.
 
-Code `reality_engine/research/flow_signals.py` (signals) and
-`reality_engine/research/flow_events.py` (study), tests
-`reality_engine/tests/test_flow_signals.py` (13 passed). Read-only input
-`truth_2026-11-04.duckdb`; outputs only under `--out`:
+Stage 2 (22 Nov, independent check) audited the five most surprising cells from raw prices
+(`docs/research/T-235_audit.md`): two of them (delivery spike down at 5 sessions, volume
+spike up at 250) are within-year timing artefacts that the stage-1 same-year placebo did not
+remove; delivery spike up is a right-tail effect, bad quarter is real, promoter down is real
+but means dilution, not selling. Stage 2 fixed the market-signal cooldown, the stale
+shareholding filings and the placebo (a same-month null is now reported), extended the price
+panel to 2010 through `reality_engine/scripts/build_flow_snapshot.py`, and reran the study
+over 2010-2026. Section 10 is the round-2 result; sections 1-8 are the stage-1 record.
+
+Code `reality_engine/research/flow_signals.py` (signals),
+`reality_engine/research/flow_events.py` (study) and
+`reality_engine/scripts/build_flow_snapshot.py` (2010-2018 extension); tests
+`reality_engine/tests/test_flow_signals.py` (16 passed). Read-only input
+`truth_2026-11-04.duckdb` plus the extended snapshot `.tmp/t235/snap_ext.duckdb` (prices
+2010-01-04..2026-11-03); outputs only under `--out`:
 
 ```bash
-python -m reality_engine.research.flow_signals --out .tmp/t235   # ~6 min
-python -m reality_engine.research.flow_events  --out .tmp/t235   # ~35 min
+python -m reality_engine.scripts.build_flow_snapshot --out .tmp/t235/snap_ext.duckdb  # ~6 min
+python -m reality_engine.research.flow_signals --out .tmp/t235 --snapshot .tmp/t235/snap_ext.duckdb --start 2010-01-01   # ~13 min
+python -m reality_engine.research.flow_events  --out .tmp/t235 --signals .tmp/t235/flow_signal.csv --snapshot .tmp/t235/snap_ext.duckdb --start 2010-01-01   # ~35 min
 ```
 
-A 2010-2018 backfill only needs `--start 2010-01-01`; the availability rule, the
+The 2019+ rerun uses the base snapshot and `--start 2019-01-01`; the availability rule, the
 output schema and every threshold stay the same.
 
-## 1. What was built
+## 1. What was built (stage 1; stage-2 counts in §10)
 
 `flow_signal(company, date_known, signal, direction, strength, detail)`: 222,949
-dated observations over 3,090 companies, 2019-01-02 to 2026-11-03.
+dated observations over 3,090 companies, 2019-01-02 to 2026-11-03. Stage 2's cooldown and
+filing-freshness rules cut this to 89,801 rows over the same window (129,298 over 2010-2026);
+those are the counts to use.
 `company` is the issuer entity code (the permanent ISIN issuer anchor of T-118/T-207), so a
 symbol or ISIN change does not split a series. `strength` is a ratio, crore value or
 percentage points depending on the signal; `detail` is a compact JSON with the measure.
@@ -31,14 +45,21 @@ percentage points depending on the signal; `detail` is a compact JSON with the m
 
 | input | use | held coverage |
 |---|---|---|
-| `px_daily` | raw and total-return close, volume, traded value (NSE row preferred) | 2019-01-01 to 2026-11-03, 7.33M rows, 6,265 entities |
-| `px_nse` | NSE delivery % only | 2019-01-01+, 3.9M delivery rows |
-| `nse_insider` | insider buy/sell and promoter pledge disclosures, PIT `known_at_utc` | 2019-01 to 2026-05, 176k rows |
-| `nse_deals` / `bse_deals` | named-party bulk/block flow | 2019-01 to 2026-11, 276k rows |
+| `px_daily` | raw and total-return close, volume, traded value (NSE row preferred) | 2019-01-01 to 2026-11-03 in the base snapshot; the extended snapshot adds 2010-01-04..2018-12-31, 3.28M NSE rows over 2,085 entities |
+| `px_nse` | NSE delivery % only | 2019-01-01+ in the base snapshot; 2010-01-04..2018-12-31 added |
+| `mkt_nse_eq_daily` / `mkt_nse_full_daily` | the 2010-2018 NSE bhavcopy behind the extension | 2010-01-04..2021-10-29 old format (ISIN null before 2012), 2019-06.. new format |
+| `mkt_nse_deals` / `mkt_bse_deals` | 2010-2018 bulk/block rows (no PIT timestamp in the live table) | 2010-01-04..2026-11-03; the extension stamps a deal known after that day's close |
+| `mkt_nse_insider` | 2015-11..2018 insider/pledge rows | 2015-11 onwards; extension uses `disseminated_at` (IST -> UTC) as `known_at` |
+| `mkt_bse_delivery_daily` | **not used**: 24-42% of 2010-2018 rows are exactly 100% delivery | 2010-01-04..2026-11-06 |
+| `mkt_bse_eq_daily` | **not used**: no ISIN on any row, so no entity anchor pre-2019 | 2010-01-04..2026-11-09 |
+| `corporate_actions` | 2010-2018 split/bonus/rights/dividend parsing | 27,626 actions 2010-01-04..2026-11-04 |
+| `mkt_bse_index_daily` | 2010-2018 BSE 500 price + `div_yield` -> TRI proxy | 2010-01-04..2026-11-03 |
+| `nse_insider` | insider buy/sell and promoter pledge disclosures, PIT `known_at_utc` | 2019-01 to 2026-05 in the base snapshot; 2015-11..2018 added |
+| `nse_deals` / `bse_deals` | named-party bulk/block flow | 2019-01 to 2026-11 in the base; 2010-2018 added |
 | `shp_index` | promoter % q/q at its `known_at_utc` | 51,677 filings, 3,085 ISINs |
 | `structured_universe.db` `shp_category` (T-209) | FPI / MF / insurance % q/q at broadcast time | filings since 2024-04, 3,060 ISINs |
 | `results_key` | quarterly P&L, TTM availability by the 15:30 IST rule | 2017-06 to 2026-09, 106,983 filings |
-| `index_tri` | Nifty 500 TRI benchmark and market phase | 2019-01-01 to 2026-10-16 |
+| `index_tri` | Nifty 500 TRI benchmark and market phase | 2019-01-01 to 2026-10-16 official; 2010-01-04..2018-12-31 BSE 500 TRI proxy, rescaled to the Nifty 500 level on 2019-01-01 |
 | `company_industry` | sector cells | 2,055 ISINs |
 
 Point-in-time rules: a market-data signal is usable only on the **next NSE session** (the
@@ -47,6 +68,15 @@ the 15:30 IST rule (`factor_weights.pit_sessions`, imported not copied); shareho
 usable from its filing/broadcast timestamp, **never the quarter end**. The calendar is built
 from the snapshot's first NSE session, so a filing older than the requested window can never
 collapse onto day one.
+
+The 2010-2018 extension is NSE-only. `mkt_nse_eq_daily` carries no ISIN for 2010-2011, so
+those rows are mapped by symbol to the earliest observed 2012+ ISIN window; 112 of the 1,665
+symbols present in 2010-2011 never reappear and their ~43k rows (1.3% of 2010-2018) are
+dropped. Non-equity ISINs (`INF...`, ETF/fund units) are excluded. Prices are adjusted with
+`corporate_actions` plus inferred clean-ratio jumps only above Rs 5 (below that a 5-paise
+tick is a 33-100% move; the unguarded rule produced 1,937 false actions and a 1e70 factor).
+The splice at 2019-01-01 carries the base snapshot's cumulative factor for each entity and
+leaves 1 of 1,736 entities with a >2x seam jump.
 
 Not held, and therefore not built: per-stock FPI/MF/insurance categories before 2024-04 (the
 snapshot's `shp_index` carries only promoter/public %, the parsed category store starts
@@ -73,6 +103,12 @@ Every threshold below was set before any outcome was looked at.
 | bad quarter | TTM PAT YoY <= -25% or TTM operating margin -3pp YoY, at the 8-quarter availability session | down |
 | peak quarter | TTM PAT or TTM operating margin at its own 20-quarter high (min 12 quarters), at the TTM availability session | down (peak trap) |
 | FPI/MF/insurance up/down | category % change q/q >= 0.5pp at the filing's broadcast session (2024-04+) | up / down |
+
+Every company/signal fires at most once per 30 sessions (`apply_cooldown`), so a delivery-%
+state that persists for weeks is one event, not one event per session. A shareholding filing is
+used only when it was published within 120 days of its quarter end: `shp_index.known_at` for
+old quarters is the 2022 backfill crawl date, and without this rule 3,750 rows fire on a
+handful of 2022 sessions. Both rules were added in stage 2 (`docs/research/T-235_audit.md`).
 
 The name rule for deal parties, in order: insurance (INSURANCE, LIFE INSUR, GENERAL INSUR,
 LIC OF INDIA), then mutual fund (MUTUAL FUND, ASSET MANAGEMENT, ASSET MANAGERS, AMC, MF
@@ -115,10 +151,12 @@ TRI ratio over 5 / 20 / 60 / 120 / 250 *sessions* (join on session index + h, ne
 `mean`, `median`, `hit` and the signed excess use the signal's claimed direction (a `down`
 signal's underperformance is a positive observation). Newey-West t uses horizon-1 lags; its
 two-sided normal p and Benjamini-Hochberg at 10% are computed over **every** return cell
-written (after-signal, group, year and pair cells: 3,791 cells, 1,201 BH passes). A cell needs
-20 events. Each horizon is winsorised once at the pooled 1st/99th percentile over all
-entity-day returns *before* any cell, so one bad corporate-action adjustment cannot move a
-mean (this mattered: unwinsorised 250-session means ran to four digits).
+written (stage 1: after-signal, group, year and pair cells = 3,791 cells, 1,201 BH passes;
+round 2 with the crossed phase and the longer sample = 4,622 cells, 1,251 BH passes, §10). A
+cell needs 20 events. Each horizon is winsorised once at the pooled 1st/99th percentile over
+all entity-day returns *before* any cell, so one bad corporate-action adjustment cannot move a
+mean (this mattered: unwinsorised 250-session means ran to four digits). `n_stocks` and, in
+round 2, the same-month placebo are reported beside every cell.
 
 The placebo draws 20 random sessions for every event **from the same stock and the same
 calendar year** (replacement, only sessions with a valid forward outcome); `placebo` is the
@@ -126,9 +164,17 @@ mean signed excess over those seeds, `placebo p` is `(1 + #{seed mean >= observe
 This holds the market regime fixed, so the placebo answers "did the signal beat an arbitrary
 day for this stock in this year", not "did the stock go up".
 
+Stage 2 adds a second, tighter null: 20 random sessions from the same stock, same year **and
+same calendar month** (`placebo_mean_month/diff_month/p_month/seeds_month` in `after_signal.csv`). It answers
+"did the signal beat an arbitrary day in the month it fired in". The audit showed this
+matters: delivery spike down at 5 sessions has a same-year placebo of +0.08% but a same-month
+placebo of +1.33%, i.e. it only picks bad months for the stock. With 20 seeds the smallest
+attainable p is 0.048.
+
 ## 5. What followed each signal
 
-All 110 signal x horizon cells, with counts behind every percentage:
+**Stage-1 results (before the stage-2 audit).** All 110 signal x horizon cells, with counts
+behind every percentage:
 
 | signal | dir | h | n | mean % | median % | hit | NW t | placebo % | diff pp | placebo p | q(BH) | BH |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:--:|
@@ -545,29 +591,225 @@ sessions, not the entry trigger.
 - The signal set is deliberately simple: fixed thresholds, no fitted parameters, no
   cross-sectional ranking. That is what makes the placebo meaningful, and it is also why the
   effects are small.
+- Market signals fire at most once per company/signal per 30 sessions. That removes the
+  daily-state overlap (a delivery trend that lasts a quarter is one event) but it also means
+  a genuinely persistent signal is measured once per episode, not weighted by how long it
+  lasted.
 - FPI/MF/insurance signals exist only from 2024-07 and promoter q/q only from 2022-01 (the
   shareholding filings before that carry their 2022 backfill `known_at`); their samples are
-  eight quarters, not eight years.
+  eight quarters, not eight years. Filings known more than 120 days after their quarter end
+  are dropped.
 - `nse_insider` ends in 2026-05 and `index_tri` in 2026-10-16, so the last usable forward
   windows are shorter than 250 sessions; a cell's n falls with the horizon, and the 250-session
   cells cover events only up to about 2025-10.
-- Placebo matching is by stock and calendar year, not by volatility, momentum or market cap;
-  a signal that fires in unusual states can still differ from random dates for that reason.
+- Placebo matching is by stock and calendar year, and the second null is by stock, year **and
+  month**; neither matches volatility, momentum or market cap. A signal that fires in unusual
+  states can still differ from random dates for that reason. The month-matched null is a
+  stricter, ex-post conditioning: a real signal that fires in bad months can still be useful
+  if it fires before the move.
 - Benjamini-Hochberg uses the normal approximation to the Newey-West t, not an exact
-  permutation p, and overlapping event windows are only partly corrected by the NW lags.
+  permutation p, and overlapping event windows are only partly corrected by the NW lags. The
+  2019+ audit found stock-clustered t close to or above the NW t, so the NW t was not inflated
+  by stock-level dependence.
 - The top pair list was selected on the same 60-session mean it reports; its q values are
   optimistic and the pair result should be read as exploratory.
+- 2010-2018 is NSE-only: the live BSE table carries no ISIN and its delivery column is corrupt
+  (24-42% of rows exactly 100%), so BSE-only names are absent from the pre-2019 sample. 112 of
+  the 1,665 2010-2011 NSE symbols have no 2012+ ISIN and their ~43k rows (1.3% of 2010-2018)
+  are dropped. Size cells start in 2019 because `results_key` (the market-cap source) starts
+  in 2017-06.
 - The study is a description of held data, not a trading rule: no costs, no position sizing,
   no liquidity filter beyond the volume-signal floor.
 
 ## 9. Reproduce
 
 ```bash
-python -m reality_engine.research.flow_signals --out .tmp/t235
-python -m reality_engine.research.flow_events  --out .tmp/t235
+# 2010-2018 extension of the truth price series (NSE only) + BSE 500 TRI proxy
+python -m reality_engine.scripts.build_flow_snapshot --out .tmp/t235/snap_ext.duckdb   # ~6 min
+# full study 2010-2026
+python -m reality_engine.research.flow_signals --out .tmp/t235 --snapshot .tmp/t235/snap_ext.duckdb --start 2010-01-01  # ~13 min
+python -m reality_engine.research.flow_events  --out .tmp/t235 --signals .tmp/t235/flow_signal.csv --snapshot .tmp/t235/snap_ext.duckdb --start 2010-01-01  # ~35 min
+# 2019+ comparison (base snapshot)
+python -m reality_engine.research.flow_signals --out .tmp/t235/s1fix --snapshot .../truth_2026-11-04.duckdb --start 2019-01-01  # ~6 min
 ```
 
 Outputs: `flow_signal.csv` (the signal table), `signal_firings.csv`, `after_signal.csv`
-(110 cells), `by_group.csv` (2,639 cells), `by_year.csv` (654 cells), `lookback.csv`,
-`moves.csv`, `pairs.csv` (388 cells) and `event_counts.csv`. Tests:
-`python -m pytest reality_engine/tests/test_flow_signals.py -q` (13 passed).
+(110 cells, now with `n_stocks` and `placebo_mean_month/diff_month/p_month/seeds_month`), `by_group.csv`
+(size, sector, phase_200dma, phase_12m and the crossed phase_4 cells), `by_year.csv`,
+`lookback.csv`, `moves.csv`, `pairs.csv` and `event_counts.csv`. The audit script and its
+outputs are `.tmp/t235/audit_cells.py` and `.tmp/t235/audit/` (`audit_summary.csv`,
+`audit_examples.csv`, `audit_meta.json`). Tests:
+`python -m pytest reality_engine/tests/test_flow_signals.py -q` (16 passed).
+
+## 10. Round 2: 2010-2026 after the audit fixes
+
+The extended snapshot (`build_flow_snapshot.py`) adds 2010-01-04..2018-12-31: 3.28M NSE
+price rows over 2,085 entities, the BSE 500 TRI proxy spliced to the Nifty 500 level on
+2019-01-01, 2010-2018 bulk/block deals and 2015-2018 insider/pledge rows. The full run reads
+10.61M price rows and writes 129,298 signals over 3,379 companies, 2010-01-05..2026-11-03
+(89,801 of them are 2019+ after the fixes; 39,497 are 2010-2018). 127,411 signals have an
+entry session. Benjamini-Hochberg at 10% is computed over all 4,622 return cells written and
+1,251 pass; 26 of the 110 signal x horizon cells pass, and only 8 pass BH in the claimed
+direction with both the same-year and same-month placebos at 10% or better. No signal level
+that is not listed passes all three.
+
+### 10.1 Survivors, 2010-2026
+
+| signal | dir | h | n | stocks | mean % | median % | hit | NW t | year placebo % | month placebo % | p year | p month | q(BH) |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| bad quarter | down | 5 | 9,150 | 1,694 | +1.162 | +1.828 | 64.2% | 13.53 | -0.003 | +0.241 | 0.048 | 0.048 | 3.4e-39 |
+| delivery trend down | down | 20 | 8,781 | 2,412 | +0.732 | +2.343 | 59.2% | 3.30 | -1.340 | -0.184 | 0.048 | 0.048 | 7.0e-03 |
+| promoter down | down | 20 | 1,670 | 854 | +1.156 | +2.476 | 59.6% | 2.23 | -0.402 | +0.726 | 0.048 | 0.048 | 9.5e-02 |
+| delivery trend down | down | 5 | 8,863 | 2,448 | +0.231 | +0.898 | 57.2% | 2.80 | -0.347 | -0.354 | 0.048 | 0.048 | 2.7e-02 |
+| promoter down | down | 5 | 1,698 | 864 | +0.405 | +0.931 | 58.3% | 2.35 | -0.198 | -0.119 | 0.048 | 0.048 | 7.6e-02 |
+| FPI down | down | 5 | 2,457 | 1,173 | +0.405 | +0.718 | 57.8% | 3.28 | +0.125 | -0.025 | 0.048 | 0.048 | 7.4e-03 |
+| delivery spike up | up | 5 | 3,903 | 1,199 | +0.415 | -0.451 | 45.3% | 3.37 | +0.117 | +0.214 | 0.048 | 0.095 | 5.7e-03 |
+| promoter up | up | 5 | 817 | 515 | +0.624 | -0.418 | 47.2% | 2.64 | +0.228 | +0.342 | 0.048 | 0.095 | 4.0e-02 |
+
+Reading: `bad quarter` is again the broadest and strongest effect (mean almost 3x the next
+cell, hit 64%, q at the numerical floor, positive in all four market phases). `delivery trend
+down` (distribution) now survives at 5 and 20 sessions over 17 years, but the 20-session mean
+is 0.73% and it clears the placebo only against the stock's own falling base rate.
+`promoter down` and `FPI down` are 0.4% five-session effects in the claimed direction; the
+promoter sign is the dilution story the audit found, and the 20-session promoter mean is 1.16%.
+`delivery spike up` is marginal: the month-matched p is 0.095 (the 10% edge), the median is
+-0.45% and only 45.3% of events beat the benchmark, so the mean is a right tail. `promoter up`
+is the same shape (median -0.42%, hit 47.2%).
+
+`volume spike up` is a **fade**, not a survivor in the claimed direction: -0.157% at 5
+sessions (BH pass, two-sided) and its mean is below the same-year and same-month placebo at
+every horizon. `insider buy` +0.59% at 5s passes BH but the month-matched placebo is +0.585%
+(p = 0.48): over the longer sample it is stock selection, not an insider effect. No pledge,
+bulk/block, MF, insurance or peak-quarter cell passes both placebos in the claimed direction.
+
+### 10.2 What the fixes changed on 2019+ (before -> after)
+
+| cell | n before | mean before | n after | mean after | change |
+|---|---:|---:|---:|---:|---|
+| delivery spike down, 5s | 4,408 | +1.05% | 1,993 | +0.16% | cooldown removes 58% repeat firings; NW t 6.88 -> 0.88 |
+| delivery spike up, 5s | 3,326 | +1.08% | 1,717 | +0.58% | NW t 6.12 -> 2.93; months p 0.19 in the audit |
+| delivery trend down, 5s | 43,535 | +0.15% | 4,603 | +0.21% | state-days collapse to 4,603 episodes |
+| delivery trend up, 20s | 16,539 | +0.45% | 2,321 | +1.22% | the overlapping state was hiding a stronger 20-session mean |
+| volume spike up, 250s | 70,286 | +11.32% | 22,390 | +10.45% | still far below its placebo |
+| promoter down, 20s | 1,785 | +1.16% | 1,662 | +1.20% | 6.8% stale filings removed; effect unchanged |
+| bad quarter, 5s | 9,150 | +1.16% | 9,150 | +1.16% | no rule touched it |
+| all signals | 222,964 | | 89,801 | | market 187,555 -> 54,862; promoter 2,974 -> 2,729; categories 9,593 -> 9,292 |
+
+### 10.3 Per year, 5-session mean (n), 2010-2026
+
+| year | bad quarter | delivery trend down | delivery spike up | volume spike up | promoter down |
+|---:|---:|---:|---:|---:|---:|
+| 2010 | - | +0.95 (637) | +0.85 (231) | -1.24 (789) | - |
+| 2011 | - | +0.71 (457) | -0.11 (311) | -0.43 (853) | - |
+| 2012 | - | -0.17 (510) | +0.00 (234) | -0.24 (1,101) | - |
+| 2013 | - | +0.05 (416) | -0.63 (245) | -0.35 (902) | - |
+| 2014 | - | +0.10 (452) | +0.61 (189) | -0.16 (1,769) | - |
+| 2015 | - | -0.99 (376) | +0.71 (241) | +0.10 (1,581) | - |
+| 2016 | - | +0.18 (433) | +0.96 (207) | -0.14 (1,882) | - |
+| 2017 | - | +0.71 (486) | +0.83 (210) | -0.01 (2,659) | - |
+| 2018 | - | +0.45 (451) | -0.19 (272) | -1.22 (1,985) | - |
+| 2019 | - | +0.37 (402) | +0.60 (258) | -0.56 (1,525) | - |
+| 2020 | -1.26 (407) | +0.25 (552) | +1.68 (277) | -0.02 (2,662) | - |
+| 2021 | +1.24 (1,119) | -0.38 (580) | +0.71 (244) | +0.22 (3,524) | - |
+| 2022 | +1.28 (1,190) | +0.01 (523) | +0.33 (266) | -0.37 (3,055) | +1.36 (253) |
+| 2023 | +0.24 (1,306) | +0.09 (596) | +0.18 (232) | +0.37 (4,398) | -0.23 (342) |
+| 2024 | +1.32 (1,568) | +0.53 (634) | +0.22 (183) | -0.07 (5,017) | +0.21 (448) |
+| 2025 | +1.79 (2,031) | +0.71 (708) | +0.03 (164) | -0.59 (4,133) | +1.12 (381) |
+| 2026 | +1.46 (1,529) | -0.13 (650) | +0.24 (139) | +0.14 (3,926) | -0.35 (274) |
+
+Call-outs:
+- **2011** (euro crisis / inflation): only distribution (`delivery trend down`) is positive
+  and reliable (+0.71%, 457 events); `delivery trend up` is -0.97% and `volume spike up` -0.43%.
+- **2015-16**: distribution flips negative in 2015 (-0.99%, 376) and recovers in 2016; the
+  accumulation side is positive both years (+1.14%, +0.27%).
+- **2018-2020 consolidation**: 2018 hurts every delivery signal except distribution; 2019 is
+  the worst year for `delivery trend up` (-1.52%, 221); in the **2020 crash** `bad quarter`
+  flips sign (-1.26%, 407 - bad-results stocks bounced) while `delivery spike up` (+1.68%) and
+  `delivery trend up` (+1.73%) are their strongest years.
+- **2021-24 rally**: `bad quarter` is positive every year (+1.24, +1.28, +0.24, +1.32);
+  distribution is positive in 2021, 2023 and 2024 (+0.37, +0.09, +0.53); the accumulation
+  spike is positive throughout (+0.71, +0.33, +0.18, +0.22).
+- **2025-26**: `bad quarter` strengthens to +1.79% / +1.46%; promoter down is +1.12% in 2025
+  and -0.35% in 2026; delivery spike down is +0.34% / +1.53%.
+
+### 10.4 Crossed phase: index vs its 200-session mean x 12-month return sign (5s)
+
+| signal | above + 12m up | above + 12m down | below + 12m up | below + 12m down |
+|---|---:|---:|---:|---:|
+| bad quarter | +0.996 (7,253) | +1.880 (486) | +1.867 (1,225) | +1.147 (186) |
+| delivery trend down | +0.205 (5,366) | +0.414 (662) | +0.177 (1,196) | +0.285 (1,639) |
+| delivery spike up | +0.453 (2,229) | +0.207 (248) | +0.173 (601) | +0.551 (825) |
+| promoter down | +0.303 (1,120) | +0.948 (169) | +0.756 (318) | - |
+| FPI down | +0.669 (1,128) | +0.200 (220) | +0.350 (1,014) | - |
+| volume spike up | -0.094 (30,586) | -0.487 (2,528) | -0.423 (4,398) | -0.141 (4,249) |
+
+(`mean % (n)`; cells with n < 100 omitted. `bad quarter` is positive in every phase;
+`delivery spike up` is positive in three of four and its largest cell is the above-200dma,
+12m-up rally phase. `volume spike up` is negative in all four - a fade in every regime.)
+
+### 10.5 Fading/strengthening and lead time
+
+Median measured horizon at which the signed excess peaks, early (2010-2015 years) vs late
+(2020-2026 years), sessions:
+
+| signal | early | late |
+|---|---:|---:|
+| delivery spike up | 60 | 120 |
+| delivery trend up | 40 | 60 |
+| delivery spike down | 120 | 120 |
+| delivery trend down | 120 | 120 |
+| volume spike up | 60 | 60 |
+| volume spike down | 120 | 120 |
+| insider sell | 120 | 120 |
+| bulk/block buy | 60 | 60 |
+| bulk/block sell | 120 | 120 |
+
+No shortening: the two delivery signals that changed moved *later* (spike up 60 -> 120,
+trend up 40 -> 60), and the rest are unchanged. The 5-session cells are a front edge, not
+the peak; the systematic effect peaks at 60-120 sessions and is mostly gone by 250.
+
+### 10.6 Look-back and pairs, 2010-2026
+
+Recall (share of matching-direction +/-30% moves with a firing in the prior 90 sessions) is
+still barely above the same-stock random-date base rate: 3.31% vs 2.91% for delivery spike
+down, 20.4% vs 19.9% for volume spike up, 6.35% vs 5.92% for delivery trend down. Precision
+lifts (share of firings followed by a matching move within 60 sessions, minus the placebo):
+
+| signal | firings | precision | precision placebo | lift | p |
+|---|---:|---:|---:|---:|---:|
+| delivery spike down | 4,917 | 21.1% | 17.2% | +3.85pp | 8.7e-13 |
+| volume spike up | 41,864 | 29.1% | 26.1% | +2.96pp | 2.6e-43 |
+| delivery trend down | 8,951 | 20.6% | 18.2% | +2.39pp | 4.8e-09 |
+| volume spike down | 25,371 | 13.8% | 11.9% | +1.83pp | 2.0e-19 |
+| insider sell cluster | 2,006 | 14.7% | 13.1% | +1.61pp | 3.3e-02 |
+
+The signals do not call big moves; they tilt the odds by 1.6-3.9pp, and the two volume
+signals carry the highest precision lifts while the delivery signals carry the cleanest
+event-study means.
+
+Same-direction pairs (first firing, 60-session mean): `delivery trend down + promoter down`
+n=64, +9.34%, NW 9.8, placebo +0.97%; `insider buy + volume spike up` n=595, +9.21%, NW 4.4,
+but the pair's own placebo is +4.51%, so the add over the members is real but far smaller
+than the raw mean; `bulk/block sell + pledge increase` n=32, +8.78%, NW 9.7. The earlier
+stage-1 top pairs (small samples selected on the same metric) do not all reappear; the pair
+table remains exploratory and 361 cells are in the BH denominator.
+
+### 10.7 Reading
+
+1. One effect is broad and regime-independent: **a bad quarter at 5 sessions** (+1.16%,
+   hit 64%, present in all four crossed phases). It is an announcement-window continuation,
+   not a pre-announcement signal.
+2. The **distribution** side of delivery (`delivery trend down`) is the only delivery signal
+   that survives at both 5 and 20 sessions across 17 years; it is small (+0.23%, +0.73%) and
+   its 20-session cell is weaker than its stage-1 2019+ figure.
+3. The **accumulation** side (`delivery spike up`) is a right-tail bounce: median negative,
+   hit below 50%, month-matched p at the 10% edge. It should not be traded as a majority
+   effect.
+4. **Volume spikes are a fade** in every phase and every horizon (negative signed means,
+   placebo p = 1.0); `volume spike up` is the only large cell that passes BH in the negative
+   direction.
+5. **Ownership changes** (promoter/FII down) are 0.4% five-session effects in the claimed
+   direction; the promoter effect is dilution-shaped, not informed selling. Insider buys do
+   not survive the month-matched null over the long sample.
+6. The 2010-2018 extension adds the 2011 and 2015-16 stress periods and the 2020 crash; the
+   effect that holds through them is the bad-quarter reversal, not the delivery signals.

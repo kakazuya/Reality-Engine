@@ -65,3 +65,51 @@
 - Full suite attempted once: 3,995 passed / 523 failed / 263 errors in 14.3 min, dominated by
   the sandbox denying temp-dir cleanup (PermissionError under `.tmp`) in unrelated modules;
   the T-235 narrowed file is 13 passed. No new failure is traceable to this change.
+
+## T-235 stage 2 (22 Nov, independent check + 2010-2018)
+
+- Stage-1 `.tmp/t235/` outputs are gone from the main checkout, so stage 1 was reproduced
+  from `truth_2026-11-04.duckdb`: `flow_signals` 2019+ wrote 222,964 signals (doc 222,949;
+  +15 from the newer structured store / shareholding rows, method unchanged).
+- Two construction artefacts found and fixed (tests added, 15 pass):
+  (a) market signals had no cooldown - a delivery-% state firing every session counted as
+  one event per session (delivery trend 44k "events"); cooldown 30 sessions now applies to
+  market signals like insider/pledge/deal signals.
+  (b) `shp_index.known_at` is the 2022 backfill crawl date for old quarters (3,750 rows on
+  2022-01, 1,952 on 2022-01-06/07 with quarter_end < 2021-10), so promoter/FII/MF events
+  were stale quarters firing on a few 2022 sessions; filings known >120 days after their
+  quarter end no longer fire.
+- BSE 2010-2018: delivery corrupt (24-42% of rows exactly 100%, mean 72-78%);
+  `mkt_bse_eq_daily` carries no ISIN for any row. Extended panel is NSE-only (1,545-2,061
+  symbols a year). 2010-2011 NSE rows have no ISIN -> mapped by earliest symbol window.
+- Next: build 2010-2018 snapshot, audit baseline cells, then run 2010-2026.
+
+### Update 22:40
+- Audit complete (`docs/research/T-235_audit.md`): delivery spike down 5s is a within-year
+  timing artefact (month-matched placebo p=1.00, observed +1.05% vs +1.33% random
+  same-month dates); delivery spike up 5s weak (month p=0.19, mean carried by 75 clipped
+  right-tail events); bad quarter 5s real (month p=0.048, cluster t 15.0); promoter down 20s
+  real but means dilution (timely-only +1.20); volume spike up 250s is market beta (month
+  p=1.00). 16 tests pass. Month-matched placebo added to `flow_events` (placebo_month_*).
+- Extended snapshot built: 10.61M px_daily rows 2010-01-04..2026-11-03, BSE 500 TRI proxy
+  spliced to NIFTY 500 at 2019-01-01 (1 of 1,736 entities with a >2x seam), 615 recorded
+  price actions + 60 inferred, 73 residual >2x daily moves.
+- Full signals 2010-2026: 129,298 rows over 3,379 companies (89,801 for 2019+ after fixes).
+  Full event study with year+month placebos and crossed phase_4 is running.
+- Next: round-2 tables into T-235_capital_flow.md §10, DEVELOPER_GUIDE O19e, typecheck,
+  final report.
+
+### Update 22:55 (done)
+- Full event study 2010-2026 finished: 129,298 signals, 127,411 events, 4,622 cells, 1,251
+  BH passes, 26 of 110 main cells pass, 8 pass BH + both placebos in the claimed direction
+  (bad quarter 5s +1.16%, delivery trend down 5/20 +0.23/+0.73%, promoter down 5/20
+  +0.41/+1.16%, FPI down 5 +0.41%, delivery spike up 5 +0.42%, promoter up 5 +0.62%).
+  Delivery spike down is gone (+0.21% at 5s, month p=1.0); volume spike up is a fade in
+  every phase; insider buys fail the month null over 17 years.
+- §10 of T-235_capital_flow.md, the audit doc and DEVELOPER_GUIDE O19e updated. Tests 16
+  passed. Typecheck 143 pandas-stub-class errors (same accepted class as stage 1's 110;
+  builder adds pandas-heavy code) and no logic-class error.
+- Final report written; controller to commit (no direct git commit from the sandbox).
+
+
+

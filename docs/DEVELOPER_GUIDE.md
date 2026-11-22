@@ -1005,39 +1005,51 @@ are in `docs/research/T-210_factor_deep_study.md`.
 
 ### O19e. Capital-flow early-warning signals and the after-signal study (T-235, 22 Nov 2026)
 
-`reality_engine/research/flow_signals.py` (tests `reality_engine/tests/test_flow_signals.py`, 13
+`reality_engine/research/flow_signals.py` (tests `reality_engine/tests/test_flow_signals.py`, 16
 passed) builds the dated `flow_signal(company, date_known, signal, direction, strength, detail)`
-table from the truth snapshot: 22 fixed-threshold signals over 2019-01-01..2026-11-03 --
-delivery spike (>=2x own 60-session median, NSE delivery only) and delivery trend, volume spike
-(>=3x the 200-session mean, Rs 1cr value floor), insider and promoter-pledge 30-day clusters
-(NSE PIT rows, promoter/director/KMP/relative only), institutional bulk/block net by named-party
-rule, promoter q/q change at the filing date (snapshot `shp_index`), TTM bad/peak quarter at the
-15:30 IST availability date, and FPI/MF/insurance q/q change from T-209's `structured_universe.db`
-(2024-04+). Market signals become usable only on the next session; filings follow the 15:30 rule;
-shareholding is never dated to its quarter end. The calendar starts at the snapshot's first
-session so an older filing cannot collapse onto day one. `python -m
-reality_engine.research.flow_signals --out .tmp/t235` (~6 min) writes `flow_signal.csv` (222,949
-signals over 3,090 companies) and `signal_firings.csv`.
+table from the truth snapshot: 22 fixed-threshold signals -- delivery spike (>=2x own
+60-session median, NSE delivery only) and delivery trend, volume spike (>=3x the 200-session
+mean, Rs 1cr value floor), insider and promoter-pledge 30-day clusters (NSE PIT rows,
+promoter/director/KMP/relative only), institutional bulk/block net by named-party rule,
+promoter q/q change at the filing date (snapshot `shp_index`), TTM bad/peak quarter at the
+15:30 IST availability date, and FPI/MF/insurance q/q change from T-209's
+`structured_universe.db` (2024-04+). Market signals become usable only on the next session;
+filings follow the 15:30 rule; shareholding is never dated to its quarter end. Each
+company/signal fires at most once per 30 sessions, and a shareholding filing is used only when
+published within 120 days of its quarter end (both rules added by the stage-2 audit).
+`python -m reality_engine.research.flow_signals --out .tmp/t235 --snapshot .tmp/t235/snap_ext.duckdb
+--start 2010-01-01` writes `flow_signal.csv`: 129,298 signals over 3,379 companies,
+2010-01-05..2026-11-03 (89,801 for 2019+; the fixed 2019+ table shrinks stage 1's 222,964).
+
+`reality_engine/scripts/build_flow_snapshot.py` extends the truth prices to 2010: it reads
+`mkt_nse_eq_daily` (2010-01..2021-10, ISIN null for 2010-2011 mapped by symbol window),
+parses `corporate_actions` into split/bonus/rights/dividend factors (plus clean-ratio jumps
+only above Rs 5, one per 120 days), splices the base snapshot's 2019+ adjusted series at its
+per-entity cumulative factor, adds a BSE 500 TRI proxy rescaled to the Nifty 500 level on
+2019-01-01, and unions the 2010-2018 deals and 2015-2018 insider rows. BSE 2010-2018 prices
+are excluded (no ISIN on any row, and its delivery column is 24-42% exactly 100%). Output
+3.28M NSE rows over 2,085 entities; only 1 of 1,736 spliced entities keeps a >2x seam jump.
 
 `reality_engine/research/flow_events.py` measures each signal at 5/20/60/120/250 sessions
-against the Nifty 500 TRI and against 20 seeded random dates for the same stock and calendar
-year: mean, median, hit rate, Newey-West t with horizon-1 lags, Benjamini-Hochberg 10% over all
-3,791 return cells, waits for 20 events per cell, and winsorises every horizon at the pooled
-1st/99th percentile before any cell. It also splits by size tercile (market cap within the
-year), sector (thin sectors into Other), year and market phase, reports the median measured
-horizon of the peak signed excess per signal-year, runs the look-back from every +/-30%
-60-session excess move (recall in the prior 90 sessions, precision in the following 60, each
-against the same-stock random dates), and measures same-direction pairs firing within 30
-sessions against each member alone. `python -m reality_engine.research.flow_events --out
-.tmp/t235` (~35 min, 219,779 events) writes `after_signal.csv`, `by_group.csv`, `by_year.csv`,
-`lookback.csv`, `moves.csv`, `pairs.csv` and `event_counts.csv`. The finding is short and
-negative: after the same-stock, same-year placebo only the 5-session delivery-spike and
-insider-buy effects survive (and `bad quarter` as a 5-session underperformance), nothing
-survives at 60 sessions or beyond, and volume spikes precede positive but much weaker returns
-than the stock's own random dates. Method, thresholds, all signal x horizon tables and the
-data limits (FPI/MF from 2024-07, promoter from 2022, BSE insider has no PIT timestamp, BSE
-delivery column unusable): `docs/research/T-235_capital_flow.md`. A 2010-2018 backfill needs
-only `--start 2010-01-01`.
+against the Nifty 500 TRI, 20 seeded random dates for the same stock and year, and a second
+20-seed null for the same stock, year and month: n, n stocks, mean, median, hit rate,
+Newey-West t with horizon-1 lags, Benjamini-Hochberg 10% over every return cell, a 20-event
+cell floor and a per-horizon winsorisation at the pooled 1st/99th percentile. It also splits
+by size tercile (market cap within the year), sector, year and the crossed phase (index vs
+its 200-session mean x 12-month return sign, `phase_4`), reports the median peak horizon per
+signal-year, runs the look-back from every +/-30% 60-session excess move and measures
+same-direction pairs firing within 30 sessions. `python -m reality_engine.research.flow_events
+--out .tmp/t235/full --signals .tmp/t235/full/flow_signal.csv --snapshot
+.tmp/t235/snap_ext.duckdb --start 2010-01-01` (~35 min, 127,411 events, 4,622 cells, 1,251 BH
+passes) writes `after_signal.csv` (110 cells, `n_stocks`, `placebo_*_month`), `by_group.csv`
+(3,072 cells including `phase_4`), `by_year.csv`, `lookback.csv`, `moves.csv`, `pairs.csv` and
+`event_counts.csv`. Findings: `bad quarter` at 5 sessions is the one broad, regime-independent
+effect (+1.16%, hit 64%); delivery trend down survives at 5/20 (+0.23/+0.73%); promoter/FPI
+down are 0.4-1.2% five-session effects (promoter is dilution-shaped); delivery spike down is a
+within-year timing artefact and volume spike up is a fade, per `docs/research/T-235_audit.md`.
+Method, thresholds, per-year and per-phase tables, limits and the stage-1 record:
+`docs/research/T-235_capital_flow.md` (section 10 is round 2). A 2010-2018 backfill needs only
+`--start 2010-01-01` plus the extended snapshot.
 
 ### O20. v2 period engine (T-134, 9 Nov 2026)
 
