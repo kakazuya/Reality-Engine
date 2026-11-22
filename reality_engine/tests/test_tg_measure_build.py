@@ -99,6 +99,8 @@ def test_measure_csv_writes_a_company_row(tmpdir):
 def test_parts_default_is_the_t214_recipe_and_a_subset_keeps_build_order():
     assert tg.selected_parts(None) == tg.PARTS and len(tg.PARTS) == 13
     assert tg.selected_parts("pages,registry") == ("registry", "pages")
+    assert tg.selected_parts("ocr,pages,registry") == ("registry", "pages", "ocr")   # T-238: after pages
+    assert tg.selected_parts("ocr") == ("ocr",)
     with pytest.raises(ValueError):
         tg.selected_parts("pages,bogus")
     assert tg.company_name(3, None) == "c03"        # the T-214 folder names

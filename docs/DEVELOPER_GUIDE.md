@@ -2324,7 +2324,33 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   7,969/8,808 tokens per page), Gemma 1 page (240-300 s/page), and Ling, Particle, ERNIE and Ultra got 429 before
   their first page; the text set did not run. Details in `docs/V2_SCHEMA_CONTRACT.md` section 17.y; artifacts
   `.tmp/t234/`.
-- **T-238: call transcripts and the dictionary-or-NEW measure contract (22 Nov 2026).** `v2/observations.py` reads
+- **T-238: the OCR-routed pages (22 Nov 2026).** T-237 found hy4 reading only 56 of SOMANYCERA's 172 deck pages: 72
+  pages were routed `needs_ocr` although the store's own `<stem>_ocr.db` already held their words, and Opus read
+  2,005 numbers on them from the images; on the 91 set 5,338 deck pages (and 2,853 annual-report pages) sat in
+  `needs_ocr`, on decks403 35,311. `v2/page_words.py` (`sibling_ocr_db`) now finds that database beside the store
+  with no `--ocr-db`, and `v2/page_route.py` re-routes a page that has OCR words on them with the same rules
+  (`table_or_chart` / `no_figures` / `text_ok`), keeping the original reason and naming the OCR pass in
+  `word_source` (`ocr_rapid` / `ocr_textrec`); a low dictionary score of the OCR words is not a gate. `v2/
+  observations.py` sends the OCR text layout as the page's text layer (plus the image) and runs every check on those
+  words, rows carrying `text_source='ocr'`; `--recheck` uses the same text and word boxes; `pages_from_store` also
+  takes a `needs_ocr` row whose store holds the page, so an older `routes.csv` is readable. The dead Kilo Dots OCR
+  fallback (404) is gone: `T230_OCR_READER` names another reader, else no call. `scripts/tg_measure_build.py` adds
+  the on-request part `--parts ocr` (after `pages`, never in the default 13-part recipe), `--ocr-max-seconds`
+  (default 540, resumable) and passes the OCR db to the route step:
+  ```
+  python -m reality_engine.scripts.tg_measure_build --root D:/RealityEngine/tg_build/decks403 \
+      --universe D:/RealityEngine/tg_build/decks403/universe.csv --doc-types deck --parts pages,ocr --force
+  python -m reality_engine.pilot3.build --profile D:/RealityEngine/tg_build/decks403/d001/d001_profile.json \
+      --out D:/RealityEngine/tg_build/decks403/d001/d001.db --part ocr --ocr-max-seconds 3600
+  ```
+  Measured 22 Nov: c48 deck routes `needs_ocr` 72 -> 0, `table_or_chart` 57 -> 129; the scoped read of 372 pages
+  (SOMANYCERA's 72 + 300 random `needs_ocr` deck pages) into a copy of `D:/RealityEngine/t230/obs_91_i.db` gave
+  7,524 observations (4,246 verified, 3,274 unverified, 4 quarantined) in 520 s, 7,396 rows `text_source='ocr'`;
+  against Opus on the 72 pages 2,002/2,004 values overlap, 1,995 are printed in the OCR words and 1,131/2,002
+  matched rows verify; `regress` newly broken 0. RapidOCR on CPU measured 6.47 s/page (20 pages), so 35,311 deck
+  pages at 4 processes take ~15.9 h ideal. Details and the measure-code mismatch note: `docs/V2_SCHEMA_CONTRACT.md`
+  section 17.w; artifacts `.tmp/t238/`.
+- **T-238 stage M: call transcripts and the dictionary-or-NEW measure contract (22 Nov 2026).** `v2/observations.py` reads
   transcripts and refuses silent measure invention. A reply row's measure is a dictionary id or `NEW:<snake_case>`
   WITH `new_definition` and `new_driver_node`; a bare non-dictionary id is kept but `unverified` reason
   `undeclared_new`, a NEW id without its definition/node is unverified, letterhead ids (`postal_code`, `page_number`,
@@ -2343,8 +2369,8 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   60.3% of his statements, DeepSeek 84.1% / 63.8%; on the 40 graded measure cases the new prompt keeps Opus's graded
   meaning in 28 of 40 (12 exact, 7 declared NEW equal, 9 NEW synonym) against the old 13 exact. Recheck gate on
   `.tmp/t230/obs_91_i.db`: 118 still right, 18 fixed, 0 newly broken. Tests
-  `reality_engine/tests/test_observations.py` 136 passed. Details and the 40-case table: `docs/V2_SCHEMA_CONTRACT.md`
-  section 17.w; artifacts `.tmp/t238/`.
+  `reality_engine/tests/test_observations.py` 138 passed. Details and the 40-case table: `docs/V2_SCHEMA_CONTRACT.md`
+  section 17.v; artifacts `.tmp/t238/`.
 
 ## Modular store repair (T-218, 16 Nov 2026)
 

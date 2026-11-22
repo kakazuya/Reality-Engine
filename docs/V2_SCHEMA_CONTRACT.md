@@ -1514,13 +1514,16 @@ exactly one route:
 | route | rule | reader? |
 |---|---|---|
 | `no_figures` | fewer than 4 printed figures (dates, years, page numbers, phones, PINs, CINs and registration codes do not count), or a cover letter / intimation / contents / auditor-prose page (words such as "Dear Sir/Madam", "Sub:", "Pursuant to Regulation", "Table of Contents", "Independent Auditor's Report") with fewer than 8 figures | never |
-| `needs_ocr` | `page_words.words_for` gives quality `none` or `jumbled` and no usable OCR words exist yet (a jumbled OCR gives `needs_ocr` too, with the reason saying so) | no, until OCR arrives |
+| `needs_ocr` | `page_words.words_for` gives quality `none` or `jumbled` and the store holds no OCR words for the page. T-238: when `<stem>_ocr.db` holds words, the page is re-routed on them (below) | no, until OCR words exist |
 | `table_or_chart` | `page_reader.is_table_page` or `page_reader._chart_like`, or a picture covering 5%+ of the page area with figures on it (pymupdf `get_image_info`, so a logo does not count) | yes, on the PAGE IMAGE |
 | `text_ok` | prose with a clean text layer and figures, no table or chart | no, keep the text layer |
 
-The route order matters: a page whose text layer is unusable is routed `needs_ocr` before the figure count, because its
-numbers cannot be trusted; every other page reads its numbers from the page text (which is the OCR text once OCR words
-exist). A `needs_ocr` page whose OCR arrives later is re-routed by running the CLI again with `--ocr-db`.
+The route order matters: a page whose text layer is unusable is re-routed on its OCR words before the figure count,
+because its own layer cannot be trusted; every other page reads its numbers from the page text. T-238: `words_for`
+finds the store's own `<stem>_ocr.db` beside it (no `--ocr-db` needed), a page with OCR words is routed on them with
+the same rules, its `reason` keeps why it needed OCR and `word_source` names the OCR pass (`ocr_rapid`/`ocr_textrec`;
+the OCR words' own dictionary score is not a gate: they are the page's only words). Re-run the CLI after the OCR part
+writes the database.
 
 ```bash
 python -m reality_engine.v2.page_route --store <db> [--ocr-db <db> ...] --out <csv>
@@ -2329,10 +2332,9 @@ defects (22 rows) were invented values. Stage H fixes the reader before the 403-
   the page image's OCR second; a value found only in the OCR verifies with the new column
   `observation.text_source='ocr'` (otherwise `text_layer`). A value neither source carries is `unverified` reason
   `image_text`, **never quarantined** (CONFIPET p34: 37 correct rows had been quarantined). OCR comes from the store's
-  own `<store>_ocr.db` words first (`page_words.ocr_words`, no call); otherwise one Dots call per page, cached in the
-  new `page_ocr(doc_key, page, text, reader, read_at)` table and reused by `--recheck`. The Dots model id
-  `dots-studio/dots-3-note-preview:free` answered HTTP 404 on the Kilo gateway on 21 Nov (the id no longer exists), so
-  every such page fell back to `image_text`; `T230_OCR_READER` names a replacement when one is available.
+  own `<store>_ocr.db` words first (`page_words.sibling_ocr_db`, no call); T-238 makes a page whose text layer is
+  unusable read from those words (section 17.w), and drops the dead Kilo Dots default (the id answered 404 on 21 Nov):
+  no OCR model is called unless `T230_OCR_READER` names one, and a failed call leaves the page `image_text`.
 - **Maps (H3)**: `split_panels` makes each printed panel title its own `series_id` (and its `segment`) on a map-like
   series (>=5 distinct places among `count.*` rows), so three maps on one slide stop being one series.
   `apply_geography` re-reads each map pin's place from the text-layer word boxes: the nearest printed place name within
@@ -2698,7 +2700,63 @@ Nemotron VL 5,156/6,786). On `KILO_API_KEY_2` (`@kilo2` entries): Particle-1 on 
 pages) matched hy4 on only 335/1,170 rows. ERNIE needs reasoning on (Kilo 400 "Reasoning is mandatory"): its entries
 no longer send `reasoning: {enabled: false}`.
 
-#### 17.w Stage M: call transcripts and the dictionary-or-NEW measure contract (T-238, 22 Nov 2026)
+#### 17.w T-238: the OCR-routed pages (22 Nov 2026)
+
+The T-237 Opus deep read found hy4 reading only 56 of SOMANYCERA's 172 deck pages: 72 skipped pages were routed
+`needs_ocr` although `c48_ocr.db` already held their words, and Opus read 2,005 numbers on them from the page images.
+On the pages both read, hy4 and Opus agree on 2,155 values, so the reader is fine; the router dropped half the figure
+pages. The route counts: 91-company set (`D:/RealityEngine/tg_build/measure10`) deck `needs_ocr` 5,338 vs
+`table_or_chart` 4,702 (+ 2,853 annual-report `needs_ocr`); decks403 set `needs_ocr` 35,311 vs 30,802 read.
+
+Changes (all model-free unless a reader is named):
+
+- **Route.** `page_words.words_for` finds the store's own `<stem>_ocr.db` beside it (`page_words.sibling_ocr_db`), so
+  `page_route`, the observation reader and `--recheck` see a page's OCR words with no `--ocr-db` argument.
+  `page_route.route_detail` re-routes a page that has OCR words on those words with the same rules
+  (`table_or_chart` / `no_figures` / `text_ok`); the CSV keeps why it needed OCR and names the OCR pass:
+  `reason = "needs_ocr: text layer unusable, OCR words <quality>; re-routed on OCR words (<method>): <new reason>"`
+  and `word_source = ocr_rapid | ocr_textrec`. The OCR words' own dictionary score is **not** a gate: they are the
+  page's only words (SOMANYCERA's deck OCR words score `jumbled` at 0.40-0.74 on the dictionary and are readable).
+- **Reader.** `v2/observations.py process_page` sends the OCR text layout (not the jumbled text layer) with the page
+  image to hy4, and every script check (value token, `printed_label`/`printed_axis`/`group_path`, period, basis,
+  `region` word boxes) runs on the OCR words; every row of such a page carries `text_source='ocr'`. `--recheck`
+  re-forms the same text and word boxes from the store's OCR db, so a recheck is parity with the read.
+  `pages_from_store` also takes a `needs_ocr` row when the store's OCR db holds the page, so a `routes.csv` built
+  before the OCR arrives is still readable. The dead Kilo Dots OCR fallback is gone (the id answered 404):
+  `ocr_page_text` calls no OCR model unless `T230_OCR_READER` names one.
+- **Build.** `scripts/tg_measure_build.py` gains the on-request part `--parts ocr` (runs `pilot3 build --part ocr`
+  after `pages`, never part of the default 13-part recipe), `--ocr-max-seconds` (default 540, resumable), and passes
+  `<stem>_ocr.db` to the route step. Per store the resumable unit is the build part itself:
+
+```bash
+python -m reality_engine.scripts.tg_measure_build --root D:/RealityEngine/tg_build/decks403 \
+    --universe D:/RealityEngine/tg_build/decks403/universe.csv --doc-types deck --parts pages,ocr --force
+python -m reality_engine.pilot3.build --profile D:/RealityEngine/tg_build/decks403/d001/d001_profile.json \
+    --out D:/RealityEngine/tg_build/decks403/d001/d001.db --part ocr --ocr-max-seconds 3600
+```
+
+Measured (22 Nov):
+
+| item | result |
+|---|---|
+| c48 SOMANYCERA deck routes after OCR | 172 pages: `needs_ocr` 72 -> 0, `table_or_chart` 57 -> 129, `no_figures` 43 (all 72 re-routed as table/chart) |
+| 91-set deck pages with OCR words | 17,553 deck pages, 5,338 `needs_ocr`, **all 5,338** have OCR words (60 stores) |
+| scoped read: 72 SOMANYCERA + 300 random `needs_ocr` deck pages, copy of `D:/RealityEngine/t230/obs_91_i.db`, hy4, 20 workers | 372 pages in 520 s: **7,524 observations -- 4,246 verified (56.4%), 3,274 unverified, 4 quarantined (0.05%)**; 7,396 rows `text_source='ocr'`, 124 `image_text`; 1 read timeout, 0 parse failures, 0 429s |
+| SOMANYCERA 72 pages | 2,065 rows, 1,122 verified (54.3%); the baseline's 57 `table_or_chart` pages of the same decks: 1,864 rows, 1,057 verified (56.7%) -- the OCR pages read at the same verified share |
+| vs Opus (`D:/RealityEngine/t237/opus_facts.db`, 72 pages) | 2,004 number rows; 2,002 have an hy4 row on the same page; 1,995 of those values are printed in the OCR words (99.65%); 1,131/2,002 hy4 matched rows verified (56.5%); measure id exact 1,333 (66.6%), same root 1,448 (72.3%) -- mismatches are granularity (`revenue.mix` vs `revenue.value` 110, exceptional-items PBT 81, `pbt_growth_yoy` vs `profit_growth_yoy` 61) |
+| regress gate on the copy | **newly broken 0**, added 7,174, removed 0, status changed 0, 4.5 s |
+| OCR speed (RapidOCR, CPU, one process, 20 unusable SOMANYCERA deck pages) | 6.47 s/page, 0.155 pages/s (p25/p50/p75 5.83/6.62/7.27 s, engine load 15 s); 35,311 decks403 pages at 4 processes ~15.9 h ideal (63 h at one) |
+
+The run is resumable: `pilot3.ocr.run` skips pages already in `<stem>_ocr.db` and stops cleanly at
+`--ocr-max-seconds`, so a batch of stores continues where it stopped. Tests:
+`python -m pytest reality_engine/tests/test_v2_page_route.py reality_engine/tests/test_observations.py
+reality_engine/tests/test_tg_measure_build.py -q` **155 passed, 1 error** (the error is `test_v2_page_route.py`'s
+`tmp_path` fixture: this dsh sandbox cannot scan `.tmp/pytest-of-SYSTEM`, not the code; the merged tree also carries
+the stage-M transcript tests of section 17.v) -- the synthetic OCR db re-route, the OCR reading input and
+`text_source='ocr'` row, and the OCR part in build order; `typecheck` clean on the changed files. The scoped read and
+the Opus comparison artifacts are under `.tmp/t238/` (`obs_ocr_read.db`, `measure_compare.py`, `ocr_speed.py`).
+
+#### 17.v Stage M: call transcripts and the dictionary-or-NEW measure contract (T-238, 22 Nov 2026)
 
 Shivam 22 Nov: the reader must put every fact into the dictionary, and create a labelled new measure only when
 nothing fits. T-237's Opus deep read found both holes: the reader never read a call transcript (SOMANYCERA's 122
@@ -2847,9 +2905,10 @@ Regression: `--recheck` of the stage-L `.tmp/t238/obs_91_m.db` copy (4,453 pages
 downgraded, model-free) gated with `python -m reality_engine.scripts.regress observations --db
 .tmp/t238/obs_91_m.db --baseline D:/RealityEngine/t230/obs_91_i.db`: **still right 118, fixed 18, still wrong 34,
 changed 11, newly broken 0 -- gate pass**. Tests: `python -m pytest reality_engine/tests/test_observations.py -q`
-**136 passed** (8 stage-M tests: the declared-NEW contract, the statement and guidance checks, the bracket/junk
+**138 passed** (8 stage-M tests: the declared-NEW contract, the statement and guidance checks, the bracket/junk
 normalisation, the value-token markers, the prose period, the measure_new index and the cluster CSV, and transcript
-page selection from `doc_page`); `typecheck` clean on `observations.py` and `test_observations.py`
+page selection from `doc_page`; the two T-238 gap-1 OCR tests of section 17.w are in the same file); `typecheck`
+clean on `observations.py` and `test_observations.py`
 (`extract_deck_figures.py` carries its 8 pre-existing stub-class errors at lines 720, 778, 817, 818, 908, 1169; the
 only change there is the `deepseek-v4.1-flash` MODELS entry).
 

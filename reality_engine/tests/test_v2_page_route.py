@@ -1,6 +1,8 @@
 """T-189: routed page reading. Every page goes to exactly one route; a page that prints no
 figures never reaches a reader, a jumbled text layer asks for OCR, and a table/chart page is
-read by the page reader (from its image when ``--input image``)."""
+read by the page reader (from its image when ``--input image``).  T-238: a needs_ocr page whose
+store's own ``<stem>_ocr.db`` holds words is re-routed on those words."""
+import json
 import sqlite3
 import uuid
 from pathlib import Path
@@ -33,7 +35,7 @@ def _pdf(path, lines):
     return path
 
 
-def _store(base, name, pdf, text, doc_type="results", doc_key=None):
+def _store(base, name, pdf, text, doc_type="results", doc_key=None, method="script_text"):
     key = doc_key or name
     db = base / f"{name}.db"
     con = sqlite3.connect(str(db))
@@ -42,7 +44,39 @@ def _store(base, name, pdf, text, doc_type="results", doc_key=None):
     con.execute("CREATE TABLE doc_page (doc_key TEXT, page INTEGER, text TEXT, method TEXT, "
                 "PRIMARY KEY (doc_key, page))")
     con.execute("INSERT INTO doc VALUES (?,?,?,?,?,?)", (key, "SYM", doc_type, "2026-01-01", 1, str(pdf)))
-    con.execute("INSERT INTO doc_page VALUES (?,?,?,?)", (key, 1, text, "script_text"))
+    con.execute("INSERT INTO doc_page VALUES (?,?,?,?)", (key, 1, text, method))
+    con.commit()
+    con.close()
+    return db
+
+
+OCR_LINES = ["Particulars INR Cr FY25 FY24 FY23",
+             "Revenue from operations 1,268 1,150 1,020",
+             "EBITDA 178 165 140", "Profit after tax 90 84 70"]
+
+
+def _ocr_words(lines):
+    words, y = [], 72.0
+    for line in lines:
+        x = 72.0
+        for token in line.split():
+            words.append([round(x, 2), y, round(x + 6.0 * len(token), 2), y + 10.0, token, 0.95])
+            x += 6.0 * len(token) + 4.0
+        y += 16.0
+    return words
+
+
+def _ocr_db(store_db, doc_key, lines):
+    """The ``<stem>_ocr.db`` a store keeps beside itself, as ``pilot3 build --part ocr`` writes it."""
+    db = store_db.with_name(store_db.stem + "_ocr.db")
+    words = _ocr_words(lines)
+    con = sqlite3.connect(str(db))
+    con.execute("CREATE TABLE ocr_page (symbol TEXT, doc_key TEXT, page INTEGER, doc_type TEXT, known_at TEXT, "
+                "text TEXT, words_json TEXT, ocr_conf REAL, n_boxes INTEGER, dpi INTEGER, seconds REAL, "
+                "method TEXT, PRIMARY KEY (symbol, doc_key, page))")
+    con.execute("INSERT INTO ocr_page VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                ("SYM", doc_key, 1, "results", "2026-01-01", " ".join(lines), json.dumps(words), 0.95,
+                 len(words), 300, 1.0, "ocr_rapid"))
     con.commit()
     con.close()
     return db
@@ -77,6 +111,21 @@ def test_routes():
     assert _decide(base, "table", TABLE_LINES,
                    "Q2FY26 Q1FY26 Revenue 100 200 Profit 40 30")[0] == "table_or_chart"
     assert _decide(base, "jumble", JUMBLE, " ".join(JUMBLE))[0] == "needs_ocr"
+
+
+def test_a_needs_ocr_page_is_rerouted_on_its_ocr_words_and_keeps_the_original_reason():
+    """T-238: the store's own `<stem>_ocr.db` turns a jumbled text-layer page into a readable table page; the
+    route names the OCR word source and keeps why the page needed OCR."""
+    base = _base()
+    pdf = _pdf(base / "j.pdf", JUMBLE)
+    db = _store(base, "j", pdf, " ".join(JUMBLE), method="needs_ocr")
+    assert route.route_detail(str(db), "j", 1, [])["route"] == "needs_ocr"      # no OCR yet: unreadable
+    _ocr_db(db, "j", OCR_LINES)
+    info = route.route_detail(str(db), "j", 1, [])
+    assert info["route"] == "table_or_chart"
+    assert info["word_source"] == "ocr_rapid"
+    assert info["reason"].startswith("needs_ocr: text layer unusable")
+    assert "re-routed on OCR words (ocr_rapid)" in info["reason"]
 
 
 def test_image_page_with_numbers_is_table_or_chart():
