@@ -43,6 +43,7 @@ One row per line, kept in its section.
 - T-226 | DOING Eagle | P1 | Script-first page reading: model-free table reader + cross-filing gate (two filings 45+ days apart print the same value for the same line and period), measured against model-verified cells | accept: python -m pytest reality_engine/tests/test_v2_script_reader.py -q | from: Shivam 2026-11-19 | opened 2026-11-19
 - T-227 | DOING Eagle | P1 | Store writer for script-read cells: script_cell table in each company store, served by pilot3_cells beside existing rows (option 1); precedence over printed rows only after a frozen-set answer test (option 2) | accept: python -m pytest reality_engine/tests/test_v2_script_cells.py reality_engine/tests/test_v2_script_reader.py -q | from: Shivam 2026-11-20 | opened 2026-11-20
 - T-234 | OPEN Wolf | P1 | Free-model reader bake-off: Gemma 4 31B, Nemotron VL, Ling, Particle (image pages); ERNIE 5.5, Nemotron Ultra (text pages) vs hy4 on quality, precision, accuracy, speed, tokens | accept: Shivam | from: Shivam 22 Nov | opened 2026-11-22
+- T-238 | OPEN Wolf | P1 | Close hy4 coverage gaps found in T-237: OCR-routed deck pages, call transcripts, measure disagreements | accept: Shivam | from: Shivam 22 Nov | opened 2026-11-22
 
 ## Schema and question map
 
