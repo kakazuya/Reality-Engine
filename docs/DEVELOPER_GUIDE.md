@@ -2383,6 +2383,19 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   6,709/1,532 tokens per page; `regress observations` on `.tmp/t230/obs_91_i.db` 118 right / 18 fixed / 0 newly
   broken; `test_observations.py` **142 passed**; typecheck clean. Details: `docs/V2_SCHEMA_CONTRACT.md` section
   17.v; scorer `.tmp/t238/score_statements.py`.
+- **T-238 stage N: the deck read's coined measures and the page's own period/basis (23 Nov 2026).** `v2/observations.py`
+  lifts the verified share of the 394-deck read model-free: `force_fit_veto` rewrites a printed pre-exceptional
+  profit to `profit_before_exceptional_items_and_tax` and a cash-flow change in trade receivables/payables to the new
+  `changes_in_receivables`/`changes_in_payables` (never the balance); 35 coined ids alias to a dictionary measure
+  (guarded: level vs change, percent vs money, share base, entity, stock vs flow, value vs volume, yoy vs from-peak)
+  and 29 deck driver measures join the dictionary (305 ids, 180 aliases); `slide_period` dates a row from its page title
+  only when the page prints one fiscal label (`period_source='slide_title'`); the deck-as-of rule now covers share count
+  and shareholding and stores `period_source='deck_asof'` (the old `deck_period` is renamed by recheck);
+  `deck_basis` gives an unlabelled money row the one basis every printed basis word in its deck names
+  (`basis_source='deck'`, new column). Scoped recheck of the deck copy: **9,949 upgraded, 0 downgraded, 0 unproven,
+  verified 480,459 -> 490,408 (63.1% -> 64.4%), 0 verified rows changed measure**; gate on `.tmp/t230/obs_91_i.db`
+  still right 118, fixed 18, newly broken 0. Tests `test_observations.py` 145 passed; alias map
+  `.tmp/t238n/stageN_aliases.csv`. Details: `docs/V2_SCHEMA_CONTRACT.md` section 17 stage N.
 
 ## Modular store repair (T-218, 16 Nov 2026)
 
