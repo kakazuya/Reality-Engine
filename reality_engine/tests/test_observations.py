@@ -1150,7 +1150,7 @@ T248_TREE = frozenset({
 
 
 def test_every_measure_has_a_driver_node_or_a_stated_none():
-    assert len(obs.MEASURES) == 266
+    assert len(obs.MEASURES) == 276
     assert len({m[0] for m in obs.MEASURES}) == len(obs.MEASURES)
     for mid, _name, _family, node in obs.MEASURES:
         assert node in T248_TREE or node.startswith("none: "), f"{mid}: {node!r}"
@@ -1370,3 +1370,98 @@ def test_a_footnote_basis_overrides_the_page_basis_for_its_period():
               group_path="Expenses", group_source="printed"),
     ], page_text=page)
     assert [row["basis"] for row in rows] == ["standalone", "consolidated"]
+
+
+# ---------------------------------------------------------------- T-230 stage K aliases and printed column headers
+
+def _printed_line(x, y, text):
+    words, cursor = [], float(x)
+    for token in text.split():
+        words.append((cursor, float(y), cursor + 6.0 * len(token), float(y) + 10.0, token))
+        cursor += 6.5 * len(token) + 3
+    return words
+
+
+def test_stage_k_dictionary_adds_the_driver_measures_the_annual_report_printed():
+    families = {m[0]: m[2] for m in obs.MEASURES}
+    for mid in ("dividend_per_share", "accumulated_depreciation", "gross_block", "count.shares", "dscr",
+                "inventory_turnover", "receivable_turnover", "payable_turnover", "net_capital_turnover",
+                "other_operating_revenue"):
+        assert mid in families, mid
+    assert families["dividend_per_share"] == "money_per_unit"
+    assert families["count.shares"] == "count"
+
+
+def test_stage_k_aliases_map_only_same_meaning_names_and_leave_governance_alone():
+    assert obs.canonical_measure("interest_cost", "Interest cost", "", "", "crores", "") == "finance_cost"
+    assert obs.canonical_measure("net_block", "Net Block", "", "", "₹ in Lakhs", "") == \
+        "property_plant_and_equipment"
+    assert obs.canonical_measure("debt_service_coverage_ratio", "Debt Service Coverage Ratio", "", "", "", "") == \
+        "dscr"
+    assert obs.canonical_measure("inventory_turnover_ratio", "Inventory Turnover Ratio", "", "", "", "") == \
+        "inventory_turnover"
+    assert obs.canonical_measure("equity_shares_outstanding", "Outstanding at the end of the year", "", "",
+                                 "Number", "") == "count.shares"
+    assert obs.canonical_measure("dividend_per_share", "Dividend per share (₹)", "", "", "₹", "") == \
+        "dividend_per_share"
+    # a governance / compliance name is never mapped onto a driver measure
+    for name in ("shareholding_percentage", "sitting_fees", "csr_amount_spent", "count.workers",
+                 "statutory_dues_disputed", "annual_general_meeting_number", "section_reference"):
+        assert obs.canonical_measure(name, "", "", "", "", "") == name
+
+
+def test_stage_k_basis_comes_from_the_column_header_over_the_value():
+    words = _printed_line(60, 100, "Standalone") + _printed_line(300, 100, "Consolidated")
+    assert obs.column_basis(words, "60.0,200.0,120.0,210.0") == "standalone"
+    assert obs.column_basis(words, "300.0,200.0,380.0,210.0") == "consolidated"
+
+
+def test_stage_k_one_printed_basis_heading_covers_the_rows_below_it():
+    words = _printed_line(60, 100, "Consolidated:") + [(300.0, 200.0, 380.0, 210.0, "5,678")]
+    assert obs.column_basis(words, "300.0,200.0,380.0,210.0") == "consolidated"
+
+
+def test_stage_k_no_header_above_the_value_is_no_basis_never_a_guess():
+    words = [(300.0, 200.0, 380.0, 210.0, "5,678")] + _printed_line(300, 300, "Consolidated")
+    assert obs.column_basis(words, "300.0,200.0,380.0,210.0") == ""
+    assert obs.column_basis(words, "") == ""
+
+
+def test_stage_k_period_comes_from_the_column_header_above_the_value():
+    words = _printed_line(300, 100, "31 March 2025") + [(300.0, 200.0, 350.0, 210.0, "5,678")]
+    assert obs.column_period(words, "300.0,200.0,350.0,210.0") == "March 2025"
+    assert obs.column_period(words, "60.0,200.0,120.0,210.0") == ""
+
+
+def test_stage_k_a_paragraph_mentioning_a_year_is_not_a_column_header():
+    words = _printed_line(60, 90, "Revenue grew in 2024-25 by 10%") + [(60.0, 200.0, 120.0, 210.0, "1,234")]
+    assert obs.column_period(words, "60.0,200.0,120.0,210.0") == ""
+
+
+def test_stage_k_a_fy_span_header_keeps_the_span_not_just_the_first_year():
+    assert obs.period_header("FY 2024-25") == "2024-25"
+    assert obs.period_header("2024-25") == "2024-25"
+    assert obs.period_header("FY25") == "FY25"
+    assert obs.period_header("Revenue grew in 2024-25 by 10%") == ""
+
+
+def test_stage_k_a_row_with_no_period_takes_the_printed_column_header_year():
+    page = ("Statement of Profit and Loss\nRevenue\n1,234\nConsolidated Financial Statements\nNote 3\n"
+            "5,678\nDisclosure\n")
+    words = _printed_line(300, 100, "FY 2024-25") + [(300.0, 200.0, 350.0, 210.0, "5,678")]
+    rows = build([reply(measure="revenue.value", printed_label="Revenue", value_text="5,678",
+                        unit="₹ crore", period="", series_id="s1")], page_text=page, words=words)
+    assert rows[0]["period"] == "2024-25", rows[0]["period"]
+    assert rows[0]["period_source"] == "column_header"
+    assert "no_period" not in rows[0]["status_reason"]
+
+
+def test_stage_k_a_row_with_no_basis_takes_the_printed_section_heading():
+    page = ("Statement of Profit and Loss\nRevenue\n1,234\nConsolidated Financial Statements\nNote 3\n"
+            "5,678\nDisclosure\n")
+    words = _printed_line(300, 100, "Consolidated") + [(300.0, 200.0, 350.0, 210.0, "5,678")]
+    rows = build([reply(measure="revenue.value", printed_label="Revenue", value_text="5,678",
+                        unit="₹ crore", period="FY25", series_id="s1")], page_text=page, words=words)
+    assert rows[0]["basis"] == "consolidated"
+    assert "basis_conflict" not in rows[0]["status_reason"]
+
