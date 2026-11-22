@@ -31,6 +31,7 @@ One row per line, kept in its section.
 - T-193 | OPEN | P1 | AUROPHARMA missing filings: Q2 FY27 call transcript, every SHP category + pledge from exchange XML (script fetch, universe-wide fetcher) | accept: python -m reality_engine.scripts.p3ask --db D:/RealityEngine/aurobindo/aurobindo.db holding symbol=AUROPHARMA as_of=2026-10-19 category=fpi_total | from: T-189 graders | opened 2026-11-12
 - T-214 | OPEN Wolf | P1 | Telegram build: on-demand pilot3 stores for the 93-company queue (D:/RealityEngine/tg_build/build_queue.csv: PEAD score + order win + market cap tiers), fundamentals FY2024-25 onward, script layers first, model reads of table pages only on demand; 10-company measured pilot (time, disk, tokens per company) before the batch | accept: python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('D:/RealityEngine/tg_build/pilot10_measure.csv').exists() else 1)" | from: Shivam 14-15 Nov | opened 2026-11-15
 - T-232 | OPEN Wolf | P1 | Minimal deck stores (doc, doc_page, routes) for the 403 non-91 Telegram companies with decks since FY25 | accept: Shivam | from: Shivam 21 Nov | opened 2026-11-21
+- T-236 | OPEN Wolf | P1 | Market data backfill 2010-2018: NSE/BSE prices + delivery, bulk/block, insider/SAST, corporate actions, FII/DII, NSDL FPI, indices | accept: Shivam | from: Shivam 22 Nov | opened 2026-11-22
 
 ## OCR and extraction
 
@@ -77,6 +78,7 @@ One row per line, kept in its section.
 - T-211 | OPEN Wolf | P1 | Factor rewards as a standing monthly run (T-207 accepted 14 Nov as a continuous process): after every month-end, refresh the truth snapshot, re-run factor_rewards (and factor_deep once T-210's panel run passes), append the new month's rewarded set, mode and shifts, and report any factor entering, leaving or flipping sign | accept: python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('docs/research/FACTOR_REWARDS_MONTHLY.md').exists() else 1)" | from: Shivam 14 Nov 02:30 | opened 2026-11-14
 - T-228 | DOING Wolf | P1 | Driver-tree claims: turn verbatim management text (call statements, guidance) into quantified claims on revenue (volume x price), operating cost, capex/capacity, debt and equity, read by hy4-flash-free on Go (free, run unleashed to measure its real quota); then our forward estimate (B) and management credibility (C), and test whether B+C add prediction over the hard-number factors (T-210 panel) | accept: Shivam | from: Shivam 20 Nov | opened 2026-11-20
 - T-229 | DOING Wolf | P1 | Factor study on the 91 Telegram stores: store-derived point-in-time factors (financial lines, margins, valuation, debt, holdings, guidance, order book) against 3/6/12-month forward excess returns, with a store-vs-XBRL-panel check and a matched random control set to measure the selection bias of the 91 | accept: Shivam | from: Shivam 21 Nov | opened 2026-11-21
+- T-235 | OPEN Wolf | P1 | Capital-flow early warning: daily per-stock flow signals (delivery, insider/promoter, bulk/block, ownership, earnings, red flags) + event study (after-signal returns, before-big-move look-back, combinations), back-test 2010+ | accept: Shivam | from: Shivam 22 Nov | opened 2026-11-22
 
 ## Machines
 
