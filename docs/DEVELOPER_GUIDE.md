@@ -2371,6 +2371,18 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   `.tmp/t230/obs_91_i.db`: 118 still right, 18 fixed, 0 newly broken. Tests
   `reality_engine/tests/test_observations.py` 138 passed. Details and the 40-case table: `docs/V2_SCHEMA_CONTRACT.md`
   section 17.v; artifacts `.tmp/t238/`.
+- **T-238 stage O: statements as whole management passages (23 Nov 2026).** A statement is now one management
+  speaker's continuous passage on one topic, verbatim from its first word to its last full stop (2-5 sentences, never
+  cut at a PDF line break, page-edge text stops at the last complete sentence, a passage crossing a page sits where it
+  starts); management speakers only, and a short answer's question goes in the new `observation.question_context`
+  column. Every guidance row and every number row with forward or causal wording also emits its sentence as a
+  statement row. Checks: `statement_cut` (no terminal punctuation or ending on and/the/of/to/in) is quarantined,
+  a passage naming nothing and carrying no measure is unverified `no_subject`, and a guidance row whose value no
+  statement row on its page carries is flagged `guidance_without_statement`. Measured 23 Nov on SOMANYCERA's 166
+  transcript pages: sentence recall 92.3% -> **97.4%**, row recall 75.0% -> 95.2%, fragments 33/912 = 3.6%,
+  6,709/1,532 tokens per page; `regress observations` on `.tmp/t230/obs_91_i.db` 118 right / 18 fixed / 0 newly
+  broken; `test_observations.py` **142 passed**; typecheck clean. Details: `docs/V2_SCHEMA_CONTRACT.md` section
+  17.v; scorer `.tmp/t238/score_statements.py`.
 
 ## Modular store repair (T-218, 16 Nov 2026)
 

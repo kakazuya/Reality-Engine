@@ -1865,3 +1865,70 @@ def test_stage_m_a_prose_period_is_not_a_period():
     assert obs.period_is_printed("FY27") is True
 
 
+# --------------------------------------------------------------------------- stage O: whole management passages
+
+
+def test_stage_o_a_statement_is_a_whole_passage_and_a_cut_one_is_quarantined():
+    page = ("Abhishek Somany: Demand is improving in the north and we expect 10-12% revenue growth in FY27. "
+            "The premiumisation trend continues, and it should lift realisations.")
+    good = build([{"type": "statement", "measure": "revenue_growth_yoy", "speaker": "Abhishek Somany",
+                   "text": ("Demand is improving in the north and we expect 10-12% revenue growth in FY27. "
+                            "The premiumisation trend continues, and it should lift realisations.")}], page_text=page)
+    assert good[0]["record_type"] == "statement"
+    assert good[0]["status"] == "verified", good[0]["status_reason"]
+    line_break = build([{"type": "statement", "measure": "revenue_growth_yoy",
+                         "text": "Demand is improving in the north and we expect"}], page_text=page)
+    assert line_break[0]["status"] == "quarantined"
+    assert "statement_cut" in line_break[0]["status_reason"]
+    function_word = build([{"type": "statement", "measure": "revenue_growth_yoy",
+                            "text": "Demand is improving in the north and the."}], page_text=page)
+    assert function_word[0]["status"] == "quarantined"
+    assert "function word" in function_word[0]["status_reason"]
+
+
+def test_stage_o_a_pronoun_only_passage_without_a_measure_is_no_subject():
+    page = ("It is going to be about the same. Demand will be about the same. It is about 5% of sales. "
+            "We have been maintaining the balance sheet.")
+    fragment = build([{"type": "statement", "measure": "revenue_growth_yoy",
+                       "text": "It is going to be about the same."}], page_text=page)
+    assert fragment[0]["status"] == "unverified"
+    assert "no_subject" in fragment[0]["status_reason"]
+    noun = build([{"type": "statement", "measure": "revenue_growth_yoy",
+                   "text": "Demand will be about the same."}], page_text=page)
+    assert noun[0]["status"] == "verified", noun[0]["status_reason"]
+    measured = build([{"type": "statement", "measure": "revenue_growth_yoy",
+                       "text": "It is about 5% of sales."}], page_text=page)
+    assert measured[0]["status"] == "verified", measured[0]["status_reason"]
+    named = build([{"type": "statement", "measure": "revenue_growth_yoy",
+                    "text": "We have been maintaining the balance sheet."}], page_text=page)
+    assert named[0]["status"] == "verified", named[0]["status_reason"]
+
+
+def test_stage_o_guidance_needs_its_statement_row_on_the_same_page():
+    page = "We expect 10-12% revenue growth in FY27."
+    guidance = {"type": "guidance", "measure": "revenue_growth_yoy", "period": "FY27",
+                "low": "10", "high": "12", "unit": "%", "text": page}
+    without = build([guidance], page_text=page)
+    assert without[0]["record_type"] == "guidance"
+    assert without[0]["status"] == "verified", without[0]["status_reason"]   # its own printed checks still hold
+    assert "guidance_without_statement" in without[0]["status_reason"]       # but the page is flagged for a re-read
+    both = build([dict(guidance), {"type": "statement", "measure": "revenue_growth_yoy", "text": page}], page_text=page)
+    guidance_row = [row for row in both if row["record_type"] == "guidance"][0]
+    assert guidance_row["status"] == "verified", guidance_row["status_reason"]
+
+
+def test_stage_o_question_context_is_stored_beside_the_verbatim_answer():
+    page = "Analyst: What about brand spend? Abhishek Somany: It is 2.5% of sales."
+    rows = build([{"type": "statement", "measure": "revenue_growth_yoy", "speaker": "Abhishek Somany",
+                   "question_context": "brand spend as a share of sales",
+                   "text": "It is 2.5% of sales."}], page_text=page)
+    assert rows[0]["question_context"] == "brand spend as a share of sales"
+    assert rows[0]["statement"] == "It is 2.5% of sales."
+    con = obs.create_db(":memory:")
+    try:
+        assert "question_context" in {row[1] for row in con.execute("PRAGMA table_info(observation)")}
+    finally:
+        con.close()
+    assert "question_context" in obs.PROMPT_TRANSCRIPT
+
+

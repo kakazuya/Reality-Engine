@@ -45,6 +45,11 @@ shape, then checks them independently of the model:
   call pages text-only through the transcript prompt and stores ``statement`` (verbatim sentence, speaker,
   direction) and ``guidance`` (period, low/high, unit, direction) records beside the numbers; a statement verifies
   when its sentence is in the page text, a guidance row when its value tokens and period words are in the sentence.
+* (stage O) a statement is one management speaker's whole passage on one topic, never a sentence cut at a PDF line
+  break: one without terminal punctuation or ending on and/the/of/to/in is quarantined (``statement_cut``), and a
+  pronoun-only passage with no measure is unverified ``no_subject``; a guidance row whose value no statement row on
+  its page carries is flagged ``guidance_without_statement``; the question a short answer needs is kept in
+  ``question_context`` beside the verbatim answer.
 
 Output is a separate SQLite file (``--out``, default ``.tmp/t230/obs.db``); a store is only ever
 read.  Tables: ``observation``, ``measure_dict``, ``measure_new``, ``dim_vocab``.
@@ -162,6 +167,7 @@ CREATE TABLE IF NOT EXISTS observation (
     statement TEXT NOT NULL DEFAULT '',
     speaker TEXT NOT NULL DEFAULT '',
     direction TEXT NOT NULL DEFAULT '',
+    question_context TEXT NOT NULL DEFAULT '',
     value_high REAL,
     new_definition TEXT NOT NULL DEFAULT '',
     new_driver_node TEXT NOT NULL DEFAULT '',
@@ -237,6 +243,8 @@ MIGRATIONS = (("group_source", "TEXT NOT NULL DEFAULT ''"), ("group_check", "TEX
               # T-238 stage M: record types, declared new measures and the transcript fields
               ("record_type", "TEXT NOT NULL DEFAULT 'number'"), ("statement", "TEXT NOT NULL DEFAULT ''"),
               ("speaker", "TEXT NOT NULL DEFAULT ''"), ("direction", "TEXT NOT NULL DEFAULT ''"),
+              # T-238 stage O: the question a short answer needs (the answer stays verbatim)
+              ("question_context", "TEXT NOT NULL DEFAULT ''"),
               ("value_high", "REAL"), ("new_definition", "TEXT NOT NULL DEFAULT ''"),
               ("new_driver_node", "TEXT NOT NULL DEFAULT ''"))
 
@@ -2476,9 +2484,70 @@ def period_in_text(period: str, sentence: str) -> bool:
     return False
 
 
+# --------------------------------------------------------------------------- stage O: statements as whole passages
+STATEMENT_END_RE = re.compile("[.!?][\"')\\]\u2019\u201d]?$")
+STATEMENT_END_WORDS = {"and", "the", "of", "to", "in"}
+STATEMENT_PRONOUNS = {"it", "it's", "its", "this", "that", "these", "those", "they", "them", "their", "there",
+                      "we", "our", "us", "i", "you", "your", "he", "she", "him", "his", "her"}
+STATEMENT_NON_NOUN = STATEMENT_PRONOUNS | {
+    "the", "a", "an", "some", "any", "all", "no", "not", "every", "each", "both", "much", "more", "most", "less",
+    "few", "several", "such", "another", "same", "other", "own", "only", "just", "also", "very", "really", "quite",
+    "too", "still", "even", "now", "then", "so", "but", "and", "or", "well", "okay", "yes", "yeah", "obviously",
+    "basically", "actually", "probably", "maybe", "perhaps", "again", "because", "if", "when", "as", "for", "of",
+    "to", "in", "on", "at", "with", "by", "from", "about", "over", "under", "than", "which", "who", "what", "how",
+    "why", "where"}
+STATEMENT_VERBS = {"is", "are", "was", "were", "am", "be", "been", "being", "has", "have", "had", "do", "does",
+                   "did", "will", "would", "shall", "should", "can", "could", "may", "might", "must", "go", "goes",
+                   "going", "went", "get", "gets", "getting", "got", "expect", "expects", "think", "believe",
+                   "see", "sees", "look", "looks", "seem", "seems", "need", "needs", "want", "wants", "hope",
+                   "hopes", "say", "says", "said", "feel", "feels", "know", "knows", "come", "comes", "came",
+                   "become", "becomes", "became", "remain", "remains", "remained", "continue", "continues",
+                   "hold", "holds", "held", "maintain", "maintains", "maintained", "grow", "grows", "growing",
+                   "grew", "improve", "improves", "improved", "increase", "increases", "decrease", "decreases",
+                   "take", "takes", "took", "make", "makes", "made", "keep", "keeps", "kept", "show", "shows",
+                   "anticipate", "assume", "tell", "told", "give", "gives", "given", "let", "put", "move", "moving",
+                   "work", "works", "stay", "stays", "stand", "stands", "reach", "reaches", "deliver", "delivers"}
+
+
+def statement_cut_reason(sentence: str) -> str:
+    """T-238 stage O: '' when a statement ends at its last full stop, else why it was cut (quarantined).
+
+    The reader cut passages at PDF line breaks in stage M ("... under pressure in terms of pricing and"), so a
+    passage with no terminal punctuation or ending on and/the/of/to/in is a print artefact, not a statement.
+    """
+    text = norm_space(sentence).rstrip()
+    if not text:
+        return ""
+    if not STATEMENT_END_RE.search(text):
+        return "statement_cut: no terminal punctuation (cut at a PDF line break?)"
+    tail = re.sub(r"[^a-z']", "", text.rstrip("\"')\u201d\u2019").rsplit(None, 1)[-1].lower())
+    if tail in STATEMENT_END_WORDS:
+        return f"statement_cut: ends on the function word {tail!r}"
+    return ""
+
+
+def statement_no_subject(sentence: str) -> bool:
+    """T-238 stage O: True for a bare pronoun passage that names nothing and carries no measure.
+
+    From the diagnosis: "It's going to be about the same." has no noun anywhere, so neither the row nor its measure
+    says what it is about.  A whole passage that names anything ("I would go through the market dynamics ...", "We
+    hold our prices") and a passage carrying a measure ("It is about 2.5%.") are not flagged; the opening subject may
+    still be a pronoun.
+    """
+    if re.search(r"\d", sentence):
+        return False
+    tokens = [token.lower() for token in re.findall(r"[A-Za-z][A-Za-z'\-]*", sentence)]
+    return bool(tokens) and all(word in STATEMENT_NON_NOUN or word in STATEMENT_VERBS for word in tokens)
+
+
 def evaluate_statement(row: dict[str, Any], hay_match: str,
                        measures: dict[str, dict[str, str]]) -> tuple[str, list[str]]:
-    """T-238 stage M: a statement verifies when its verbatim sentence is in the page text and its measure is usable."""
+    """T-238 stage M: a statement verifies when its verbatim sentence is in the page text and its measure is usable.
+
+    Stage O: a statement is a whole passage, so one cut at a PDF line break (no terminal punctuation, or ending on
+    and/the/of/to/in) is quarantined rather than kept as a half sentence; a passage that names nothing beyond
+    pronouns/function words and carries no measure is unverified ``no_subject`` ("It's going to be about the same.").
+    """
     reasons: list[str] = []
     _measure, why = declared_measure(row.get("measure", ""), row.get("new_definition", ""),
                                      row.get("new_driver_node", ""), measures)
@@ -2487,8 +2556,15 @@ def evaluate_statement(row: dict[str, Any], hay_match: str,
     sentence = norm_space(row.get("statement"))
     if not sentence:
         reasons.append("statement_missing: no verbatim sentence")
-    elif norm_match(sentence) not in hay_match:
-        reasons.append("statement_not_printed: the sentence is not in the page text")
+    else:
+        cut = statement_cut_reason(sentence)
+        if cut:
+            reasons.append(cut)
+            return "quarantined", reasons
+        if norm_match(sentence) not in hay_match:
+            reasons.append("statement_not_printed: the sentence is not in the page text")
+        if statement_no_subject(sentence):
+            reasons.append("no_subject: the passage has no noun subject beyond pronouns and no measure")
     return ("unverified" if reasons else "verified"), reasons
 
 
@@ -2534,6 +2610,7 @@ def _record_row(*, symbol: str, doc_key: str, page: int, known_at: str, record_t
         "record_type": record_type, "statement": norm_space(raw.get("text") or raw.get("statement")),
         "speaker": norm_space(raw.get("speaker"))[:200],
         "direction": direction if direction in ("up", "down", "flat") else "",
+        "question_context": norm_space(raw.get("question_context"))[:500],
         "value_high": None, "new_definition": norm_space(raw.get("new_definition")),
         "new_driver_node": norm_space(raw.get("new_driver_node")).lower(),
         "status": "unverified", "status_reason": "",
@@ -2569,6 +2646,33 @@ def guidance_observation(*, symbol: str, doc_key: str, page: int, known_at: str,
     row["status"], reasons = evaluate_guidance(row, hay_match, measures)
     row["status_reason"] = "; ".join(reasons)
     return row
+
+
+def apply_guidance_statements(prose: list[dict[str, Any]]) -> int:
+    """T-238 stage O: a guidance row's value must also appear as a statement row on its page.
+
+    A guidance row keeps the number; the statement row keeps the sentence that carries the correction ("not
+    adhesive, building solutions") and its attribution.  A page where no statement row carries the value is flagged
+    ``guidance_without_statement`` in its reason, so the page is read again; the guidance row's own check (sentence,
+    value and period printed) still decides its status.
+    """
+    statements: dict[tuple[str, int], list[str]] = {}
+    for row in prose:
+        if row.get("record_type") == "statement":
+            statements.setdefault((str(row.get("doc_key")), int(row.get("page") or 0)), []).append(
+                str(row.get("statement") or ""))
+    flagged = 0
+    for row in prose:
+        if row.get("record_type") != "guidance":
+            continue
+        values = re.findall(r"\d[\d,.]*", norm_space(row.get("value_text")))
+        page_statements = statements.get((str(row.get("doc_key")), int(row.get("page") or 0)), [])
+        if any(all(text_has(sentence, value) for value in values) for sentence in page_statements):
+            continue
+        flagged += 1
+        reason = "guidance_without_statement: no statement row on this page carries its value"
+        row["status_reason"] = "; ".join(part for part in (str(row.get("status_reason") or ""), reason) if part)
+    return flagged
 
 
 def is_not_a_measure(row: dict[str, Any]) -> bool:
@@ -2733,6 +2837,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             "is_total": 0,
             "_is_total": raw.get("is_total") is True or str(raw.get("is_total", "")).lower() in ("true", "yes", "1"),
             "record_type": "number", "statement": "", "speaker": "", "direction": "", "value_high": None,
+            "question_context": "",
             "new_definition": norm_space(raw.get("new_definition")),
             "new_driver_node": norm_space(raw.get("new_driver_node")).lower(),
         })
@@ -2837,6 +2942,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
     apply_path_sum(out)
     apply_series_kind(out, text)
     apply_basis_conflicts(out)
+    apply_guidance_statements(prose)          # stage O: a guidance value also needs its statement row
     return out + prose
 
 
@@ -3002,7 +3108,8 @@ OBS_COLUMNS = ("symbol", "doc_key", "page", "region", "known_at", "measure", "pr
                "period", "period_kind", "period_source", "basis", "series_kind", "segment", "product", "geography",
                "plant", "customer", "group_path", "group_source", "group_check", "stage", "series_id",
                "series_title", "entity_scope", "text_source", "record_type", "statement", "speaker", "direction",
-               "value_high", "new_definition", "new_driver_node", "status", "status_reason", "reader", "read_at")
+               "question_context", "value_high", "new_definition", "new_driver_node", "status", "status_reason",
+               "reader", "read_at")
 
 
 def write_rows(con: sqlite3.Connection, rows: Iterable[dict[str, Any]]) -> int:
@@ -3277,9 +3384,10 @@ immediately before the number, verbatim", "value_text": "the number exactly as p
 "period": "the period printed against it", "period_kind": "actual|estimate|target",
 "basis": "standalone|consolidated|", "entity_scope": "company|subsidiary|industry|country|customer|peer",
 "segment": "", "product": "", "geography": "", "new_definition": "", "new_driver_node": ""}}
-Statement: {{"type": "statement", "measure": "one id from the dictionary below", "text": "management's sentence(s),
-verbatim", "speaker": "the speaker name printed for it", "direction": "up|down|flat|",
-"new_definition": "", "new_driver_node": ""}}
+Statement: {{"type": "statement", "measure": "one id from the dictionary below", "text": "one management speaker's
+whole passage on one topic, verbatim from its first word to its last full stop", "speaker": "the speaker name
+printed for it", "question_context": "when the passage only makes sense with the question, that question's topic
+in one line; else empty", "direction": "up|down|flat|", "new_definition": "", "new_driver_node": ""}}
 Guidance: {{"type": "guidance", "measure": "one id from the dictionary below", "period": "the future period as
 printed", "low": "the lower or only printed number", "high": "the upper printed number, or empty",
 "unit": "unit as printed", "direction": "up|down|flat|", "text": "the sentence that states the target, verbatim",
@@ -3296,14 +3404,23 @@ Rules:
   or different-entity id. When nothing in the dictionary means exactly this quantity, write
   "NEW:<snake_case_id>" with "new_definition" (one line: what it is) and "new_driver_node"
   (revenue|cost|margin|capex|capacity|debt|equity|working_capital|none). A bare non-dictionary id is rejected.
-- statement: management commentary that says something about the future or explains a change (demand, pricing, costs,
-  capacity plans, debt plans, risks, guidance in words). One or two complete sentences copied verbatim, with the
-  printed speaker. A reported actual is a number, not a target; a question is not management's statement.
+- statement: one management speaker's continuous passage on ONE topic, copied verbatim from its first word to its
+  last full stop -- normally 2-5 sentences. Never split a passage into single sentences and never cut it at a PDF
+  line break or mid-sentence: it ends only at its last full stop, even when it is long. A passage that runs onto the
+  next page is stored whole on the page where it starts; when this page itself ends mid-sentence, stop the statement
+  at its last complete sentence and never emit one without its final full stop. Management speakers only: never
+  include the analyst's question, the operator, or another speaker's words; when the speaker changes, start a new
+  statement. When the answer alone does not make sense ("Yes. 2.5%", "It's going to be about the same."), keep it
+  verbatim and put the question's topic in "question_context". Never store a bare pronoun opening with neither a
+  noun subject nor a measure. A reported actual is a number, not a statement.
 - direction: "up" when the statement says the item rises or improves, "down" when it falls or worsens, "flat" when it
   stays unchanged; empty when it says none of the three.
 - guidance: only a forward target management gives ("we expect 10-12% revenue growth in FY27"). low/high are the range
   printed in the sentence (high empty for a single number), unit and period as printed, and the sentence itself goes
   in "text". A reported actual, a hypothetical ("if gas prices fall") or an outside forecast is never guidance.
+- Every guidance row, and every number row whose sentence says what will happen or why (will, should, expect,
+  guidance, target, because, due to, continue, next N months/quarters), MUST also emit that same sentence as a
+  statement row with the same measure and speaker.
 - A number with no printed period stays a number without a period; never give it the call's quarter.
 
 Measure dictionary (id -- name -- unit family -- driver node):

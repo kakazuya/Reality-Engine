@@ -127,6 +127,21 @@
   (renumbered from 17.w when main's gap-1 section took 17.w), DEVELOPER_GUIDE T-238 bullet, machines/MSI_LAPTOP.md.
   No STATE.md (brief forbids).
 
+## T-238 stage O — statements as whole management passages (23 Nov)
+
+- 00:5x: `observations.py` prompt + checks done: statement = one management speaker's continuous passage (first word
+  to last full stop, 2-5 sentences, no PDF-line-break cut, page-edge rule, `question_context` column), guidance and
+  forward/causal number rows also emit their sentence; script checks `statement_cut` (quarantine), `no_subject`
+  (unverified), `guidance_without_statement` (flagged in the reason). 4 stage-O tests added; test_observations.py 142
+  passed, typecheck 0. Regress gate on `D:/RealityEngine/t230/obs_91_i.db`: 118 right / 18 fixed / 0 newly broken.
+- Scoped re-read (166 SOMANYCERA transcript pages, hy4, final prompt): 2,356 rows (1,336 numbers / 912 statements /
+  108 guidance), 31 quarantined, 0 errors, 241 s; sentence recall 97.4% (before 92.3%), row recall 95.2% (before
+  75.0%), fragments 3.6% (31 cut + 2 no_subject), guidance_without_statement 6/108, 6,709 in / 1,532 out tokens per
+  page. Artifacts `.tmp/t238/obs_somanycera_o.db`, `score_statements.py`, `sel_somanycera.json`.
+- Next: V2_SCHEMA_CONTRACT 17.v stage-O block, DEVELOPER_GUIDE bullet; report. Controller: the 91-company transcript
+  read is STILL RUNNING with the old prompt (`.tmp/t238read/obs_91_j.db`, started 00:19) — it must be re-launched
+  after this merge.
+
 ## T-238 merge: main (gap 1, OCR-routed pages) into stage M (22 Nov)
 
 - 23:5x: `git merge` cannot run from the worker sandbox (the worktree index/refs live in the main checkout's
