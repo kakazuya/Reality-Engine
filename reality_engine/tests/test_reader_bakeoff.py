@@ -32,6 +32,17 @@ def test_match_rows_counts_agreement_and_disagreement():
     assert [item["kind"] for item in disagree] == ["mismatch"]   # 300 is not 200: a disagreement, not an agreement
 
 
+def test_match_rows_never_crosses_pages():
+    model = [{"doc_key": "a.pdf", "page": 1, "measure": "loans", "period": "FY25", "value": 100.0},
+             {"doc_key": "a.pdf", "page": 2, "measure": "loans", "period": "FY25", "value": 300.0}]
+    hy4 = [{"doc_key": "b.pdf", "page": 1, "measure": "loans", "period": "FY25", "value": 100.0},
+           {"doc_key": "a.pdf", "page": 1, "measure": "loans", "period": "FY25", "value": 999.0}]
+    matched, disagree = rb.match_rows(model, hy4)
+    assert matched == 0                                           # same value on another document is no agreement
+    assert [item["kind"] for item in disagree] == ["mismatch", "model_only"]
+    assert disagree[0]["hy4"]["doc_key"] == "a.pdf"               # paired only with its own page's row
+
+
 def test_report_writes_csv_and_md_from_score_files():
     tmp_path = Path(".tmp/t234/test_report")
     shutil.rmtree(tmp_path, ignore_errors=True)

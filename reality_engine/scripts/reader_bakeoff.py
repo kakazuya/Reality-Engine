@@ -201,17 +201,22 @@ def _rows(db: str | Path) -> list[dict[str, Any]]:
         con.close()
 
 
+def same_page(a: Mapping[str, Any], b: Mapping[str, Any]) -> bool:
+    return (str(a.get("doc_key") or ""), int(a.get("page") or 0)) == (str(b.get("doc_key") or ""), int(b.get("page") or 0))
+
+
 def match_rows(model_rows: Sequence[Mapping[str, Any]],
                hy4_rows: Sequence[Mapping[str, Any]]) -> tuple[int, list[dict[str, Any]]]:
-    """Greedy 1:1 match on (measure, period, value within 0.5%); returns the count and the disagreements."""
+    """Greedy 1:1 match on the same (doc_key, page) and (measure, period, value within 0.5%); returns the count and
+    the disagreements. A row never matches or pairs with a row of another page (Wolf review 22 Nov)."""
     remaining = list(hy4_rows)
     matched = 0
     disagree: list[dict[str, Any]] = []
     for row in model_rows:
         hit = None
         for number, other in enumerate(remaining):
-            if (row.get("measure") == other.get("measure") and row.get("period") == other.get("period")
-                    and within(row.get("value"), other.get("value"))):
+            if (same_page(row, other) and row.get("measure") == other.get("measure")
+                    and row.get("period") == other.get("period") and within(row.get("value"), other.get("value"))):
                 hit = number
                 break
         if hit is not None:
@@ -219,7 +224,8 @@ def match_rows(model_rows: Sequence[Mapping[str, Any]],
             del remaining[hit]
             continue
         same_key = next((other for other in remaining
-                         if row.get("measure") == other.get("measure") and row.get("period") == other.get("period")),
+                         if same_page(row, other) and row.get("measure") == other.get("measure")
+                         and row.get("period") == other.get("period")),
                         None)
         disagree.append({"kind": "mismatch" if same_key else "model_only", "row": row, "hy4": same_key})
     return matched, disagree

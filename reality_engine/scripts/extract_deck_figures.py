@@ -163,9 +163,10 @@ MODELS = {
     "particle-ai/particle-1:free": {"api": "chat", "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY",
                                     "price": (0.0, 0.0), "capped": False, "ceiling": 30,
                                     "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}},
+    # ERNIE: Kilo answers 400 "Reasoning is mandatory for this endpoint" when reasoning is disabled (22 Nov): leave it on.
     "baidu/ernie-5.5-flash-preview:free": {"api": "chat", "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY",
                                            "price": (0.0, 0.0), "capped": False, "ceiling": 30,
-                                           "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}},
+                                           "body": {"temperature": 0, "max_tokens": 16000}},
     # Second Kilo account (KILO_API_KEY_2): 22 Nov the first key's free-model quota answered 429 on every model while
     # this key still served, so the bake-off rows below re-read on it (same shape as dots @kilo2).
     **{f"{_m}@kilo2": {"api": "chat", "id": _m, "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY_2",
@@ -174,6 +175,10 @@ MODELS = {
        for _m in ("nvidia/nemotron-3.5-super-vl:free", "inclusionai/ling-3.2-flash:free",
                   "particle-ai/particle-1:free", "baidu/ernie-5.5-flash-preview:free",
                   "nvidia/nemotron-3-ultra-550b-a55b:free")},
+    "baidu/ernie-5.5-flash-preview:free@kilo2": {"api": "chat", "id": "baidu/ernie-5.5-flash-preview:free",
+                                                 "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY_2",
+                                                 "price": (0.0, 0.0), "capped": False, "ceiling": 30,
+                                                 "body": {"temperature": 0, "max_tokens": 16000}},
     # "Space Bunny" (free, OpenCode Zen; the only Zen free model the API accepts: the others answer "free tier can only be
     # used from within OpenCode"). 2026-10-11, 40-page test vs Haiku with reasoning_effort low: 40/40 answered, ~97%
     # identifiable, ~99.7% of Haiku's numbers, no unsupported numbers, median ~6 s; with the default effort 13/40 came

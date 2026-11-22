@@ -2557,3 +2557,12 @@ calls; **7,969 input / 8,808 output tokens per page** (956,315 / 1,057,001 total
 (240-300 s/page, then Google free-tier 429). Ling, Particle, ERNIE and Nemotron Ultra were unavailable (Kilo 429
 before their first page). The text set did not run.
 
+Round 2 and review (Wolf, 22 Nov; `D:/RealityEngine/t234/`, hand-reads `read/summary.md`, `read2/grade*.md`):
+`score` now matches and pairs rows **only on the same `(doc_key, page)`** (`same_page`; round 1 could pair a model row
+with an hy4 row of another document, so round-1 "hy4 wrong on mismatches" grades are void; matched counts barely moved:
+Nemotron VL 5,156/6,786). On `KILO_API_KEY_2` (`@kilo2` entries): Particle-1 on 60 golden pages kept golden RIGHT
+**33/40**, hy4 matched 2,621/3,124, 7.6 pages/min at 4 workers, 7,833 in / 7,460 out tokens per page; Opus graded its
+40 disagreement rows 20 right / 4 minor / 16 wrong (Nemotron VL: 16 / 16 / 8). Nemotron Ultra (text only, 60 AR
+pages) matched hy4 on only 335/1,170 rows. ERNIE needs reasoning on (Kilo 400 "Reasoning is mandatory"): its entries
+no longer send `reasoning: {enabled: false}`.
+
