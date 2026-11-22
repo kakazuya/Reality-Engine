@@ -52,13 +52,15 @@ from every Wolf read and keyed by **what the document prints, never by a databas
 
 | pipeline | golden lines | RIGHT | MINOR | WRONG | sources |
 |---|---|---|---|---|---|
-| observations | 241 (230 rows + 11 pages) | 159 | 44 | 27 rows + 11 page lines | `t230/wolf_read_b.md`, `wolf_read_c.md` (incl. its 10 `no_period` rows), `wolf_read_d.md` (both tables), `wolf_visual_audit.md` (11 page predicates), `t232/wolf_read_decks394_a.md` (60 new-company rows) |
+| observations | 265 (254 rows + 11 pages) | 170 | 53 | 31 rows + 11 page lines | `t230/wolf_read_b.md`, `wolf_read_c.md` (incl. its 10 `no_period` rows), `wolf_read_d.md` (both tables), `wolf_visual_audit.md` (11 page predicates), `t232/wolf_read_decks394_a.md` (60 new-company rows), `t230/stageK_read/grade{1,2,3}.md` (24 annual-report rows, stage L) |
 | claims | 146 | 50 | 48 | 48 | `t228/wolf_read_91_s2.md`, `wolf_read_91_s2c.md`, `t228/s2a/wolf_read_s2a.md` |
 | events | 69 | 60 | 8 | 1 | `t231/t231_wolf_read_a.md`, `wolf_read_b.md` |
 
-One golden file now serves several DBs: `regress` grades only the lines about companies the DB actually holds (the
-symbol set comes from the DB's own `symbol` column) and reports the rest as `skipped_other_db`. An empty DB keeps
-every line, so a vanished row is still caught.
+One golden file now serves several DBs: `regress` grades only the lines about documents the DB actually holds (the
+symbol set comes from the DB's own `symbol` column and the document set from its `doc_key` column) and reports the
+rest as `skipped_other_db`. The per-document skip (stage L) keeps the deck and annual-report gates green when both
+reads cover the same 91 symbols but different documents. An empty DB keeps every line, so a vanished row is still
+caught.
 
 A row line carries `key` (the strict content key: symbol/store, full `doc_key`, page, measure/label/printed value or
 normalised quote, `known_at`), `identity` (the same without the fields a fix changes, so a corrected row is still
@@ -103,17 +105,23 @@ still wrong 37, changed 8 (details: `docs/V2_SCHEMA_CONTRACT.md` section 17, sta
 honest with a synthetic DB: a RIGHT row changed or vanished exits 1, a stated fix prints `fixed`, a defect that grows
 past its page count exits 1.
 
+Stage L (22 Nov) added the per-document skip and a golden line for the annual-report read: a line about a document
+the DB does not hold is `skipped_other_db`, not newly broken (the deck and annual-report reads share the 91 symbols).
+The annual-report gate therefore grades exactly its 24 hand-read rows (`docs/V2_SCHEMA_CONTRACT.md` section 17.z):
+still right 10, fixed 10 (all four WRONG rows), still wrong 2, changed 1, newly broken 1 -- NELCAST, whose RIGHT value
+was verified only by an all-zero parts sum the stage-L rule removes (the row is still stored; see 17.z).
+
 ## Costs and tests
 
 - The gate is model-free and reads one SQLite file: 0.03–0.2 s per pipeline on the 91-store outputs; adding
   `--baseline` diffs every row (102,074 observations on the 91 base and 27,801 on the decks394 base, 10,102 claims,
   604 events) and takes about 2–3 s on observations.
 - A scoped observations re-read still calls the reader once per selected page; a `--recheck` round calls no model.
-- Tests: `python -m pytest reality_engine/tests/test_regress.py -q` → 18 passed (content-key match after an id change,
+- Tests: `python -m pytest reality_engine/tests/test_regress.py -q` → 19 passed (content-key match after an id change,
   newly-broken detection, fixed/still-wrong/changed, page growth, baseline diff, selector filtering, empty-selector
   refusal, copy protection, a golden line about another company skipped, the scoped observations recheck and event
   merge hooks, and that the shipped golden files parse). The untouched pipeline suites also pass:
-  `test_observations.py`, `test_filing_events.py`, `test_driver_claims.py` → 272 passed (stage I added 10 observation
-  tests, stage J 3 more and 1 regress test).
+  `test_observations.py`, `test_filing_events.py`, `test_driver_claims.py` → 276 passed (stage I added 10 observation
+  tests, stage J 3 more and 1 regress test, stage K 10 observation tests, stage L 8 observation tests).
 - A new hand read is added by appending its lines to the matching JSONL with the same fields; do not re-key a line
   because a fix changed a field — that change is exactly what the gate reports.

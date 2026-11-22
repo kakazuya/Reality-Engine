@@ -32,6 +32,13 @@ shape, then checks them independently of the model:
   also come from the printed column header nearest above the value ("Standalone"/"Consolidated", the year a
   column is headed with) when the page title, series or label names none; no header above the value is no
   basis/period, never a guess.
+* (stage L) a parts-sum proof needs two non-zero parts with two distinct values and a total that is not itself
+  a part; a generic category label ("Male", "Other", "Total", "Wages", "Interest Cost") verifies only when
+  the printed group heading names the measure (``generic_label``), and a gratuity/defined-benefit interest
+  cost is never finance cost; a page/section heading names the basis ("Notes to Consolidated", "the Group",
+  "Standalone"); a date inside an inline comparative bracket is not the row's period, and a printed
+  "as at/as on <date>" on a closing balance is a point-in-time period (``period_kind='instant'``), not the
+  year's flow.
 
 Output is a separate SQLite file (``--out``, default ``.tmp/t230/obs.db``); a store is only ever
 read.  Tables: ``observation``, ``measure_dict``, ``dim_vocab``.
@@ -805,7 +812,7 @@ DIM_VOCAB: tuple[tuple[str, str, str], ...] = (
 )
 
 SCOPES = ("company", "subsidiary", "parent", "industry", "country", "customer", "peer")
-PERIOD_KINDS = ("actual", "estimate", "target", "span")
+PERIOD_KINDS = ("actual", "estimate", "target", "span", "instant")
 STAGES = ("operating", "under_construction", "approved", "under_review", "potential")
 DIMS = ("segment", "product", "geography", "plant", "customer")
 
@@ -1887,6 +1894,160 @@ def column_period(words: Iterable[tuple[float, float, float, float, str]], regio
     return ""
 
 
+# --------------------------------------------------------------------------- stage L: proof and label gates
+
+# A printed label that is only a category word ("Male", "Other", "Total", "Wages", "Interest Cost"): the row is
+# a part or a column qualifier of a table, never the measure itself.  Stage K's AR upgrades verified these on a
+# trivially marshalled parts sum (Wolf's read D:/RealityEngine/t230/stageK_read/grade{1,2,3}.md).
+GENERIC_LABEL_RE = re.compile(
+    r"^(?:total(?:\s*\([a-z]\))?|employees?|workers?|staff|males?|females?|"
+    r"other(?:\s+than\s+permanent)?|transgender|permanent|contractual|wages?|interest\s+cost)"
+    r"(?:\s+(?:employees?|workers?))?$", re.I)
+GENERIC_MEASURE_WORDS = {"count", "value"}
+JOB_WORDS = {"employees", "employee", "workers", "worker", "staff", "headcount"}
+BENEFIT_OBLIGATION_RE = re.compile(
+    r"gratuity|defined[\s-]*benefit|present\s+value\s+of\s+(?:the\s+)?obligation|employee\s+benefit|"
+    r"leave\s+encashment|provident\s+fund|superannuation", re.I)
+
+# A page/section heading that names the basis of the rows beneath it.  The word alone is not enough when the
+# page prints both bases (a side-by-side statement); then neither is proven.
+CONSOLIDATED_PAGE_RE = re.compile(
+    r"notes?\s+to\s+(?:the\s+)?consolidated|consolidated\s+(?:financial\s+)?"
+    r"(?:statements?|balance\s+sheet|profit|cash\s*flow)|on\s+a\s+consolidated|"
+    r"consolidated\s+basis|\bthe\s+group\b", re.I)
+STANDALONE_PAGE_RE = re.compile(
+    r"standalone\s+(?:financial\s+)?(?:statements?|balance\s+sheet|profit|cash\s*flow)|"
+    r"on\s+a\s+standalone|standalone\s+basis|\bstandalone\b", re.I)
+
+# "(31 March 2024 : NIL)" is an inline comparative: the date inside it is the other column, never this row's
+# period (ESTER p196).  A bracketed column header has no comparison mark and is not matched.
+COMPARATIVE_SPAN_RE = re.compile(r"\(([^()]{1,120})\)")
+COMPARATIVE_MARK_RE = re.compile(r":\s*(?:nil|n\.?a\.?|[-–—]|\d)|compared|\bvs\.?\b|previous", re.I)
+AS_AT_DATE_RE = re.compile(
+    r"\b(?:as\s+(?:at|on|of)|closing\s+as\s+(?:at|on)|balance\s+as\s+(?:at|on))\s+"
+    r"((?:\d{1,2}(?:st|nd|rd|th)?\s+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?,?\s+\d{4}"
+    r"|\d{1,2}[/.-]\d{1,2}[/.-]\d{4})", re.I)
+FLOW_PERIOD_RE = re.compile(
+    r"\d{1,2}[./-]\d{1,2}[./-]\d{4}\s*(?:-|to|–)\s*\d{1,2}[./-]\d{1,2}[./-]\d{4}|"
+    r"\bFY\s?\d|financial\s+year|year\s+ended|year\s+end", re.I)
+
+
+def _word_set(text: str) -> set[str]:
+    return set(re.findall(r"[a-z]+", norm_space(text).lower()))
+
+
+def measure_keywords(measure: str) -> set[str]:
+    """The words of a measure id that must be printed in a group heading before a generic label can verify."""
+    return _word_set(re.sub(r"[._]", " ", str(measure or ""))) - GENERIC_MEASURE_WORDS
+
+
+def _label_names_measure(label_words: set[str], measure_words: set[str]) -> bool:
+    """Every category word of the label must be one the measure names ('Total Workers' fits count.employees)."""
+    for word in label_words:
+        if word in measure_words:
+            continue
+        if word in JOB_WORDS and measure_words & JOB_WORDS:
+            continue
+        return False
+    return True
+
+
+def generic_label_reason(row: dict[str, Any]) -> str:
+    """Stage L: a generic category label proves nothing unless its printed group heading names the measure.
+
+    "Female" under Employees is a sub-count, "Wages" is one complaints category, "Interest Cost" under a
+    benefit-obligation note is the unwinding of a gratuity obligation, and a bare "Total" names no measure.
+    The row verifies only when the label's own category word is in the measure and every measure word is in
+    the printed group path; otherwise it reads as a total the page does not print.
+    """
+    label = norm_space(row.get("printed_label")).lower().strip(" .:;")
+    measure = str(row.get("measure") or "")
+    if not label or not measure or GENERIC_LABEL_RE.match(label) is None:
+        return ""
+    context = " ".join([row.get("printed_label") or "", row.get("printed_axis") or "",
+                        row.get("series_title") or "", row.get("group_path") or ""])
+    if BENEFIT_OBLIGATION_RE.search(context) and measure_root(measure) == "finance_cost":
+        return f"generic_label: defined-benefit interest cost {row.get('printed_label')!r} is not finance_cost"
+    label_words = _word_set(label) - {"total", "grand", "overall", "all"}
+    measure_words = measure_keywords(measure)
+    if not _label_names_measure(label_words, measure_words):
+        return f"generic_label: {row.get('printed_label')!r} is a part/category, not the measure {measure!r}"
+    if not label_words and (row.get("_is_total") or row.get("is_total")):
+        return ""                          # a bare printed "Total" is the total of its parts: the sum is its proof
+    group = " ".join([row.get("group_path") or "", row.get("printed_axis") or ""])
+    if not measure_words or not measure_words <= _word_set(group):
+        return f"generic_label: no printed heading names {measure!r}"
+    return ""
+
+
+def page_basis(page_text: str) -> str:
+    """Stage L: the page's own section heading names the basis when no column header does.
+
+    "Notes to Consolidated Financial Statements" (KRYSTAL p185) and "the Group" (COSMOFIRST) are the printed
+    basis of the rows beneath them.  A page that prints both bases proves neither (never guessed).
+    """
+    text = str(page_text or "")
+    stand = bool(STANDALONE_PAGE_RE.search(text))
+    cons = bool(CONSOLIDATED_PAGE_RE.search(text))
+    if stand and not cons:
+        return "standalone"
+    if cons and not stand:
+        return "consolidated"
+    return ""
+
+
+def strip_comparatives(text: str) -> str:
+    """The text with its inline comparative brackets removed (a comparative date is not a header)."""
+    return COMPARATIVE_SPAN_RE.sub(
+        lambda match: " " if COMPARATIVE_MARK_RE.search(match.group(1)) else match.group(0), str(text or ""))
+
+
+def comparative_period(period: str, page_text: str, row_text: str = "") -> bool:
+    """Stage L: True when ``period`` is printed only inside an inline comparative bracket.
+
+    "(31 March 2024 : NIL)" says the previous column was nil; the row's own period is the unqualified header
+    (ESTER p196).  The row's own label/axis is read first: a period named only inside a bracket there is the
+    comparative even when the page prints the same month elsewhere.  A bracketed column header has no comparison
+    mark, so it is not a comparative.
+    """
+    target = norm_space(period).lower()
+    if not target:
+        return False
+
+    def in_comparative(text: str) -> bool:
+        for match in COMPARATIVE_SPAN_RE.finditer(text):
+            span = match.group(1)
+            if COMPARATIVE_MARK_RE.search(span) and target in norm_space(span).lower():
+                return True
+        return False
+
+    row = str(row_text or "")
+    if row and in_comparative(row):
+        return target not in norm_space(strip_comparatives(row)).lower()
+    text = str(page_text or "")
+    return in_comparative(text) and target not in norm_space(strip_comparatives(text)).lower()
+
+
+def apply_instant_period(row: dict[str, Any]) -> bool:
+    """Stage L: "Closing as on 31st March 2024" is a point-in-time period, not the year's flow.
+
+    Only a row whose stored period is a fiscal range/flow and whose own label names the as-at date moves;
+    a P&L row already headed "As on March 31, 2024" keeps its period and its kind.
+    """
+    label = " ".join([row.get("printed_label") or "", row.get("printed_axis") or ""])
+    match = AS_AT_DATE_RE.search(label)
+    period = str(row.get("period") or "")
+    if not match or not period:
+        return False
+    date = infer_period([match.group(1)]) or norm_space(match.group(1))
+    if not date or date.lower() in period.lower() or not FLOW_PERIOD_RE.search(period):
+        return False
+    row["period"] = date
+    row["period_kind"] = "instant"
+    row["period_source"] = "label_instant"
+    return True
+
+
 def detect_subsidiary(texts: Iterable[str], companies: dict[str, tuple[str, str]], store_symbol: str) -> bool:
     """A page/series that names a subsidiary: "<ABBR>'s Standalone P&L" or another known company name."""
     text = " ".join(str(t or "") for t in texts)
@@ -2242,6 +2403,10 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
         status = "unverified"
         reasons.append(f"unit family {row['unit_family']!r} does not match measure {row['measure']!r} "
                        f"({measure['unit_family']!r})")
+    generic = generic_label_reason(row)          # stage L: a category word is not the measure's name
+    if generic:
+        status = "unverified"
+        reasons.append(generic)
     if measure is not None and measure["unit_family"] == "money":
         hint = money_scale([row.get("unit", ""), row.get("printed_axis", ""), row.get("series_title", "")])
         if hint is not None and float(row.get("scale") or 1) == 1:
@@ -2341,6 +2506,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                                     row["group_path"], page_text)
         if not row["basis"]:                      # stage K: the printed standalone/consolidated header over the value
             row["basis"] = column_basis(word_list, row["region"])
+        if not row["basis"]:                      # stage L: the page/section heading names the basis
+            row["basis"] = page_basis(page_text)
         row["measure"] = canonical_measure(row["measure"], row["printed_label"], row["printed_axis"],
                                            row["series_title"], row["unit"], text)
         cagr = cagr_measure(row["measure"], row["printed_label"], row["printed_axis"], row["series_title"], page_text,
@@ -2370,9 +2537,15 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         measure_family = measure["unit_family"] if measure else row["unit_family"]
         if apply_per_unit_scale(row, measure_family):
             scale_notes = []           # a crore scale on a per-unit price is never a printed scale
+        if row["period"] and comparative_period(
+                row["period"], page_text, " ".join([row["printed_label"], row["printed_axis"]])):
+            row["period"] = ""         # stage L: a date inside "(31 March 2024 : NIL)" is not this row's period
+            row["period_source"] = ""
+            row["period_kind"] = ""
         if not row["period"]:
-            row["period"] = infer_period([row["printed_axis"], row["series_title"], row["group_path"],
-                                          row["printed_label"]])
+            row["period"] = infer_period([strip_comparatives(t) for t in
+                                          [row["printed_axis"], row["series_title"], row["group_path"],
+                                           row["printed_label"]]])
             row["period_kind"] = period_kind_for(raw.get("period_kind", ""), row["period"])
         if not row["period"]:                     # stage K: the printed column header year over the value
             header_period = column_period(word_list, row["region"])
@@ -2388,9 +2561,11 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         if row["period"] and not period_is_printed(row["period"]):
             row["period"] = ""
             row["period_source"] = ""
-            row["period"] = infer_period([row["printed_axis"], row["series_title"], row["group_path"],
-                                          row["printed_label"], head])
+            row["period"] = infer_period([strip_comparatives(t) for t in
+                                          [row["printed_axis"], row["series_title"], row["group_path"],
+                                           row["printed_label"], head]])
             row["period_kind"] = period_kind_for(raw.get("period_kind", ""), row["period"])
+        apply_instant_period(row)                  # stage L: "Closing as on <date>" is a point in time
         foot = footnote_basis(page_text, row["period"]) if row["period"] else ""
         if foot:
             row["basis"] = foot
@@ -2422,13 +2597,17 @@ def measure_root(measure_id: str) -> str:
     return norm_space(measure_id).split(".", 1)[0]
 
 
-def apply_parts_sum(rows: list[dict[str, Any]]) -> None:
+def apply_parts_sum(rows: list[dict[str, Any]], stats: dict[str, Any] | None = None) -> None:
     """The rows a model marks as a printed total must equal the parts it printed in the same series and group.
 
     Membership is the reply's structure (series_id, group_path, is_total); the arithmetic is the script's.  Only a
     one-total group of 2-10 labelled rows whose measure shares the total's root (capacity.total with capacity.add,
     revenue.value with revenue.mix) is checked: a financial-highlights chart with revenue, EBITDA and PAT in one
     series never fires.
+
+    Stage L: a proof needs two non-zero parts with two distinct values and a total that is not itself one of the
+    parts.  An all-zero or all-equal group, or a "total" that is just one of its own rows, proves nothing (the
+    rows keep their other reasons); an all-zero group verified 2,000+ stage-K annual-report rows.
     """
     groups: dict[tuple[str, str, str, str, float], list[dict[str, Any]]] = {}
     for row in rows:
@@ -2448,14 +2627,21 @@ def apply_parts_sum(rows: list[dict[str, Any]]) -> None:
         if any(r["value"] is None or not r["printed_label"] for r in parts + [total]):
             continue
         total_value = float(total["value"])
-        part_sum = sum(float(r["value"]) for r in parts)
+        values = [float(r["value"]) for r in parts]
+        if sum(1 for value in values if value != 0) < 2 or len({round(value, 9) for value in values}) < 2 \
+                or any(abs(total_value - value) <= max(1e-9, abs(total_value) * 1e-9) for value in values):
+            if stats is not None:
+                stats["parts_degenerate"] = int(stats.get("parts_degenerate", 0)) + 1
+            continue                 # stage L: a degenerate group is no proof
+        part_sum = sum(values)
         tolerance = max(0.51, abs(total_value) * 0.005)
         if abs(part_sum - total_value) <= tolerance:
             for row in parts + totals:
                 if "no_unit:" in row["status_reason"] or "no_period:" in row["status_reason"] or \
                         "adjusted/hypothetical" in row["status_reason"] or "image_text" in row["status_reason"] or \
-                        "geography_not_printed" in row["status_reason"] or "stacked_part" in row["status_reason"]:
-                    continue         # a parts sum never overrides a hard gate
+                        "geography_not_printed" in row["status_reason"] or "stacked_part" in row["status_reason"] or \
+                        "generic_label" in row["status_reason"]:
+                    continue         # a parts sum never overrides a hard gate (stage L adds generic_label)
                 row["status"] = "verified"
                 row["status_reason"] = (row["status_reason"] + "; " if row["status_reason"] else "") + \
                     f"parts sum to the printed total {total['value_text']}"
@@ -2592,7 +2778,7 @@ prose. Every object has exactly these keys:
  "measure": "one id from the dictionary below", "printed_label": "words printed against the value, verbatim",
  "printed_axis": "axis / column header / unit line the value sits under, verbatim",
  "value_text": "the number exactly as printed", "unit": "unit as printed", "scale": 1,
- "period": "the year/period the value is for, as printed", "period_kind": "actual|estimate|target",
+ "period": "the year/period the value is for, as printed", "period_kind": "actual|instant|estimate|target",
  "segment": "", "product": "", "geography": "", "plant": "", "customer": "",
  "group_path": "heading(s) that group the value, joined with ' > '", "group_source": "printed|legend_inferred",
  "stage": "",
@@ -2615,7 +2801,8 @@ Rules:
   "lakh", "crore", "Mn"); otherwise 1.
 - period: as printed (FY25, FY28E, FY20, Q2FY26, 2024); empty if none. Only a period printed against this value (its
   axis tick, column header, caption or year label) is its period; a year printed elsewhere on the page is not.
-  period_kind: "actual" for a printed past or current period, "estimate" for an E suffix / forecast / projected,
+  period_kind: "actual" for a printed past or current period, "instant" for a point-in-time closing balance
+  ("as at 31 March 2025"), "estimate" for an E suffix / forecast / projected,
   "target" for a management target or guidance; empty if no period.
 - measure: pick the closest id from the dictionary; if none fits, write a snake_case id naming what the printed
   label says. Never guess a different number to fit a measure.
@@ -3220,7 +3407,9 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                              "text_source_ocr": 0, "per_unit_scales": 0, "period_cleared": 0, "ticks_cleared": 0,
                              "footnote_basis": 0, "scope_cues": 0, "lower_bounds": 0, "dash_labels": 0,
                              "unit_family_fixed": 0, "is_total_rows": 0, "parts_sum_restored": 0,
-                             "basis_header": 0, "period_header": 0}
+                             "basis_header": 0, "period_header": 0, "generic_labels": 0,
+                             "parts_degenerate": 0, "comparative_periods": 0, "instant_periods": 0,
+                             "basis_page": 0}
     pages = list(con.execute("SELECT DISTINCT doc_key, page FROM observation ORDER BY doc_key, page"))
     if only is not None:                      # T-233: a scoped recheck touches only the selected pages
         pages = [p for p in pages if only.page(doc_store.get(str(p[0])), str(p[0]), int(p[1]))]
@@ -3283,6 +3472,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                 stats["unit_family_fixed"] += 1
             family = measure["unit_family"] if measure else (row["unit_family"] or "")
             unit_inherited = period_inherited = stage_set = scale_fixed = deck_period_used = False
+            instant_used = False
             if not row["unit"]:
                 inferred = infer_unit([row["printed_axis"] or "", row["series_title"] or "",
                                        row["printed_label"] or ""], family)
@@ -3319,6 +3509,13 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     row["period"] = deck_asof
                     row["period_kind"] = period_kind_for("", deck_asof)
                     stats["deck_period_fixed"] += 1
+            comparative = bool(row["period"]) and comparative_period(
+                row["period"], raw_text, " ".join([row["printed_label"] or "", row["printed_axis"] or ""]))
+            if comparative:
+                row["period"] = ""           # stage L: a date inside an inline comparative bracket is not this row's
+                row["period_source"] = ""
+                row["period_kind"] = ""
+                stats["comparative_periods"] += 1
             fake_period = bool(row["period"]) and not period_is_printed(row["period"])
             if fake_period:
                 row["period"] = ""           # stage I: "Y-O-Y" / "QoQ" / "growth" is a comparison, not a period
@@ -3328,9 +3525,9 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             if not row["period"]:
                 texts = [row["printed_axis"] or "", row["series_title"] or "",
                          row["group_path"] or "", row["printed_label"] or ""]
-                if fake_period:
+                if fake_period or comparative:
                     texts.append(head)       # the column header or page header may carry the real period
-                period = infer_period(texts)
+                period = infer_period([strip_comparatives(t) for t in texts])
                 header_period = "" if period else column_period(words, row["region"] or "")
                 if header_period:
                     period = header_period
@@ -3348,6 +3545,9 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     row["period_source"] = "deck_period"
                     deck_period_used = True
                     stats["deck_periods"] += 1
+            if apply_instant_period(row):        # stage L: "Closing as on <date>" is a point in time
+                instant_used = True
+                stats["instant_periods"] += 1
             if not row["adjusted"] and ADJUSTED_RE.search(" ".join(
                     [row["printed_label"] or "", row["printed_axis"] or "", row["series_title"] or ""])):
                 row["adjusted"] = 1
@@ -3370,6 +3570,10 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                 row["basis"] = column_basis(words, row["region"] or "")
                 if row["basis"]:
                     stats["basis_header"] += 1
+            if not row["basis"]:                 # stage L: the page/section heading names the basis
+                row["basis"] = page_basis(raw_text)
+                if row["basis"]:
+                    stats["basis_page"] += 1
             foot = footnote_basis(raw_text, row["period"] or "")
             if foot and row["basis"] != foot:
                 row["basis"] = foot          # a footnote names this period's basis (id 20120)
@@ -3394,7 +3598,10 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                 row["entity_scope"] = "parent"
                 stats["parent_rows"] += 1
             row.pop("_scale_notes", None)
+            row["_is_total"] = derive_is_total(row)   # stage L: a printed "Total" label is known before the checks
             status, reasons = evaluate_status(dict(row), text, measures, raw_text, ocr_text)
+            if any("generic_label" in reason for reason in reasons):
+                stats["generic_labels"] += 1
             dictionary_fix = ("measure is not in the dictionary" in old_reason
                               and (row["measure"] or "") in measures)
             count_unit_fix = ("no_unit:" in old_reason and str(row["measure"] or "").startswith("count.")
@@ -3403,7 +3610,8 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             row["_old_reason"] = old_reason
             row["_proof"] = (unit_inherited or period_inherited or mapped or stage_set or dictionary_fix
                              or scale_fixed or deck_period_used or cagr_set or basis_changed or count_unit_fix
-                             or per_unit_fix or tick_fix or dash_label or value_text_fix or unit_family_fix)
+                             or per_unit_fix or tick_fix or dash_label or value_text_fix or unit_family_fix
+                             or instant_used)
             row["status"] = status
             row["status_reason"] = "; ".join(reasons)
             updated.append(row)
@@ -3422,7 +3630,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
         stats["rank_counts"] += apply_rank_count(updated)
         stats["is_total_rows"] += sum(1 for r in updated if r["_is_total"])
         before_parts = {int(r["observation_id"]): str(r["status"]) for r in updated}
-        apply_parts_sum(updated)
+        apply_parts_sum(updated, stats)
         for row in updated:
             if "parts sum to the printed total" in str(row.get("status_reason") or ""):
                 row["_proof"] = True        # the printed total and its parts are a proof (stage J)

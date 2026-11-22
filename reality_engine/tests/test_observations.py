@@ -1465,3 +1465,158 @@ def test_stage_k_a_row_with_no_basis_takes_the_printed_section_heading():
     assert rows[0]["basis"] == "consolidated"
     assert "basis_conflict" not in rows[0]["status_reason"]
 
+
+# ---------------------------------------------------------------- T-230 stage L proof and label gates
+
+def _unproven(measure, label, value, period="FY25", **kw):
+    """A row whose only defect is a group with no printed source: a parts proof could verify it, a label cannot."""
+    base = dict(measure=measure, printed_label=label, value_text=value, unit="Rs Cr", period=period,
+                group_path="Revenue", group_source="")
+    base.update(kw)
+    return reply(**base)
+
+
+def test_stage_l_a_parts_sum_needs_two_nonzero_distinct_parts():
+    page = ("Revenue FY25 Total 0 North 0 South 0 Total 20 East 10 West 10 Total 100 North 100 South 0.01 "
+            "North 60 South 40")
+    zero = build([
+        _unproven("revenue.value", "Total", "0", is_total=True),
+        _unproven("revenue.value", "North", "0"),
+        _unproven("revenue.value", "South", "0"),
+    ], page_text=page)
+    assert all(row["status"] == "unverified" for row in zero), [r["status_reason"] for r in zero]
+    assert all("parts sum to the printed total" not in row["status_reason"] for row in zero)
+    equal = build([
+        _unproven("revenue.value", "Total", "20", is_total=True),
+        _unproven("revenue.value", "East", "10"),
+        _unproven("revenue.value", "West", "10"),
+    ], page_text=page)
+    assert all("parts sum to the printed total" not in row["status_reason"] for row in equal)
+    own_part = build([
+        _unproven("revenue.value", "Total", "100", is_total=True),
+        _unproven("revenue.value", "North", "100"),
+        _unproven("revenue.value", "South", "0.01"),
+    ], page_text=page)
+    assert all("parts sum to the printed total" not in row["status_reason"] for row in own_part)
+    valid = build([
+        _unproven("revenue.value", "Total", "100", is_total=True),
+        _unproven("revenue.value", "North", "60"),
+        _unproven("revenue.value", "South", "40"),
+    ], page_text=page)
+    assert all(row["status"] == "verified" for row in valid), [r["status_reason"] for r in valid]
+
+
+def test_stage_l_a_generic_label_verifies_only_when_the_heading_names_the_measure():
+    page = ("BRSR minimum wages\nEmployees\nTotal Permanent Workers\nMale\nFemale\n"
+            "Total employees / workers in respective category (A)\nFY 2024-25\n4648\n1\n"
+            "Interest Cost\nChange in Present Value of Obligation\n₹ in Lakhs\n54.41\n"
+            "Total Employees\nTotal (A)\n175\n")
+    rows = build([
+        reply(measure="count.employees", printed_label="Male", value_text="4648", period="FY 2024-25",
+              group_path="Total Permanent Workers", group_source="printed"),
+        reply(measure="count.employees", printed_label="Female", value_text="1", period="FY 2024-25",
+              group_path="Employees > Permanent", group_source="printed"),
+        reply(measure="finance_cost", printed_label="Interest Cost", value_text="54.41", unit="₹ in Lakhs",
+              period="FY 2024-25", group_path="Change in Present Value of Obligation", group_source="printed"),
+    ], page_text=page)
+    assert all("generic_label" in row["status_reason"] for row in rows), [r["status_reason"] for r in rows]
+    assert all(row["status"] == "unverified" for row in rows)
+    named = build([reply(measure="count.employees", printed_label="Total Employees", value_text="175",
+                         printed_axis="Total (A)", period="FY 2024-25", group_path="Employees",
+                         group_source="printed")], page_text=page)
+    assert "generic_label" not in named[0]["status_reason"], named[0]["status_reason"]
+    assert named[0]["status"] == "verified", named[0]["status_reason"]
+
+
+def test_stage_l_a_gratuity_interest_cost_is_never_finance_cost():
+    page = ("Gratuity\nChange in Present Value of Obligation\nInterest Cost\nYear ended March 31, 2025\n"
+            "₹ in Lakhs\n54.41\n")
+    rows = build([reply(measure="finance_cost", printed_label="Interest Cost", value_text="54.41",
+                        unit="₹ in Lakhs", period="Year ended March 31, 2025",
+                        group_path="Change in Present Value of Obligation", group_source="printed")],
+                 page_text=page)
+    assert "defined-benefit interest cost" in rows[0]["status_reason"]
+    assert rows[0]["status"] == "unverified"
+
+
+def test_stage_l_a_generic_category_word_must_match_the_measure():
+    page = "Total Workers\nFY 2023-24\n494\nEmployees\n175\n"
+    wrong = build([reply(measure="count.beneficiaries", printed_label="Total Workers", value_text="494",
+                         period="FY 2023-24")], page_text=page)
+    assert "generic_label" in wrong[0]["status_reason"], wrong[0]["status_reason"]
+    right = build([reply(measure="count.employees", printed_label="Total Workers", value_text="494",
+                         period="FY 2023-24", group_path="Employees", group_source="printed")],
+                  page_text=page)
+    assert "generic_label" not in right[0]["status_reason"], right[0]["status_reason"]
+    assert right[0]["status"] == "verified", right[0]["status_reason"]
+
+
+def test_stage_l_a_page_section_heading_sets_the_basis_when_no_header_does():
+    page = ("Annual Report 2025-26\nNote 47 Capital Management\nNet debt\nAs at 31 March 2025\n967.58\n"
+            "NOTES TO CONSOLIDATED FINANCIAL STATEMENTS (CONTD.)\nFOR THE YEAR ENDED MARCH 31, 2027\n"
+            "(All amounts in ₹ Million unless otherwise stated)\nAnnual Report 2025-26\n182\n")
+    assert obs.page_basis("Notes to Consolidated Financial Statements") == "consolidated"
+    assert obs.page_basis("The Group") == "consolidated"
+    assert obs.page_basis("Standalone Financial Statements") == "standalone"
+    assert obs.page_basis("Standalone Financial Statements\nNotes to Consolidated Financial Statements") == ""
+    rows = build([reply(measure="net_debt", printed_label="Net debt", value_text="967.58",
+                        printed_axis="As at 31 March 2025", unit="₹ crores",
+                        period="As at 31 March 2025")], page_text=page)
+    assert rows[0]["basis"] == "consolidated", rows[0]["status_reason"]
+
+
+def test_stage_l_a_date_inside_an_inline_comparative_is_not_the_period():
+    page = ("Quoted instruments\nAs at 31 March 2025\n1,14,062.01\nUnits 1,14,062.01 (31 March 2024 : NIL)\n")
+    assert obs.comparative_period("March 2024", page)
+    assert not obs.comparative_period("March 2025", page)
+    assert obs.comparative_period("March 2024", page, "Units 1,14,062.01 (31 March 2024 : NIL)")
+    assert not obs.comparative_period("March 2025", page, "As at March 2025 (31 March 2024 : NIL)")
+    rows = build([reply(measure="investment_units", printed_label="Aditya Birla Sun Life MoneyManager Fund",
+                        printed_axis="Units 1,14,062.01 (31 March 2024 : NIL)", value_text="1,14,062.01",
+                        unit="Units", period="March 2024", series_title="Quoted instruments")], page_text=page)
+    assert rows[0]["period"] == "", rows[0]["period"]
+    assert "no_period" in rows[0]["status_reason"], rows[0]["status_reason"]
+
+
+def test_stage_l_an_as_at_closing_balance_is_a_point_in_time_period():
+    page = ("Capital Management\nClosing as on 31st March 2024\n967.58\n"
+            "01.04.2023 - 31.03.2024\n₹ crore\n")
+    assert obs.apply_instant_period({"printed_label": "Closing as on 31st March 2024",
+                                     "printed_axis": "", "period": "01.04.2023 - 31.03.2024"})
+    rows = build([reply(measure="net_debt", printed_label="Closing as on 31st March 2024",
+                        printed_axis="01.04.2023 - 31.03.2024", value_text="967.58", unit="₹ crore",
+                        period="01.04.2023 - 31.03.2024")], page_text=page)
+    assert rows[0]["period_kind"] == "instant", rows[0]["period_kind"]
+    assert "March 2024" in rows[0]["period"]
+    flow = build([reply(measure="profit_before_exceptional_items_and_tax", printed_label="Profit before tax",
+                        printed_axis="As on March 31, 2024", value_text="56.18", unit="INR in Crore",
+                        period="As on March 31, 2024", period_kind="actual")],
+                 page_text="Profit before tax\nAs on March 31, 2024\n56.18\n")
+    assert flow[0]["period_kind"] == "actual", flow[0]["status_reason"]
+
+
+def test_stage_l_recheck_downgrades_a_stage_k_generic_label_and_a_degenerate_proof():
+    page = "Employees Total Permanent Workers Male 4648 FY 2024-25 Revenue Total 0 North 0 South 0"
+    try:
+        _make_store(pages=(page,), first_page=14)
+        con = obs.create_db(":memory:")
+        rows = build([
+            reply(measure="count.employees", printed_label="Male", value_text="4648", period="FY 2024-25",
+                  group_path="Total Permanent Workers", group_source="printed"),
+            _unproven("revenue.value", "Total", "0", is_total=True),
+            _unproven("revenue.value", "North", "0"),
+            _unproven("revenue.value", "South", "0"),
+        ], page_text=page)
+        for row in rows:                      # simulate the stage-K rows: written as verified
+            row.update({"status": "verified", "status_reason": ""})
+        obs.write_rows(con, rows)
+        stats = obs.recheck_db(con, [str(STORE)])
+        statuses = [r[0] for r in con.execute("SELECT status FROM observation ORDER BY observation_id")]
+        assert statuses == ["unverified"] * 4, statuses
+        assert stats["generic_labels"] == 1
+        assert stats["parts_degenerate"] == 1
+        con.close()
+    finally:
+        _cleanup_store()
+
+
