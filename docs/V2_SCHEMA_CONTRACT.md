@@ -2517,6 +2517,65 @@ Tests: `test_observations.py` 110 passed (stage-J: a four-value run is not a lad
 recheck, the label derivation) and `test_regress.py` 18 passed (a golden line for another company is skipped, not
 broken). Typecheck clean on `observations.py`, `test_observations.py`, `scripts/regress.py`, `test_regress.py`.
 
+### Stage K (annual-report observations: measure aliases, basis and period from the printed header, 22 Nov 2026)
+
+The 91-company annual-report read (main checkout `.tmp/t230ar/obs_ar_91.db`, rechecked copy
+`.tmp/t230ar_rc/obs_ar_91_rc.db`: **98,624 verified / 319,266 unverified / 6,300 quarantined** of 424,190 rows on
+21,401 pages) is the largest single read. Wolf's breakdown of the unverified reasons on the rechecked copy: measure
+not in the dictionary **221,411** rows (23,250 distinct invented names; the top 500 are 100,908 of them),
+`basis_conflict` **94,108** (67,742 with an empty basis), `no_period` **86,094**, printed axis/label not in the text
+layer ~40k, `no_unit` **19,812**. Most invented names are governance, compliance and BRSR disclosures; stage K
+recovers only driver figures and leaves those unverified. Script-side only: no model call, `--recheck` and a scoped
+T-233 `--only` run.
+
+- **K1 one alias review of the top 500 names.** `D:/RealityEngine/t230/stageK_aliases.csv` (one row per invented name:
+  rows, companies, action, target, reason) is the table Wolf reviews; the worker sandbox cannot write `D:`, so it
+  ships in `.tmp/t230k/stageK_aliases.csv`. Of the 500: **23 `map`** (same meaning as a dictionary measure, e.g.
+  `interest_cost` -> `finance_cost`, `net_block` -> `property_plant_and_equipment`, `employee_turnover_rate` ->
+  `attrition`, `return_on_net_worth` -> `roe`, `equity_shares_outstanding` -> the new `count.shares`), **20 `keep`**
+  (already a dictionary id; the stored reason was stale and the recheck re-evaluates the row), **457 `leave`**
+  (governance / shareholding / share price, board and auditor disclosures, CSR, section and rule references, BRSR
+  employee and worker welfare, ESG, actuarial assumptions, macro context, page furniture). Ten driver measures join
+  `MEASURES` (**276 ids**, 17 new aliases -> **145**), each with an observed alias only: `dividend_per_share`,
+  `gross_block`, `accumulated_depreciation`, `count.shares`, `dscr`, `inventory_turnover`, `receivable_turnover`,
+  `payable_turnover`, `net_capital_turnover`, `other_operating_revenue`. A governance count is never mapped onto a
+  driver measure (`count.workers` stays unmapped; `count.permanent_employees` is the BRSR word for the company's own
+  employees, so it maps to `count.employees`).
+- **K2 basis from the printed column header.** `column_basis` joins `detect_basis`: when the page head/tail and the
+  row's own axis/series/label name no basis, the basis is the printed `Standalone`/`Consolidated` header nearest
+  above the value's text-layer box (`region`). A page printing both takes the header over the value's own column; a
+  page printing one of them as a section heading applies it to the rows beneath. No value box, or no such header
+  above the value, leaves the basis empty and the basis conflict stands: the word is never guessed from an
+  image-only header or from a header below the value.
+- **K3 period from the printed column header.** `column_period` reads the year a column is headed with ("31 March
+  2025", "FY 2024-25", "2024-25") only from a short header line over the value's box, only when the row has no
+  period, and stores `period_source='column_header'`. A paragraph that mentions a year is not a header: the matched
+  span must be at least half the header line's characters, and the header must sit over the value's column.
+- **K4 the recheck still needs a printed source.** A header basis or period counts as that source (`basis_changed`,
+  `period_inherited`, and the new `basis_header`/`period_header` stats), so the row verifies only when every other
+  check already passed; a row whose basis/period is still unprinted does not move.
+
+The final selector is `status='unverified' AND (reason LIKE '%not in the dictionary%' OR '%basis_conflict%' OR
+'%no_period%' OR '%no_unit%')`: **292,425 rows on 19,780 pages** of the rechecked copy. A verified row must never be
+in a `where` selection -- a first 10-store run selected verified rows whose `status_reason` still carried an earlier
+reason (the parts-sum proof overrides the dictionary failure), and with its siblings outside the selection the proof
+could not be re-made, so **35 verified rows fell back to unverified**. Measured on that 10-store scoped run
+(`c01`-`c10` into `.tmp/t230k/obs_ar_10.db`, 2,021 pages / 25,688 rows selected): **verified 98,624 -> 99,769 on the
+copy, +1,180 upgrades** (alias 280, stale dictionary / restored parts / dash labels 616, column-basis 261, column
+period 11, mixed 12). The 91-store run of the same selector was started twice on the loaded MSI and stopped at the
+worker time limit (4,037 s CPU after 93 min, no committed output): `.tmp/t230k/obs_ar_91_k.db` is only the baseline
+copy, not a result. Next action: rerun it (about 100 min with the day's deck job competing) and `regress` it against
+`obs_ar_91_rc.db`; the AR baseline gate is already red by construction (newly broken 117, fixed 11, gone 51 -- the
+golden reads are deck pages this DB does not hold), so the pass condition is newly broken <= 117 and no verified row
+downgraded. The decks gate is green: `regress observations --db D:/RealityEngine/t230/obs_91_i.db` still right 118,
+fixed 18, still wrong 34, changed 11, **newly broken 0**.
+
+Tests: `python -m pytest reality_engine/tests/test_observations.py -q` **120 passed** (10 stage-K tests: the new
+measures and nodes, same-meaning aliases only and governance left alone, the column basis per column and under one
+section heading, no header above the value is no basis, the column period, a paragraph is not a header, the FY span
+keeps both years, and the two build-integration rows), `test_regress.py` 18 passed, `test_typecheck` clean on
+`observations.py` and `test_observations.py`.
+
 #### 17.x Wolf's independent reads (21 Nov 2026)
 Verified-row samples graded against page text and images by a separate Opus reader: stage B 40 rows 24 right / 10
 minor / 6 wrong (15%); stage C 50 rows 44/2/4 (8%); stage D 50 rows 42/6/2 (4%; scale, basis, bridge, subsidiary

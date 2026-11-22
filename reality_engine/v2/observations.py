@@ -26,6 +26,12 @@ shape, then checks them independently of the model:
   rows) is never a chart ladder, and a printed text line beside the value is its data label; the printed
   total flag is stored (``is_total``) and re-derived from the label ("Total", "Overall", "Consolidated
   total") or the arithmetic, so a recheck keeps the parts-sum proof.
+* (stage K) the top-500 annual-report invented measure names are reviewed once: only a same-meaning name is
+  aliased, a handful of driver measures (DPS, gross block, accumulated depreciation, share count, DSCR,
+  turnover ratios) join the dictionary, and governance/compliance/BRSR names stay unmapped.  Basis and period
+  also come from the printed column header nearest above the value ("Standalone"/"Consolidated", the year a
+  column is headed with) when the page title, series or label names none; no header above the value is no
+  basis/period, never a guess.
 
 Output is a separate SQLite file (``--out``, default ``.tmp/t230/obs.db``); a store is only ever
 read.  Tables: ``observation``, ``measure_dict``, ``dim_vocab``.
@@ -459,6 +465,18 @@ MEASURES: tuple[tuple[str, str, str, str], ...] = (
     ("revenue_growth_qoq", "Revenue growth (QoQ)", "percent", "revenue.total"),
     ("total_comprehensive_income_growth_yoy", "Total comprehensive income growth (YoY)", "percent", "none: accounting total"),
     ("count.countries", "Number of countries", "count", "none: geographic footprint"),
+    # T-230 stage K: driver measures the annual-report read named and the dictionary lacked (top-500 review:
+    # D:/RealityEngine/t230/stageK_aliases.csv).  Governance / compliance / BRSR / actuarial names stay unmapped.
+    ("other_operating_revenue", "Other operating revenue", "money", "revenue.total"),
+    ("gross_block", "Gross block", "money", "capex.amount"),
+    ("accumulated_depreciation", "Accumulated depreciation", "money", "capex.amount"),
+    ("dividend_per_share", "Dividend per share", "money_per_unit", "equity.shares"),
+    ("count.shares", "Equity shares outstanding", "count", "equity.shares"),
+    ("dscr", "Debt service coverage ratio", "ratio", "debt.cost"),
+    ("inventory_turnover", "Inventory turnover (x)", "ratio", "working_capital.days"),
+    ("receivable_turnover", "Receivables turnover (x)", "ratio", "working_capital.days"),
+    ("payable_turnover", "Payables turnover (x)", "ratio", "working_capital.days"),
+    ("net_capital_turnover", "Net capital turnover (x)", "ratio", "none: efficiency ratio"),
 )
 
 # id -> unit family (stage G: the label-map unit guard reads this)
@@ -594,6 +612,25 @@ MEASURE_ALIASES: dict[str, str] = {
     "water_intensity_limit": "water_intensity",
     "water_intensity_vs_statutory_limit": "water_intensity",
     "statutory_water_intensity_limit": "water_intensity",
+    # T-230 stage K: annual-report invented ids that mean a dictionary measure.  Only same-meaning maps; the
+    # governance / compliance / BRSR / actuarial names of the top-500 review are deliberately absent.
+    "interest_cost": "finance_cost",
+    "purchases": "purchase_of_finished_goods",
+    "net_profit_ratio": "pat_margin",
+    "operating_profit_margin": "ebit_margin",
+    "property_plant_and_equipment_additions": "capex",
+    "net_block": "property_plant_and_equipment",
+    "employee_turnover_rate": "attrition",
+    "return_on_net_worth": "roe",
+    "inventory_turnover_ratio": "inventory_turnover",
+    "trade_receivables_turnover_ratio": "receivable_turnover",
+    "debtors_turnover": "receivable_turnover",
+    "trade_payables_turnover_ratio": "payable_turnover",
+    "net_capital_turnover_ratio": "net_capital_turnover",
+    "debt_service_coverage_ratio": "dscr",
+    "equity_shares_outstanding": "count.shares",
+    "count_of_shares": "count.shares",
+    "count.permanent_employees": "count.employees",
 }
 
 # Curated printed label -> measure id (T-230 stage B, Wolf): applied by the script before the dictionary check.
@@ -1726,6 +1763,130 @@ def detect_basis(axis: str, series: str, head: str,
     return ""
 
 
+# --------------------------------------------------------------------------- stage K: printed column headers
+
+# Standalone / consolidated as a printed header word (trailing punctuation stripped).
+BASIS_TOKENS: dict[str, str] = {"standalone": "standalone", "stand-alone": "standalone",
+                                "consolidated": "consolidated"}
+HEADER_LINE_MAX_CHARS = 60
+HEADER_LINE_MAX_WORDS = 8
+HEADER_X_SLACK = 150.0
+YEAR_SPAN_RE = re.compile(r"\b(?:19|20)\d{2}\s?-\s?\d{2}\b")
+
+
+def _line_words(words: Iterable[tuple[float, float, float, float, str]]) -> list[list[tuple[float, float, float, float, str]]]:
+    """The page's words grouped into printed lines (same baseline), top to bottom (T-230 stage K)."""
+    ordered = sorted(words, key=lambda w: ((w[1] + w[3]) / 2, w[0]))
+    lines: list[list[tuple[float, float, float, float, str]]] = []
+    centre = 0.0
+    for word in ordered:
+        yc = (word[1] + word[3]) / 2
+        if lines and abs(yc - centre) <= max(2.5, (word[3] - word[1]) * 0.6):
+            lines[-1].append(word)
+            continue
+        lines.append([word])
+        centre = yc
+    for line in lines:
+        line.sort(key=lambda w: w[0])
+    return lines
+
+
+def _value_box(region: str) -> tuple[float, float, float, float] | None:
+    parts = [float(p) for p in str(region or "").split(",") if p.strip()]
+    return (parts[0], parts[1], parts[2], parts[3]) if len(parts) == 4 else None
+
+
+def _over_value(line: Iterable[tuple[float, float, float, float, str]],
+                box: tuple[float, float, float, float]) -> bool:
+    """The line's printed text sits over the value's column (overlaps in x, or a heading near its centre)."""
+    line = list(line)
+    x0 = min(w[0] for w in line)
+    x1 = max(w[2] for w in line)
+    if x0 <= box[2] and box[0] <= x1:
+        return True
+    return abs((x0 + x1) / 2 - (box[0] + box[2]) / 2) <= HEADER_X_SLACK
+
+
+def basis_token(word: str) -> str:
+    """'Standalone' / 'Consolidated' (any case, trailing punctuation) -> its token, else ''."""
+    return BASIS_TOKENS.get(norm_space(word).lower().strip(".,;:()[]"), "")
+
+
+def column_basis(words: Iterable[tuple[float, float, float, float, str]], region: str) -> str:
+    """T-230 stage K: the basis printed in the column/page header nearest above the value, never guessed.
+
+    A page that prints both words takes the header over the value's own column; a page that prints one of them as
+    a section heading applies it to every row beneath that heading.  Empty region (the value's box is unknown), or
+    no basis word above the value, leaves the basis empty and the basis conflict stands.
+    """
+    box = _value_box(region)
+    if box is None:
+        return ""
+    heading: list[tuple[float, str]] = []
+    hits: list[tuple[float, float, str]] = []
+    for line in _line_words(words):
+        gap = box[1] - max(w[3] for w in line)
+        if gap < -2.0:
+            continue
+        bases = {b for b in (basis_token(w[4]) for w in line) if b}
+        if len(bases) == 1 and len(line) <= HEADER_LINE_MAX_WORDS and basis_token(line[0][4]):
+            text = norm_space(" ".join(w[4] for w in line))
+            if len(text) <= HEADER_LINE_MAX_CHARS:
+                heading.append((gap, next(iter(bases))))
+        for word in line:
+            token = basis_token(word[4])
+            if token:
+                hits.append((gap, abs((word[0] + word[2]) / 2 - (box[0] + box[2]) / 2), token))
+    if len({b for _gap, b in heading}) == 1:
+        # ponytail: one printed basis heading covers every row beneath it on the page; a side-by-side table whose
+        # own header is image-only would inherit it. Add a per-table header when a Wolf read shows that mixture.
+        return heading[0][1]                  # one section heading above the value: it names this part of the page
+    if len({b for _gap, _x, b in hits}) < 2:
+        return ""                             # one stray header token that is not a heading is not a proof
+    for line in reversed(_line_words(words)):
+        if box[1] - max(w[3] for w in line) < -2.0 or not _over_value(line, box):
+            continue
+        tokens: list[tuple[float, float, str]] = []
+        for word in line:
+            token = basis_token(word[4])
+            if token:
+                tokens.append((box[1] - word[3], abs((word[0] + word[2]) / 2 - (box[0] + box[2]) / 2), token))
+        if tokens:
+            return min(tokens, key=lambda item: (item[0], item[1]))[2]
+    return ""
+
+
+def period_header(text: str) -> str:
+    """The period a printed column header names, when the header is essentially the period ('31 March 2025')."""
+    line = norm_space(text).strip(" .|,;:")
+    if not line or len(line) > HEADER_LINE_MAX_CHARS:
+        return ""
+    best = ""
+    for pattern in (YEAR_SPAN_RE,) + PERIOD_PATTERNS:
+        match = pattern.search(line)
+        if match and len(norm_space(match.group(0))) > len(best):
+            best = norm_space(match.group(0))
+    return best if len(best) * 2 >= len(line) else ""
+
+
+def column_period(words: Iterable[tuple[float, float, float, float, str]], region: str) -> str:
+    """T-230 stage K: the period a printed column header above the value puts over it; '' when there is none.
+
+    Only a short header line over the value's own column counts (a paragraph that mentions a year is not a column
+    header), and the value's text-layer box must be known: the period is never guessed.
+    """
+    box = _value_box(region)
+    if box is None:
+        return ""
+    for line in reversed(_line_words(words)):
+        if box[1] - max(w[3] for w in line) < -2.0 or not _over_value(line, box):
+            continue
+        period = period_header(" ".join(w[4] for w in line))
+        if period:
+            return period
+    return ""
+
+
 def detect_subsidiary(texts: Iterable[str], companies: dict[str, tuple[str, str]], store_symbol: str) -> bool:
     """A page/series that names a subsidiary: "<ABBR>'s Standalone P&L" or another known company name."""
     text = " ".join(str(t or "") for t in texts)
@@ -2178,6 +2339,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 row["entity_scope"] = "subsidiary"
         row["basis"] = detect_basis(row["printed_axis"], row["series_title"], head, word_list, row["region"],
                                     row["group_path"], page_text)
+        if not row["basis"]:                      # stage K: the printed standalone/consolidated header over the value
+            row["basis"] = column_basis(word_list, row["region"])
         row["measure"] = canonical_measure(row["measure"], row["printed_label"], row["printed_axis"],
                                            row["series_title"], row["unit"], text)
         cagr = cagr_measure(row["measure"], row["printed_label"], row["printed_axis"], row["series_title"], page_text,
@@ -2211,6 +2374,12 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             row["period"] = infer_period([row["printed_axis"], row["series_title"], row["group_path"],
                                           row["printed_label"]])
             row["period_kind"] = period_kind_for(raw.get("period_kind", ""), row["period"])
+        if not row["period"]:                     # stage K: the printed column header year over the value
+            header_period = column_period(word_list, row["region"])
+            if header_period:
+                row["period"] = header_period
+                row["period_source"] = "column_header"
+                row["period_kind"] = period_kind_for(raw.get("period_kind", ""), row["period"])
         if not row["period"] and deck_asof and is_stock_measure(row["measure"]) \
                 and capacity_deck_period_ok(row, page_text):
             row["period"] = deck_asof
@@ -3050,7 +3219,8 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                              "geography_cleared": 0, "stacked_parts": 0, "rank_counts": 0, "measure_fixed": 0,
                              "text_source_ocr": 0, "per_unit_scales": 0, "period_cleared": 0, "ticks_cleared": 0,
                              "footnote_basis": 0, "scope_cues": 0, "lower_bounds": 0, "dash_labels": 0,
-                             "unit_family_fixed": 0, "is_total_rows": 0, "parts_sum_restored": 0}
+                             "unit_family_fixed": 0, "is_total_rows": 0, "parts_sum_restored": 0,
+                             "basis_header": 0, "period_header": 0}
     pages = list(con.execute("SELECT DISTINCT doc_key, page FROM observation ORDER BY doc_key, page"))
     if only is not None:                      # T-233: a scoped recheck touches only the selected pages
         pages = [p for p in pages if only.page(doc_store.get(str(p[0])), str(p[0]), int(p[1]))]
@@ -3161,6 +3331,11 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                 if fake_period:
                     texts.append(head)       # the column header or page header may carry the real period
                 period = infer_period(texts)
+                header_period = "" if period else column_period(words, row["region"] or "")
+                if header_period:
+                    period = header_period
+                    row["period_source"] = "column_header"
+                    stats["period_header"] += 1
                 if period:
                     row["period"] = period
                     row["period_kind"] = period_kind_for("", period)
@@ -3191,6 +3366,10 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             old_basis = str(row["basis"] or "")
             row["basis"] = detect_basis(row["printed_axis"] or "", row["series_title"] or "", head,
                                         words, row["region"] or "", row["group_path"] or "", raw_text)
+            if not row["basis"]:                 # stage K: the standalone/consolidated header over the value
+                row["basis"] = column_basis(words, row["region"] or "")
+                if row["basis"]:
+                    stats["basis_header"] += 1
             foot = footnote_basis(raw_text, row["period"] or "")
             if foot and row["basis"] != foot:
                 row["basis"] = foot          # a footnote names this period's basis (id 20120)
