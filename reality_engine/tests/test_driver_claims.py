@@ -1,0 +1,1805 @@
+"""T-228: driver-tree claims from management text.  Synthetic only: no store, no network.
+
+The contract under test: the script mapping, the number normaliser, the three-way quote/number check, the
+unit/period/sign script checks, the independent judge's verdict applied to a claim, context attachment,
+dedupe, known_at copied from the source row, resume skip, and the adaptive limiter raising and halving.
+Stage 2a adds the doc_page item builder, the announcement script parses (three real announcement texts quoted
+with their doc_key) and `source_kind`.  Stage 2b adds the unit/plant scope rule and its judge confirmation,
+the "at least A to B" range, the GST basis in `base`, the rating-agency `speaker_scope`, cross-source
+`dup_of` folding, the debt-repayment/dividend sign rules and the judge's FILED date.  Stage 2c adds the
+relative-period normaliser (`period_norm`), unit normalisation to `inr_cr` and `execution_months`, the
+`order_kind` inflow/backlog tag, the item/plant/person `scope_part` rule, the collapsed-range repair and the
+event repair that marks duplicates instead of deleting them and links revisions with `revises`.
+"""
+
+from __future__ import annotations
+
+import json
+import shutil
+import sqlite3
+import uuid
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from reality_engine.research import driver_claims as dc
+
+# ---- stage 2a fixtures (real announcement page text, doc_key named)
+ORDER_WIN_DOC_KEY = 'D:/RealityEngine/raw/pilot60_history/BLKASHYAP/material_filing/fbcd0108-9673-4357-8af3-35750a2c9e0a.pdf'
+ORDER_WIN_TEXT = """The Manager, 
+ 
+ 
+ 
+ 16th October 2026 
+ 
+ 
+Department of Corporate Services,
+BSE Limited, 
+Phiroze Jeejeebhoy Towers, 
+Dalal Street, 
+Mumbai – 400 001 
+Listing Department, 
+National Stock Exchange of India Ltd, 
+Exchange Plaza, Plot No. C/1, G Block, 
+Bandra Kurla Complex, Bandra 
+(East),Mumbai – 400 051 
+ISIN Code 
+ 
+ 
+ : INE350H01032 
+Scrip Code : 532719 
+Trading Symbol : BLKASHYAP 
+ 
+Dear Sir, 
+ 
+Sub: Intimation of Work Order Received 
+ 
+Ref: Announcement under Regulation 30 of SEBI (LODR) Regulations, 2015 
+ 
+With reference to the above mentioned subject, we are pleased to intimate under 
+Regulation 30 of SEBI (Listing Obligations and Disclosure Requirements) Regulations, 
+2015 as amended that B.L. Kashyap and Sons Limited has secured an order worth 
+₹ 200.02 Crores as per details given below: 
+ 
+ 
+S.No.
+Particulars 
+Disclosure 
+A 
+Name of entity awarding the order(s)/ 
+contract(s) 
+Nourish Developers Private Limited 
+B 
+Significant terms and conditions of 
+order(s)/contract(s) awarded in brief 
+Commercial Building Civil Structure 
+Work (Phase 3) , One DXP, Sector 
+113, Gurugram, Haryana 
+C 
+Whether order(s)/contract(s) have been 
+awarded by domestic / international entity
+Domestic 
+D 
+Nature of order(s)/contract(s) 
+Civil 
+& 
+Structural 
+Works 
+for 
+Commercial Building 
+E 
+Whether domestic/international 
+Domestic 
+F 
+Time period by which the order(s)/ 
+contract(s) is to be executed 
+25 months approx. 
+G 
+Broad consideration or size of the 
+order(s)/contract(s) 
+₹ 200.02 Crores (Excl. GST) 
+H 
+Whether promoter /promoter group 
+companies have any interest in the entity 
+that awarded the order(s) /contract(s)? if 
+yes, nature of interest and details thereof 
+No 
+I 
+Whether order(s)/contract(s) would fall 
+within related party transactions? If yes 
+whether the same is done at “arm’s 
+length” 
+No 
+ 
+ 
+The LOA has been received/accepted on 16.10.2026 at 10:16 am 
+ 
+The above may kindly be taken on records. 
+ 
+For B. L. Kashyap And Sons Limited 
+ 
+ 
+ 
+Pushpak Kumar 
+VP & Company Secretary 
+F-6871 
+Pushpak 
+Kumar
+Digitally signed by Pushpak Kumar 
+DN: c=IN, o=Personal, 
+pseudonym=vco6l43gk2jz1ab0tqsxm5n7pirwf9yh, 
+2.5.4.20=986ed5a1057c85b598fd24eed0412d886d922cb
+caf666c763a1ab6fe61af0730, postalCode=201309, 
+st=Uttar Pradesh, 
+serialNumber=829981b81e1da69a9be5493f91b0749e36
+5517c8169663b476d491986fcc4e20, cn=Pushpak Kumar 
+Date: 2026.10.16 14:35:52 +05'30'"""
+
+CAPEX_DOC_KEY = 'D:/RealityEngine/raw/pilot60_history/SPMLINFRA/material_filing/73807300-d232-4447-9dbe-39f233944370.pdf'
+CAPEX_TEXT = """3. Issuance of up to 3,84,858. Equity Shares of face value of Rs. 2/- each at an issue price of Rs. 
+186/- per equity share (including a premium of Rs. 184/- per equity share) aggregating up to Rs. 
+7.16 crores on preferential basis, to National Asset Reconstruction Company Ltd being Non-
+promoter in accordance with the provisions of SEBI (Issue of Capital and Disclosures 
+Requirements) Regulations, 2018, as amended for conversion of loan. The Details as required 
+under 
+Regulation 
+30 
+of 
+the 
+Listing 
+Regulations 
+read 
+with 
+SEBI 
+Master 
+Circular 
+No.SEBI/HO/CFD/CFD-PoD-2/P/CIR/P/0155 dated November 11, 2024 with respect to the 
+proposed Preferential Issue is enclosed as Annexure A and B. 
+4. Issue of Notice for convening an Extra Ordinary General Meeting (“EGM”) of the shareholders of the 
+Company to be held on Saturday, May 16, 2026 at 12.30 p.m. through video conferencing or other 
+audio-visual means, to seek necessary approval of the shareholders for the above items. 
+ 
+5. The Board has approved an increase in capital expenditure from ₹176.44 crore to ₹238.43 crore to 
+support the expansion of BESS capacity from 2.5 GWh to 5 GWh. This includes the development of 
+allied facilities such as container manufacturing capacity of 600 units per annum, along with working 
+capital and general corporate purposes. 
+All the aforesaid allotments are subject to the approval of Members in General Meeting and the relevant 
+Stock Exchanges as applicable. 
+Kindly take the above on record. 
+Thanking you, 
+ 
+For SPML Infra Limited 
+ 
+ 
+Swati Agarwal 
+Company Secretary 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+SPAAL
+wati
+garwal
+Digitally signed
+by Swati Agarwal
+Date: 2026.04.23
+19:32:49 +05'30'
+SPML INFRA LIMITED
+CIN :
+L40106WBl98lPLC276372
+Regd. Oflice :22. Camac Street. BIod<-A. 3rd Floor, Kolkata 700016
+Ph : +91 334009 12001 1247
+E-mail : info@spml.co.in I Website : www.spmI.co.in
+Swati 
+Agarwal
+Digitally signed 
+by Swati Agarwal 
+Date: 2026.04.23 
+19:32:49 +05'30'"""
+
+FUND_RAISE_DOC_KEY = 'D:/RealityEngine/raw/pilot60_history/SPMLINFRA/material_filing/71a971f5-9d82-46f3-8b97-07ec754d16b5.pdf'
+FUND_RAISE_TEXT = """SPN(L 
+27t August, 2024 
+To, 
+National Stock Exchange 
+BSE Limited 
+Exchange Plaza, 
+Phiroze Jeejeebhoy Towers 
+PlotNo. C/1, G Block, 
+Dalal Street, 
+Bandra (E), Mumbai-400051 
+Mumbai-400001 
+(NSE Scrip Code: SPMLINFRA' 
+Sub: Outcome of Board Meeting 
+Dear Sirs, 
+With reference to the captioned subject and in terms of the Regulation 30 of the SEBI (Listing Obligations & Disclosure 
+Requirements) Regulations, 2015, we would like to inform you that Board of Directors in the Meeting held on 27% August, 
+2024, inter-alia, has considered and approved the following: 
+1. 
+Issuance of upto 6,618,645 Equity Shares of face value of Rs. 2/- each at an issue price of Rs. 215/- per equity share 
+(including a premium of Rs. 213/- per equity share) aggregating upto Rs. 139.50 crores on preferential basis, to 
+Promoters / promoter group and allottees being Non-promoter in accordance with the provisions of SEBI (Issue of 
+Capital and Disclosures Requirements) Regulations, 2018, as amended for Cash Consideration. 
+The Details as 
+required under Regulation 30 of the Listing Regulations read with SEBI Circular No. SEBI/HO/CFD/CFD-PoD- 
+1/P/CIR/2023/123 dated July 13, 2023, with respect to the proposed Preferential Issue is enclosed as Annexure A 
+and B. 
+2. 
+Issuance of upto 2,468,371 Equity Shares of face value of Rs. 2/- each at an issue price of Rs. 215/- per equity share 
+(including a premium of Rs. 213/- per equity share) aggregating upto Rs. 34.19 crores on preferential basis, to 
+Promoters / promoter group and allottees being Non-promoter in accordance with the provisions of SEBI (Issue of 
+Capital and Disclosures Requirements) Regulations, 2018, as amended for conversion of existing loan. The Details as 
+required under Regulation 30 of the Listing Regulations read with SEBI Circular No. SEBI/HO/CFD/CFD-PoD- 
+1/P/CIR/2023/123 dated July 13, 2023, with respect to the proposed Preferential Issue is enclosed as Annexure A 
+and B. 
+3. 
+Issuance of upto 7,334,844 Warrants on preferential basis to Promoters / promoter group and allottees being Non- 
+promoter in accordance with the provisions of SEBI (Issue of Capital and Disclosures Requirements) Regulations, 
+2018, as amended at an price of Rs. 215/- per warrants, each Warrant convertible into 1 Equity Share of face value of 
+Rs. 2/- each fully paid up ata premium of Rs. 213 /- each. The said Warrant shall be converted into equity shares of the 
+Company within 18 months of the allotment with receipt of the remaining amount as per the SEBI (ICDR) Regulations, 
+2018, The Details 
+as required under Regulation 30 
+of the Listing Regulations read with SEBI Circular No. 
+SEBI/HO/CFD/CFD-PoD-1/P/CIR/2023/123 dated July 13, 2023, with respect to the proposed Preferential Issue is 
+enclosed as Annexure A and B. 
+All the aforesaid allotments are subject to the approval of Members in General Meeting and the relevant Stock 
+Exchanges as applicable. 
+4. 
+Appointment of Mr. T V Rangaswami as a Nominee Director of India Debt Resolution Company Ltd (IDRCL) on the 
+Board of the Company with effect from 27% August, 2024. Disclosure under Regulation 30 of SEBI (Listing Obligations 
+& Disclosure Requirements) Regulations, 2015 and SEBI Circular CIR/CFD/4/2015 dated 09th September, 2015 is 
+enclosed as Annexure C. 
+SPML INFRA LIMITED 
+Regd. Office: 
+F-2 
+hia 
+Industrial 
+A"""
+
+
+@pytest.fixture()
+def db_path():
+    """A private DB path under ``.tmp``.
+
+    ``tmp_path`` is unusable on this machine: TMP points at ``.tmp`` and ``.tmp/pytest-of-SYSTEM``
+    denies listing, so pytest cannot create its basetemp.  The test owns this directory and removes it.
+    """
+    folder = Path(".tmp/t228/test") / uuid.uuid4().hex
+    folder.mkdir(parents=True, exist_ok=True)
+    try:
+        yield folder / "claims.db"
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+def _guidance_row(**kw):
+    row = {
+        "id": 11, "symbol": "BHAGERIA", "metric": "revenue_growth", "target_period": "FY26",
+        "low": 20.0, "high": 22.0, "unit": "pct", "direction": "up",
+        "quote": "But going forward, it would be maybe about 20%-22% in the revenue.",
+        "doc_key": "D:/raw/BHAGERIA.pdf", "page": 15, "known_at": "2025-10-30T13:19:49", "said_on": "2025-10-28",
+    }
+    row.update(kw)
+    return row
+
+
+def _item(**kw):
+    item = {
+        "key": "c17|transcript_statement|250", "id": 1, "store": "c17", "source_table": "transcript_statement",
+        "source_id": 250, "symbol": "BHAGERIA", "doc_key": "D:/raw/BHAGERIA.pdf", "page": 4,
+        "known_at": "2025-10-30T13:19:49", "event_date": "2025-10-28",
+        "source_kind": "transcript", "paragraph": None,
+        "text": "It will increase by approximately Rs. 55 crores annually, starting from Q4.",
+        "context": "S1: Good afternoon. | S2: Thank you for joining.",
+    }
+    item.update(kw)
+    return item
+
+
+def _claim(**kw):
+    base = {"node": "capex.amount", "unit": "inr_cr", "value_low": 55.0, "value_high": None,
+            "sign": "+", "effective_period": None, "segment": "total",
+            "quote_span": "approximately Rs. 55 crores annually",
+            "statement": "It will increase by approximately Rs. 55 crores annually, starting from Q4.",
+            "store": "c17", "symbol": "BHAGERIA", "source_table": "transcript_statement", "source_id": 250,
+            "doc_key": "D:/raw/BHAGERIA.pdf", "page": 4, "known_at": "2025-10-30T13:19:49",
+            "event_date": "2025-10-28", "base": None, "conditional": 0, "context": "",
+            "method": "model", "extractor": "test"}
+    base.update(kw)
+    return base
+
+
+def _row(**kw):
+    row = {"_store": "c17", "id": 1, "symbol": "BHAGERIA", "doc_key": "D:/raw/BHAGERIA.pdf", "page": 4,
+           "call_date": "2025-10-28", "known_at": "2025-10-30T13:19:49", "is_fragment": 0, "seq": 1,
+           "answer_turn": -1, "text": "Good afternoon.", "numbers_json": "[]"}
+    row.update(kw)
+    return row
+
+
+# ------------------------------------------------------------------ script mapping
+def test_guidance_maps_a_node_named_metric():
+    claim, reason = dc.guidance_claim("c17", _guidance_row())
+    assert reason == "mapped" and claim is not None
+    assert claim["node"] == "revenue.total"
+    assert claim["sign"] == "+"
+    assert (claim["value_low"], claim["value_high"]) == (20.0, 22.0)
+    assert claim["unit"] == "pct"
+    assert claim["effective_period"] == "FY26"
+    assert claim["method"] == "script"
+    assert claim["status"] == "verified"
+    assert claim["judge_ok"] is None
+
+
+def test_guidance_special_metrics_map_to_their_nodes():
+    cases = {
+        "capex": "capex.amount",
+        "ebitda_margin": "margin.ebitda",
+        "order_intake": "revenue.order_book",
+        "interest_cost": "debt.cost",
+        "credit_cost": "cost.other",
+        "aum_growth": "revenue.volume",
+        "nim": "margin.ebitda",
+    }
+    for metric, node in cases.items():
+        claim, _ = dc.guidance_claim("c17", _guidance_row(metric=metric, quote="Rs. 50 crores next year",
+                                                          low=50.0, high=50.0, unit="inr_cr"))
+        assert claim is not None, metric
+        assert claim["node"] == node, metric
+
+
+def test_guidance_unmapped_and_valueless_are_not_claims():
+    claim, reason = dc.guidance_claim("c17", _guidance_row(metric="other"))
+    assert claim is None and reason == "unmapped"
+    claim, reason = dc.guidance_claim("c17", _guidance_row(metric="revenue_growth", low=None, high=None))
+    assert claim is None and reason == "no_value"
+
+
+def test_guidance_sign_follows_direction():
+    signs = []
+    for direction in ("up", "down", "flat"):
+        claim, _ = dc.guidance_claim("c17", _guidance_row(direction=direction))
+        assert claim is not None
+        signs.append(claim["sign"])
+    assert signs == ["+", "-", "0"]
+
+
+def test_guidance_known_at_is_copied_from_the_source_row():
+    row = _guidance_row(known_at="2025-01-02T03:04:05")
+    claim, _ = dc.guidance_claim("c17", row)
+    assert claim is not None
+    assert claim["known_at"] == "2025-01-02T03:04:05"
+    assert claim["event_date"] == "2025-10-28"
+    assert (claim["doc_key"], claim["page"]) == ("D:/raw/BHAGERIA.pdf", 15)
+
+
+# ------------------------------------------------------------------ number normaliser
+def test_find_numbers_reads_indian_grouping_and_units():
+    assert dc.find_numbers("Rs. 1,748.95 crore") == [1748.95]
+    assert dc.find_numbers("Rs. 50-Rs. 75 crores") == [50.0, 75.0]
+    assert dc.find_numbers("20%-22% of revenue") == [20.0, 22.0]
+    assert dc.find_numbers("₹2.8 Cr") == [2.8]
+    assert dc.find_numbers("1,23,456 tonnes") == [123456.0]
+    assert dc.find_numbers("INR40 crore") == [40.0]          # a digit glued to its currency prefix
+    assert dc.find_numbers("1x to 1.25x") == [1.0, 1.25]     # a multiple keeps its trailing x
+
+
+def test_find_numbers_does_not_read_period_labels():
+    assert dc.find_numbers("FY26 and Q2FY26 and H1FY26 and 9MFY26") == []
+
+
+def test_matches_value_accepts_pct_as_a_fraction():
+    assert dc.matches_value(0.2, [20.0], "pct")
+    assert dc.matches_value(20.0, [20.0], "pct")
+    assert not dc.matches_value(25.0, [20.0], "pct")
+
+
+def test_canon_unit_folds_printed_variants():
+    assert dc.canon_unit("Rs. crore") == "inr_cr"
+    assert dc.canon_unit("percent") == "pct"
+    assert dc.canon_unit("basis points") == "bp"
+    assert dc.canon_unit("inr_cr") == "inr_cr"
+
+
+# ------------------------------------------------------------------ the quote/number check
+def test_verified_when_numbers_are_in_the_quote():
+    assert dc.verify_claim(_claim()) == ("verified", "")
+
+
+def test_unverified_when_a_value_is_not_printed():
+    # 25 is a sum the model computed; it is nowhere in the quote.
+    statement = "Segment A will add Rs. 10 crore and segment B will add Rs. 15 crore."
+    claim = _claim(value_low=25.0, quote_span="Rs. 10 crore and segment B will add Rs. 15 crore",
+                   statement=statement)
+    assert dc.verify_claim(claim) == ("unverified", "value_low_not_in_quote")
+
+
+def test_quarantined_when_the_span_is_a_paraphrase():
+    claim = _claim(quote_span="will increase by about 55 crore")
+    assert dc.verify_claim(claim) == ("quarantined", "quote_span_not_in_statement")
+
+
+def test_quarantined_without_a_span():
+    assert dc.verify_claim(_claim(quote_span="")) == ("quarantined", "no_quote_span")
+
+
+def test_span_may_span_a_line_wrap():
+    statement = "The expansion\nwill add Rs. 55 crores annually."
+    claim = _claim(quote_span="will add Rs. 55 crores annually", statement=statement)
+    assert dc.verify_claim(claim) == ("verified", "")
+
+
+# ------------------------------------------------------------------ unit / sign / period checks
+def test_unit_word_must_agree_with_the_unit():
+    d = _claim(node="working_capital.days", unit="days", value_low=30.0, value_high=None,
+               quote_span="less than 30 days", statement="Our receivables will be less than 30 days.",
+               effective_period="FY26")
+    assert dc.verify_claim(d) == ("verified", "")
+    months = _claim(node="working_capital.days", unit="months", value_low=30.0, value_high=None,
+                    quote_span="less than 30 days", statement="Our receivables will be less than 30 days.",
+                    effective_period="FY26")
+    assert dc.verify_claim(months) == ("unverified", "unit_mismatch")
+    crore = _claim(unit="inr_cr", value_low=0.75, quote_span="Rs. 0.75 crore annually",
+                   statement="It will be Rs. 0.75 crore annually.")
+    assert dc.verify_claim(crore) == ("verified", "")
+    million = _claim(unit="inr_cr", value_low=0.75, quote_span="Rs. 0.75 million annually",
+                     statement="It will be Rs. 0.75 million annually.")
+    assert dc.verify_claim(million) == ("unverified", "unit_mismatch")
+    pct = _claim(unit="pct", value_low=50.0, quote_span="50 basis points", statement="It will be 50 basis points next year.")
+    assert dc.verify_claim(pct) == ("unverified", "unit_mismatch")
+    bp = _claim(node="margin.ebitda", unit="bp", value_low=50.0, quote_span="50 basis points",
+                statement="It will be 50 basis points next year.", effective_period="FY26")
+    assert dc.verify_claim(bp) == ("verified", "")
+
+
+def test_ambiguous_range_forces_sign_zero():
+    for marker in ("plus or minus", "+/-", "±"):
+        claim = _claim(node="revenue.total", sign="+", unit="pct", value_low=10.0, value_high=15.0,
+                       quote_span=f"10%-15% {marker} next year",
+                       statement=f"There could be a 10%-15% {marker} next year.")
+        status, _ = dc.verify_claim(claim)
+        assert status == "verified", marker
+        assert claim["sign"] == "0", marker
+
+
+def test_a_claim_needs_a_period_or_a_forward_horizon():
+    no_period = _claim(quote_span="approximately Rs. 55 crores", statement="It will be approximately Rs. 55 crores.",
+                       effective_period=None)
+    assert dc.verify_claim(no_period) == ("unverified", "no_period")
+    horizon = _claim(quote_span="approximately Rs. 55 crores annually",
+                     statement="It will be approximately Rs. 55 crores annually.", effective_period=None)
+    assert dc.verify_claim(horizon) == ("verified", "")
+    explicit = _claim(quote_span="approximately Rs. 55 crores", statement="It will be approximately Rs. 55 crores.",
+                      effective_period="FY26")
+    assert dc.verify_claim(explicit) == ("verified", "")
+
+
+# ------------------------------------------------------------------ the model claim + judge verdict
+def test_model_claim_carries_the_source_ids_and_the_check():
+    claim, reason = dc.claim_from_reply(
+        {"node": "capex.amount", "sign": "+", "value_low": "55", "value_high": None, "unit": "Rs. crore",
+         "quote_span": "approximately Rs. 55 crores annually", "effective_period": "Q4", "conditional": False},
+        _item())
+    assert reason == "claim" and claim is not None
+    assert claim["known_at"] == "2025-10-30T13:19:49"          # copied from the row, never from the model
+    assert claim["source_id"] == 250 and claim["store"] == "c17"
+    assert claim["context"] == "S1: Good afternoon. | S2: Thank you for joining."   # judge input, not a source
+    assert claim["unit"] == "inr_cr"
+    assert claim["status"] == "verified"
+    assert claim["judge_ok"] is None
+
+
+def test_model_claim_with_an_unknown_node_is_dropped():
+    claim, reason = dc.claim_from_reply({"node": "margin", "value_low": 10, "quote_span": "x"}, _item())
+    assert claim is None and reason == "bad_node"
+
+
+def test_reply_parser_tolerates_fences_and_rejects_garbage():
+    items = dc.parse_reply('```json\n{"items":[{"id":1,"drop":null,"claims":[]}]}\n```')
+    assert items == [{"id": 1, "drop": None, "claims": []}]
+    try:
+        dc.parse_reply("no json here")
+    except ValueError:
+        pass
+    else:  # pragma: no cover
+        raise AssertionError("garbage must not parse")
+
+
+def test_node_unit_compatibility():
+    cases = [
+        (_claim(node="capacity.add", unit="months", value_low=3.0, quote_span="next 3 months",
+                statement="It will be ready in next 3 months.", effective_period="FY26"), "unverified"),
+        (_claim(node="capacity.add", unit="mw", value_low=40.0, quote_span="40 MW",
+                statement="We will add 40 MW.", effective_period="FY26"), "verified"),
+        (_claim(node="working_capital.days", unit="months", value_low=3.0, quote_span="3 months",
+                statement="Receivables will be 3 months.", effective_period="FY26"), "unverified"),
+        (_claim(node="margin.ebitda", unit="inr_cr", value_low=35.0, quote_span="Rs. 35 crores",
+                statement="EBITDA will be Rs. 35 crores.", effective_period="FY26"), "unverified"),
+        (_claim(node="margin.ebitda", unit="pct", value_low=35.0, quote_span="35%",
+                statement="EBITDA margin will be 35%.", effective_period="FY26"), "verified"),
+        (_claim(node="capex.amount", unit="pct", value_low=5.0, quote_span="5% higher",
+                statement="Capex will be 5% higher.", effective_period="FY26"), "unverified"),
+        (_claim(node="revenue.price", unit="pct", value_low=5.0, quote_span="5% higher",
+                statement="Realisation will be 5% higher.", effective_period="FY26"), "verified"),
+        (_claim(node="revenue.volume", unit="inr_cr", value_low=50.0, quote_span="Rs. 50 crores",
+                statement="Volume will be Rs. 50 crores.", effective_period="FY26"), "unverified"),
+        (_claim(node="debt.cost", unit="pct", value_low=9.0, quote_span="9%",
+                statement="Interest rate will be 9%.", effective_period="FY26"), "verified"),
+    ]
+    for claim, expected in cases:
+        assert dc.verify_claim(claim)[0] == expected, (claim["node"], claim["unit"])
+
+
+def test_company_brief_names_products_and_raw_materials():
+    corpus = ("Cotton prices have moved up. We buy cotton and polyester fibre. "
+              "Our cotton yarn and fabric sales will grow. Cotton is our main raw material. " * 3)
+    brief = dc.brief_from_text("Sportking India Limited", corpus)
+    assert "Sportking India Limited" in brief
+    assert "It buys or uses:" in brief and "cotton" in brief
+    assert "textiles" in brief
+    assert "cost.raw_material" in brief and "revenue.price" in brief
+
+
+def test_company_brief_is_empty_safe():
+    brief = dc.brief_from_text("Empty Limited", "we had a call")
+    assert "Empty Limited" in brief
+    assert "It sells:" not in brief and "It buys or uses:" not in brief
+
+
+def test_from_to_is_a_target_not_a_range():
+    statement = ("The short-term debt is expected to come down from INR450 crores to INR100 crores "
+                 "in next three to four months.")
+    claim = _claim(node="debt.level", unit="inr_cr", value_low=100.0, value_high=450.0,
+                   quote_span="from INR450 crores to INR100 crores", statement=statement,
+                   effective_period="next three to four months")
+    status, _ = dc.verify_claim(claim)
+    assert status == "verified"
+    assert (claim["value_low"], claim["value_high"]) == (100.0, 100.0)
+    assert claim["base"] == "INR450 crores"
+    assert claim["sign"] == "-"
+    up = _claim(node="debt.level", unit="inr_cr", value_low=100.0, value_high=450.0,
+                quote_span="from INR100 crores to INR450 crores",
+                statement="Debt will rise from INR100 crores to INR450 crores next year.",
+                effective_period="FY26")
+    assert dc.verify_claim(up)[0] == "verified"
+    assert up["sign"] == "+" and up["value_low"] == 450.0
+
+
+def test_a_to_b_needs_a_change_verb_to_become_a_target():
+    change = _claim(node="debt.level", unit="inr_cr", value_low=450.0, value_high=100.0,
+                    quote_span="reduce debt from INR450 crores to INR100 crores",
+                    statement="We will reduce debt from INR450 crores to INR100 crores next year.",
+                    effective_period="FY26")
+    assert dc.verify_claim(change)[0] == "verified"
+    assert (change["value_low"], change["value_high"]) == (100.0, 100.0)
+    assert change["sign"] == "-"
+    plain = _claim(node="revenue.total", unit="inr_cr", value_low=2700.0, value_high=2800.0,
+                   quote_span="INR 2,700 to 2,800 crores",
+                   statement="We expect revenue of INR 2,700 to 2,800 crores next year.",
+                   effective_period="FY26")
+    assert dc.verify_claim(plain)[0] == "verified"
+    assert (plain["value_low"], plain["value_high"]) == (2700.0, 2800.0)
+
+
+def test_mix_share_moves_to_revenue_mix_with_its_segment():
+    claim = _claim(node="revenue.total", unit="pct", value_low=20.0, value_high=25.0, sign="+",
+                   quote_span="20% to 25%",
+                   statement="Exports contributed around 17% of total income; the medium-term target is 20% to 25%.",
+                   effective_period="medium term")
+    status, _ = dc.verify_claim(claim)
+    assert status == "verified"
+    assert claim["node"] == "revenue.mix"
+    assert claim["segment"] == "exports"
+
+
+def test_mix_rule_needs_a_pct_and_a_share_pattern():
+    money = _claim(node="revenue.total", unit="inr_cr", value_low=20.0, quote_span="Rs. 20 crores",
+                   statement="Exports contributed Rs. 20 crores of total income.", effective_period="FY26")
+    assert dc.verify_claim(money)[0] == "verified"
+    assert money["node"] == "revenue.total"
+    growth = _claim(node="revenue.total", unit="pct", value_low=20.0, quote_span="20%",
+                    statement="Revenue will grow 20% next year.", effective_period="FY26")
+    assert dc.verify_claim(growth)[0] == "verified"
+    assert growth["node"] == "revenue.total"
+
+
+def test_list_of_values_must_span_the_numbers():
+    trunc = _claim(node="revenue.total", unit="pct", value_low=8.0, value_high=8.0, sign="+",
+                   quote_span="8%, 10%", statement="We expect an 8%, 10% increase in the top line.",
+                   effective_period="FY26")
+    assert dc.verify_claim(trunc) == ("unverified", "range_truncated")
+    spans = _claim(node="revenue.total", unit="pct", value_low=8.0, value_high=10.0, sign="+",
+                   quote_span="8%, 10%", statement="We expect an 8%, 10% increase in the top line.",
+                   effective_period="FY26")
+    assert dc.verify_claim(spans) == ("verified", "")
+    rng = _claim(node="revenue.total", unit="pct", value_low=20.0, value_high=22.0, sign="+",
+                 quote_span="20% to 22%", statement="We expect 20% to 22% growth next year.",
+                 effective_period="FY26")
+    assert dc.verify_claim(rng) == ("verified", "")
+
+
+def test_from_to_with_a_percent_is_a_target():
+    claim = _claim(node="margin.ebitda", unit="pct", value_low=20.0, value_high=None, sign="+",
+                   quote_span="from 18% to 20%",
+                   statement="We expect margins to move from 18% to 20% next year.",
+                   effective_period="FY26")
+    assert dc.verify_claim(claim) == ("verified", "")
+    assert (claim["value_low"], claim["value_high"]) == (20.0, 20.0)
+    assert claim["base"] == "18%" and claim["sign"] == "+"
+
+
+def test_retag_mix_and_truncated_in_an_existing_db(db_path: Path):
+    writer = dc.Writer(db_path)
+
+    def legacy(source_id: int, **kw):
+        row = _claim(source_id=source_id, **kw)
+        row.update({"status": "verified", "status_reason": "", "created_at": "x", "judge_ok": 1,
+                    "judge_fail": "", "judge_suggest": None})
+        return row
+
+    mix_agreed = legacy(2, node="revenue.total", unit="pct", value_low=20.0, value_high=25.0,
+                        quote_span="20% to 25%",
+                        statement="Exports contributed 20% to 25% of total income.")
+    mix_agreed["judge_suggest"] = "revenue.mix"
+    writer.insert_claims("run1", [
+        legacy(1, node="revenue.total", unit="pct", value_low=20.0, value_high=25.0,
+               quote_span="20% to 25%", statement="Exports contributed 20% to 25% of total income."),
+        mix_agreed,
+        legacy(3, node="revenue.total", unit="pct", value_low=8.0, value_high=8.0,
+               quote_span="8%, 10%", statement="We expect an 8%, 10% increase in the top line.",
+               effective_period="FY26"),
+    ])
+    writer.close()
+    dc.retag_existing(db_path)
+    con = sqlite3.connect(db_path)
+    rows = con.execute("SELECT source_id, node, segment, status, status_reason FROM claim "
+                       "ORDER BY source_id").fetchall()
+    con.close()
+    assert rows == [(1, "revenue.mix", "exports", "unverified", "mix_retag"),
+                     (2, "revenue.mix", "exports", "verified", ""),
+                     (3, "revenue.total", "total", "unverified", "range_truncated")]
+
+
+def test_mix_does_not_fire_on_a_margin_or_change_clause():
+    # Wolf, round 6, from the three re-tagged sentences.
+    margin = _claim(node="margin.ebitda", unit="pct", value_low=30.0, value_high=35.0, sign="0",
+                    quote_span="30% to 35%",
+                    statement="Quarter ended June 2025 is more aligned to usual product mix and EBIT margin "
+                              "of 30% to 35%.", effective_period="Q1FY26")
+    assert margin["node"] == "margin.ebitda"
+    assert dc.verify_claim(margin)[0] == "verified"
+    ebitda = _claim(node="margin.ebitda", unit="pct", value_low=25.0, sign="+",
+                    quote_span="upwards of 25%",
+                    statement="So Kavach as a product is a high margin because it's a safety technology "
+                              "and we foresee that it should contribute anywhere upwards of 25% in terms "
+                              "of EBITDA margins.", effective_period="FY26")
+    assert dc.verify_claim(ebitda)[0] == "verified"
+    assert ebitda["node"] == "margin.ebitda"
+    better = _claim(node="revenue.total", unit="pct", value_low=25.0, sign="+",
+                    quote_span="at least 25% better",
+                    statement="We will have new product lines also, that is the tipping jacks is going to "
+                              "contribute, Sumeet just mentioned about Rs. 8 crores to Rs. 10 crores for this "
+                              "H2 time, H2 is going to be at least 25% better.", effective_period="H2FY26")
+    assert dc.verify_claim(better)[0] == "verified"
+    assert better["node"] == "revenue.total"
+
+
+def test_mix_does_not_fire_on_a_change_clause_inside_a_long_span():
+    claim = _claim(node="revenue.total", unit="pct", value_low=25.0, sign="+",
+                   quote_span="that is the tipping jacks is going to contribute, Sumeet just mentioned about "
+                              "Rs. 8 crores to Rs. 10 crores for this H2 time, H2 is going to be at least 25% better",
+                   statement="We will have new product lines also, that is the tipping jacks is going to "
+                             "contribute, Sumeet just mentioned about Rs. 8 crores to Rs. 10 crores for this "
+                             "H2 time, H2 is going to be at least 25% better.", effective_period="H2FY26")
+    dc.verify_claim(claim)
+    assert claim["node"] == "revenue.total"
+
+
+def test_retag_restores_a_wrongly_moved_mix_claim(db_path: Path):
+    writer = dc.Writer(db_path)
+
+    def moved(source_id: int, low: float, high, span: str, statement: str):
+        row = _claim(source_id=source_id, node="revenue.mix", unit="pct", value_low=low,
+                     value_high=high, quote_span=span, statement=statement, effective_period="FY26")
+        row.update({"status": "unverified", "status_reason": "mix_retag", "created_at": "x",
+                    "judge_ok": 1, "judge_fail": "", "judge_suggest": None})
+        return row
+
+    writer.insert_claims("run1", [
+        moved(1, 30.0, 35.0, "30% to 35%",
+              "Quarter ended June 2025 is more aligned to usual product mix and EBIT margin of 30% to 35%."),
+        moved(2, 25.0, None, "upwards of 25%",
+              "So Kavach should contribute anywhere upwards of 25% in terms of EBITDA margins."),
+        moved(3, 25.0, None, "at least 25% better",
+              "We will have new product lines also; H2 is going to be at least 25% better."),
+    ])
+    writer.close()
+    dc.retag_existing(db_path)
+    con = sqlite3.connect(db_path)
+    rows = con.execute("SELECT source_id, node, status, status_reason FROM claim ORDER BY source_id").fetchall()
+    con.close()
+    assert rows == [(1, "margin.ebitda", "verified", ""),
+                    (2, "margin.ebitda", "verified", ""),
+                    (3, "revenue.total", "verified", "")]
+
+
+def test_prompts_carry_the_measure_and_renode_rules():
+    prompt = dc.build_prompt([_item()], "Company: Test Ltd. It sells yarn.")
+    assert "gross margin -> margin.gross" in prompt and "utilisation -> revenue.volume" in prompt
+    assert "Company: Test Ltd." in prompt
+    judge = dc.judge_prompt([{**dc._finish(_claim()), "id": 1}], "Company: Test Ltd.")
+    assert "node_suggest" in judge and "gross margin -> margin.gross" in judge
+
+
+def test_judge_node_suggest_renodes_instead_of_losing_the_claim(db_path: Path):
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [dc._finish(_claim(node="margin.ebitda", unit="pct", value_low=60.0,
+                                                    quote_span="60% to 65% utilisation",
+                                                    statement="We are targeting 60% to 65% utilisation.",
+                                                    effective_period="FY26"))])
+    cid = writer.con.execute("SELECT id FROM claim").fetchone()[0]
+    verdict: dict[str, Any] = {f: True for f in dc.JUDGE_FIELDS}
+    verdict.update({"node_ok": False, "node_suggest": "revenue.volume"})
+    writer.apply_judge(int(cid), verdict)
+    row = writer.con.execute(
+        "SELECT node, status, status_reason, judge_suggest, judge_ok FROM claim").fetchone()
+    writer.close()
+    assert tuple(row) == ("revenue.volume", "unverified", "judge_renode", "revenue.volume", 0)
+
+
+def test_judge_node_suggest_outside_the_tree_is_ignored(db_path: Path):
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [dc._finish(_claim())])
+    cid = writer.con.execute("SELECT id FROM claim").fetchone()[0]
+    verdict: dict[str, Any] = {f: True for f in dc.JUDGE_FIELDS}
+    verdict.update({"node_ok": False, "node_suggest": "margin"})
+    writer.apply_judge(int(cid), verdict)
+    row = writer.con.execute("SELECT node, status, status_reason FROM claim").fetchone()
+    writer.close()
+    assert tuple(row) == ("capex.amount", "unverified", "judge:node_ok")
+
+
+def test_judge_reply_parses_all_six_fields():
+    verdicts = dc.parse_judge_reply(
+        '{"items":[{"id":3,"node_ok":true,"sign_ok":false,"unit_ok":true,"period_ok":true,'
+        '"forward_ok":true,"company_ok":false,"node_suggest":"margin.ebitda","why":"sign wrong"}]}')
+    assert verdicts == [{"id": 3, "node_ok": True, "sign_ok": False, "unit_ok": True,
+                         "period_ok": True, "forward_ok": True, "company_ok": False,
+                         "node_suggest": "margin.ebitda", "why": "sign wrong"}]
+
+
+def test_tolerant_judge_parser_reads_broken_json():
+    broken = ('{"items":[{"id":11,"node_ok":true,"sign_ok":true,"unit_ok":true,'
+              '"period_ok":true,"forward_ok":true,"company_ok":true,"node_suggest":"revenue.volume"},'
+              '{"id":12,"node_ok":true,"sign_ok":false,')   # truncated second item
+    verdicts = dc.parse_judge_reply(broken)
+    assert verdicts == [{"id": 11, "node_ok": True, "sign_ok": True, "unit_ok": True,
+                         "period_ok": True, "forward_ok": True, "company_ok": True,
+                         "node_suggest": "revenue.volume", "why": ""}]
+
+
+def test_judge_downgrades_a_claim_and_stores_the_failing_field(db_path: Path):
+    writer = dc.Writer(db_path)
+    claim = dc._finish(_claim())
+    writer.insert_claims("run1", [claim])
+    assert writer.claims_to_judge()                      # a script-verified claim is queued for judging
+    cid = writer.con.execute("SELECT id FROM claim").fetchone()[0]
+    writer.apply_judge(int(cid), {"node_ok": False, "sign_ok": True, "unit_ok": True, "period_ok": True,
+                                  "forward_ok": True, "company_ok": True, "why": "receivables is not volume"})
+    row = writer.con.execute("SELECT status, status_reason, judge_ok, judge_fail FROM claim").fetchone()
+    writer.close()
+    assert tuple(row) == ("unverified", "judge:node_ok", 0, "node_ok")
+
+
+def test_judge_keeps_a_claim_verified_when_all_five_pass(db_path: Path):
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [dc._finish(_claim())])
+    cid = writer.con.execute("SELECT id FROM claim").fetchone()[0]
+    writer.apply_judge(int(cid), {f: True for f in dc.JUDGE_FIELDS} | {"why": "ok"})
+    row = writer.con.execute("SELECT status, judge_ok, judge_fail FROM claim").fetchone()
+    writer.close()
+    assert tuple(row) == ("verified", 1, "")
+
+
+def test_dedupe_keeps_one_row_per_symbol_span_and_node(db_path: Path):
+    writer = dc.Writer(db_path)
+    script = dc._finish(_claim(method="script", source_table="guidance", source_id=11, status="verified"))
+    model = dc._finish(_claim(method="model"))
+    writer.insert_claims("run1", [model])
+    writer.insert_claims("run1", [script])
+    removed = writer.dedupe()
+    rows = writer.con.execute("SELECT method, source_table FROM claim").fetchall()
+    writer.close()
+    assert removed == 1
+    assert [tuple(r) for r in rows] == [("script", "guidance")]
+
+
+# ------------------------------------------------------------------ context
+def test_context_is_the_two_statements_before_and_the_question():
+    rows = [
+        _row(id=1, seq=1, text="Good afternoon, everyone."),
+        _row(id=2, seq=2, text="Thank you for joining the call."),
+        _row(id=3, seq=3, text="We will add Rs. 55 crores annually from Q4.", numbers_json='[{"value":55}]',
+             answer_turn=1),
+        _row(id=4, seq=4, text="The plant is on track."),
+        _row(id=5, seq=5, text="It will add Rs. 20 crores next year.", numbers_json='[{"value":20}]'),
+    ]
+    questions = {("D:/raw/BHAGERIA.pdf", 1): "What will the new line add to revenue?"}
+    items, counters = dc.attach_context(rows, questions)
+    assert counters["statements_with_numbers"] == 2
+    assert counters["statements_sent"] == 2
+    first, second = items
+    assert first["source_id"] == 3
+    assert first["context"] == ("S1: Good afternoon, everyone.\nS2: Thank you for joining the call.\n"
+                                "Q: What will the new line add to revenue?")
+    assert second["context"] == "S1: We will add Rs. 55 crores annually from Q4.\nS2: The plant is on track."
+    assert first["text"].startswith("We will add")
+
+
+def test_a_number_in_the_context_does_not_satisfy_the_quote():
+    # The quote may only come from the target statement: a span lifted from the context is quarantined.
+    claim = _claim(value_low=20.0, quote_span="Rs. 20 crores",
+                   statement="It will add revenue next year.",
+                   context="S1: It will add Rs. 20 crores next year.")
+    assert dc.verify_claim(claim) == ("quarantined", "quote_span_not_in_statement")
+
+
+def test_pick_stores_is_seeded_and_reproducible():
+    candidates = ["c03", "c05", "c07", "c12", "c13", "c22"]
+    picked = dc.pick_stores(candidates, 2, seed=7)
+    assert picked == dc.pick_stores(list(reversed(candidates)), 2, seed=7)
+    assert len(picked) == 2 and set(picked) <= set(candidates)
+
+
+def test_pick_stores_returns_all_when_pool_is_small():
+    assert dc.pick_stores(["c03"], 2, seed=7) == ["c03"]
+
+
+# ------------------------------------------------------------------ resume + DB
+def test_resume_skips_items_already_in_the_read_log(db_path: Path):
+    writer = dc.Writer(db_path)
+    done = ["c17|transcript_statement|250"]
+    writer.read_log("run1", "c17", 1, "a", "b", 1.5, 200, 10, 5, 1, 1, {"claims": 1}, done, 1)
+    assert writer.done_keys() == set(done)
+    items = [{"key": "c17|transcript_statement|250"}, {"key": "c17|transcript_statement|251"}]
+    assert [it["key"] for it in dc.pending_items(items, writer.done_keys())] == ["c17|transcript_statement|251"]
+    writer.close()
+
+
+def test_quota_event_records_utc_and_ist(db_path: Path):
+    writer = dc.Writer(db_path)
+    writer.quota_event("run1", "c17", 429, 12, "rate limit: " + "x" * 400)
+    row = writer.con.execute("SELECT at_utc, at_ist, http_status, in_flight, body FROM quota_event").fetchone()
+    writer.close()
+    assert row[2:4] == (429, 12)
+    assert row[0] and row[1] and row[0] != row[1]
+    assert len(row[4]) == 300
+
+
+def test_batch_writes_claims_and_marks_items_done(db_path: Path):
+    writer = dc.Writer(db_path)
+    reply = ('{"items":[{"id":1,"drop":null,"claims":[{"node":"capex.amount","sign":"+","value_low":55,'
+             '"value_high":null,"unit":"inr_cr","effective_period":"Q4","conditional":false,'
+             '"quote_span":"approximately Rs. 55 crores annually"}]}]}')
+
+    class FakeClient:
+        def chat(self, prompt):
+            return 200, reply, (100, 50)
+
+    limiter = dc.Adaptive(start=2)
+    stats = dc.process_batch([_item()], FakeClient(), writer, limiter, "run1")
+    assert stats.claims == 1 and stats.requests == 1 and stats.errors == 0
+    claim = writer.con.execute("SELECT node, status, known_at, method, context FROM claim").fetchone()
+    log = writer.con.execute("SELECT role, http_status, in_tok, out_tok, items_done FROM read_log").fetchone()
+    writer.close()
+    assert tuple(claim)[:4] == ("capex.amount", "verified", "2025-10-30T13:19:49", "model")
+    assert claim[4].startswith("S1: Good afternoon.")
+    assert log[0] == "extract" and log[1] == 200 and log[2:4] == (100, 50)
+    assert log[4] == '["c17|transcript_statement|250"]'
+
+
+def test_batch_retries_a_bad_json_reply_once_then_logs_an_error(db_path: Path):
+    writer = dc.Writer(db_path)
+
+    class BadClient:
+        def __init__(self):
+            self.calls = 0
+
+        def chat(self, prompt):
+            self.calls += 1
+            return 200, "not json", (10, 1)
+
+    bad = BadClient()
+    stats = dc.process_batch([_item()], bad, writer, dc.Adaptive(start=2), "run1")
+    rows = writer.con.execute("SELECT COUNT(*), SUM(error<>'') FROM read_log").fetchone()
+    writer.close()
+    assert bad.calls == 2                      # the brief: retry once, then log
+    assert stats.errors == 1 and stats.claims == 0
+    assert tuple(rows) == (2, 2)
+
+
+def test_a_long_retry_after_stops_the_batch_without_marking_it_done(db_path: Path):
+    writer = dc.Writer(db_path)
+
+    class QuotaClient:
+        def chat(self, prompt):
+            return 429, "rate limited", (0, 0)
+
+        def retry_after(self):
+            return 3600.0
+
+    limiter = dc.Adaptive(start=2)
+    stats = dc.process_batch([_item()], QuotaClient(), writer, limiter, "run1")
+    body = writer.con.execute("SELECT body FROM quota_event").fetchone()[0]
+    done = writer.done_keys()
+    writer.close()
+    assert stats.errors == 1 and limiter.stopped.is_set() and not done
+    assert "Retry-After 3600s" in body
+
+
+def test_a_short_retry_after_is_slept_then_the_batch_succeeds(db_path: Path, monkeypatch):
+    reply = ('{"items":[{"id":1,"drop":null,"claims":[{"node":"capex.amount","sign":"+","value_low":55,'
+             '"value_high":null,"unit":"inr_cr","effective_period":"Q4","conditional":false,'
+             '"quote_span":"approximately Rs. 55 crores annually"}]}]}')
+
+    class OnceQuota:
+        calls = 0
+
+        def chat(self, prompt):
+            self.calls += 1
+            return (429, "rate limited", (0, 0)) if self.calls == 1 else (200, reply, (10, 5))
+
+        def retry_after(self):
+            return 2.0
+
+    sleeps: list[float] = []
+    monkeypatch.setattr(dc.time, "sleep", lambda seconds: sleeps.append(seconds))
+    writer = dc.Writer(db_path)
+    limiter = dc.Adaptive(start=2)
+    stats = dc.process_batch([_item()], OnceQuota(), writer, limiter, "run1")
+    writer.close()
+    assert stats.claims == 1 and 2.0 in sleeps and not limiter.stopped.is_set()
+
+
+def test_judge_long_retry_after_leaves_the_claim_for_a_resume(db_path: Path):
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [dc._finish(_claim())])
+    claims = writer.claims_to_judge()
+
+    class QuotaJudge:
+        def chat(self, prompt):
+            return 429, "rate limited", (0, 0)
+
+        def retry_after(self):
+            return 3600.0
+
+    limiter = dc.Adaptive(start=2)
+    stats = dc.judge_batch(claims, QuotaJudge(), writer, limiter, "run1")
+    row = writer.con.execute("SELECT status, judge_ok FROM claim").fetchone()
+    writer.close()
+    assert limiter.stopped.is_set() and stats.judged == 0
+    assert tuple(row) == ("verified", None)
+
+
+def test_judge_batch_applies_verdicts_and_logs_a_judge_row(db_path: Path):
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [dc._finish(_claim(source_id=1)), dc._finish(_claim(source_id=2))])
+    claims = writer.claims_to_judge()
+    assert len(claims) == 2
+    reply = json.dumps({"items": [
+        {"id": claims[0]["id"], "node_ok": True, "sign_ok": True, "unit_ok": True, "period_ok": True,
+         "forward_ok": True, "company_ok": True, "why": "ok"},
+        {"id": claims[1]["id"], "node_ok": True, "sign_ok": False, "unit_ok": True, "period_ok": True,
+         "forward_ok": True, "company_ok": True, "why": "sign"},
+    ]})
+
+    class JudgeClient:
+        def chat(self, prompt):
+            return 200, reply, (200, 40)
+
+    stats = dc.judge_batch(claims, JudgeClient(), writer, dc.Adaptive(start=2), "run1")
+    statuses = writer.con.execute("SELECT status, status_reason FROM claim ORDER BY id").fetchall()
+    log = writer.con.execute("SELECT role, items FROM read_log WHERE role='judge'").fetchone()
+    writer.close()
+    assert stats.judged == 2 and stats.judged_ok == 1 and stats.by_field["sign_ok"] == 1
+    assert [tuple(r) for r in statuses] == [("verified", ""), ("unverified", "judge:sign_ok")]
+    assert log[0] == "judge" and log[1] == 2
+
+
+def test_judge_batch_falls_back_to_block_position_when_ids_are_1_to_n(db_path: Path):
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [dc._finish(_claim(source_id=1)), dc._finish(_claim(source_id=2))])
+    claims = writer.claims_to_judge()
+    # beam-free sometimes numbers its answers 1..n instead of echoing CLAIM <id>
+    reply = json.dumps({"items": [
+        {"id": 1, "node_ok": True, "sign_ok": True, "unit_ok": True, "period_ok": True, "forward_ok": True,
+         "company_ok": True},
+        {"id": 2, "node_ok": True, "sign_ok": False, "unit_ok": True, "period_ok": True, "forward_ok": True,
+         "company_ok": True},
+    ]})
+
+    class JudgeClient:
+        def chat(self, prompt):
+            return 200, reply, (200, 40)
+
+    stats = dc.judge_batch(claims, JudgeClient(), writer, dc.Adaptive(start=2), "run1")
+    statuses = writer.con.execute("SELECT status FROM claim ORDER BY id").fetchall()
+    writer.close()
+    assert stats.judged == 2 and stats.judged_ok == 1
+    assert [tuple(r) for r in statuses] == [("verified",), ("unverified",)]
+
+
+def test_judge_rejects_an_industry_claim(db_path: Path):
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [dc._finish(_claim())])
+    cid = writer.con.execute("SELECT id FROM claim").fetchone()[0]
+    writer.apply_judge(int(cid), {"node_ok": True, "sign_ok": True, "unit_ok": True, "period_ok": True,
+                                  "forward_ok": True, "company_ok": False})
+    row = writer.con.execute("SELECT status, judge_fail, judge_company FROM claim").fetchone()
+    writer.close()
+    assert tuple(row) == ("unverified", "company_ok", 0)
+
+
+def test_reset_judge_errors_requeues_them(db_path: Path):
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [dc._finish(_claim())])
+    cid = writer.con.execute("SELECT id FROM claim").fetchone()[0]
+    writer.mark_judge_failed([int(cid)])
+    assert writer.reset_judge_errors() == 1
+    row = writer.con.execute("SELECT status, judge_ok, judge_fail FROM claim").fetchone()
+    writer.close()
+    assert tuple(row) == ("verified", None, None)
+
+
+def test_judge_retries_twice_then_accepts(db_path: Path, monkeypatch):
+    monkeypatch.setattr(dc, "JUDGE_BACKOFF_S", (0.0, 0.0))
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [dc._finish(_claim())])
+    claims = writer.claims_to_judge()
+    good = json.dumps({"items": [{**{f: True for f in dc.JUDGE_FIELDS}, "id": claims[0]["id"]}]})
+
+    class FlakyJudge:
+        calls = 0
+
+        def chat(self, prompt):
+            self.calls += 1
+            if self.calls < 3:
+                return 200, "garbage with no verdicts", (10, 1)
+            return 200, good, (10, 1)
+
+    judge = FlakyJudge()
+    stats = dc.judge_batch(claims, judge, writer, dc.Adaptive(start=2), "run1")
+    row = writer.con.execute("SELECT status, judge_ok FROM claim").fetchone()
+    writer.close()
+    assert judge.calls == 3                      # first attempt + two retries
+    assert stats.judge_http_codes["200"] == 3
+    assert stats.judged_ok == 1 and tuple(row) == ("verified", 1)
+
+
+def test_judge_batch_marks_claims_unverified_when_the_judge_fails(db_path: Path, monkeypatch):
+    monkeypatch.setattr(dc, "JUDGE_BACKOFF_S", (0.0, 0.0))
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [dc._finish(_claim())])
+    claims = writer.claims_to_judge()
+
+    class DeadJudge:
+        calls = 0
+
+        def chat(self, prompt):
+            self.calls += 1
+            return 500, "upstream error", (0, 0)
+
+    judge = DeadJudge()
+    stats = dc.judge_batch(claims, judge, writer, dc.Adaptive(start=2), "run1")
+    row = writer.con.execute("SELECT status, status_reason, judge_fail FROM claim").fetchone()
+    quota = writer.con.execute("SELECT COUNT(*) FROM quota_event").fetchone()[0]
+    writer.close()
+    assert judge.calls == 3 and stats.judge_errors == 1
+    assert tuple(row) == ("unverified", "judge_error", "judge_error")
+    assert quota >= 1 and stats.judge_http_codes["500"] == 3
+
+
+# ------------------------------------------------------------------ limiter
+def test_limiter_raises_after_five_minutes_under_the_error_rate():
+    now = [1000.0]
+    lim = dc.Adaptive(start=10, unleashed=True, clock=lambda: now[0])
+    for _ in range(10):
+        lim.saw(True)
+    now[0] += 301.0
+    for _ in range(10):
+        lim.saw(True)
+    lim.tick()                                  # 301 s since construction, 10 clean requests in the window
+    assert lim.limit == 20
+    lim.tick()                                  # less than 300 s since the last raise: no second raise
+    assert lim.limit == 20
+
+
+def test_limiter_does_not_raise_when_the_error_rate_is_high():
+    now = [0.0]
+    lim = dc.Adaptive(start=10, unleashed=True, clock=lambda: now[0])
+    now[0] = 301.0
+    for ok in [False, False, True, True, True]:
+        lim.saw(ok)
+    lim.tick()
+    assert lim.limit == 10
+
+
+def test_limiter_halves_on_a_429_with_a_floor_of_one():
+    lim = dc.Adaptive(start=30)
+    assert lim.halve() == 15
+    assert lim.halve() == 7
+    lim = dc.Adaptive(start=1)
+    assert lim.halve() == 1
+
+
+def test_limiter_stops_after_thirty_minutes_of_failures():
+    now = [0.0]
+    lim = dc.Adaptive(start=10, unleashed=True, clock=lambda: now[0])
+    lim.saw(False)
+    now[0] = 1799.0
+    lim.tick()
+    assert not lim.stopped.is_set()
+    now[0] = 1801.0
+    lim.tick()
+    assert lim.stopped.is_set()
+
+
+def test_limiter_gate_never_exceeds_the_limit():
+    lim = dc.Adaptive(start=2)
+    lim.acquire()
+    lim.acquire()
+    assert lim.active == 2
+    lim.stopped.set()
+    with pytest.raises(dc.Stopped):
+        lim.acquire()
+
+
+# ------------------------------------------------------------------ stage 2a: document items
+def _doc(key: str, doc_type: str, pages: dict[int, str], **kw: Any):
+    base = {"doc_key": key, "symbol": "TESTCO", "doc_type": doc_type, "title": "Outcome of Board Meeting",
+            "filing_date": "2026-09-01", "known_at": "2026-09-01T10:00:00", "pages": pages}
+    base.update(kw)
+    return {key: base}
+
+
+def _doc_item(doc_type: str, text: str, **kw: Any):
+    item = {"store": "c99", "source_table": "doc_page", "source_id": None, "source_kind": doc_type,
+            "paragraph": 0, "symbol": "TESTCO", "doc_key": "D:/raw/test.pdf", "page": 1,
+            "known_at": "2026-09-01T10:00:00", "event_date": "2026-09-01", "text": text, "context": ""}
+    item.update(kw)
+    return item
+
+
+def test_split_paragraphs_keeps_paragraphs_and_packs_long_blocks():
+    text = "Future Outlook:\n\nWe expect revenue to grow 20% in FY27. The new line will add Rs. 50 crores."
+    assert dc.split_paragraphs(text) == [
+        "Future Outlook:", "We expect revenue to grow 20% in FY27. The new line will add Rs. 50 crores."]
+    pieces = dc.split_paragraphs("One two three four five. Six seven eight nine ten.", limit=30)
+    assert " ".join(pieces) == "One two three four five. Six seven eight nine ten."
+    assert all(len(chunk) <= 30 for chunk in dc.split_paragraphs("x" * 80 + " " + "y" * 80, limit=30))
+
+
+def test_doc_items_keep_a_forward_paragraph_and_drop_boilerplate():
+    page = ("Corporate social responsibility: the Company will spend Rs. 2 crore on CSR activities.\n\n"
+            "Outlook: we expect revenue to grow 20% in FY27 on the new line.")
+    items, claims, counts = dc.doc_items_from_pages(
+        "c99", _doc("D:/raw/annual.pdf", "annual_report", {1: page}))
+    assert claims == [] and len(items) == 1
+    assert "expect revenue to grow" in items[0]["text"]
+    assert items[0]["source_kind"] == "annual_report"
+    assert (items[0]["doc_key"], items[0]["page"], items[0]["paragraph"]) == ("D:/raw/annual.pdf", 1, 1)
+    assert counts["doc_annual_report_kept"] == 1
+    assert counts["doc_annual_report_para_boilerplate"] == 1
+
+
+def test_doc_items_drop_a_page_without_a_cue():
+    items, claims, counts = dc.doc_items_from_pages(
+        "c99", _doc("D:/raw/board.pdf", "annual_report", {1: "The Board met on 1 April 2026."}))
+    assert items == [] and claims == []
+    assert counts.get("doc_annual_report_drop_no_cue") == 1
+
+
+def test_short_announcement_page_is_one_item():
+    text = ("Dear Sir, please find below the intimation.\n\nThe Company has approved an issue of up to "
+            "Rs. 500 crores by way of rights issue, at such price as may be decided later.")
+    items, claims, counts = dc.doc_items_from_pages(
+        "c99", _doc("D:/raw/rights.pdf", "announcement", {1: text}))
+    assert claims == [] and len(items) == 1
+    assert items[0]["text"].startswith("Dear Sir") and items[0]["paragraph"] == 0
+    assert counts["doc_announcement_kept"] == 1
+
+
+def test_ocr_page_fills_an_empty_main_page():
+    docs = _doc("D:/raw/scan.pdf", "annual_report", {7: ""})
+    ocr = {("D:/raw/scan.pdf", 7): "Outlook: we expect capex of Rs. 90 crore in FY27."}
+    items, _, counts = dc.doc_items_from_pages("c99", docs, ocr)
+    assert len(items) == 1 and counts["doc_annual_report_pages_ocr"] == 1
+
+
+def test_announcement_filing_types_are_skipped_by_title():
+    docs = _doc("D:/raw/agm.pdf", "announcement", {1: ORDER_WIN_TEXT},
+                title="Notice of 37th Annual General Meeting along with Annual Report")
+    items, claims, counts = dc.doc_items_from_pages("c99", docs)
+    assert items == [] and claims == []
+    assert counts["doc_announcement_drop_filing_type"] == 1
+    press = _doc("D:/raw/pr.pdf", "press_release", {1: ORDER_WIN_TEXT},
+                 title="Notice of the Annual General Meeting")
+    items, _, _ = dc.doc_items_from_pages("c99", press)
+    assert len(items) == 1                    # the skip list is for the announcement type only
+
+
+def test_build_items_keeps_the_doc_script_claims(db_path: Path, monkeypatch):
+    store_dir = db_path.parent / "c99"
+    store_dir.mkdir()
+    con = sqlite3.connect(store_dir / "c99.db")
+    con.executescript("""
+        CREATE TABLE doc (doc_key TEXT PRIMARY KEY, symbol TEXT, doc_type TEXT, title TEXT,
+                          filing_date TEXT, known_at TEXT, pages INTEGER);
+        CREATE TABLE doc_page (doc_key TEXT, symbol TEXT, page INTEGER, text TEXT);
+        CREATE TABLE guidance (id INTEGER PRIMARY KEY, symbol TEXT, metric TEXT, target_period TEXT,
+                               low REAL, high REAL, unit TEXT, direction TEXT, quote TEXT, doc_key TEXT,
+                               page INTEGER, known_at TEXT, said_on TEXT);
+        CREATE TABLE transcript_statement (id INTEGER PRIMARY KEY, symbol TEXT, doc_key TEXT, page INTEGER,
+                               call_date TEXT, known_at TEXT, is_fragment INTEGER, seq INTEGER,
+                               answer_turn INTEGER, statement TEXT, quote TEXT, numbers_json TEXT);
+        CREATE TABLE transcript_question (doc_key TEXT, answer_turn INTEGER, question TEXT);
+    """)
+    con.execute("INSERT INTO doc VALUES (?, 'TESTCO', 'announcement', 'Work order received', '2026-09-01',"
+                " '2026-09-01T10:00:00', 1)", (ORDER_WIN_DOC_KEY,))
+    con.execute("INSERT INTO doc_page VALUES (?, 'TESTCO', 1, ?)", (ORDER_WIN_DOC_KEY, ORDER_WIN_TEXT))
+    con.commit()
+    con.close()
+    monkeypatch.setattr(dc, "STORE_ROOT", db_path.parent)
+    items, built = dc.build_items(["c99"], ("announcement",))
+    assert items == []
+    assert [claim["extractor"] for claim in built["script_claims"]] == ["announcement:order"]
+    assert built["counters"]["doc_announcement_script"] == 1
+
+
+# ---- real announcement texts (page text as stored read-only in the pilot3 stores)
+def test_announcement_order_win_is_a_script_claim():
+    item = _doc_item("announcement", ORDER_WIN_TEXT, doc_key=ORDER_WIN_DOC_KEY)
+    claims = dc.announcement_claims(item)
+    assert len(claims) == 1
+    claim = claims[0]
+    assert (claim["node"], claim["unit"], claim["sign"]) == ("revenue.order_book", "inr_cr", "0")
+    assert claim["value_low"] == 200.02
+    assert claim["effective_period"] == "25 months"
+    assert claim["status"] == "verified"
+    assert claim["method"] == "script" and claim["extractor"] == "announcement:order"
+    assert claim["source_kind"] == "announcement" and claim["doc_key"] == ORDER_WIN_DOC_KEY
+    assert claim["quote_span"] in dc.norm_ws(claim["statement"])
+
+
+def test_a_parsed_announcement_leaves_the_model_queue():
+    items, claims, counts = dc.doc_items_from_pages(
+        "c99", _doc(ORDER_WIN_DOC_KEY, "announcement", {1: ORDER_WIN_TEXT}))
+    assert items == [] and len(claims) == 1
+    assert counts["doc_announcement_script"] == 1
+
+
+def test_announcement_capex_approval_parses_from_to_and_keeps_the_fund_raise():
+    item = _doc_item("announcement", CAPEX_TEXT, doc_key=CAPEX_DOC_KEY)
+    claims = {c["node"]: c for c in dc.announcement_claims(item)}
+    assert set(claims) == {"capex.amount", "equity.shares"}
+    capex = claims["capex.amount"]
+    assert capex["value_low"] == 238.43 and "176.44" in str(capex["base"]) and capex["sign"] == "+"
+    assert capex["status_reason"] == "no_period"           # the letter prints no capex horizon
+    assert claims["equity.shares"]["value_low"] == 7.16
+
+
+def test_announcement_fund_raise_needs_size_and_issue_price():
+    item = _doc_item("announcement", FUND_RAISE_TEXT, doc_key=FUND_RAISE_DOC_KEY)
+    claims = dc.announcement_claims(item)
+    assert len(claims) == 2                     # two preferential issues, each with size and price
+    first = claims[0]
+    assert first["node"] == "equity.shares" and first["unit"] == "inr_cr"
+    assert first["value_low"] == 139.5
+    assert "215" in str(first["base"]) and "per" in str(first["base"]).lower()
+    assert first["method"] == "script" and first["doc_key"] == FUND_RAISE_DOC_KEY
+
+
+def test_completed_allotment_is_not_a_script_claim():
+    text = ("The Company has allotted 5,00,000 equity shares at an issue price of Rs. 215 per share, "
+            "aggregating Rs. 10.75 crores.")
+    assert dc.announcement_claims(_doc_item("announcement", text)) == []
+
+
+def test_a_demand_order_is_not_an_order_win():
+    text = "The Company has received a GST demand order worth Rs. 4.50 crores, to be executed within 3 months."
+    assert dc.announcement_claims(_doc_item("announcement", text)) == []
+
+
+# ------------------------------------------------------------------ stage 2a: source_kind
+def test_source_kind_is_set_by_every_producer():
+    claim, _ = dc.guidance_claim("c17", _guidance_row())
+    assert claim is not None and claim["source_kind"] == "guidance"
+    items, _ = dc.attach_context(
+        [_row(id=3, seq=3, text="We will add Rs. 55 crores annually from Q4.",
+              numbers_json='[{"value":55}]')], {})
+    assert items[0]["source_kind"] == "transcript"
+    claim, _ = dc.claim_from_reply(
+        {"node": "capex.amount", "value_low": 55, "unit": "inr_cr",
+         "quote_span": "approximately Rs. 55 crores annually", "effective_period": "Q4"}, items[0])
+    assert claim is not None and claim["source_kind"] == "transcript" and claim["paragraph"] is None
+
+
+def test_doc_source_kind_and_paragraph_round_trip_the_writer(db_path: Path):
+    writer = dc.Writer(db_path)
+    claim = dc._finish(_claim(source_table="doc_page", source_id=None, source_kind="press_release",
+                              paragraph=4, doc_key="D:/raw/pr.pdf", page=2))
+    writer.insert_claims("run1", [claim])
+    writer.insert_claims("run1", [claim])             # the same item replaces itself, never duplicates
+    row = writer.con.execute("SELECT source_kind, paragraph, COUNT(*) FROM claim").fetchone()
+    writer.close()
+    assert tuple(row) == ("press_release", 4, 1)
+
+
+def test_writer_migrates_an_older_claims_db(db_path: Path):
+    old = dc.SCHEMA.replace("  source_kind TEXT, paragraph INTEGER,\n", "")
+    con = sqlite3.connect(db_path)
+    con.executescript(old)
+    con.commit()
+    con.close()
+    writer = dc.Writer(db_path)
+    columns = {str(r[1]) for r in writer.con.execute("PRAGMA table_info(claim)")}
+    writer.close()
+    assert {"source_kind", "paragraph"} <= columns
+
+
+def test_prompts_carry_the_stage2_source_rules():
+    prompt = dc.build_prompt([_item()])
+    assert "annual report is published months after" in prompt
+    assert "revenue.order_book" in prompt and "board-approved capex" in prompt
+    claim = dc._finish(_claim())
+    claim.update({"id": 1, "source_kind": "announcement"})
+    judge = dc.judge_prompt([claim])
+    assert "SOURCE: announcement" in judge
+    assert "order won fills revenue.order_book" in judge
+    assert "completed allotment" in judge
+
+
+# ------------------------------------------------------------------ stage 2b: Wolf's five defects
+RATING_STATEMENT = ("Revenue in fiscal 2025 is estimated to remain similar to that in fiscal 2024 at "
+                    "Rs 2400-2450 crore owing to continued full utilisation of capacity with healthy demand "
+                    "from downstream segments and stable cotton and cotton yarn prices.")
+RATING_CONTEXT = ("DOC: Intimation of Credit Rating\nP5: Although the company did not meet the rating "
+                  "sensitivity factors set by CRISIL Ratings due to the adverse impact on the industry last "
+                  "fiscal.")
+
+
+def test_at_least_a_to_b_keeps_both_ends():
+    statement = ("But going ahead, we see a healthy increase in revenue by at least 20% to 25% in this "
+                 "financial year.")
+    claim = _claim(node="revenue.total", unit="pct", value_low=25.0, value_high=25.0, sign="+",
+                   base="20%", quote_span="increase in revenue by at least 20% to 25% in this financial year",
+                   statement=statement, effective_period="this financial year")
+    assert dc.verify_claim(claim) == ("verified", "")
+    assert (claim["value_low"], claim["value_high"]) == (20.0, 25.0)
+    assert claim["base"] is None and claim["sign"] == "+"
+
+
+def test_plain_percent_range_is_not_collapsed_to_a_target():
+    claim = _claim(node="margin.ebitda", unit="pct", value_low=30.0, value_high=30.0, sign="0",
+                   quote_span="target 30% to 35%",
+                   statement="We target 30% to 35% EBITDA margins by FY27.", effective_period="FY27")
+    assert dc.verify_claim(claim) == ("verified", "")
+    assert (claim["value_low"], claim["value_high"]) == (30.0, 35.0)
+
+
+def test_including_or_excluding_gst_goes_into_base():
+    statement = "Value Rs. 117.74 Crores including GST (d) Completion Period 31.10.2025"
+    claim = _claim(node="revenue.order_book", unit="inr_cr", value_low=117.74,
+                   quote_span="Value Rs. 117.74 Crores including GST", statement=statement,
+                   base=None, effective_period="31.10.2025")
+    assert dc.verify_claim(claim) == ("verified", "")
+    assert claim["base"] == "including GST"
+    excl = _claim(node="revenue.order_book", unit="inr_cr", value_low=615.69,
+                  quote_span="order worth ₹ 615.69 Crores (Exclusive of GST)",
+                  statement="The Company has secured an order worth ₹ 615.69 Crores (Exclusive of GST).",
+                  effective_period="31 months")
+    assert dc.verify_claim(excl)[0] == "verified"
+    assert excl["base"] == "excluding GST"
+    kept = _claim(node="revenue.order_book", unit="inr_cr", value_low=117.74,
+                  quote_span="Value Rs. 117.74 Crores including GST", statement=statement,
+                  base="secured term loan", effective_period="31.10.2025")
+    dc.verify_claim(kept)
+    assert kept["base"] == "secured term loan; including GST"
+
+
+def test_rating_agency_estimate_is_third_party_and_never_verified(db_path: Path):
+    assert dc.speaker_scope(RATING_STATEMENT, RATING_CONTEXT) == "rating_agency"
+    assert dc.speaker_scope("We expect revenue to grow 20% next year.") == "company"
+    claim = dc._finish(_claim(
+        node="revenue.total", unit="inr_cr", value_low=2400.0, value_high=2450.0, sign="0",
+        base="fiscal 2024", quote_span="Revenue in fiscal 2025 is estimated to remain similar to that in "
+        "fiscal 2024 at Rs 2400-2450 crore", statement=RATING_STATEMENT, context=RATING_CONTEXT,
+        effective_period="fiscal 2025", source_kind="announcement", speaker_scope="rating_agency"))
+    assert claim["status"] == "unverified" and claim["status_reason"] == "third_party"
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [claim])
+    assert writer.claims_to_judge() == []      # a third party's estimate is never sent for company judging
+    writer.close()
+
+
+def test_scope_level_claim_needs_the_judges_scope_ok(db_path: Path):
+    claim = dc._finish(_claim(
+        node="revenue.total", unit="inr_cr", value_low=250.0, sign="0",
+        quote_span="around INR250 crores from next financial year",
+        statement="Unfortunately, it's taking a little more time than what we envisaged, but I think it maybe "
+                  "take another 1 quarter, and we expect the full impact start coming, which will be around "
+                  "INR250 crores from next financial year.",
+        context="S1: So there is no problem with Bangladesh demand.\nS2: Well, that is still under progress.",
+        effective_period="from next financial year"))
+    assert dc.scope_flagged(claim)
+    prompt = dc.judge_prompt([{**claim, "id": 1}])
+    assert "SCOPE:" in prompt and '"scope_ok":true' in prompt and "FILED:" in prompt
+    normal = dc._finish(_claim())
+    normal_prompt = dc.judge_prompt([{**normal, "id": 2}])
+    assert "SCOPE: the paragraph" not in normal_prompt and '"scope_ok":true' not in normal_prompt
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [claim])
+    cid = int(writer.con.execute("SELECT id FROM claim").fetchone()[0])
+    writer.apply_judge(cid, {f: True for f in dc.JUDGE_FIELDS})
+    row = writer.con.execute("SELECT status, status_reason, judge_fail FROM claim").fetchone()
+    assert tuple(row) == ("unverified", "judge:scope_ok", "scope_ok")
+    writer.apply_judge(cid, {**{f: True for f in dc.JUDGE_FIELDS}, "scope_ok": True})
+    row = writer.con.execute("SELECT status, status_reason FROM claim").fetchone()
+    writer.close()
+    assert tuple(row) == ("verified", "")
+
+
+def test_judge_is_given_the_claim_known_at(db_path: Path):
+    claim = {**dc._finish(_claim()), "id": 7, "known_at": "2025-05-01T16:47:43"}
+    prompt = dc.judge_prompt([claim])
+    assert "FILED: 2025-05-01" in prompt
+    assert "FY25" in dc.JUDGE_SYSTEM and "2025-05" in dc.JUDGE_SYSTEM
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [dc._finish(_claim(known_at="2025-05-01T16:47:43"))])
+    queued = writer.claims_to_judge()
+    writer.close()
+    assert queued and queued[0]["known_at"] == "2025-05-01T16:47:43"
+
+
+def test_debt_repayment_and_declared_dividend_get_signs():
+    debt = _claim(node="debt.level", unit="inr_cr", value_low=135.06, sign="0",
+                  quote_span="pay an amount of X 135.06 crores within a period of three months",
+                  statement="As per the approved OTS the company has to pay an amount of X 135.06 crores "
+                            "within a period of three months.",
+                  effective_period="within a period of three months")
+    assert dc.verify_claim(debt)[0] == "verified"
+    assert debt["sign"] == "-"
+    dividend = _claim(node="equity.dividend", unit="inr", value_low=1.0, sign="0",
+                      quote_span="Final Dividend of Rs. 1/- per equity share",
+                      statement="The Board of Directors are pleased to recommend a Final Dividend of "
+                                "Rs. 1/- per equity share for FY 2024-25.",
+                      base="per equity share", effective_period="FY 2024-25")
+    assert dc.verify_claim(dividend)[0] == "verified"
+    assert dividend["sign"] == "+"
+
+
+def test_cross_source_dedupe_keeps_earliest_and_records_dup_of(db_path: Path):
+    def row(source_id: int, **kw):
+        claim = _claim(source_id=source_id, **kw)
+        claim.update({"status": "verified", "status_reason": "", "created_at": "x", "judge_ok": 1,
+                      "judge_fail": "", "judge_suggest": None})
+        return claim
+
+    same = "I think the day we start commissioning, it should take 6 months from there where we can fully - - "\
+           "when we can expect 97%, 98% utilization."
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [
+        row(1, source_kind="announcement", known_at="2025-05-01T16:47:43", node="equity.dividend",
+            unit="inr", value_low=1.0, value_high=None, effective_period="FY 2024-25",
+            quote_span="Final Dividend of Rs.1/- per equity share",
+            statement="Notes: The Board has recommended a Final Dividend of Rs.1/- per equity share."),
+        row(2, source_kind="annual_report", known_at="2025-08-05T16:15:57", node="equity.dividend",
+            unit="inr", value_low=1.0, value_high=None, effective_period="FY 2024-25",
+            quote_span="Final Dividend of Rs. 1/- per equity share",
+            statement="The Board of Directors are pleased to recommend a Final Dividend of Rs. 1/- per "
+                      "equity share."),
+        row(3, source_kind="guidance", known_at="2026-05-25T14:38:20", node="revenue.volume",
+            unit="pct", value_low=97.0, value_high=98.0, effective_period="6 months from commissioning",
+            quote_span="6 months from there where we can fully - - when we can expect 97%, 98% utilization",
+            statement=same, context=""),
+        row(4, source_kind="transcript", known_at="2026-05-25T14:38:20", node="revenue.volume",
+            unit="pct", value_low=97.0, value_high=98.0, effective_period="6 months",
+            quote_span="it should take 6 months from there where we can fully - - when we can expect "
+                       "97%, 98% utilization", statement=same,
+            context="Q: Regarding your greenfield spindle capacity of 150K, in what time frame post-"
+                    "commercialization can it achieve optimum utilization?"),
+        # same source kind with no third source carrying it: two announcements that print the same
+        # share count are not one fact
+        row(5, source_kind="announcement", known_at="2026-03-24T10:00:00", node="equity.shares",
+            unit="units", value_low=56873418.0, value_high=None, effective_period=None,
+            quote_span="5,68,73,418 equity shares", statement="The paid up equity share capital comprises "
+                                                              "5,68,73,418 equity shares."),
+        row(6, source_kind="announcement", known_at="2026-03-30T10:00:00", node="equity.shares",
+            unit="units", value_low=56873418.0, value_high=None, effective_period=None,
+            quote_span="5,68,73,418 equity shares", statement="The Company confirms 5,68,73,418 equity "
+                                                              "shares are in issue."),
+    ])
+    folded, winners = writer.dedupe_cross_source()
+    rows = [tuple(r) for r in writer.con.execute(
+        "SELECT source_kind, COALESCE(dup_of, '') FROM claim ORDER BY id").fetchall()]
+    writer.close()
+    assert (folded, winners) == (2, 2)
+    assert rows == [("announcement", "2"), ("transcript", "3"), ("announcement", ""),
+                    ("announcement", "")]
+
+
+def test_writer_migrates_the_stage2b_columns(db_path: Path):
+    old = dc.SCHEMA.replace("  speaker_scope TEXT, dup_of TEXT,\n", "")
+    con = sqlite3.connect(db_path)
+    con.executescript(old)
+    con.commit()
+    con.close()
+    writer = dc.Writer(db_path)
+    columns = {str(r[1]) for r in writer.con.execute("PRAGMA table_info(claim)")}
+    writer.close()
+    assert {"speaker_scope", "dup_of"} <= columns
+
+
+# ------------------------------------------------------------------ stage 2c: period, units, order kind, scope
+def test_period_norm_resolves_a_relative_label_from_known_at():
+    assert dc.period_norm("current year", "2026-08-02T21:13:57") == "FY27"
+    assert dc.period_norm("this year", "2025-11-19T15:00:29") == "FY26"
+    assert dc.period_norm("next year", "2025-09-30T10:00:00") == "FY27"
+    assert dc.period_norm("current quarter", "2025-11-04T18:03:38") == "Q3FY26"
+    assert dc.period_norm("next quarter", "2025-11-04T18:03:38") == "Q4FY26"
+    assert dc.period_norm("H2", "2025-11-10T18:36:53") == "H2FY26"
+    assert dc.period_norm("this H2", "2026-01-15T10:00:00") == "H2FY26"
+    assert dc.period_norm("next 24 months", "2025-11-19") is None
+    assert dc.period_norm("till completion", "2025-11-19") is None
+    assert dc.period_norm("financial year", "2026-02-06T12:32:35") == "FY26"   # id 2901
+    assert dc.period_norm("this year") is None                 # no filing date, no resolution
+
+
+def test_period_norm_reads_printed_fiscal_labels():
+    assert dc.period_norm("FY27") == "FY27"
+    assert dc.period_norm("FY '26") == "FY26"
+    assert dc.period_norm("FY 2026-27") == "FY27"
+    assert dc.period_norm("financial year 2023-24") == "FY24"
+    assert dc.period_norm("year ended 31st March, 2024") == "FY24"
+    assert dc.period_norm("Financial Year 2024-2025") == "FY25"
+    assert dc.period_norm("Finanuial Year 2024:25") == "FY25"   # the AR's own typo (id 7848)
+    assert dc.period_norm("Q3 FY26") == "Q3FY26"
+    assert dc.period_norm("H1 FY26") == "H1FY26"
+    assert dc.period_norm("June 2028") == "FY29"
+    assert dc.period_norm("31.10.2025") == "FY26"
+
+
+def test_order_kind_separates_an_inflow_from_the_order_book():
+    backlog = _claim(node="revenue.order_book", unit="inr_cr", value_low=1700.0,
+                     quote_span="overall unexecuted order value stands at over Rs. 1,700.00 Crore",
+                     statement="overall unexecuted order value stands at over Rs. 1,700.00 Crore")
+    assert dc.order_kind(backlog) == "backlog"
+    inflow = _claim(node="revenue.order_book", unit="inr", value_low=97402648.0,
+                    quote_span="Receiving a new turnkey contract",
+                    statement="Viviana Power Tech Limited has informed the Exchange about Receiving a new "
+                              "turnkey contract amounting to Rs. 9,74,02,648.00")
+    assert dc.order_kind(inflow) == "inflow"
+    both = _claim(node="revenue.order_book", quote_span="order book of Rs. 100 crores after we secured an "
+                                                       "order of Rs. 20 crores",
+                  statement="order book of Rs. 100 crores after we secured an order of Rs. 20 crores")
+    assert dc.order_kind(both) is None
+    neither = _claim(node="revenue.order_book", quote_span="Estimated value of the transaction is 150 Crores",
+                     statement="Estimated value of the transaction is 150 Crores")
+    assert dc.order_kind(neither) is None
+    assert dc.order_kind(_claim(node="capex.amount", quote_span="order book")) is None
+
+
+def test_part_scope_names_the_item_and_person_pay_is_no_driver():
+    capex = dc._finish(_claim(node="capex.amount", unit="inr_cr", value_low=7.0, value_high=None,
+                              quote_span="Knitting machines capex will be Rs 7 Cr.",
+                              statement="Knitting machines capex will be Rs 7 Cr. by Q3 FY27.",
+                              segment="total", effective_period="FY27"))
+    assert capex["scope_part"] == 1 and capex["segment"] == "knitting machines"
+    pay = dc._finish(_claim(node="cost.employee", unit="inr", value_low=800000.0,
+                            quote_span="Basic salary of Rs.8,00,000/-",
+                            statement="Basic salary of Rs.8,00,000/- (Rupees Eight Lakhs only) to be paid "
+                                      "to the JMD on monthly basis.",
+                            segment="total", effective_period="monthly basis"))
+    assert pay["status"] == "unverified" and pay["status_reason"] == "no_driver:person_remuneration"
+    assert pay["scope_part"] == 1 and pay["segment"] == "person_remuneration"
+    # a page that also mentions pay and a plant elsewhere must not re-scope an unrelated claim
+    dividend = dc._finish(_claim(node="equity.dividend", unit="inr", value_low=10.0, sign="+",
+                                 quote_span="Dividend of 100% of the Face Value",
+                                 statement="The Board recommended a Dividend of 100% of the Face Value, "
+                                           "that is, Rs 10 per Equity Share. The remuneration of the JMD is "
+                                           "paid monthly; capacity at the Hargaon unit was increased.",
+                                 segment="total", effective_period="FY26"))
+    assert dividend["segment"] == "total" and dividend["scope_part"] == 0
+
+
+def test_part_scope_reads_the_guidance_page_around_the_quote(db_path: Path, monkeypatch):
+    folder = db_path.parent
+    store = folder / "c99"
+    store.mkdir(exist_ok=True)
+    con = sqlite3.connect(store / "c99.db")
+    con.executescript("CREATE TABLE doc_page (doc_key TEXT, symbol TEXT, page INTEGER, text TEXT);")
+    con.execute("INSERT INTO doc_page VALUES (?, 'TESTCO', 13, ?)", (
+        "D:/raw/deck.pdf",
+        "Knitting Machines • 19 machines by Q3 FY27, taking total capacity to 40 machines.\n"
+        "• Total capex will be Rs 7 Cr.\nSolar Energy • 11 MW ground-mounted solar."))
+    con.execute("INSERT INTO doc_page VALUES (?, 'TESTCO', 14, ?)", (
+        "D:/raw/deck.pdf",
+        "Knitting Machines • 19 machines by Q3 FY27. " + ("filler text. " * 40)
+        + "Solar Energy • 11 MW ground-mounted solar. Total capex will be Rs 32 Cr."))
+    con.commit()
+    con.close()
+    monkeypatch.setattr(dc, "STORE_ROOT", folder)
+    monkeypatch.setattr(dc, "_PAGE_CACHE", {})
+    claim = _claim(store="c99", source_kind="guidance", doc_key="D:/raw/deck.pdf", page=13,
+                   node="capex.amount", unit="inr_cr", value_low=7.0,
+                   quote_span="• Total capex will be Rs 7 Cr.", statement="• Total capex will be Rs 7 Cr.")
+    item, person = dc.claim_part(claim, with_page=True)
+    assert (item, person) == ("knitting machines", False)
+    far = _claim(store="c99", source_kind="guidance", doc_key="D:/raw/deck.pdf", page=14,
+                 node="capex.amount", unit="inr_cr", value_low=32.0,
+                 quote_span="Total capex will be Rs 32 Cr.", statement="Total capex will be Rs 32 Cr.")
+    assert dc.claim_part(far, with_page=True) == (None, False)   # a distant section must not re-scope it
+
+
+def test_normalise_units_converts_amounts_and_moves_an_execution_time():
+    rupees = _claim(node="revenue.order_book", unit="inr", value_low=128357670.39, value_high=None)
+    assert dc.normalise_units(rupees) == "inr->inr_cr"
+    assert rupees["unit"] == "inr_cr" and round(rupees["value_low"], 8) == 12.83576704
+    lakh = _claim(node="equity.dividend", unit="inr_lakh", value_low=679.015)
+    assert dc.normalise_units(lakh) == "per_share_dividend_left" and lakh["unit"] == "inr_lakh"
+    total_outgo = _claim(node="capex.amount", unit="inr_lakh", value_low=679.015)
+    assert dc.normalise_units(total_outgo) == "inr_lakh->inr_cr"
+    assert round(total_outgo["value_low"], 6) == 6.79015
+    millions = _claim(node="capex.amount", unit="inr_mn", value_low=100.0)
+    assert dc.normalise_units(millions) == "inr_mn->inr_cr" and millions["value_low"] == 10.0
+    exercise = _claim(node="equity.shares", unit="inr", value_low=56.35, base="exercise price")
+    assert dc.normalise_units(exercise) == "per_unit_left" and exercise["unit"] == "inr"
+    dollars = _claim(node="capex.amount", unit="usd", value_low=70000000.0)
+    assert dc.normalise_units(dollars) == "usd_no_fx"
+    assert dollars["unit"] == "usd" and dollars.get("value_inr_cr") is None
+    months = _claim(node="revenue.order_book", unit="months", value_low=30.0, value_high=None,
+                    quote_span="within 30 months")
+    assert dc.normalise_units(months) == "months->execution_months"
+    assert months["execution_months"] == "30 months" and months["value_low"] is None
+
+
+def test_repair_collapsed_range_restores_the_low_end():
+    claim = _claim(node="revenue.total", unit="inr_cr", value_low=50.0, value_high=50.0, sign="+",
+                   base="INR45 crores",
+                   quote_span="in FY '27, we are targeting revenues of approximately INR45 crores to "
+                              "INR50 crores",
+                   statement="in FY '27, we are targeting revenues of approximately INR45 crores to "
+                             "INR50 crores", segment="Tipping Jack", effective_period="FY '27")
+    assert dc.repair_collapsed_range(claim)
+    assert (claim["value_low"], claim["value_high"], claim["base"]) == (45.0, 50.0, None)
+    target = _claim(node="debt.level", unit="inr_cr", value_low=100.0, value_high=100.0,
+                    base="INR450 crores", quote_span="from INR450 crores to INR100 crores",
+                    statement="debt will come down from INR450 crores to INR100 crores")
+    assert not dc.repair_collapsed_range(target)
+
+
+def test_event_repair_marks_duplicates_and_revisions(db_path: Path):
+    def row(source_id: int, value: float, known: str, **kw):
+        claim = _claim(source_id=source_id, value_low=value, value_high=None, known_at=known, **kw)
+        claim.update({"status": "verified", "status_reason": "", "created_at": "x", "judge_ok": 1,
+                      "judge_fail": ""})
+        return claim
+
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [
+        row(1, 100.0, "2025-01-01T10:00:00"),
+        row(2, 100.5, "2025-03-01T10:00:00"),          # same event, within 180 days
+        row(3, 150.0, "2025-09-01T10:00:00"),          # a later changed value: a revision, not a duplicate
+    ])
+    events = dc.event_repair(writer.con)
+    rows = [tuple(r) for r in writer.con.execute(
+        "SELECT source_id, status, dup_of, revises FROM claim ORDER BY source_id").fetchall()]
+    writer.close()
+    assert events == {"duplicates": 1, "duplicates_verified": 1, "linked_earlier": 0, "revised": 1}
+    assert rows == [(1, "verified", None, None), (2, "duplicate", "1", None), (3, "verified", None, 1)]
+
+
+def test_generic_segment_still_matches_a_named_line():
+    # Webbel 5117/5632: "that line" / "solar Mono PERC cell capacity", one 750 MW target
+    assert dc._segments_match("that line", "solar Mono PERC cell capacity")
+    assert dc._segments_match("total", "solar cells")
+    assert not dc._segments_match("solar cell line", "solar module line")
+
+
+def test_event_repair_folds_a_single_value_and_its_own_range(db_path: Path):
+    def row(source_id: int, low: float, high, known: str):
+        claim = _claim(source_id=source_id, value_low=low, value_high=high, known_at=known)
+        claim.update({"status": "verified", "status_reason": "", "created_at": "x", "judge_ok": 1,
+                      "judge_fail": ""})
+        return claim
+
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [row(1, 40.0, None, "2026-08-02T21:13:57"),
+                                  row(2, 40.0, 40.0, "2026-08-02T21:13:57")])
+    events = dc.event_repair(writer.con)
+    rows = [tuple(r) for r in writer.con.execute(
+        "SELECT id, status, dup_of FROM claim ORDER BY id").fetchall()]
+    writer.close()
+    assert events["duplicates"] == 1
+    assert rows == [(1, "verified", None), (2, "duplicate", "1")]
+
+
+def test_event_repair_takes_the_earliest_verified_row_not_the_earliest_row(db_path: Path):
+    def row(source_id: int, value: float, known: str, status: str, **kw):
+        claim = _claim(source_id=source_id, value_low=value, value_high=None, known_at=known, **kw)
+        claim.update({"status": status,
+                      "status_reason": "" if status == "verified" else "judge:period_ok",
+                      "created_at": "x", "judge_ok": 1 if status == "verified" else 0,
+                      "judge_fail": "" if status == "verified" else "period_ok"})
+        return claim
+
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [
+        row(1, 100.0, "2025-01-01T10:00:00", "unverified"),
+        row(2, 100.0, "2025-03-01T10:00:00", "verified"),
+        row(3, 100.0, "2025-05-01T10:00:00", "verified"),
+        row(4, 50.0, "2025-01-01T10:00:00", "unverified", symbol="OTHERCO"),
+        row(5, 50.0, "2025-03-01T10:00:00", "unverified", symbol="OTHERCO"),
+    ])
+    events = dc.event_repair(writer.con)
+    rows = [tuple(r) for r in writer.con.execute(
+        "SELECT id, status, dup_of FROM claim ORDER BY id").fetchall()]
+    writer.close()
+    assert events == {"duplicates": 2, "duplicates_verified": 1, "linked_earlier": 1, "revised": 0}
+    assert rows == [(1, "unverified", "2"), (2, "verified", None), (3, "duplicate", "2"),
+                    (4, "unverified", None), (5, "duplicate", "4")]
+
+
+def test_repair_db_copies_the_source_and_keeps_a_duplicate_marked(db_path: Path):
+    source = db_path.parent / "source.db"
+    out = db_path.parent / "repaired.db"
+    report = db_path.parent / "repair.md"
+
+    def row(source_id: int, value: float, known: str):
+        claim = _claim(source_id=source_id, value_low=value, value_high=None, known_at=known)
+        claim.update({"status": "verified", "status_reason": "", "created_at": "x", "judge_ok": 1,
+                      "judge_fail": ""})
+        return claim
+
+    writer = dc.Writer(source)
+    writer.insert_claims("run1", [row(1, 100.0, "2025-01-01T10:00:00"),
+                                  row(2, 100.0, "2025-02-01T10:00:00")])
+    writer.close()
+    dc.repair_db(source, out, report)
+    source_con = sqlite3.connect(source)
+    source_statuses = [r[0] for r in source_con.execute("SELECT status FROM claim ORDER BY id")]
+    source_con.close()
+    out_con = sqlite3.connect(out)
+    out_statuses = [tuple(r) for r in out_con.execute(
+        "SELECT status, dup_of FROM claim ORDER BY id")]
+    out_con.close()
+    assert source_statuses == ["verified", "verified"]          # the source is never written
+    assert out_statuses == [("verified", None), ("duplicate", "1")]
+    assert report.exists() and "T-228 stage 2c repair report" in report.read_text(encoding="utf-8")
+    out_con = sqlite3.connect(out)
+    counts, events = dc.repair_log_read(out_con)
+    out_con.close()
+    assert events["duplicates"] == 1 and "rejudge" in counts
+
+
+def test_writer_migrates_the_stage2c_columns(db_path: Path):
+    old = dc.SCHEMA.replace(
+        "  period_norm TEXT, order_kind TEXT, execution_months TEXT, scope_part INTEGER, revises INTEGER,\n"
+        "  value_inr_cr REAL,\n", "")
+    con = sqlite3.connect(db_path)
+    con.executescript(old)
+    con.commit()
+    con.close()
+    writer = dc.Writer(db_path)
+    columns = {str(r[1]) for r in writer.con.execute("PRAGMA table_info(claim)")}
+    writer.close()
+    assert {"period_norm", "order_kind", "execution_months", "scope_part", "revises", "value_inr_cr"} <= columns
