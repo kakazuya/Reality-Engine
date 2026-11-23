@@ -202,3 +202,4 @@
 - Next: controller runs the accepted tests outside the sandbox, merges, and adds the T-239 line to tasks/STATE.md
   (brief forbids editing it here). Remove the sandbox-made dirs `.t239base/`, `t239base/` (listing denied; cannot
   delete from inside).
+T-241 DONE (23 Nov): stores SHP parse filter (29.4->7.9 CPU s), route per-doc reads (195.4->142.9), 0-row equality c01/c27, committed 7415efaa; c27 routes pending (D: I/O).
