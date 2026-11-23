@@ -549,8 +549,9 @@ def nse_metadata(universe_rows, symbols, pacer, refresh=False):
     return out
 
 
-def plan(metadata_rows, symbol_to_code):
-    """(bucket, skip) for every metadata row, sorted so AR/results land first."""
+def plan(metadata_rows, symbol_to_code, order="bucket"):
+    """(bucket, skip) for every metadata row, sorted so AR/results land first; ``order="company"`` (T-241) sorts
+    by symbol first, so each company's filings finish together and its store can be built while the fetch runs."""
     jobs = []
     for row in metadata_rows.values():
         bucket, reason = classify(row)
@@ -560,6 +561,10 @@ def plan(metadata_rows, symbol_to_code):
             row["url"] = (PDF_URLS[0].format(name=row["attachment"])
                           if row.get("attachment") else "")
         jobs.append(row)
+    if order == "company":
+        jobs.sort(key=lambda r: (r.get("symbol") or "", BUCKET_ORDER.get(r["bucket"], 9),
+                                 r["dissem_ts"] or "", r["newsid"]))
+        return jobs
     jobs.sort(key=lambda r: (BUCKET_ORDER.get(r["bucket"], 9),
                              0 if r.get("skip_reason") else 1,
                              r["dissem_ts"] or "", r["newsid"]))
@@ -1092,6 +1097,9 @@ def main(argv=None):
     ap.add_argument("--interval", type=float, default=0.3,
                     help="seconds between BSE requests overall (0.3 = 200/min)")
     ap.add_argument("--tries", type=int, default=4)
+    ap.add_argument("--order", choices=["bucket", "company"], default="bucket",
+                    help="bucket = ARs/results first across companies; company = one company's filings together, "
+                         "so its store can be built while the fetch runs (T-241)")
     ap.add_argument("--refresh-meta", action="store_true", help="ignore the .tmp metadata cache")
     ap.add_argument("--out", default=None,
                     help="--fetch: also write the manifest rows of this run's universe ISINs here (the shared "
@@ -1119,7 +1127,7 @@ def main(argv=None):
         if nse_syms:
             logger.info("NSE fallback for %d names: %s", len(nse_syms), ", ".join(sorted(nse_syms)))
             rows.update(nse_metadata(universe, nse_syms, pacer, refresh=args.refresh_meta))
-    jobs = plan(rows, {s: i["code"] for s, i in resolved.items()})
+    jobs = plan(rows, {s: i["code"] for s, i in resolved.items()}, order=args.order)
 
     if args.measure:
         by_bucket, by_year, subcats = {}, {}, {}
