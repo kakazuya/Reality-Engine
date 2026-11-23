@@ -661,6 +661,34 @@ def pilot3_guidance(symbol: str, metric: str | None = None, period: str | None =
 
 
 @server.tool(
+    name="pilot3_obs",
+    description=(
+        "Hy4 observations served from obs_fact: verified and unverified rows from decks, annual reports and "
+        "transcripts (number, statement, guidance). measure/terms filter; period, record_type, status, as_of. "
+        "Unverified rows are served labelled; quarantined never."
+    ),
+    annotations=_RO,
+)
+def pilot3_obs(symbol: str, measure: str | None = None, terms: str | None = None, period: str | None = None,
+               record_type: str | None = None, status: str | None = None, as_of: str | None = None,
+               limit: int = 20) -> dict[str, Any]:
+    return _safe(lambda: _p3.obs(symbol, measure=measure, terms=terms, period=period, record_type=record_type,
+                                status=status, as_of=as_of, limit=limit))
+
+
+@server.tool(
+    name="pilot3_events",
+    description=(
+        "T-231 filing events (order wins, capex, fund raises) from filing_event. kind filter, as_of."
+    ),
+    annotations=_RO,
+)
+def pilot3_events(symbol: str, kind: str | None = None, as_of: str | None = None,
+                  limit: int = 50) -> dict[str, Any]:
+    return _safe(lambda: _p3.events(symbol, kind=kind, as_of=as_of, limit=limit))
+
+
+@server.tool(
     name="pilot3_docs",
     description=(
         "Documents held for a company the pilot database covers (every deck, transcript, annual report, results "
