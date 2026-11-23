@@ -69,7 +69,7 @@ assigns the document, labelled `period_from_document`), `basis`, `unit`/`scale`,
 `check_reasons` (`same_doc_conflict` included). A `change` marker (▲/▼, "up by", bps) is a `change` atom, never a
 level. The serving tools read the atoms as described above; `coverage` names `page_atom`/`page_cell` in exactly one
 list each. Tests: `test_pilot3_atoms.py` 16, `test_v2_page_reader.py` 10, `test_pilot3_schema_version.py` 8
-(migration v10), `test_lookups_pilot3.py` 79 passed + 1 skipped.
+(migration v10), `test_lookups_pilot3.py` 99 passed + 1 skipped.
 
 **T-203 (12 Nov 2026): one server, every store.** The `pilot3_*` tools no longer need one store per server start.
 `REALITY_PILOT3_STORES` names a registry JSON (`D:/RealityEngine/stores.json` by default); `resolve_symbol`, the
@@ -218,3 +218,21 @@ C:/Users/warri/AppData/Local/Programs/Python/Python314/python.exe plugins/realit
   available through `sql(db="truth")`.
 - Quarantine currently excludes annual-report doc `92565` (wrong-company PDF),
   the three `*_demo` tables, and synthetic `INE_AUTO*` ISINs from `resolve`.
+
+## T-239 (23 Nov 2026): the trial-2 misses the server can fix
+
+Trial 2 (200 frozen questions, 91 stores) had 53 answers not right, only four of them store gaps. The server-side,
+model-free fixes live in `server/lookups_pilot3.py` (details: `docs/PILOT3_BLUEPRINT.md` section 9x):
+
+- `nearest` on an empty reply: up to three `doc_page_fts` page hits (kind "page", doc_key, page, doc_type, snippet,
+  note "not a stored row: read the page") and three `obs_fact` statements, `as_of`-cut. `pilot3_fact` appends them
+  to its existing `nearest`; `kpi` / `fin` / `ratio` / `guidance` / `statements` / `obs` add the key only when nothing matched.
+- `server/synonyms.json` (new, committed): model-free query expansion for `search` / `topic` / `statements` / `obs` /
+  `nearest`; an expansion is OR-ed with its word and never required, and the reply names the expansions that matched
+  (`expansions_matched` on `search` / `topic` / `statements` / `obs`, `matched` on each `nearest` item).
+- `pilot3_ratio`: every derived row carries `definition_text`, `numerator`, `denominator` and `inputs` (value, period,
+  filing); P/B and `book value per share` are recomputed on the latest balance sheet known at `as_of`
+  (`inputs.book_value_from`, `book_source`), with `stored_value` keeping an earlier-book P/B; ROE, ROCE and ROEV never
+  share a series label.
+
+Tests: `test_lookups_pilot3.py` 99 passed + 1 skipped (8 new in `ServerFixTests`).

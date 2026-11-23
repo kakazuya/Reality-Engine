@@ -1798,5 +1798,147 @@ class T223R019ReplyClarityTests(unittest.TestCase):
         self.assertEqual(ref["value_cr"], 5.0)
 
 
+class ServerFixTests(unittest.TestCase):
+    """T-239: the server fixes for the trial-2 misses -- nearest pages on an empty reply, the synonym expansion, a
+    ratio that names its definition and inputs, P/B on the latest balance sheet, and the stored prior-period base.
+    Each test is one of the trial-2 failure cases (NAVKARCORP, KRYSTAL, RAMKY, NSIL, ALICON)."""
+
+    @classmethod
+    def setUpClass(cls):
+        build_fixture()
+        c = sqlite3.connect(DB)
+        # the truth pages: the Gati Shakti order annexure (NAVKARCORP) and the collagen press release (NITTAGELA)
+        c.executemany("INSERT INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", [
+            ("KEC:gct/filing.pdf", "KEC", "INE389H01022", "announcement", "announcement",
+             "Reg 30 order win - Gati Shakti terminal", "2025-12-19", "2025-12-19T17:00:00", 2, "sha3", "pages.db",
+             "D:/raw/gct.pdf"),
+            ("KEC:cp/release.pdf", "KEC", "INE389H01022", "press_release", "press_release",
+             "Collagen Peptide Expansion Project", "2025-06-01", "2025-06-01T10:00:00", 2, "sha4", "pages.db",
+             "D:/raw/cp.pdf")])
+        for dk, pg, text, known in (
+                ("KEC:gct/filing.pdf", 2, "Gati Shakti Multi-Modal Cargo Terminal at Somathane: the project cost is "
+                                          "approx Rs 63,21,92,373. Railway land is licensed for 35 years.",
+                 "2025-12-19T17:00:00"),
+                ("KEC:gct/filing.pdf", 1, "The terminal is developed on Indian Railways land at Somathane.",
+                 "2025-12-19T17:00:00"),
+                ("KEC:cp/release.pdf", 2, "Commissioning of the Collagen Peptide Expansion Project is expected by "
+                                          "mid-2025; the quartzite mine is held on a 25-year lease.",
+                 "2025-06-01T10:00:00")):
+            c.execute("INSERT INTO doc_page VALUES (?,?,?,?,?,?,?,?)",
+                      (dk, "KEC", pg, text, "script_text", len(text), known, None))
+        # ROCE, ROE and ROEV are three series: no lookup may serve one under another's label (RAMKY q268)
+        ins = ("INSERT INTO kpi_series(symbol,metric,dimension,value,unit,scale,period_type,fiscal_period,as_of_date,"
+               "basis,doc_key,page,quote,known_at,known_at_source,is_reported,extractor_rule) "
+               "VALUES ('KEC',?,?,?,?,1,'Q',?,?, 'consolidated',?,1,?,?,'docs.known_at',1,'t')")
+        for metric, value, quote in (("roce_pct", 31.0, "ROCE 31%"), ("roe_pct", 12.0, "ROE 12%"),
+                                     ("roev", 18.8, "ROEV 18.8%")):
+            c.execute(ins, (metric, "total", value, "pct", "Q2FY27", "2026-09-30", "pdfs/KEC/deck2.pdf", quote,
+                            "2026-10-20T10:00:00"))
+        # the stored prior-period revenue (ALICON: 428.18) and the growth row that names it as its denominator
+        for fp, start, end, val, src, known in (
+                ("Q2FY26", "2025-07-01", "2025-09-30", 428.18, "kec_q2fy26.xml", "2025-11-01T10:00:00"),
+                ("Q2FY27", "2026-07-01", "2026-09-30", 649.84, "kec_q2fy27.xml", "2026-11-01T10:00:00")):
+            c.execute("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, "
+                      "audited, statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, "
+                      "source_table, source_rowid, known_at, known_at_source, is_reported) VALUES "
+                      "('KEC','INE389H01022',?,?,?,'consolidated','a','PL','revenue_from_operations','Tag',?,'inr',"
+                      "1e7,?,'results_xbrl.db','quarterly','q',?,'x',1)", (start, end, fp, val, src, known))
+        c.execute("INSERT INTO formula VALUES ('F_REV_YOY','revenue_growth_yoy','100*(revenue_from_operations/"
+                  "revenue_from_operations_lag1-1)','revenue_from_operations,revenue_from_operations_lag1','pct',1,'t')")
+        c.execute("INSERT INTO ratio_panel VALUES ('KEC','I','Q2FY27','Q','2026-07-01','2026-09-30','consolidated',"
+                  "'revenue_growth_yoy_pct',51.8,'pct',1,'F_REV_YOY',"
+                  "'[\"fq:KEC:Q2FY27:consolidated:revenue_from_operations\","
+                  "\"fq:KEC:Q2FY26:consolidated:revenue_from_operations\"]','2026-11-01T10:00:00','x',1)")
+        # P/B: the stored figure is on the FY26 book, the row's net_worth is the H1FY27 book (NSIL q4627)
+        c.execute("INSERT INTO valuation_daily (symbol, isin, date, basis, close, shares_outstanding, market_cap, "
+                  "trailing_eps, trailing_pat, net_worth, net_debt, trailing_ebitda, pe, pb, ev_ebitda, "
+                  "dividend_yield_pct, known_at, known_at_source, input_refs) VALUES "
+                  "('KEC','INE389H01022','2026-11-09','consolidated',?,?,?,NULL,NULL,?,NULL,NULL,NULL,0.1658,NULL,"
+                  "NULL,'2026-11-09T18:00:00','x',?)",
+                  (4898.10, 5136163.0, 4898.10 * 5136163.0, 33001.55 * 5136163.0,
+                   '{"net_worth": "bs 2026-09-30 H1 known 2026-11-02"}'))
+        c.execute("INSERT INTO doc_page_fts(doc_page_fts) VALUES ('rebuild')")
+        c.commit()
+        c.close()
+        os.environ["REALITY_PILOT3_DB"] = str(DB)
+        p3.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        p3.close()
+        os.environ.pop("REALITY_PILOT3_DB", None)
+
+    # 1. nearest pages ---------------------------------------------------------------------------------
+    def test_an_empty_fact_reply_names_the_pages_to_read(self):
+        out = p3.fact("KEC", "gati shakti terminal licence terms")
+        self.assertFalse(out["found"])
+        pages = [row for row in out["nearest"] if row.get("kind") == "page"]
+        self.assertTrue(pages)
+        self.assertIn(("KEC:gct/filing.pdf", 2), [(row["doc_key"], row["page"]) for row in pages])
+        self.assertEqual(pages[0]["note"], "not a stored row: read the page")
+        self.assertTrue(all(len(row["snippet"]) <= 320 for row in pages))   # snippets only, never a page dump
+        self.assertTrue(any("63,21,92,373" in row["snippet"] for row in pages))
+
+    def test_an_empty_kpi_reply_names_the_pages_to_read(self):
+        out = p3.kpi("KEC", "collagen peptide expansion project")
+        self.assertFalse(out["found"])
+        self.assertIn("KEC:cp/release.pdf", [row["doc_key"] for row in out["nearest"]])
+
+    def test_nearest_respects_as_of(self):
+        out = p3.kpi("KEC", "gati shakti terminal", as_of="2025-06-01")
+        self.assertFalse(out["found"])
+        self.assertNotIn("KEC:gct/filing.pdf", [row.get("doc_key") for row in out.get("nearest") or []])
+
+    # 2. synonym expansion -----------------------------------------------------------------------------
+    def test_a_synonym_finds_the_page_and_is_never_required(self):
+        out = p3.search("KEC", "licence")            # the page says "25-year lease", never "licence"
+        self.assertTrue(out["found"])
+        self.assertIn("lease", out["expansions_matched"] or [])
+        self.assertIn("KEC:cp/release.pdf", [row["provenance"]["source"].split(" p")[0] for row in out["rows"]])
+        self.assertTrue(p3.statements("KEC", terms="licence")["rows"])   # the page fallback widens too
+
+    def test_expansion_maps_the_question_words_to_the_page_words(self):
+        expansions, matched = p3._expansion("capital outlay and MDO contracts")
+        self.assertIn("capital outlay", matched)
+        self.assertIn("project cost", expansions)
+        self.assertIn("mine developer", expansions)
+
+    # 3. ROE / ROCE / ROEV are separate series ----------------------------------------------------------
+    def test_roe_and_roce_never_share_a_series_label(self):
+        self.assertEqual(p3._pick("kpi_series", "metric", "KEC", "roe")[0], ["roe_pct"])   # not roev
+        roe = p3.ratio("KEC", "roe")
+        self.assertTrue(roe["found"])
+        self.assertTrue(all(row["ratio"] in ("roe", "roe_pct") for row in roe["rows"]))
+        self.assertFalse([row for row in roe["rows"] if row["value"] in (31.0, 18.8)])
+        roce = p3.ratio("KEC", "roce")
+        self.assertTrue(roce["found"])
+        self.assertTrue(all(row["metric"] == "roce_pct" for row in roce["rows"]))
+        self.assertEqual(roce["rows"][0]["value"], 31.0)
+
+    # 4. ratio definition, inputs and the prior-period base ---------------------------------------------
+    def test_a_ratio_names_its_definition_numerator_denominator_and_inputs(self):
+        row = p3.ratio("KEC", "revenue_growth_yoy", period="Q2FY27")["rows"][0]
+        self.assertEqual(row["definition"], "derived")
+        self.assertIn("revenue_from_operations", row["definition_text"])
+        self.assertEqual(row["numerator"], "revenue_from_operations")
+        self.assertEqual(row["denominator"], "revenue_from_operations")
+        self.assertEqual([item["role"] for item in row["inputs"]], ["numerator", "denominator"])
+        self.assertEqual([item["period"] for item in row["inputs"]], ["Q2FY27", "Q2FY26"])
+        base = row["inputs"][1]                      # ALICON: the stored base, never an invented 429.92
+        self.assertEqual(base["value"], 428.18e7)
+        self.assertEqual(base["source"]["table"], "fin_quarter_xbrl")
+        self.assertEqual(base["source"]["doc_key"], "kec_q2fy26.xml")
+
+    # 5. P/B on the latest book -------------------------------------------------------------------------
+    def test_pb_is_computed_on_the_latest_book_and_names_that_balance_sheet(self):
+        row = p3.ratio("KEC", "pb", as_of="2026-11-09")["rows"][0]
+        self.assertEqual(row["stored_value"], 0.1658)                 # the stored P/B on the earlier book
+        self.assertAlmostEqual(row["value"], round(4898.10 / 33001.55, 4))   # NSIL: 0.148, not 0.166
+        self.assertIn("2026-09-30", row["definition"])
+        self.assertEqual(row["inputs"]["book_value_per_share"], 33001.55)
+        bvps = p3.ratio("KEC", "book value per share", as_of="2026-11-09")["rows"][0]
+        self.assertEqual((bvps["ratio"], bvps["value"]), ("book_value_per_share", 33001.55))
+
+
 if __name__ == "__main__":
     unittest.main()
