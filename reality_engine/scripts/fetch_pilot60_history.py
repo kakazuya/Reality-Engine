@@ -673,6 +673,41 @@ def target_path(symbol, bucket, newsid):
     return ROOT / symbol / bucket / f"{safe}.pdf"
 
 
+# T-241 (Shivam 24 Nov: "move the downloads to C"): with ``--stage-root`` a <SYM>/<bucket> folder that does not exist
+# yet under ROOT is created on the SSD and junctioned in, so every stored path stays ROOT/<SYM>/<bucket>/<id>.pdf
+# (raw_store, raw_to_drive and the Drive layout unchanged) while the bytes are written to and read from C:.
+STAGE_ROOT: Path | None = None
+PAUSE_FREE_BYTES = 0
+_stage_lock = threading.Lock()
+
+
+def stage_dir(folder: Path) -> None:
+    """Make ``folder`` (ROOT/<SYM>/<bucket>) a junction to STAGE_ROOT/<SYM>/<bucket> unless it already exists."""
+    if STAGE_ROOT is None or folder.exists():
+        return
+    with _stage_lock:
+        if folder.exists():
+            return
+        target = STAGE_ROOT / folder.relative_to(ROOT)
+        target.mkdir(parents=True, exist_ok=True)
+        folder.parent.mkdir(parents=True, exist_ok=True)
+        import _winapi
+        _winapi.CreateJunction(str(target), str(folder))
+
+
+def wait_for_space(stop) -> None:
+    """Pause (never stop) while the stage drive has under PAUSE_FREE_BYTES free: the upload frees it."""
+    if not PAUSE_FREE_BYTES or STAGE_ROOT is None:
+        return
+    told = 0.0
+    while not stop.is_set() and free_bytes(STAGE_ROOT) < PAUSE_FREE_BYTES:
+        if time.monotonic() - told > 600:
+            logger.warning("stage drive below %d GB free - paused until the upload frees space",
+                           PAUSE_FREE_BYTES // 1024 ** 3)
+            told = time.monotonic()
+        time.sleep(60)
+
+
 def download(row, session, pacer, tries=4):
     """(status, body, http_status, attempts, error) for one metadata row."""
     if row.get("url_direct"):
@@ -765,9 +800,11 @@ def fetch_rows(jobs, manifest, workers=8, interval=0.3, tries=4, limit=0, reuse=
             return None
         if getattr(local, "session", None) is None:
             local.session = new_session()
+        wait_for_space(stop)
         status, body, http_status, attempts, error = download(row, local.session, pacer, tries)
         if status == "ok":
             dest = target_path(row["symbol_at_time"], row["bucket"], row["newsid"])
+            stage_dir(dest.parent)
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(body)
             record = _record(row, "ok", http_status=http_status, attempts=attempts,
@@ -1102,6 +1139,10 @@ def main(argv=None):
     ap.add_argument("--tries", type=int, default=4)
     ap.add_argument("--reuse", action=argparse.BooleanOptionalAction, default=True,
                     help="link documents already held elsewhere on disk (--no-reuse skips that walk; T-241)")
+    ap.add_argument("--stage-root", default=None,
+                    help="write new <SYM>/<bucket> folders on this (SSD) folder, junctioned into the raw root (T-241)")
+    ap.add_argument("--pause-free-gb", type=float, default=0.0,
+                    help="with --stage-root: pause downloads while the stage drive has less free than this")
     ap.add_argument("--order", choices=["bucket", "company"], default="bucket",
                     help="bucket = ARs/results first across companies; company = one company's filings together, "
                          "so its store can be built while the fetch runs (T-241)")
@@ -1157,6 +1198,11 @@ def main(argv=None):
         logger.info("verify: %s", verify_files(manifest, resolved, sample=args.verify,
                                                out_path=out))
         return 0
+    if args.stage_root:
+        global STAGE_ROOT, PAUSE_FREE_BYTES
+        STAGE_ROOT = Path(args.stage_root)
+        STAGE_ROOT.mkdir(parents=True, exist_ok=True)
+        PAUSE_FREE_BYTES = int(args.pause_free_gb * 1024 ** 3)
     if args.fetch:
         stats = fetch_rows(jobs, manifest, workers=args.workers, interval=args.interval,
                            tries=args.tries, limit=args.limit, reuse=args.reuse)
