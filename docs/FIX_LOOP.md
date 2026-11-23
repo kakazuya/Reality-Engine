@@ -117,7 +117,9 @@ was verified only by an all-zero parts sum the stage-L rule removes (the row is 
 - The gate is model-free and reads one SQLite file: 0.03–0.2 s per pipeline on the 91-store outputs; adding
   `--baseline` diffs every row (102,074 observations on the 91 base and 27,801 on the decks394 base, 10,102 claims,
   604 events) and takes about 2–3 s on observations.
-- A scoped observations re-read still calls the reader once per selected page; a `--recheck` round calls no model.
+- A scoped observations re-read still calls the reader once per selected page; a `--recheck` round calls no model,
+  fetches each document's PDF once (`raw_store.keep()`), and exits 2 when it reads 0 pages, so an empty `--out` can
+  never look like a clean pass (T-238 N2).
 - Tests: `python -m pytest reality_engine/tests/test_regress.py -q` → 19 passed (content-key match after an id change,
   newly-broken detection, fixed/still-wrong/changed, page growth, baseline diff, selector filtering, empty-selector
   refusal, copy protection, a golden line about another company skipped, the scoped observations recheck and event

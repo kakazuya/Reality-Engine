@@ -2396,6 +2396,19 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   verified 480,459 -> 490,408 (63.1% -> 64.4%), 0 verified rows changed measure**; gate on `.tmp/t230/obs_91_i.db`
   still right 118, fixed 18, newly broken 0. Tests `test_observations.py` 145 passed; alias map
   `.tmp/t238n/stageN_aliases.csv`. Details: `docs/V2_SCHEMA_CONTRACT.md` section 17 stage N.
+- **T-238 stage N2: Wolf's hand-read fixes to stage N's period, scope and order rules (23 Nov 2026).**
+  `v2/observations.py`: `slide_period` reads only the page's title line (short, label plus title words; no page
+  furniture, footnote marker, bare column label or truncated "9M 2025"); `is_stock_measure` is a closed list
+  (capacity.*, shareholding_pct, count.shares, plant/outlet/branch/store/location counts), so a deck's as-of date
+  never dates customer/country/employee/order counts or ratios; `growth_change_period` gives a growth/change row the
+  later label of the page's printed pair; `scope_cue` gives country/industry/customer scope and fills
+  `observation.customer` from the printed client, and an order quantity ("697 ... Wagons" under a secured contract)
+  becomes the new `order.quantity` id (dictionary 306, aliases 183) instead of `volume.sales`. Recheck of
+  `D:/RealityEngine/t230/obs_91_i.db` into `.tmp/t238n2/obs_91_n2.db` (102,074 rows: 500 up, 95 down, 0 unproven;
+  scope_cues 290, growth_periods 27, customers_named 171) gates at **still right 118, fixed 18, still wrong 34,
+  changed 11, newly broken 0**; `test_observations.py` **157 passed**; typecheck clean. The deck-copy recheck was
+  stopped unfinished by the 23 Nov worker stop (`deck_n2.db` not produced; commands in the N2 report). Details:
+  `docs/V2_SCHEMA_CONTRACT.md` section 17 stage N2.
 
 ## Modular store repair (T-218, 16 Nov 2026)
 

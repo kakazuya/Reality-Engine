@@ -66,6 +66,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import contextlib
 import csv
 import json
 import os
@@ -315,6 +316,7 @@ MEASURES: tuple[tuple[str, str, str, str], ...] = (
     ("count.rakes", "Number of rakes", "count", "revenue.volume"),
     ("pipeline.length", "Pipeline length", "length", "capacity.add"),
     ("order.intake", "Order intake / new orders", "money", "revenue.order_book"),
+    ("order.quantity", "Order quantity (units ordered)", "count", "revenue.order_book"),
     ("order.book", "Order book", "money", "revenue.order_book"),
     ("market.size", "Industry or market size", "count", "none: market-level metric"),
     ("market.share", "Market share", "percent", "none: market-level metric"),
@@ -578,6 +580,9 @@ MEASURE_ALIASES: dict[str, str] = {
     "order_book": "order.book",
     "orderbook": "order.book",
     "order_intake": "order.intake",
+    "order_size": "order.quantity",
+    "order_quantity": "order.quantity",
+    "units_ordered": "order.quantity",
     "aum": "aum.value",
     "aum_growth_yoy": "aum.growth_yoy",
     "loan_book": "loans",
@@ -1355,6 +1360,10 @@ EXCEPTIONAL_RE = re.compile(r"\b(?:exceptional|extraordinary|one[- ]?off)\b", re
 CASHFLOW_CHANGE_RE = re.compile(r"\b(?:change[sd]?|increase|decrease|movement|addition|additions)\b", re.I)
 RECEIVABLE_WORD_RE = re.compile(r"receivable|debtors?\b", re.I)
 PAYABLE_WORD_RE = re.compile(r"payable|creditors?\b", re.I)
+# T-238 stage N2: the size of an order won is a quantity ordered, never the company's sales volume (JWL).
+ORDER_QTY_RE = re.compile(
+    r"\b(?:wagons?|units? ordered|ordered|order (?:for|of)|manufacturing and supply of|supply of)\b", re.I)
+ORDER_SALES_RE = re.compile(r"\b(?:sold|sales|dispatched|delivered|billed|shipped|supplied)\b", re.I)
 
 
 def force_fit_veto(measure: str, label: str, axis: str, series_title: str) -> str:
@@ -1364,6 +1373,9 @@ def force_fit_veto(measure: str, label: str, axis: str, series_title: str) -> st
     items" into ``profit_before_tax`` (4 rows) and a cash-flow "change in trade receivables/payables" into the
     balance-sheet stock (3 rows, receivables/payables swapped).  The printed words say which line it is, so the
     script rewrites the id; the dictionary carries both the level and the change.
+
+    N2: "manufacturing and supply of 697 ... Wagons" under a secured contract is an order quantity, and a volume
+    row that also prints sold/dispatched/shipped is a real sales volume and keeps ``volume.sales``.
     """
     text = " ".join([label, axis, series_title])
     if measure == "profit_before_tax" and EXCEPTIONAL_RE.search(text):
@@ -1373,6 +1385,8 @@ def force_fit_veto(measure: str, label: str, axis: str, series_title: str) -> st
             return "changes_in_receivables"
         if PAYABLE_WORD_RE.search(text):
             return "changes_in_payables"
+    if measure_root(measure) == "volume" and ORDER_QTY_RE.search(text) and not ORDER_SALES_RE.search(text):
+        return "order.quantity"
     return measure
 
 
@@ -1620,15 +1634,55 @@ def footnote_basis(page_text: str, period: str) -> str:
     return ""
 
 
-def scope_cue(row: dict[str, Any]) -> str:
-    """Stage I: a market-size / peak-demand figure that names a country is country scope, never the company's."""
-    if measure_root(row.get("measure", "")) not in ("market", "demand"):
+# T-238 stage N2 scope cues.  A figure whose heading names a country / industry / market, or a named client,
+# customer or project, is never the company's own measure.
+MARKET_SCOPE_RE = re.compile(r"\b(?:peak demand|market size|industry (?:size|demand|volume)|tam)\b", re.I)
+COUNTRY_SCOPE_RE = re.compile(r"\bIndia\b|\bdomestic\b|\bBharat\b", re.I)
+CLIENT_CUE_RE = re.compile(
+    r"(?:[Cc]lient\s*:\s*|[Cc]ustomer\s*:\s*|[Oo]rders?\s+from\s+|[Cc]ontract\s+(?:[Ww]ith|[Ff]rom)\s+|"
+    r"[Aa]warded\s+[Bb]y\s+)"
+    r"((?:[A-Z][\w&.'-]*)(?:\s+(?:[A-Z][\w&.'-]*|of|and|&)){0,5})")
+CLIENT_AWARDS_RE = re.compile(
+    r"^\s*((?:[A-Z][\w&.'-]*)(?:\s+(?:[A-Z][\w&.'-]*|of|and|&)){0,4})\s+awards?\b")
+PROJECT_CUE_RE = re.compile(r"\b(?:projects?|schemes?|missions?|yojana|kshetra|development)\b", re.I)
+ORDERBOOK_PAGE_RE = re.compile(r"\border\s*book\b", re.I)
+
+
+def client_name(text: str) -> str:
+    """The client/customer a printed heading names ("2 Orders from Nesco Limited" -> 'Nesco Limited')."""
+    match = CLIENT_CUE_RE.search(str(text or "")) or CLIENT_AWARDS_RE.search(str(text or ""))
+    if not match:
         return ""
-    if MARKET_CAP_RE.search(row.get("printed_label") or ""):
-        return ""
+    name = norm_space(match.group(1)).strip(" .,;:-")
+    return name if len(name) >= 3 else ""
+
+
+def scope_cue(row: dict[str, Any], page_text: str = "") -> str:
+    """Stage I/N2: a market, country or client figure is never the company's own measure.
+
+    A market-size / peak-demand figure is country scope when the page names India, else industry.  A heading that
+    names a client or customer is customer scope, and a project named on an order-book case-study page is the
+    client's project, not the company's own asset (REPL's 1023 acres).
+    """
     hay = " ".join([row.get("printed_label") or "", row.get("printed_axis") or "",
-                    row.get("series_title") or ""])
-    return "country" if re.search(r"\bIndia\b|\bdomestic\b|\bBharat\b", hay, re.I) else ""
+                    row.get("series_title") or "", row.get("group_path") or ""])
+    root = measure_root(row.get("measure", ""))
+    if root in ("market", "demand") or MARKET_SCOPE_RE.search(hay):
+        if MARKET_CAP_RE.search(row.get("printed_label") or ""):
+            return ""
+        current = canonical_scope(row.get("entity_scope") or "")
+        if COUNTRY_SCOPE_RE.search(hay):
+            return "" if current == "country" else "country"   # the row's own heading names the country
+        if current in ("country", "industry"):
+            return ""          # the reader/page already scoped it at market level: keep that scope
+        return "industry"
+    client_hay = " | ".join([row.get("series_title") or "", row.get("printed_label") or "",
+                             row.get("printed_axis") or "", row.get("group_path") or ""])
+    if client_name(client_hay):          # the series/heading names the client, so read it first
+        return "customer"
+    if PROJECT_CUE_RE.search(hay) and ORDERBOOK_PAGE_RE.search(str(page_text or "")):
+        return "customer"           # an order-book case study describes the client's project, not company land
+    return ""
 
 
 def apply_per_unit_scale(row: dict[str, Any], measure_family: str) -> bool:
@@ -2249,12 +2303,16 @@ def detect_subsidiary(texts: Iterable[str], companies: dict[str, tuple[str, str]
     return False
 
 
+# T-238 stage N2: the closed list of snapshot measures a deck's as-of date can belong to.  A count of customers,
+# countries, employees or orders is not a stock the deck date measures, and neither is a ratio or a growth.
+DECK_ASOF_MEASURES = re.compile(
+    r"^capacity\.(?!utilisation|growth_multiple)|^shareholding_pct$|^count\.shares$|"
+    r"^count\.(?:.*(?:outlets?|branches?|atms?|stores?|plants?|locations?))$", re.I)
+
+
 def is_stock_measure(measure: str) -> bool:
-    """A true stock a deck's as-of date can belong to (E1): not a rate, an addition or a plan."""
-    return re.search(r"^capacity\.(?:total|add)$|"
-                     r"^count\.(?:.*(?:outlets?|branches?|atms?|stores?|plants?)|shares)$|"
-                     r"^(?:gnpa(?:\.value|_pct)?|nnpa(?:\.value|_pct)?|loans|order\.book|shareholding_pct)$|^aum\.",
-                     measure or "", re.I) is not None
+    """A true stock a deck's as-of date can belong to (E1, closed list in stage N2): not a rate, an addition or a plan."""
+    return DECK_ASOF_MEASURES.search(measure or "") is not None
 
 
 def capacity_deck_period_ok(row: dict[str, Any], page_text: str) -> bool:
@@ -2351,11 +2409,21 @@ def deck_period(store_db: str | Path, doc_key: str, page_text: str) -> str:
     return ""
 
 
-# T-238 stage N: a fiscal label as a deck title prints it ("Q2 FY26", "H1FY26", "9M FY26", "FY25").
+# T-238 stage N: a fiscal label as a deck title prints it ("Q2 FY26", "H1FY26", "9M 2025-26", "FY25").
+# N2: the label keeps the fiscal-year suffix the page prints, so a page printing "9M 2025-26" is never stored
+# as the truncated "9M 2025".
 FISCAL_PERIOD_RE = re.compile(
-    r"\b(?:Q[1-4]|H[12]|9M)\s*-?\s*(?:FY)?\s*-?\s*\d{2,4}[A-Z]?\b|\bFY\s?-?\d{2,4}[A-Z]?\b", re.I)
+    r"\b(?:Q[1-4]|H[12]|9M)\s*-?\s*(?:FY)?\s*-?\s*\d{2,4}(?:\s*-\s*\d{2,4})?[A-Z]?\b|"
+    r"\bFY\s?-?\d{2,4}(?:\s*-\s*\d{2,4})?[A-Z]?\b", re.I)
 BASIS_WORD_RE = re.compile(r"\b(standalone|consolidated)\b", re.I)
 BASIS_NEGATED_RE = re.compile(r"\b(?:not|non|ex)[- ](?:standalone|consolidated)\b", re.I)
+# N2: page furniture that carries a date but is not the slide's title (REPL's "Investor's Highlights Q4/12 M FY 24"
+# footer and its "Page 3 of 12" strip, an app-screenshot's nav text, a bare page number).
+TITLE_FURNITURE_RE = re.compile(
+    r"^(?:page\s+\d+\s*(?:of|/)\s*\d+|p\.?\s*\d+|\d{1,3}|home\s+outline|hamburger\b.*|"
+    r"investor(?:'s|\u2019s)?\s+highlights\b.*)$|^(?:\(\d+\)|note\b|source\b|[*#]\s*)", re.I)
+TITLE_MAX_WORDS = 12
+TITLE_MAX_CHARS = 90
 
 
 def fiscal_periods(text: str) -> list[str]:
@@ -2367,12 +2435,27 @@ def _period_key(period: str) -> str:
     return re.sub(r"[^a-z0-9]", "", norm_space(period).lower())
 
 
+def _title_like(line: str, periods: list[str]) -> bool:
+    """A slide title, not body text or a table/column label: short, and the fiscal label is only part of its words."""
+    line = norm_space(line)
+    words = line.split()
+    if not words or len(words) > TITLE_MAX_WORDS or len(line) > TITLE_MAX_CHARS:
+        return False
+    rest = line
+    for period in periods:
+        rest = rest.replace(period, " ")
+    return re.search(r"[A-Za-z]{2,}", rest) is not None
+
+
 def slide_period(page_text: str) -> str:
-    """Stage N: the fiscal period printed in the page's own title/header line.
+    """Stage N/N2: the fiscal period printed in the page's own title line, never in its footer/header furniture.
 
     A value with no period printed beside it takes the period the slide's title names ("Q2 FY26 Investor
     Update", "H1FY26 Performance") -- but only when the page prints that one fiscal label and no second one:
     a multi-period chart has no single period any number on it belongs to, so its flow rows stay no_period.
+    N2 (Wolf's hand grade): the label must sit in the title line itself, not in the first three lines.  A first
+    line that is a bare label ("9M 2025-26" over one column) or a footnote tile is not the slide's title, and a
+    line that prints only the period plus a page number is furniture; both refuse the fill (KPIL, REPL, INFOBEAN).
     """
     lines = [norm_space(line) for line in str(page_text or "").splitlines() if norm_space(line)]
     if not lines:
@@ -2380,11 +2463,76 @@ def slide_period(page_text: str) -> str:
     labels = {_period_key(period) for line in lines for period in fiscal_periods(line)}
     if len(labels) != 1:
         return ""
-    for line in lines[:3]:
+    for line in lines[:5]:
+        if TITLE_FURNITURE_RE.match(line):
+            continue                       # page number / nav strip / footer highlight strip, not the title
         periods = fiscal_periods(line)
+        if not _title_like(line, periods):
+            return ""                      # body text or a table label: the title block ends here
         if periods:
             return periods[0]
     return ""
+
+
+GROWTH_CHANGE_RE = re.compile(r"_growth(?:_|$)|_change(?:_|$)", re.I)
+FISCAL_YEAR_LABEL_RE = re.compile(r"\bFY\s?-?(\d{2,4})\b", re.I)
+_PERIOD_KIND_RE = re.compile(r"^(Q[1-4]|H[12]|9M|FY)", re.I)
+
+
+def _fiscal_year(label: str) -> int | None:
+    match = FISCAL_YEAR_LABEL_RE.search(label or "")
+    if not match:
+        return None
+    year = int(match.group(1))
+    return year if year >= 1000 else 2000 + year
+
+
+def _period_rank(label: str) -> tuple[int, int] | None:
+    """(fiscal year, ordinal) so a printed pair sorts: FY24 > FY23, Q2 FY26 > Q1 FY26, Q2 FY26 > Q2 FY25."""
+    match = _PERIOD_KIND_RE.match(norm_space(label))
+    year = _fiscal_year(label)
+    if not match or year is None:
+        return None
+    kind = match.group(1).upper()
+    index = {"FY": 0, "H1": 1, "H2": 2, "9M": 3}.get(kind)
+    if index is None:                        # Q1..Q4
+        index = int(kind[1])
+    return year, index
+
+
+def growth_change_period(period: str, measure: str, page_text: str) -> str:
+    """N2: a printed YoY/change row takes the later label of the printed pair, never the earlier one.
+
+    IRCON p20 prints "Y-o-Y (%) FY23 FY24" beside Other Income 437.45 vs 340.43 (+28.50%): the growth belongs to
+    FY24 and the fill had stored FY23.  The pair must be the page's only two labels of its kind; a three-year trend
+    prints no single pair, so the row's own period is left alone.
+    """
+    if not period or not GROWTH_CHANGE_RE.search(measure or ""):
+        return period
+    labels = [label for line in str(page_text or "").splitlines() for label in fiscal_periods(line)]
+    distinct: list[str] = []
+    for label in labels:
+        if _period_key(label) not in {_period_key(seen) for seen in distinct}:
+            distinct.append(label)
+    if len(distinct) != 2:
+        return period
+    first, second = distinct
+    kinds = []
+    for label in (first, second):
+        match = _PERIOD_KIND_RE.match(norm_space(label))
+        kinds.append(match.group(1).upper()[:1] if match else "")
+    if kinds[0] != kinds[1]:
+        return period                          # a year beside a quarter is no printed pair
+    ranks = [_period_rank(first), _period_rank(second)]
+    if ranks[0] is None or ranks[1] is None:
+        return period
+    ya, ia = ranks[0]
+    yb, ib = ranks[1]
+    adjacent = (ya == yb and abs(ia - ib) == 1) or (abs(ya - yb) == 1 and ia == ib)
+    if not adjacent:
+        return period
+    earlier, later = sorted([(ranks[0], first), (ranks[1], second)])
+    return later[1] if _period_key(period) == _period_key(earlier[1]) else period
 
 
 @lru_cache(maxsize=512)
@@ -3086,14 +3234,19 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                                           [row["printed_axis"], row["series_title"], row["group_path"],
                                            row["printed_label"], head]])
             row["period_kind"] = period_kind_for(raw.get("period_kind", ""), row["period"])
+        row["period"] = growth_change_period(row["period"], row["measure"], page_text)  # stage N2: the later of a pair
         apply_instant_period(row)                  # stage L: "Closing as on <date>" is a point in time
         foot = footnote_basis(page_text, row["period"]) if row["period"] else ""
         if foot:
             row["basis"] = foot
             row["basis_source"] = ""
-        cue = scope_cue(row)
+        cue = scope_cue(row, page_text)
         if cue:
             row["entity_scope"] = cue
+            if cue == "customer" and not row["customer"]:
+                heading = " | ".join([row["series_title"], row["printed_label"], row["printed_axis"]])
+                row["customer"] = client_name(heading) or norm_space(row["series_title"]) or \
+                    norm_space(row["printed_label"])
         row["value_kind"] = lower_bound_kind(row)
         row["adjusted"] = 1 if ADJUSTED_RE.search(" ".join(
             [row["printed_label"], row["printed_axis"], row["series_title"]])) else 0
@@ -4175,6 +4328,27 @@ def missing_pages(con: sqlite3.Connection, pages: list[dict[str, Any]]) -> list[
     return [p for p in pages if (str(p["doc_key"]), int(p["page"])) not in done]
 
 
+def _kept_pages(pages: Iterable[tuple[str, int]]) -> Any:
+    """T-238: one raw-store ``keep()`` per document, so a recheck downloads each deck PDF once, not once per page.
+
+    The pages arrive ordered by (doc_key, page).  A deck whose PDF is Drive-only re-fetches it on every
+    ``page_words.words_for`` call outside a keep block, which made the 9,439-page N2 recheck take over 100 minutes
+    and get killed mid-run.  Same idiom as ``page_route._kept``; a local PDF is never downloaded.
+    """
+    from reality_engine import raw_store
+
+    store = raw_store.default_store()
+    current: str | None = None
+    stack = contextlib.ExitStack()
+    with stack:
+        for doc_key, page in pages:
+            if doc_key != current:
+                stack.close()
+                current = doc_key
+                stack.enter_context(store.keep())
+            yield doc_key, page
+
+
 def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                companies: dict[str, tuple[str, str]] | None = None,
                only: Any = None) -> dict[str, Any]:
@@ -4183,7 +4357,8 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
     Only checks that need a new printed source may upgrade an unverified row: an inherited unit or period, a
     measure alias/label mapping, or a stage read from a printed group.  Any other upgrade is refused and reported.
     ``only`` (a :class:`reality_engine.research.selector.Selector`) restricts the pages and rows re-checked;
-    the rest of the DB is left untouched (T-233 scoped fix run).
+    the rest of the DB is left untouched (T-233 scoped fix run).  Each document's PDF is fetched at most once
+    (``_kept_pages``), so a scoped pass over thousands of pages is minutes, not hours.
     """
     store_dbs = list(store_dbs)
     companies = companies if companies is not None else company_index(store_dbs)
@@ -4211,6 +4386,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                              "scale_fixed": 0, "basis_set": 0, "basis_conflicts": 0, "bridge_rows": 0,
                              "subsidiary_rows": 0, "deck_asof": 0, "deck_asof_cleared": 0,
                              "deck_asof_fixed": 0, "deck_asof_renamed": 0, "slide_title_periods": 0,
+                             "slide_title_cleared": 0, "growth_periods": 0, "customers_named": 0,
                              "basis_deck": 0, "cagr_rows": 0, "map_orphans": 0, "panels_split": 0,
                              "geography_cleared": 0, "stacked_parts": 0, "rank_counts": 0, "measure_fixed": 0,
                              "text_source_ocr": 0, "per_unit_scales": 0, "period_cleared": 0, "ticks_cleared": 0,
@@ -4224,7 +4400,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
         pages = [p for p in pages if only.page(doc_store.get(str(p[0])), str(p[0]), int(p[1]))]
     row_filter = only.where_sql() if only is not None else "1=1"
     con.row_factory = sqlite3.Row
-    for doc_key, page in pages:
+    for doc_key, page in _kept_pages(pages):
         store_db = doc_store.get(str(doc_key))
         if not store_db:
             continue
@@ -4329,6 +4505,13 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     row["period"] = deck_asof
                     row["period_kind"] = period_kind_for("", deck_asof)
                     stats["deck_asof_fixed"] += 1
+            if row["period_source"] == "slide_title":        # stage N2: the title line must still print it
+                title_period = slide_period(raw_text)
+                if not title_period or _period_key(title_period) != _period_key(row["period"] or ""):
+                    row["period"] = ""
+                    row["period_source"] = ""
+                    row["period_kind"] = ""
+                    stats["slide_title_cleared"] += 1
             comparative = bool(row["period"]) and comparative_period(
                 row["period"], raw_text, " ".join([row["printed_label"] or "", row["printed_axis"] or ""]))
             if comparative:
@@ -4372,6 +4555,11 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     row["period_source"] = "deck_asof"
                     deck_period_used = True
                     stats["deck_asof"] += 1
+            later_period = growth_change_period(row["period"] or "", row["measure"] or "", raw_text)
+            if later_period != (row["period"] or ""):
+                row["period"] = later_period          # stage N2: a growth takes the later half of its printed pair
+                row["period_kind"] = period_kind_for("", later_period)
+                stats["growth_periods"] += 1
             if apply_instant_period(row):        # stage L: "Closing as on <date>" is a point in time
                 instant_used = True
                 stats["instant_periods"] += 1
@@ -4412,10 +4600,17 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                 row["basis_source"] = ""
                 stats["footnote_basis"] += 1
             basis_changed = bool(row["basis"]) and row["basis"] != old_basis
-            cue = scope_cue(row)
-            if cue and row["entity_scope"] != cue:
-                row["entity_scope"] = cue
-                stats["scope_cues"] += 1
+            cue = scope_cue(row, raw_text)
+            if cue:
+                if row["entity_scope"] != cue:
+                    row["entity_scope"] = cue
+                    stats["scope_cues"] += 1
+                if cue == "customer" and not (row.get("customer") or ""):
+                    heading = " | ".join([row["series_title"] or "", row["printed_label"] or "",
+                                          row["printed_axis"] or ""])
+                    row["customer"] = client_name(heading) or norm_space(row["series_title"]) or \
+                        norm_space(row["printed_label"])
+                    stats["customers_named"] += 1
             row["value_kind"] = lower_bound_kind(row)
             if row["value_kind"]:
                 stats["lower_bounds"] += 1
@@ -4502,14 +4697,15 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     stats["downgraded"] += 1
             con.execute("UPDATE observation SET measure=?, printed_label=?, geography=?, series_id=?, unit=?, "
                         "unit_family=?, scale=?, value_kind=?, is_total=?, period=?, period_kind=?, period_source=?, "
-                        "basis=?, basis_source=?, series_kind=?, adjusted=?, stage=?, entity_scope=?, text_source=?, "
-                        "status=?, status_reason=? WHERE observation_id=?",
+                        "basis=?, basis_source=?, series_kind=?, adjusted=?, stage=?, entity_scope=?, customer=?, "
+                        "text_source=?, status=?, status_reason=? WHERE observation_id=?",
                         (row["measure"], row["printed_label"], row["geography"], row["series_id"], row["unit"],
                          row["unit_family"], row["scale"], row.get("value_kind") or "",
                          1 if row.get("_is_total") else 0, row["period"],
                          row["period_kind"], row["period_source"], row["basis"], row.get("basis_source") or "",
                          row["series_kind"], row["adjusted"], row["stage"], row["entity_scope"],
-                         row.get("text_source") or "", status, reason, row["observation_id"]))
+                         row.get("customer") or "", row.get("text_source") or "", status, reason,
+                         row["observation_id"]))
             stats["changed"] += 1
             if (row.get("text_source") or "") == "ocr":
                 stats["text_source_ocr"] += 1
@@ -4702,10 +4898,11 @@ def main(argv: list[str] | None = None) -> int:
 
     only = None
     if args.only:
-        from reality_engine.research.selector import Selector, copy_db
+        from reality_engine.research.selector import Selector
         only = Selector.load(args.only)
-        if args.baseline:
-            copy_db(args.baseline, args.out)
+    if args.baseline and (args.recheck or args.only):
+        from reality_engine.research.selector import copy_db
+        copy_db(args.baseline, args.out)      # T-238: a recheck reads --out, so the baseline must reach it first
 
     store_dbs: list[str] = []
     doc_types = [t for t in args.doc_types.split(",") if t]
@@ -4733,6 +4930,10 @@ def main(argv: list[str] | None = None) -> int:
         finally:
             back.close()
         print(json.dumps(recheck_stats, indent=2))
+        if not recheck_stats.get("pages"):    # T-238: a recheck that read no page changed nothing, so it is no pass
+            print(f"STOP: --recheck read 0 pages from {args.out}: the DB has no rows on the selected pages, "
+                  "or no --stores/--only selection reaches them", file=sys.stderr)
+            return 2
         if recheck_stats.get("stopped"):
             print(f"STOP: {recheck_stats['stopped']}", file=sys.stderr)
             return 2

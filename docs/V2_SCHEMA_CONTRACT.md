@@ -1937,9 +1937,10 @@ Writer: `reality_engine/v2/observations.py` (DDL is its `SCHEMA` constant; tests
   `revenue.price`, `revenue.total`, `revenue.order_book`, `revenue.mix`, `cost.raw_material`, `cost.employee`,
   `cost.power_fuel`, `cost.other`, `margin.ebitda`, `margin.gross`, `capex.amount`, `capacity.add`, `debt.level`,
   `debt.cost`, `equity.shares`, `equity.dividend`, `working_capital.days`, or `none: <reason>` for a line with no
-  driver node). Seeded with 69 measures at stage A, 259 after stage G, 276 after stage K, **305 after T-238 stage N**
-  (29 deck driver measures: return on assets, the yoy/qoq growth lines, shareholding and ownership stake, payout and
-  per-share levels, footprint counts, the receivables/payables cash-flow changes); a new axis name is kept in
+  driver node). Seeded with 69 measures at stage A, 259 after stage G, 276 after stage K, 305 after T-238 stage N,
+  **306 after stage N2** (29 deck driver measures: return on assets, the yoy/qoq growth lines, shareholding and
+  ownership stake, payout and per-share levels, footprint counts, the receivables/payables cash-flow changes; N2 adds
+  `order.quantity` for units ordered, so an order size is never stored as sales volume); a new axis name is kept in
   `observation.measure` and marked unverified until a dictionary row is approved.
 - `dim_vocab` -- `kind`, `canonical`, `aliases`; seeded stage, geography and product aliases. A printed dimension is
   replaced by the canonical token only on an exact alias match (`Domestic` -> `India`); an unknown value stays
@@ -2980,12 +2981,17 @@ carry a non-dictionary id), 1,359 quarantined. Stage N recovers the right rows b
   never with a flow (debt vs debt maturity), value never with volume, a yoy change never with a from-peak change.
   14 candidate pairs were rejected: value-vs-volume 4, level-identity 3, percent-vs-money 2, stock-vs-flow 2,
   level-vs-change 1, share-base 1, governance 1 (the entity and yoy-vs-from-peak guards had no candidate here).
-- **N2 period from the slide title / the deck's as-of.** `slide_period` takes the fiscal label printed in the page's
-  own title line ("Q2 FY26 Investor Update", "H1FY26 Performance") for a row with no printed period, and only when
-  the page prints that one fiscal label: a multi-period chart has no single period its numbers belong to, so its
-  flows stay `no_period` (`period_source='slide_title'`). The deck-as-of rule (E1/D5) now also covers a share count
-  and the shareholding pattern (a stock), and its stored value is renamed `deck_asof` (recheck renames the old
-  `deck_period` rows in the same pass).
+- **N2 period from the slide title / the deck's as-of (revised by stage N2 after Wolf's hand grade).** `slide_period`
+  takes the fiscal label only from the page's own title line, never the first three lines: the line must be short
+  (<=12 words, <=90 chars), carry at least one word besides the label, and not be page furniture (page number, nav
+  strip, "Investor's Highlights ..." footer, footnote marker) or a bare label ("9M 2025-26" over one column). A page
+  printing two fiscal labels has no single period, so its flows stay `no_period` (`period_source='slide_title'`).
+  `fiscal_periods` keeps the printed fiscal-year suffix ("9M 2025-26", never the truncated "9M 2025"). The deck-as-of
+  rule (E1/D5) covers only a closed list of snapshot measures -- `capacity.*` (not utilisation/growth multiples),
+  `shareholding_pct`, `count.shares`, and plant/outlet/branch/store/location counts -- never a count of customers,
+  countries, employees or orders, and never a ratio or a growth; its stored value stays `deck_asof` (recheck renames
+  the old `deck_period` rows and clears a non-stock deck-as-of). A growth/change row takes the later label of its
+  printed pair, never the earlier one (IRCON "FY23 FY24 Y-o-Y" stored FY23 -> FY24).
 - **N3 basis from the deck.** `deck_basis` reads every printed basis word in the document; when they all name one
   basis, a money row with no printed basis takes it with `basis_source='deck'` (new column). A deck printing both
   keeps its unlabelled rows unbased -- a conflict, never a guess.
@@ -3020,6 +3026,69 @@ carry a non-dictionary id), 1,359 quarantined. Stage N recovers the right rows b
   `python -m pytest reality_engine/tests/test_observations.py -q` **145 passed** (6 stage-N tests: the slide-title
   period and its multi-period refusal, the shareholding/share-count deck as-of, the deck basis and its recheck
   rename, both force-fit vetoes, and the coined-id aliases/guards); `typecheck` clean on `observations.py` and
+  `test_observations.py`).
+### Stage N2 (T-238: the hand-read fixes to stage N's period, scope and order rules, 23 Nov 2026)
+
+Wolf's independent read of 20 stage-N upgrades (`D:/RealityEngine/t238/stageN_grade.md`) graded measure remap 9/10
+and basis 3/5 but period fill-in **0/5** (4 minor, 1 wrong), plus three rows that read as company totals though
+they are a country/market figure or one client's order. N2 tightens the rules; it never loosens a check.
+
+- **The four rules.** (1) `slide_period` reads only the page's title line (N2 bullet above): not the first three
+  lines, not footer/header furniture, not a footnote marker, not a bare column label, and never a truncated label
+  ("9M 2025-26" stays whole). (2) `is_stock_measure` is a closed list (capacity.*, shareholding_pct, count.shares,
+  plant/outlet/branch/store/location counts); a customer/country/employee/order count, a ratio or a growth never
+  takes the deck's as-of date. (3) `growth_change_period` moves a growth/change row to the later label of the page's
+  printed pair (a page printing one pair of fiscal labels; a three-year trend prints no pair and the row keeps its
+  own period). (4) `scope_cue` gives a country/industry/customer scope instead of the company's, and fills
+  `observation.customer` from the printed client ("2 Orders from Nesco Limited"); a market/demand figure keeps a
+  market scope the reader already gave it and is country only when its own heading names the country; a project
+  named on an order-book case-study page is the client's, not company land. `force_fit_veto` maps an order quantity
+  ("manufacturing and supply of 697 ... Wagons" under a secured contract) to `order.quantity` (dictionary 305 -> 306,
+  aliases 180 -> 183) and never when the row also prints sold/dispatched/shipped.
+- **Recheck and gates.** `--recheck` of the stage-N deck copy is run as a scoped pass (the pages carrying a
+  slide-title/deck-as-of period, a growth/change row with a fiscal period, a market/demand measure, or a volume row
+  with order wording) and merged back; rows outside those pages keep their stage-N values, so per-rule reverts are
+  read by diffing against the stage-N copy. Regression on `D:/RealityEngine/t230/obs_91_i.db` into
+  `.tmp/t238n2/obs_91_n2.db` (4,453 pages, 102,074 rows: 500 upgraded, 95 downgraded, 0 upgrades without a printed
+  source) gated with `python -m reality_engine.scripts.regress observations --db .tmp/t238n2/obs_91_n2.db
+  --baseline D:/RealityEngine/t230/obs_91_i.db`: **still right 118, fixed 18, still wrong 34, changed 11, newly
+  broken 0 -- gate pass**. That copy's N2 stats: `slide_title_periods` 153, `slide_title_cleared` 0, `deck_asof`
+  25, `deck_asof_cleared` 0, `growth_periods` 27, `customers_named` 171, `scope_cues` 290, `measure_mapped` 527.
+- **Deck recheck (T-238 N2, 23 Nov 2026).** Scope = the 9,439 pages of `D:/RealityEngine/t238/deck_n.db` that carry
+  a slide-title/deck-as-of period, a growth/change row with a fiscal period, a market/demand measure, or a volume row
+  with order wording (56,406 rows). The pass is a `--recheck --out <copy>` over the affected pages only (no
+  `--baseline`: that would overwrite the reduced copy), and each rechecked page is merged back wholesale into
+  `.tmp/t238n2/deck_n2.db`, a copy of the stage-N deck DB, so pages outside the pass keep their stage-N values.
+  **This job rechecked a seeded 300-document sample of the scope plus every document holding one of the 8 graded
+  cases: 1,213 pages / 31,948 rows** (`.tmp/t238n2/sub_*.db`, merged by `.tmp/t238n2/merge_subs.py`). The other
+  ~2,562 documents are a 6-14 GB Drive download and did not fit the 2 h budget; finish with `DOCS = 2862` in
+  `.tmp/t238n2/build_subset.py`, then `python .tmp/t238n2/run_subset.py 0..5` and `merge_subs.py` (on a DSH-sandboxed
+  host the fetch needs a 0777 temp root: a 0700 `mkdtemp` directory rejects raw_store's rclone list file, and
+  `run_subset.py` installs one). Results on the rechecked pages: verified 490,408 -> **490,029** (442 verified rows
+  reverted, 63 upgraded), unverified 269,508 -> 269,887, quarantined 1,359 unchanged. By rule (rows whose field
+  changed / verified rows reverted): slide-title period 153/67, deck-as-of period 304/186, growth-pair period
+  484/31, scope (country/industry/customer) 268/29, order quantity 18/0, other measure 31/0, other period 29/21.
+  108 further reverts carry no period/measure/scope change: basis conflict 20, re-derived parts-sum mismatch 89,
+  generic label 7, bridge step 2 -- all re-derived arithmetic refusals, not period fills. **Measure stop rule:
+  measures changed on 42 of 19,607 verified rows on the rechecked pages = 0.21% (limit 2%)**. The 8 graded cases
+  pass in `.tmp/t238n2/deck_n2.db` (KPIL/REPL/INFOBEAN slide-title periods cleared, IRCON 28.50% growth FY24,
+  JWL 697 wagons `order.quantity` with no `volume.sales` left, ADANIPOWER 708 GW country, NISMGMT ₹1.94 Cr
+  customer=Nesco): `python .tmp/t238n2/verify_cases.py`. Gate:
+  `python -m reality_engine.scripts.regress observations --db .tmp/t238n2/deck_n2.db` **still right 40, fixed 4,
+  still wrong 15, changed 1, newly broken 0 -- gate pass** (the one changed row is the known decks394
+  `demand.peak` -> `capacity.total` measure line). The 20-row period sample with page refs is
+  `.tmp/t238n2/sample20.md` (515 period-rule changes: slide-title 153, deck-as-of 304, growth pair 58).
+- **Recheck CLI (T-238 N2 fix).** `--recheck --out X --baseline Y` now copies Y to X before reading (it used to
+  ignore `--baseline` unless `--only` was given, so a recheck with only `--baseline` rechecked a fresh empty DB and
+  exited 0: that is how the 04:00 run "finished" with 0 changes); a recheck that reads 0 pages exits 2 instead of
+  reporting a clean pass; and `recheck_db` holds one `raw_store.keep()` per document, so each deck PDF is fetched
+  once per recheck instead of once per page.
+- **Tests.** `python -m pytest reality_engine/tests/test_observations.py -q` **161 passed** (12 N2 tests: the title
+  line vs tile/footnote/column label and the un-truncated 9M label, the deck as-of closed list, the growth pair and
+  the three-year refusal, the order-quantity veto, the client heading and customer name, the client-project land on
+  an order-book page, the peak-demand scope, the recheck clearing a stale slide title and a non-stock deck as-of,
+  the recheck rewriting an order quantity and a growth period, plus `--recheck --baseline` applying the N2 rule, a
+  zero-page recheck exiting 2, and one raw-store keep per document); `typecheck` clean on `observations.py` and
   `test_observations.py`.
 
 

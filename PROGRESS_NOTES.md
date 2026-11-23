@@ -160,6 +160,25 @@
   `git add -A && git commit` (then `git diff 9906698a` is empty and main is a parent). A detached `git` launch was
   refused (`launch_detached_requires_write_scope_data_or_full`).
 
+## T-238 stage N2 — tightening stage N's period/scope rules (23 Nov)
+
+- 02:1x: `observations.py` N2 rules done: `slide_period` reads only the page's title line (furniture, footnote marker
+  and bare-label refusals; the fiscal regex keeps the printed "-26", so "9M 2025-26" is never truncated to "9M 2025");
+  `deck_asof` closed to capacity.* / shareholding_pct / count.shares / plant+location counts; `growth_change_period`
+  takes the later label of a printed pair; `order.quantity` is the 306th dictionary id and `force_fit_veto` maps order
+  quantities out of volume.sales; `scope_cue` yields country/industry/customer from the heading/page and fills the
+  customer dim. 7 new synthetic tests, test_observations.py 157 passed, typecheck 0.
+- Next: recheck deck_n.db -> `.tmp/t238n2/deck_n2.db` and obs_91_i -> `.tmp/t238n2/obs_91_n2.db` (running), regress
+  gates, per-rule revert counts, 20-row sample, docs. Blocker: none.
+- 03:5x (stopped by the hard stop): obs_91 recheck FINISHED with the final rules -- 102,074 rows, 500 upgraded,
+  95 downgraded, 0 unproven, scope_cues 290, growth_periods 27, customers_named 171; regress gate on
+  `.tmp/t238n2/obs_91_n2.db` **still right 118, fixed 18, still wrong 34, changed 11, newly broken 0 -- pass**.
+  Tests 157 passed, typecheck clean on observations.py + tests. The deck recheck was still processing its reduced
+  copy `.tmp/t238n2/deck_scope.db` (9,439 pages / 238,846 rows) at the stop: no `deck_n2.db`, no per-rule revert
+  counts and no 20-row sample yet. Remaining: `python .tmp/t238n2/make_reduced.py` (done), recheck
+  `--out .tmp/t238n2/deck_scope.db --stores-root D:/RealityEngine/tg_build/decks403 --sample 500 --doc-types deck`,
+  `python .tmp/t238n2/merge_back.py`, then `verify_cases.py`, `analyze.py` and the deck regress gate.
+
 
 
 
