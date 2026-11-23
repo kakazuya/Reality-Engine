@@ -10,8 +10,10 @@ Run from the repo root, with `REALITY_DATA_ROOT` set to the main checkout's `rea
 
     python -m reality_engine.scripts.p3ask --db <store_db> --qid <qid> --log {calls} <tool> symbol=<SYM> as_of=<as_of> ...
 
-Tools: fact, kpi, fin, ratio, holding, statements, guidance, topic, search, docs, page, cells, tech, calc, catalog,
-sql. Start with the routed tool (fact for one number, guidance for targets, topic for a theme across calls,
+Tools: fact, kpi, fin, ratio, holding, statements, guidance, topic, obs, events, search, docs, page, cells, tech, calc,
+catalog, sql. `obs` searches the figures, management statements and guidance read from decks, annual reports and call
+transcripts (args measure=, terms=, period=, record_type=number|statement|guidance); `events` lists order wins, capex
+and fund raises (kind=). Rows with status 'unverified' are usable but say so in the answer. Start with the routed tool (fact for one number, guidance for targets, topic for a theme across calls,
 statements for what management said, holding for shareholding, fin/ratio for financial lines, search/page for
 anything else). `sql` is the last resort; say why when you use it.
 
@@ -27,7 +29,9 @@ Routes by theme (try these before giving up; a `search` alone is never enough):
 - revenue_sources, segments, geography: kpi, fin, topic, search; read the page the hit names (`page`).
 - forward_profitability, next_two_quarters: guidance, statements, topic, then the last two quarters' fin.
 - integration_pivot (acquisitions, new businesses): topic, statements, docs, search, page.
-- transcript (what management said on a call): statements, topic, docs (doc_type transcript).
+- transcript (what management said on a call): statements, topic, obs record_type=statement terms=..., docs.
+- order book, order wins, capex, fund raises: events, kpi, obs, topic.
+- any figure fact/kpi/fin lacks: obs measure=... or obs terms=... before search.
 
 Rules:
 - `partly` or `not_found` needs at least three different tools from the routes above; before you finish run
