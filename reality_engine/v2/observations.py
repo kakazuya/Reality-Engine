@@ -2307,12 +2307,34 @@ def detect_subsidiary(texts: Iterable[str], companies: dict[str, tuple[str, str]
 # countries, employees or orders is not a stock the deck date measures, and neither is a ratio or a growth.
 DECK_ASOF_MEASURES = re.compile(
     r"^capacity\.(?!utilisation|growth_multiple)|^shareholding_pct$|^count\.shares$|"
-    r"^count\.(?:.*(?:outlets?|branches?|atms?|stores?|plants?|locations?))$", re.I)
+    r"^count\.(?:.*(?:outlets?|branches?|atms?|stores?|plants?|locations?))$|"
+    r"^order\.book$|^aum\.value$|^loans$|^deposits$|^borrowings$|^net_worth$|^total_equity$", re.I)
 
 
 def is_stock_measure(measure: str) -> bool:
     """A true stock a deck's as-of date can belong to (E1, closed list in stage N2): not a rate, an addition or a plan."""
     return DECK_ASOF_MEASURES.search(measure or "") is not None
+
+DECK_ASOF_TARGET_RE = re.compile(
+    r"\b(?:to\s+(?:reach|touch|be)\b|target(?:s|ed|ing)?\b|aspir(?:e|es|ed|ing|ation)\b|guidance\b|"
+    r"expected\s+to\b|\bby\s+FY(?:\s?-?\d{2,4})?\b)"
+    r"|\bto\s+(?:(?:reach|touch|be)\s+)?(?:rs\.?\s*|inr\s*|\u20b9\s*|\$\s*|usd\s*)?\d", re.I)
+PAST_PROGRAMME_RE = re.compile(r"\bCOVID\b|\bResolution Framework\b", re.I)
+
+def deck_asof_allowed(row: dict[str, Any], page_text: str) -> bool:
+    """T-238 N3: a stock measure may take the deck's as-of date only when its label is a real snapshot,
+    not a target/forward figure, and the page is not a past programme/period page."""
+    if not is_stock_measure(str(row.get("measure")) if isinstance(row, dict) else str(row)):
+        return False
+    if not capacity_deck_period_ok(row, page_text):
+        return False
+    label_text = " ".join([str(row.get("printed_label") or ""), str(row.get("series_title") or ""),
+                           str(row.get("group_path") or "")])
+    if DECK_ASOF_TARGET_RE.search(label_text):
+        return False
+    if PAST_PROGRAMME_RE.search(page_head(page_text, 6)):
+        return False
+    return True
 
 
 def capacity_deck_period_ok(row: dict[str, Any], page_text: str) -> bool:
@@ -2455,35 +2477,46 @@ def slide_period(page_text: str) -> str:
     a multi-period chart has no single period any number on it belongs to, so its flow rows stay no_period.
     N2 (Wolf's hand grade): the label must sit in the title line itself, not in the first three lines.  A first
     line that is a bare label ("9M 2025-26" over one column) or a footnote tile is not the slide's title, and a
-    line that prints only the period plus a page number is furniture; both refuse the fill (KPIL, REPL, INFOBEAN).
+    line that prints only the period plus a page number is furniture; both refuse the fill (KPIL, REPL).
+    N3 (Wolf's recheck): a bare fiscal title stays a title even when the line under it is a bare number --
+    AJMERA p17 prints "H1 FY26" over its project table ("Marina" 1,49,229 area.sold) and the page took no
+    period.  The only vetoes are the multi-period table (a line or a page printing two fiscal labels).
     """
     lines = [norm_space(line) for line in str(page_text or "").splitlines() if norm_space(line)]
     if not lines:
         return ""
+    if any(len(fiscal_periods(line)) >= 2 for line in lines):
+        return ""
     labels = {_period_key(period) for line in lines for period in fiscal_periods(line)}
     if len(labels) != 1:
         return ""
-    for line in lines[:5]:
+    for i, line in enumerate(lines[:5]):
         if TITLE_FURNITURE_RE.match(line):
             continue                       # page number / nav strip / footer highlight strip, not the title
         periods = fiscal_periods(line)
-        if not _title_like(line, periods):
+        bare_title = (len(periods) == 1 and norm_space(line) == norm_space(periods[0]))
+        if not bare_title and not _title_like(line, periods):
             return ""                      # body text or a table label: the title block ends here
         if periods:
             return periods[0]
     return ""
 
 
-GROWTH_CHANGE_RE = re.compile(r"_growth(?:_|$)|_change(?:_|$)", re.I)
+GROWTH_CHANGE_RE = re.compile(r"_growth_(?:yoy|qoq)(?:_|$)|_change_(?:pct|pp)(?:_|$)", re.I)
 FISCAL_YEAR_LABEL_RE = re.compile(r"\bFY\s?-?(\d{2,4})\b", re.I)
 _PERIOD_KIND_RE = re.compile(r"^(Q[1-4]|H[12]|9M|FY)", re.I)
 
 
 def _fiscal_year(label: str) -> int | None:
-    match = FISCAL_YEAR_LABEL_RE.search(label or "")
+    text = label or ""
+    match = FISCAL_YEAR_LABEL_RE.search(text)
     if not match:
         return None
     year = int(match.group(1))
+    range_match = re.search(r"\d{2,4}\s*-\s*(\d{2,4})", text)
+    if range_match:
+        end = int(range_match.group(1))
+        year = end if end >= 1000 else 2000 + end
     return year if year >= 1000 else 2000 + year
 
 
@@ -3222,8 +3255,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 row["period"] = title_period
                 row["period_source"] = "slide_title"
                 row["period_kind"] = period_kind_for(raw.get("period_kind", ""), title_period)
-        if not row["period"] and deck_asof and is_stock_measure(row["measure"]) \
-                and capacity_deck_period_ok(row, page_text):
+        if not row["period"] and deck_asof and deck_asof_allowed(row, page_text):
             row["period"] = deck_asof
             row["period_source"] = "deck_asof"
             row["period_kind"] = period_kind_for("", deck_asof)
@@ -4495,8 +4527,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                 scale_fixed = True
                 stats["per_unit_scales"] += 1
             if row["period_source"] == "deck_asof":
-                if not is_stock_measure(row["measure"] or "") or not capacity_deck_period_ok(row, raw_text) \
-                        or not deck_asof:
+                if not deck_asof_allowed(row, raw_text) or not deck_asof:
                     row["period"] = ""
                     row["period_source"] = ""
                     row["period_kind"] = ""
@@ -4548,8 +4579,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     row["period_source"] = "slide_title"
                     period_inherited = True
                     stats["slide_title_periods"] += 1
-                elif deck_asof and is_stock_measure(row["measure"] or "") \
-                        and capacity_deck_period_ok(row, raw_text):
+                elif deck_asof and deck_asof_allowed(row, raw_text):
                     row["period"] = deck_asof
                     row["period_kind"] = period_kind_for("", deck_asof)
                     row["period_source"] = "deck_asof"
