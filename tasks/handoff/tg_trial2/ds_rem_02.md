@@ -1,0 +1,31 @@
+Goal: answer every question in batch file D:/RealityEngine/tg_build/trials/trial2/ds_rem_02.jsonl from the company's own store only, and say exactly what the store lacked. This is trial 2 of the Telegram-queue stores (T-219): the answers show where the stores have gaps. Since trial 1 the stores also hold figures, management statements and guidance read from decks, annual reports and call transcripts (tool obs) and order wins / capex / fund raises (tool events); use them.
+
+Files:
+- Read: D:/RealityEngine/tg_build/trials/trial2/ds_rem_02.jsonl (one JSON object per line: qid, symbol, store_db, question, theme, data_needed, as_of). Read-only; never write under D:/.
+- Write (in your worktree): trial2/answers_rem_02.jsonl (one JSON line per question, appended as you go, never rewritten) and trial2/calls_rem_02.jsonl (the p3ask call log). Commit nothing else.
+- Full method: tasks/handoff/tg_trial_answer_brief.md in your checkout. Follow it; trial2/answers_rem_02.jsonl = trial2/answers_rem_02.jsonl, trial2/calls_rem_02.jsonl = trial2/calls_rem_02.jsonl.
+
+How to ask a store (from the worktree root; set REALITY_DATA_ROOT=C:/Users/warri/Downloads/Info_Diffusion_Model/reality_engine/data first):
+    python -m reality_engine.scripts.p3ask --db <store_db> --qid <qid> --log trial2/calls_rem_02.jsonl <tool> symbol=<SYM> as_of=<as_of> ...
+Example that works: python -m reality_engine.scripts.p3ask --db D:/RealityEngine/tg_build/measure10/c05/c05.db --qid 1 --log trial2/calls_rem_02.jsonl fact symbol=MANINFRA metric=revenue as_of=2026-11-23
+Tools: fact, kpi, fin, ratio, holding, statements, guidance, topic, obs (measure=, terms=, period=, record_type=number|statement|guidance; status unverified rows are usable but say so), events (kind=), search, docs, page, cells, tech, calc, catalog, sql (last resort; say why). The module docstring of reality_engine/scripts/p3ask.py lists every argument.
+
+Each answer line:
+    {"qid": ..., "symbol": ..., "answer": "<answer with figures, periods, units>", "tools": ["<tool> <args>", ...],
+     "sources": [{"doc_key": ..., "page": ..., "known_at": ...}],
+     "gap": "<what the store should have held to answer fully, and which tool/table you looked in; '' if none>",
+     "status": "answered | partly | not_found | out_of_scope"}
+
+Rules:
+- Every figure comes from a tool reply; compute ratios with calc and show the formula.
+- Opinion / future questions ("is this a good entry?", "will margins recover?"): answer from what the data shows (price, valuation, results trend) and what management said or guided, quoted with date; never give your own buy/sell call.
+- not_found only after at least two different tools; name both in gap.
+- Never read raw PDFs, the internet, or another company's store.
+- At most 12 tool calls per question; then write what you have and record the gap.
+- A tool that errors: record the exact error text in gap and try another tool; do not edit code.
+
+Accept: one valid JSON line per qid of D:/RealityEngine/tg_build/trials/trial2/ds_rem_02.jsonl in trial2/answers_rem_02.jsonl (check: python -c "import json;print(sum(1 for l in open('trial2/answers_rem_02.jsonl',encoding='utf-8') if json.loads(l)))"). and python -m reality_engine.scripts.tg_trial check --answers trial2/answers_rem_02.jsonl --calls trial2/calls_rem_02.jsonl --batch D:/RealityEngine/tg_build/trials/trial2/ds_rem_02.jsonl --min-kinds 3 prints "rework": 0.
+Evidence: the stores were built 16-17 Nov 2026 from exchange filings since 2024-04-01; known gaps are R-001..R-026 in tasks/store_repair/INDEX.md (e.g. 15 transcripts are link-only, R-012). A p3ask fact call on c05 returned MANINFRA H1FY27 revenue 4,843,231,000 INR from XBRL, so the tools work.
+Stop if: every qid answered, or 4 hours, or p3ask fails on every store (then report the error).
+Budget: 4 hours, 12 tool calls per question.
+Ticket: T-239
