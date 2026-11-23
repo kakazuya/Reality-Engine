@@ -168,7 +168,7 @@ def step_upload(con: sqlite3.Connection, listing_dir: Path, roots: list[str], bw
             listfile = fh.name
         dest = f"{REMOTE}/{UPLOAD_PREFIX}/{name}"
         print(f"upload: {len(rels)} files from {root} to {dest}", flush=True)
-        rc = subprocess.run(["rclone", "copy", root, dest, "--files-from", listfile, "--checksum", "--transfers", "8",
+        rc = subprocess.run(["rclone", "copy", root, dest, "--files-from", listfile, "--checksum", "--copy-links", "--transfers", "8",
                              "--checkers", "8", "--drive-chunk-size", "32M", "--tpslimit", "10", "--retries", "10",
                              "--low-level-retries", "20", "--bwlimit", bwlimit, "--stats", "5m", "--stats-one-line",
                              "-v"], creationflags=NO_WINDOW).returncode
