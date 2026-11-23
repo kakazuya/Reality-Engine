@@ -79,6 +79,8 @@ Tools: `pilot3_fact` (one answer-ready number, T-186, section 9o), `pilot3_fin`,
 `pilot3_guidance`, `pilot3_statements`, `pilot3_topic` (a theme across every call and document, T-194),
 `pilot3_search` (bm25; exact phrase first, T-194),
 `pilot3_semantic` (dense page search, T-154; paid query gate, vectors in the store's `embed/`), `pilot3_docs`, `pilot3_holding`, `pilot3_tech` (section 9i), `pilot3_sql`; `schema` / `catalog` know the `pilot3` db.
+A lookup that finds no row adds `nearest` (up to three pages and three statements to read), and `search` / `topic` /
+`statements` / `obs` expand the question's words through the committed `synonyms.json` (T-239, section 9x).
 
 **T-194 (12 Nov 2026) closes the four tool failures the T-189 graders found ("stopped early" was the top miss
 cause for all four models); every rule is general, never per company:**
@@ -2083,3 +2085,53 @@ Companies with non-March fiscal year-ends (such as calendar-year reporters) are 
   - Non-serving / QA / collection / index modules: `oracle.py:29,95-96,106,229`, `atoms.py:177,231`, `answer_check.py:297,317`, `doc_identity.py:218`, `doc_map.py:88`, `docs_collect.py:58,860-861,922`, `filings.py:52`, `link_follow.py:1315,1679`, `linked_transcripts.py:43`, `embed_test.py:46`.
 
 
+
+### 9x. What the server itself can fix from the trial-2 misses (T-239, 23 Nov 2026)
+
+Trial 2 (200 frozen questions, 91 Telegram stores) had 53 answers not right; only four were store gaps (reading
+16, question 13, retrieval wording 8, routing 7, compute 3). These are the server-side fixes: no model call, no
+paid embedding; the extraction defects stay with the pipeline.
+
+- **`nearest` on an empty reply.** `pilot3_fact` (appended inside `nearest`, after the spelling-nearest store rows),
+  and `pilot3_kpi` / `fin` / `ratio` / `guidance` / `statements` / `obs` (a top-level `nearest`, only when nothing
+  matched) carry up to three `doc_page_fts` page hits (`kind: "page"`, doc_key, page, doc_type, filing_date, known_at,
+  300-character snippet, `note: "not a stored row: read the page"`) and up to three `obs_fact` statement rows
+  (`kind: "statement"`, measure, period, statement, doc+page). `as_of` cuts both lists; a page carrying every
+  question word (or its synonym) is tried before one carrying only some. Snippets only, never a page dump.
+- **`synonyms.json` (new, committed beside the server).** Model-free query expansion for `search`, `topic`,
+  `statements`, `obs` and `nearest`. Each group is one question word and the page word(s) for it, read off the 53
+  failures: capex~capital expenditure~capital outlay~project cost; lease~licence~license~concession~land licence;
+  MDO~mine developer~mine development and operations~contract mining~mining contractor; pricing~tender~bid~L1~bank
+  guarantee; land monetisation~sale of land~divest land; collagen~collagen peptide~gelatin; expansion~commissioning~
+  capacity addition~greenfield; repowering~repower~old turbines; variable consideration~rebate; borrowing cost
+  capitalised~interest capitalised; asset turnover~capital employed; covenant~financial covenant; NCI~non-controlling
+  interest~minority interest; ROE~return on equity; ROCE~return on capital employed (separate groups); P/B~price to
+  book~book value; borrowings~debt; JV~joint venture; inventory gain~low-cost inventory; guidance~target~outlook;
+  unearned revenue~deferred revenue; gross margin~cost of services; order book~order intake; working capital~inventory
+  days~receivable days; contingent liabilities~disputed tax; capital work in progress~CWIP. An expansion is OR-ed
+  with the word it stands in for and never required (FTS `(w OR s) AND (...)`; SQL `(col LIKE w OR col LIKE s)`),
+  and a reply names the expansions that matched (`expansions_matched` on `search` / `topic` / `statements` / `obs`,
+  `matched` on each `nearest` item).
+- **A ratio row names its definition, numerator, denominator and inputs.** Every derived `pilot3_ratio` row carries
+  `definition_text` (the formula expression), `numerator` / `denominator` (the input row names) and `inputs` = each
+  input's value, unit, period and source document (through `_ref_input`, money normalised to the rupee amount so a
+  crore/lakh scale is never misread). A growth row therefore carries the stored prior-period row as its denominator
+  with that row's own filing (ALICON Q2FY26 revenue 428.18 crore, not the 429.92 an answer had invented).
+- **ROE, ROCE and ROEV never share a series label.** `_pick` matches a series by token, not substring (`roe_pct` for
+  "roe", never `roev`; `roce_pct` for "roce", never the ROE series), and a stated ratio row carries both the asked
+  label (`ratio`) and the stored series name (`metric`). When `ratio_panel` has no row, `pilot3_ratio` still serves the
+  company's own stated figure from `kpi_series` before saying not found.
+- **P/B and book value per share use the latest balance sheet known at `as_of`, and name it.** `valuation_daily` can
+  carry a P/B built on an earlier book (NSIL: 0.166 on the FY26 book of Rs 29,541.60 per share where the H1FY27 book,
+  Rs 33,001.55 per share, gives 0.148). `ratio('pb')` / `ratio('book value per share')` take the latest `net_worth`
+  (else `total_equity`) row from `fin_annual_line` (then `fin_quarter_xbrl`) filed on or before the caller's `as_of`,
+  on a balance sheet dated on or before the price; `value` becomes that figure, `stored_value` keeps the earlier one,
+  and `inputs.book_value_from` / `book_source` / `definition` name the balance sheet. With an `as_of` before that
+  filing the earlier book is used and named (no look-ahead); `pilot3_fact`'s `computed.inputs` says the same book.
+
+Evidence: the job-local `.tmp/t239_cases.py` replays the eight graded cases on their own stores through `p3ask`:
+NAVKARCORP `2b2df191` p2, ASIANENE `2f52d272` p21/p29, NITTAGELA `9b272481` p2, GREENPOWER `c8483f27` p5, KRYSTAL
+`d9335efb` p15, RAMKY ROCE FY2024 31 and ROE 44 from deck `9b8b0295` p13, NSIL P/B 0.1484 on the H1FY27 book and
+BVPS 33,001.55, ALICON base 428.18 crore — 13 of 13 reply checks. Unit tests: `ServerFixTests` (8 tests) in
+`plugins/reality-data/tests/test_lookups_pilot3.py`; the two test files give `107 passed, 1 skipped` (the one
+`tmp_path` test in `test_obs_wiring.py` cannot run under this sandbox: directory listing is denied).

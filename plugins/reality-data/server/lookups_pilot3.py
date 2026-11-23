@@ -13,6 +13,12 @@ NOT IN DATA.
 Read-only (``connect_ro``), small replies, and every row carries ``provenance`` = table, source (document +
 page, or store table + row) and ``known_at``.  ``as_of`` drops rows whose ``known_at`` is after that day, and
 rows without a ``known_at`` (a row that cannot prove it was public is never shown to a point-in-time question).
+
+T-239: a lookup that finds no row adds ``nearest`` -- up to three page hits and three stored statements for the
+caller's words, labelled "not a stored row: read the page" -- and the text tools widen the words through the
+committed ``synonyms.json`` (an expansion is OR-ed, never required).  A derived ratio row names its definition,
+numerator, denominator and input rows, and P/B / book value per share are computed on the latest balance sheet known
+at ``as_of`` and name it.
 """
 from __future__ import annotations
 
@@ -558,9 +564,146 @@ def _add_money(row: dict[str, Any], value: Any, unit: str | None, scale: Any = N
     return row
 
 
-def _reply(symbol: str, rows: list[dict], tool: str, **extra: Any) -> dict[str, Any]:
-    out = {"found": bool(rows), "symbol": symbol, "tool": tool, "n": len(rows), "rows": rows, **extra,
-           "provenance": _db_prov()}
+# --- T-239: model-free query expansion, and the pages to read when a lookup has no row ------------------
+SYNONYMS_PATH = Path(__file__).with_name("synonyms.json")
+
+
+@functools.lru_cache(maxsize=1)
+def _synonym_groups() -> tuple[tuple[str, ...], ...]:
+    """The committed thesaurus (``synonyms.json``): each group is one question word and the words the held pages
+    print for it.  Built from the trial-2 failures, so every pair has a measured miss behind it."""
+    try:
+        data = json.loads(SYNONYMS_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ()
+    out = []
+    for group in data.get("groups") or ():
+        terms = tuple(dict.fromkeys(str(t).strip().lower() for t in group.get("terms") or () if str(t).strip()))
+        if len(terms) > 1:
+            out.append(terms)
+    return tuple(out)
+
+
+def _expansion(text: str | None) -> tuple[list[str], list[str]]:
+    """(expansions, matched): the other terms of every synonym group the text names, and the terms it named.
+
+    An expansion stands in for the word it belongs to, so a caller OR-s it in and never adds it as a requirement."""
+    low = " " + re.sub(r"[^a-z0-9%]+", " ", str(text or "").lower()) + " "
+    extra: list[str] = []
+    matched: list[str] = []
+    for group in _synonym_groups():
+        hits = [t for t in group if f" {t} " in low]
+        if not hits:
+            continue
+        matched.extend(hits)
+        extra.extend(t for t in group if t not in hits and t not in extra)
+    return extra[:16], list(dict.fromkeys(matched))[:8]
+
+
+def _synonyms_for(word: str) -> list[str]:
+    """The other terms of the one group ``word`` belongs to (empty when it belongs to none)."""
+    w = str(word or "").strip().lower()
+    for group in _synonym_groups():
+        if w in group:
+            return [t for t in group if t != w]
+    return []
+
+
+def _fts_any(terms: list[str]) -> str:
+    """FTS5 OR over terms; a multi-word term stays one phrase ("capital outlay").  Every term is optional."""
+    clean = [re.sub(r'"', " ", str(t)).strip() for t in terms if str(t).strip()]
+    return " OR ".join(f'"{t}"' for t in clean[:16])
+
+
+def _fts_groups(words: list[str], mode: str = "and") -> str:
+    """FTS5 with each word OR its synonyms: ``(w OR s1 OR s2) AND (...)``, so an expansion is an alternative to its
+    word and never an extra requirement (T-239).  ``mode='or'`` is the old fallback for a query nothing matches."""
+    joiner = " AND " if mode == "and" else " OR "
+    groups = []
+    for word in words[:10]:
+        alts = [word] + _synonyms_for(word)
+        groups.append("(" + " OR ".join(f'"{re.sub(chr(34), " ", a)}"' for a in alts) + ")")
+    return joiner.join(groups)
+
+
+def _word_groups(words: list[str], cols: list[str]) -> tuple[str, list[Any], list[str]]:
+    """SQL ``(word OR its synonyms) AND (...)`` over LIKE columns: an expansion is an alternative, never a must."""
+    clause: list[str] = []
+    args: list[Any] = []
+    used: list[str] = []
+    for word in words:
+        alts = [word] + _synonyms_for(word)
+        if len(alts) > 1:
+            used.append(word)
+        clause.append("(" + " OR ".join(f"{col} LIKE ?" for _alt in alts for col in cols) + ")")
+        args.extend(f"%{alt}%" for alt in alts for _col in cols)
+    return " AND ".join(clause), args, used
+
+
+def _expansions_hit(words: str | None, rows: Any) -> list[str]:
+    """The synonym expansions that actually appear in the rows a reply serves, so the reply says which one matched."""
+    expansions, _named = _expansion(words)
+    if not expansions:
+        return []
+    blob = " ".join(str(row) for row in rows).lower()
+    return [t for t in expansions if t in blob][:6]
+
+
+def _nearest(symbol: str, words: str | None, as_of: str | None = None, cap: int = 3) -> list[dict[str, Any]]:
+    """The pages and statements to READ when a lookup holds no row for the words (T-239).
+
+    Top ``cap`` FTS page hits and top ``cap`` ``obs_fact`` statements, as_of-cut, each labelled so the answer says
+    "the store has no row for those words; read this page" instead of "not disclosed".  Snippets only, never a page
+    dump, and a query expansion widens the search without ever being required."""
+    text = str(words or "").strip()
+    if not text or not _has_table("doc_page"):
+        return []
+    expansions, matched = _expansion(text)
+    out: list[dict[str, Any]] = []
+    day = _day(as_of, "as_of")
+    asql, aargs = _asof(day, "COALESCE(p.known_at, d.known_at)")
+    question = [w for w in re.findall(r"[\w₹%]+", text) if len(w) > 1 or w.isdigit()][:8]
+    pages: list[sqlite3.Row] = []
+    if _has_table("doc_page_fts"):
+        # a page carrying every question word (or its synonym) first; OR over all terms only when none does
+        for match in (_fts_groups(question, "and"), _fts_any(question + expansions)):
+            if not match:
+                continue
+            pages = _q(f"SELECT d.doc_key, d.doc_type, d.title, d.filing_date, p.page, p.known_at, "
+                       f"snippet(doc_page_fts, 0, '[', ']', ' … ', 24) snip FROM doc_page_fts f "
+                       f"JOIN doc_page p ON p.rowid=f.rowid JOIN doc d ON d.doc_key=p.doc_key "
+                       f"WHERE doc_page_fts MATCH ? AND p.symbol=?{asql} ORDER BY rank LIMIT ?",
+                       (match, symbol, *aargs, cap))
+            if pages:
+                break
+    for r in pages:
+        out.append({"kind": "page", "doc_key": r["doc_key"], "doc_type": r["doc_type"],
+                    "title": _trim(r["title"], 60), "filing_date": r["filing_date"], "page": r["page"],
+                    "known_at": r["known_at"], "snippet": _trim(r["snip"], 300),
+                    "matched": matched or None, "note": "not a stored row: read the page"})
+    word_list = [w for w in re.findall(r"\w+", text.lower()) if len(w) > 2][:6]
+    cols = [c for c in ("statement", "measure") if _has_column("obs_fact", c)] if _has_table("obs_fact") else []
+    if word_list and cols:
+        where, wargs, _used = _word_groups(word_list, [f"o.{c}" for c in cols])
+        extra, eargs = _asof(day, "o.known_at")
+        for r in _q(f"SELECT o.measure, o.record_type, o.period, o.statement, o.doc_key, o.page, o.known_at "
+                    f"FROM obs_fact o WHERE o.symbol=? AND o.status IN ('verified','unverified') AND ({where}){extra} "
+                    f"ORDER BY o.known_at DESC LIMIT ?", (symbol, *wargs, *eargs, cap)):
+            out.append({"kind": "statement", "measure": r["measure"], "record_type": r["record_type"],
+                        "period": r["period"], "statement": _trim(r["statement"], 300),
+                        "doc_key": r["doc_key"], "page": r["page"], "known_at": r["known_at"],
+                        "matched": matched or None,
+                        "note": "a stored statement, not a row for the words asked: read the page"})
+    return out
+
+
+def _reply(symbol: str, rows: list[dict], tool: str, nearest: str | None = None,
+           nearest_as_of: str | None = None, **extra: Any) -> dict[str, Any]:
+    out = {"found": bool(rows), "symbol": symbol, "tool": tool, "n": len(rows), "rows": rows,
+           "nearest": _nearest(symbol, nearest, nearest_as_of or extra.get("as_of")) if (nearest and not rows) else [],
+           **extra, "provenance": _db_prov()}
+    if not out["nearest"]:
+        out.pop("nearest")          # an empty reply keeps its old shape when there is nothing to read either
     if extra.get("as_of"):
         # one shared point-in-time report (T-197 step 5): every tool that serves document-derived rows says which
         # documents the passed as_of hid and on what dates, so a miss after a date is never read as "not held".
@@ -585,13 +728,21 @@ def _available(table: str, col: str, symbol: str, like: str | None = None, extra
     return [r[0] for r in _q(sql, tuple(args)) if r[0]]
 
 
+def _same_series(name: str, key: str) -> bool:
+    """Does ``name`` belong to the same series as ``key``?  A token match, not a substring: ROE is not ROEV, ROCE
+    is not ROE, ROA is not ROCE (T-239, the RAMKY case where one series was read as the other)."""
+    low = name.lower()
+    return (key in low.split("_") or low.startswith(key + "_") or low.endswith("_" + key)
+            or low == f"{key}_pct")
+
+
 def _pick(table: str, col: str, symbol: str, name: str, extra: str = "") -> tuple[list[str], list[str]]:
-    """Names to match for a user's metric word: the exact one, else every name containing it (spaces as _)."""
+    """Names to match for a user's metric word: the exact one, else every name of the same series (spaces as _)."""
     key = re.sub(r"[\s\-]+", "_", name.strip().lower())
     names = _available(table, col, symbol, extra=extra, n=500)
     if key in names:
         return [key], names
-    near = [n for n in names if key in n]
+    near = [n for n in names if _same_series(n, key)]
     return near[:8], names
 
 
@@ -761,7 +912,8 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
         if atom_rows:
             return _reply(sym, atom_rows, "pilot3_kpi", metrics_matched=[kpi], source="page_atom",
                           as_of=_day(as_of, "as_of"))
-        return _reply(sym, [], "pilot3_kpi", available=allnames[:40], metric_asked=metric_asked)
+        return _reply(sym, [], "pilot3_kpi", available=allnames[:40], metric_asked=metric_asked,
+                      nearest=f"{metric_asked} {period or ''}".strip(), nearest_as_of=as_of)
     kind, label = norm_period(period)
     where, args = f"k.symbol=? AND k.metric IN ({','.join('?' * len(names))})", [sym, *names]
     if label:
@@ -839,7 +991,8 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
                 f"SELECT k.fiscal_period, k.dimension, COUNT(*) FROM kpi_series k WHERE {q_where} "
                 f"GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 20", tuple(args))]
     return _reply(sym, out, "pilot3_kpi", metrics_matched=names, held_period_dimension=held,
-                  held_quarantined=held_hidden, as_of=_day(as_of, "as_of"))
+                  held_quarantined=held_hidden, as_of=_day(as_of, "as_of"),
+                  nearest=f"{metric_asked} {period or ''}".strip(), nearest_as_of=as_of)
 
 
 # --- pilot3_cells ------------------------------------------------------------------------------------
@@ -1199,7 +1352,8 @@ def fin(symbol: str, measure: str, period: str | None = None, basis: str | None 
             out, assumed = consolidated, "consolidated"
     out = out[:cap]
     return _reply(sym, out, "pilot3_fin", available=sorted(set(avail))[:50] if not out else None, measure_asked=measure,
-                  basis_assumed=assumed, as_of=_day(as_of, "as_of"))
+                  basis_assumed=assumed, as_of=_day(as_of, "as_of"),
+                  nearest=f"{measure} {period or ''}".strip(), nearest_as_of=as_of)
 
 
 def _script_precedence() -> bool:
@@ -1433,17 +1587,96 @@ def _ev_all_investments(sym: str, rows: list, reply: dict) -> None:
                              "non-current investments are large here, so give both: 'ev_ebitda_all_investments' in "
                              "inputs also subtracts them (balance sheet of " + alt[0]["period_end"] + ")")
 
+def _latest_book(sym: str, basis: str | None, day: str | None, on_day: str | None) -> dict[str, Any] | None:
+    """The latest net-worth row public by ``day`` (today when no as_of) on a balance sheet filed before the price.
+
+    ``on_day`` is the valuation row's own date: a balance sheet after it is look-ahead, while a book filed after
+    the price date but before the caller's as_of is the current book (NSIL: the H1FY27 book filed 12 Nov on a
+    9 Nov price)."""
+    cutoff = day or dt.date.today().isoformat()
+    for sql, source in (
+            ("SELECT line_item, value*COALESCE(scale,1) AS nw, fiscal_year AS fiscal_period, period_end, doc_key, "
+             "page, known_at FROM fin_annual_line WHERE symbol=? AND basis=? AND line_item IN "
+             "('net_worth','total_equity') AND period_end<=? AND substr(known_at,1,10)<=? "
+             "ORDER BY period_end DESC, (line_item='net_worth') DESC, known_at DESC LIMIT 1", "fin_annual_line"),
+            ("SELECT line_item, value*COALESCE(scale,1) AS nw, fiscal_period, period_end, source_file AS doc_key, "
+             "NULL AS page, known_at FROM fin_quarter_xbrl WHERE symbol=? AND basis=? AND line_item IN "
+             "('net_worth','total_equity') AND period_end<=? AND substr(known_at,1,10)<=? "
+             "ORDER BY period_end DESC, (line_item='net_worth') DESC, known_at DESC LIMIT 1", "fin_quarter_xbrl")):
+        rows = _q(sql, (sym, basis, on_day or cutoff, cutoff))
+        if rows:
+            r = rows[0]
+            return {"table": source, "line_item": r["line_item"], "value": r["nw"], "period": r["fiscal_period"],
+                    "period_end": r["period_end"], "doc_key": r["doc_key"], "page": r["page"],
+                    "known_at": r["known_at"]}
+    return None
+
+
+def _valuation_on_latest_book(sym: str, rows: list, reply: dict, day: str | None = None,
+                              bvps: bool = False) -> None:
+    """T-239: P/B and book value per share on the latest balance sheet known at the valuation date.
+
+    ``valuation_daily`` can carry a P/B built on an earlier book (NSIL: 0.166 on the FY26 book where the H1FY27 book
+    gives 0.148).  The row carries ``market_cap``, ``net_worth`` and the balance-sheet date in ``input_refs``; the
+    store's own ``net_worth`` line of a later period is the latest book, so the figure is recomputed on it and the
+    reply names the balance sheet it used."""
+    for row, r in zip(reply.get("rows", []), rows):
+        got = _q("SELECT market_cap, net_worth, shares_outstanding, input_refs FROM valuation_daily WHERE rowid=?",
+                 (r["rowid"],))
+        if not got:
+            continue
+        mc, nw, shares = got[0]["market_cap"], got[0]["net_worth"], got[0]["shares_outstanding"]
+        if not mc or not nw:
+            continue
+        try:
+            refs = json.loads(got[0]["input_refs"] or "{}")
+        except ValueError:
+            refs = {}
+        book = refs.get("net_worth") if isinstance(refs, dict) else None
+        printed = re.search(r"\d{4}-\d{2}-\d{2}", str(book or ""))
+        book_value, book_label = nw, book
+        book_source: dict[str, Any] = {"table": "valuation_daily"}
+        latest = _latest_book(sym, r["basis"], day, r["date"])
+        if latest and latest["value"] and (not printed or latest["period_end"] >= printed.group(0)):
+            book_value = latest["value"]
+            book_label = f"{latest['period']} balance sheet {latest['period_end']}"
+            book_source = {"table": latest["table"], "doc_key": latest["doc_key"], "page": latest["page"],
+                           "period_end": latest["period_end"], "known_at": latest["known_at"]}
+        per_share = book_value / shares if shares else None
+        if bvps and per_share:
+            row["value"], row["ratio"] = round(per_share, 2), "book_value_per_share"
+            row["definition_text"] = f"net worth / shares on {book_label or 'the latest balance sheet'}"
+            row["definition"] = "derived: " + row["definition_text"]
+            row["inputs"].update({"net_worth": book_value, "shares_outstanding": shares,
+                                  "book_value_from": book_label, "book_source": book_source})
+            continue
+        pb = mc / book_value
+        row["inputs"].update({"market_cap": mc, "net_worth": book_value, "book_value_from": book_label,
+                              "book_source": book_source,
+                              "book_value_per_share": round(per_share, 2) if per_share else None})
+        if row["value"] and abs(pb / row["value"] - 1) > 0.01:
+            row["stored_value"], row["value"] = row["value"], round(pb, 4)
+        row["definition_text"] = f"market cap / net worth on {book_label or 'the latest balance sheet'}"
+        row["definition"] = ("derived: " + row["definition_text"]
+                             + (" (the stored P/B used an earlier book)" if row.get("stored_value") else ""))
+
+
 def ratio(symbol: str, ratio: str, period: str | None = None, as_of: str | None = None,
           basis: str | None = None, limit: int = 8) -> dict[str, Any]:
     """Derived ratios (margins, ROE, growth, days ...) from ratio_panel; PE/PB/EV-EBITDA/market cap on a date
-    from valuation_daily (``period`` or ``as_of`` as a YYYY-MM-DD day; latest on or before it)."""
+    from valuation_daily (``period`` or ``as_of`` as a YYYY-MM-DD day; latest on or before it).  Every derived row
+    names its ``definition_text``, ``numerator``/``denominator`` and ``inputs`` (each input's value, period and
+    filing); P/B and book value per share use the latest balance sheet known at ``as_of`` and name it (T-239)."""
     sym = resolve_symbol(symbol)
     key = re.sub(r"[\s\-/]+", "_", ratio.strip().lower())
     cap = _cap(limit)
     bas = (basis or "").strip().lower() or None
     day = _day(as_of, "as_of")
-    if key in VALUATION_FIELDS or key in ("p_e", "p_b", "ev_to_ebitda", "dividend_yield"):
-        key = {"p_e": "pe", "p_b": "pb", "ev_to_ebitda": "ev_ebitda", "dividend_yield": "dividend_yield_pct"}.get(key, key)
+    if key in VALUATION_FIELDS or key in ("p_e", "p_b", "ev_to_ebitda", "dividend_yield",
+                                          "book_value_per_share", "bvps"):
+        bvps = key in ("book_value_per_share", "bvps")
+        key = {"p_e": "pe", "p_b": "pb", "ev_to_ebitda": "ev_ebitda", "dividend_yield": "dividend_yield_pct",
+               "book_value_per_share": "pb", "bvps": "pb"}.get(key, key)
         when = period if period and re.fullmatch(r"\d{4}-\d{2}-\d{2}", period) else day or dt.date.today().isoformat()
         sql = (f"SELECT rowid, date, basis, {key} AS value, close, shares_outstanding, known_at, input_refs "
                f"FROM valuation_daily WHERE symbol=? AND date<=? AND {key} IS NOT NULL")
@@ -1462,7 +1695,10 @@ def ratio(symbol: str, ratio: str, period: str | None = None, as_of: str | None 
             if key in ("market_cap", "net_worth", "net_debt", "trailing_pat", "trailing_ebitda"):
                 _add_money(item, r["value"], "inr", 1.0)
             val_rows.append(item)
-        reply = _reply(sym, val_rows, "pilot3_ratio")
+        reply = _reply(sym, val_rows, "pilot3_ratio", nearest=f"{ratio} {period or ''}".strip(),
+                       nearest_as_of=as_of)
+        if key == "pb" and rows:
+            _valuation_on_latest_book(sym, rows, reply, day=day, bvps=bvps)     # T-239: the latest book, named
         if key == "ev_ebitda" and rows:
             _ev_all_investments(sym, rows, reply)
         if key == "ev_ebitda" and not rows and _is_lender(sym):
@@ -1471,7 +1707,12 @@ def ratio(symbol: str, ratio: str, period: str | None = None, as_of: str | None 
         return reply
     names, allnames = _pick("ratio_panel", "metric", sym, ratio)
     if not names:
-        return _reply(sym, [], "pilot3_ratio", available=allnames[:40] + list(VALUATION_FIELDS), metric_asked=ratio)
+        stated = _stated_ratios(sym, key, None, as_of, bas, cap)   # the company's own figure needs no derived panel
+        if stated:
+            return _reply(sym, stated, "pilot3_ratio", metrics_matched=[key], as_of=_day(as_of, "as_of"),
+                          nearest=f"{ratio} {period or ''}".strip(), nearest_as_of=as_of)
+        return _reply(sym, [], "pilot3_ratio", available=allnames[:40] + list(VALUATION_FIELDS), metric_asked=ratio,
+                      nearest=f"{ratio} {period or ''}".strip(), nearest_as_of=as_of)
     kind, label = norm_period(period)
     where, args = f"p.symbol=? AND p.metric IN ({','.join('?' * len(names))})", [sym, *names]
     if label:
@@ -1490,21 +1731,41 @@ def ratio(symbol: str, ratio: str, period: str | None = None, as_of: str | None 
         row = _add_money(
             {"ratio": r["metric"], "period": r["fiscal_period"], "period_type": r["period_type"],
              "basis": r["basis"], "value": r["value"], "unit": r["unit"], "definition": "derived",
+             "definition_text": r["expression"] or r["metric"],
              "formula": r["expression"],
              "provenance": _prov("ratio_panel", f"row {r['rowid']}", r["known_at"],
                                  formula_id=r["formula_id"], input_refs=_trim(r["input_refs"], 240),
                                  derived=bool(r["is_derived"]))},
             r["value"], r["unit"], r["scale"])
+        try:
+            refs: list = json.loads(r["input_refs"] or "[]")
+        except ValueError:
+            refs = []
+        refs = refs if isinstance(refs, list) else [refs]
         if r["formula_id"] in ("F_PAT_TTM", "F_PAT_BE_TTM"):   # the trailing inputs, so TTM needs no hand sum
-            try:
-                row["inputs"] = json.loads(r["input_refs"] or "[]")
-            except ValueError:
-                row["inputs"] = []
+            row["inputs"] = refs
+            row["numerator"] = refs[0] if refs else None
+            row["denominator"] = refs[1] if len(refs) > 1 else None
+        elif refs and all(isinstance(ref, str) for ref in refs):
+            # T-239: the numerator and denominator rows with their own value, period and filing (ALICON: the base is
+            # the stored Q2FY26 revenue 428.18, never a figure the answer recomputes or invents)
+            cutoff = day or str(r["known_at"] or "")[:10] or None
+            inputs = []
+            for i, ref in enumerate(refs[:4]):
+                item = _ref_input(sym, ref, r["basis"], cutoff)
+                if item.get("value_inr") is not None and str(item.get("unit") or "").startswith("inr"):
+                    item["value"], item["unit"] = item["value_inr"], "inr"   # the rupee amount, so no scale is misread
+                item["role"] = "numerator" if i == 0 else "denominator" if i == 1 else "input"
+                inputs.append(item)
+            row["inputs"] = inputs
+            row["numerator"] = inputs[0].get("name")
+            row["denominator"] = inputs[1].get("name") if len(inputs) > 1 else None
         derived.append(row)
     stated = _stated_ratios(sym, key, label, as_of, bas, cap)
     # The company's own figure answers "what is X's ROE for FY26"; the derived row is our arithmetic beside it
     # (T-107: Bajaj's FY26 ROE is its stated 18.1, not the 16.96 that LTM PAT over closing net worth derives).
-    return _reply(sym, stated + derived, "pilot3_ratio", metrics_matched=names, as_of=_day(as_of, "as_of"))
+    return _reply(sym, stated + derived, "pilot3_ratio", metrics_matched=names, as_of=_day(as_of, "as_of"),
+                  nearest=f"{ratio} {period or ''}".strip(), nearest_as_of=as_of)
 
 
 def _stated_ratios(sym: str, key: str, label: str | None, as_of: str | None, basis: str | None,
@@ -1547,7 +1808,8 @@ def _stated_ratios(sym: str, key: str, label: str | None, as_of: str | None, bas
         if r["fiscal_period"] in best:
             continue                    # rows arrive best first: the first company row of the period wins
         best[r["fiscal_period"]] = _add_check(_add_money({
-            "ratio": key, "period": r["fiscal_period"], "period_type": "Q" if r["fiscal_period"].startswith("Q") else "FY",
+            "ratio": key, "metric": r["metric"], "period": r["fiscal_period"],
+            "period_type": "Q" if r["fiscal_period"].startswith("Q") else "FY",
             "basis": row_basis, "value": r["value"], "unit": r["unit"], "definition": "company_stated",
             "entity": entity, "quote": _trim(r["quote"], 240),
             "provenance": _prov("kpi_series", f"{r['dk'] or r['doc_key']} p{r['page']}", r["known_at"],
@@ -2067,6 +2329,9 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
                                                    if row.get("page") not in (None, "")})
                  )[:12]
     reply = _reply(sym, out, "pilot3_statements", fallback=fallback, as_of=_day(as_of, "as_of"), text=text,
+                   nearest=" ".join(x for x in (topic, terms, rank_terms) if x), nearest_as_of=as_of,
+                   expansions_matched=_expansions_hit(" ".join(x for x in (topic, terms, rank_terms) if x), out)
+                   or None,
                    topic_matched=tagged_match, coverage=_coverage(
                        "statements", list(_TEXT_STORES),
                        ["structured tables: kpi_series, guidance, page_cell, fin_* "
@@ -2130,7 +2395,7 @@ def _call_page_hits(sym: str, topic: str | None, terms: str | None, rank_terms: 
              if len(w) > 2][:8]
     if not words:
         return []
-    match = _fts_query(" ".join(words), "and") or _fts_query(" ".join(words), "or")
+    match = _fts_groups(words, "and") or _fts_groups(words, "or")   # T-239: a synonym is OR-ed, never required
     if not match:
         return []
     extra, eargs = _asof(as_of, "COALESCE(p.known_at, d.known_at)")
@@ -2197,7 +2462,8 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
         names, allnames = _pick("guidance", "metric", sym, metric,
                                 extra="" if include_quarantined else _visible("guidance"))
         if not names:
-            return _reply(sym, [], "pilot3_guidance", available=allnames[:40], metric_asked=metric)
+            return _reply(sym, [], "pilot3_guidance", available=allnames[:40], metric_asked=metric,
+                          nearest=f"{metric} {period or ''}".strip(), nearest_as_of=as_of)
     kind, label = norm_period(period)
     # only the group's own targets: a target stated for a named subsidiary, associate, joint venture or acquired
     # company carries its ``entity`` and is never served as the company's (T-192).  A store built before the column
@@ -2296,6 +2562,7 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
             + (f" AND metric IN ({','.join('?' * len(names))})" if names else "")
             + _visible("guidance") + " GROUP BY 1, 2 ORDER BY MAX(known_at) DESC LIMIT 40", (sym, *names))]
     return _reply(sym, out, "pilot3_guidance", metrics_matched=names or None, history=True if history else None,
+                  nearest=f"{metric or ''} {period or ''}".strip(), nearest_as_of=as_of,
                   held_options=held, as_of=_day(as_of, "as_of"))
 
 
@@ -2724,6 +2991,7 @@ def topic(symbol: str, topic: str, as_of: str | None = None, limit: int = TOPIC_
                 matched, shown, cut, start, documents=docs, doc_cap=doc_cap,
                 document_total=doc_total, outside=outside_list, hidden=hidden),
             "candidate_pages": candidates,
+            "expansions_matched": _expansions_hit(topic, ordered + list(candidates or [])) or None,
             "as_of_note": f"documents first known after {day} are not used" if day else None,
             "hint": None if shown else "NOT IN DATA of pilot3 for this topic: try the words management uses, a wider "
                                        "date_from/date_to, or pilot3_search for the wording; only then the raw tools.",
@@ -2861,6 +3129,9 @@ def search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
     and_query, or_query = _fts_query(query, "and"), _fts_query(query, "or")
     if not or_query:
         raise DataError("bad_query", "query needs at least one word")
+    expansions, _named = _expansion(query)   # T-239: a synonym widens the OR set, never the required words
+    if expansions:
+        or_query = f"({or_query}) OR ({_fts_any(expansions)})"
     exact_terms, short_terms = _phrase_terms(query)
     phrase_query = " OR ".join(f'"{term}"' for term in exact_terms)
     short_query = " OR ".join(f'"{term}"' for term in short_terms)
@@ -2924,9 +3195,12 @@ def search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
         if r["page"] not in group["pages"] and len(group["pages"]) < 3:
             group["pages"].append(r["page"])
     cut = max(0, pages_matched - start - len(ranked))
+    expansions_hit = [term for term in expansions
+                      if any(term in str(row["text"] or "").lower() for row in ranked)][:6]
     text = (f"{pages_matched} page(s) match {query!r} ({match_mode} match) in {documents_matched} document(s)"
             + (f"; {pages_short} more print it short" if pages_short else "")
             + (f"; a substring scan counts {pages_like} (it also counts a longer number)" if pages_like else "")
+            + (f"; the synonym expansion also matched {', '.join(expansions_hit)}" if expansions_hit else "")
             + (f" first known on or before {day}; {hidden} hidden by as_of" if day else "")
             + f"; {len(ranked)} shown"
             + (f"; {cut} cut - call again with offset={start + len(ranked)}" if cut else ""))
@@ -2950,7 +3224,7 @@ def search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
                          for r in ranked], "pilot3_search", match_mode=match_mode, period=period, text=text,
                    pages_matched=pages_matched, documents_matched=documents_matched, shown=len(ranked),
                    documents=page_documents, as_of=day, hidden_after_as_of=hidden, pages_short=pages_short,
-                   pages_like=pages_like, coverage=coverage,
+                   pages_like=pages_like, coverage=coverage, expansions_matched=expansions_hit or None,
                    read_next=_read_next([{"doc_key": r["doc_key"], "page": r["page"]} for r in ranked]))
 
     def snippets(width: int) -> None:
@@ -3494,6 +3768,15 @@ def _fact_ratio_computed(symbol: str, row: dict[str, Any], day: str | None) -> d
     known = str(prov.get("known_at") or "")[:10] or day
     cutoff = day or known          # an input must be public by as_of; else by the figure's own filing
     if row.get("date"):                         # valuation_daily: PE / PB / EV-EBITDA / market cap on a day
+        inputs = row.get("inputs")
+        if isinstance(inputs, dict) and inputs.get("book_source") is not None:
+            # T-239: P/B and book value per share are computed on the balance sheet the row names, not on the
+            # earlier one valuation_daily's own net worth column may carry (NSIL: H1FY27, not FY26)
+            return {"formula": row.get("definition_text") or "market cap / net worth on the latest balance sheet",
+                    "inputs": [{"name": name, "value": inputs.get(name), "period": inputs.get("book_value_from"),
+                                "source": inputs.get("book_source")}
+                               for name in ("market_cap", "net_worth", "shares_outstanding")
+                               if inputs.get(name) is not None]}
         formula = _q("SELECT expression, inputs FROM formula WHERE metric=? LIMIT 1", (row.get("ratio"),))
         if not formula:
             return None
@@ -3614,6 +3897,7 @@ def _fact_not_found(symbol: str, metric: str, key: str, found: dict[str, list[st
             "only then fall back to the raw tools.")
     if note:
         hint = f"{note} {hint}"
+    nearest += _nearest(symbol, metric, day)     # T-239: the pages/statements to read when no table row matches
     return {"found": False, "symbol": symbol, "tool": "pilot3_fact", "metric_asked": metric, "searched": searched,
             "nearest": nearest, "hint": hint, "provenance": _db_prov()}
 
@@ -3919,16 +4203,16 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
     if label:
         where.append("o.period=?")
         args.append(label)
-    # terms filter in SQL: every term must hit one of the text columns (AND-ed)
+    # terms filter in SQL: every term must hit one of the text columns, its synonyms OR-ed in (T-239)
     term_words = [w for w in re.findall(r"\w+", terms or "") if len(w) > 1]
     text_cols = [c for c in ("statement", "printed_label", "question_context", "measure")
                  if _has_column("obs_fact", c)]
     if not text_cols:
         text_cols = ["measure"]
-    for w in term_words:
-        pat = f"%{w}%"
-        where.append("(" + " OR ".join(f"o.{c} LIKE ?" for c in text_cols) + ")")
-        args.extend([pat] * len(text_cols))
+    if term_words:
+        clause, term_args, _used = _word_groups(term_words, [f"o.{c}" for c in text_cols])
+        where.append(f"({clause})")
+        args.extend(term_args)
     extra, eargs = _asof(as_of, "o.known_at")
     rows = _q(f"SELECT o.* FROM obs_fact o WHERE {' AND '.join(where)}{extra} "
               f"ORDER BY o.known_at DESC LIMIT ?", (*args, *eargs, _cap(limit)))
@@ -3995,10 +4279,13 @@ def obs(symbol: str, measure: str | None = None, terms: str | None = None, perio
         limit: int = 20) -> dict[str, Any]:
     sym = resolve_symbol(symbol)
     if not _has_table("obs_fact"):
-        return _reply(sym, [], "pilot3_obs", as_of=_day(as_of, "as_of"))
+        return _reply(sym, [], "pilot3_obs", as_of=_day(as_of, "as_of"),
+                      nearest=" ".join(x for x in (measure, terms) if x), nearest_as_of=as_of)
     rows = _obs_rows(sym, measure=measure, terms=terms, period=period, record_type=record_type,
                      status=status, as_of=as_of, limit=limit)
-    return _reply(sym, rows, "pilot3_obs", as_of=_day(as_of, "as_of"))
+    return _reply(sym, rows, "pilot3_obs", as_of=_day(as_of, "as_of"),
+                  nearest=" ".join(x for x in (measure, terms) if x), nearest_as_of=as_of,
+                  expansions_matched=_expansions_hit(terms, rows) or None)
 
 
 def events(symbol: str, kind: str | None = None, as_of: str | None = None, limit: int = 50) -> dict[str, Any]:

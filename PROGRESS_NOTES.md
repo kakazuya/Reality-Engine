@@ -183,3 +183,22 @@
 
 
 
+
+## T-239 (23 Nov) — the trial-2 misses the server can fix
+
+- Read all 53 rows of `D:/RealityEngine/tg_build/trials/trial2/failures_for_server_fix.jsonl` (52 unique questions;
+  SPORTKING q7753 appears twice) before editing. Server-side, model-free fixes in
+  `plugins/reality-data/server/lookups_pilot3.py` + new `synonyms.json`.
+- Done: `nearest` (3 FTS pages + 3 obs statements, as_of-cut) on an empty fact/kpi/fin/ratio/guidance/statements/obs;
+  OR-only thesaurus expansion in search/topic/statements/obs/nearest with `expansions_matched`; ratio rows carry
+  definition_text/numerator/denominator/resolved inputs; ROE~ROCE~ROEV token series match + stated-ratio fallback;
+  P/B and BVPS on the latest book known at as_of (NSIL 0.1484 on H1FY27, 0.1658 kept as stored_value);
+  growth rows carry the stored prior-period row (ALICON 428.18 crore) with its filing.
+- Verified: `test_lookups_pilot3.py` 99 passed + 1 skipped (8 new `ServerFixTests`); with `test_obs_wiring.py` and
+  `test_server_no_sql.py` 109 passed / 1 skipped / 1 deselected; typecheck 0 errors on the three changed .py files;
+  8 graded cases replay 13/13 reply checks (`.tmp/t239_cases.py`, job-local). The one `tmp_path` test in
+  `test_obs_wiring.py` is blocked by the sandbox (os.scandir denied for native children; ACL repair needs an
+  approval channel this session lacks).
+- Next: controller runs the accepted tests outside the sandbox, merges, and adds the T-239 line to tasks/STATE.md
+  (brief forbids editing it here). Remove the sandbox-made dirs `.t239base/`, `t239base/` (listing denied; cannot
+  delete from inside).
