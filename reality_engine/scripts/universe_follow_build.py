@@ -31,6 +31,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 from reality_engine.scripts.fetch_pilot60_history import CSV_FIELDS, MANIFEST_DB  # noqa: E402
+from reality_engine.scripts.prestage_raw import stage_symbol  # noqa: E402
 from reality_engine.scripts.tg_measure_build import company_name  # noqa: E402
 
 CREATE_NO_WINDOW = 0x08000000
@@ -146,6 +147,11 @@ def main(argv: list[str] | None = None) -> int:
                       "is the fetch alive?")
             last_move = time.monotonic()
         busy = {pos for _, batch in running.values() for pos in batch}
+        # a cNN folder touched in the last hour with no measure json is a build a previous driver left running
+        cutoff = time.time() - 3600
+        for d in root.glob("c*"):
+            if d.name[1:].isdigit() and not (d / f"{d.name}_measure.json").is_file() and d.stat().st_mtime > cutoff:
+                busy.add(int(d.name[1:]))
         todo = sorted(pos_by_isin[i] for i in ready
                       if pos_by_isin[i] not in busy and pos_by_isin[i] not in given_up
                       and measure_of(root, pos_by_isin[i]) is None)
@@ -155,6 +161,11 @@ def main(argv: list[str] | None = None) -> int:
                 break
             for pos in batch:
                 tries[pos] = tries.get(pos, 0) + 1
+            for pos in batch:   # T-241: raw folders onto the SSD before the build reads them (one HDD copy, no seeks)
+                try:
+                    stage_symbol(str(queue[pos - 1]["symbol"]).strip().upper())
+                except OSError as exc:
+                    log(root, f"prestage {queue[pos - 1]['symbol']}: {exc} (built from D:)")
             manifest = root / "manifests" / f"batch_{batch[0]:05d}_t{tries[batch[0]]}.csv"
             write_manifest(manifest, [r for pos in batch for r in ok[isin_by_pos[pos]]])
             out_dir = root / f"shard_{shard}"
