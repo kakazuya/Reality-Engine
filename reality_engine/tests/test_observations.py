@@ -1324,8 +1324,8 @@ def test_outlets_atms_and_stores_take_the_deck_period():
                 "count.shares", "shareholding_pct", "capacity.total"):
         assert obs.is_stock_measure(mid), mid
     assert not obs.is_stock_measure("capacity.utilisation")
-    for mid in ("count.countries", "count.customers", "count.employees", "order.intake", "order.book",
-                "gnpa_pct", "gnpa.value", "loans", "aum.value", "revenue_growth_yoy"):
+    for mid in ("count.countries", "count.customers", "count.employees", "order.intake",
+                "gnpa_pct", "gnpa.value", "revenue_growth_yoy"):
         assert not obs.is_stock_measure(mid), mid
 
 
@@ -2012,13 +2012,14 @@ def test_stage_n2_the_slide_title_is_the_title_line_not_a_tile_footnote_or_colum
 
 def test_stage_n2_deck_asof_covers_only_the_snapshot_measures():
     for mid in ("count.customers", "count.countries", "count.employees", "order.intake",
-                "order.book", "ebitda_margin", "revenue_growth_yoy"):
+                "ebitda_margin", "revenue_growth_yoy"):
         rows = obs.build_observations(symbol="NAVKARCORP", doc_key=DECK, page=7, known_at=KNOWN_AT,
                                       page_text="InfoBeans at a glance 42 Large enterprise clients",
                                       reply_rows=[reply(measure=mid, printed_label="Large enterprise clients",
                                                         value_text="42", unit="")], deck_asof="Q2 FY26")
         assert rows[0]["period"] == "" and "no_period" in rows[0]["status_reason"], mid
-    for mid in ("shareholding_pct", "count.shares", "count.plants", "count.outlets"):
+    for mid in ("shareholding_pct", "count.shares", "count.plants", "count.outlets",
+                "order.book", "aum.value", "loans", "deposits", "borrowings", "net_worth"):
         rows = obs.build_observations(symbol="NAVKARCORP", doc_key=DECK, page=7, known_at=KNOWN_AT,
                                       page_text="Shareholding Pattern Promoter & Promoter Group 52.3%",
                                       reply_rows=[reply(measure=mid, printed_label="Shareholding Pattern",
@@ -2032,6 +2033,33 @@ def test_stage_n2_a_growth_row_takes_the_later_period_of_the_printed_pair():
                         printed_axis="Y-o-Y (%)", value_text="28.50%", unit="%", period="FY23")],
                  page_text=page)
     assert rows[0]["period"] == "FY24"
+
+def test_t238n3_growth_change_period_skips_money_change_lines():
+    page = "FY24\nFY25\nNet increase/(decrease) in Cash & Cash equivalents"
+    assert obs.growth_change_period("FY24", "cash_flow.net_change", page) == "FY24"
+    assert obs.growth_change_period("FY24", "other_income_growth_yoy", page) == "FY25"
+
+def test_t238n3_slide_period_allows_a_bare_fiscal_title():
+    assert obs.slide_period("H1 FY26\nMarina 1,49,229") == "H1 FY26"
+    txt = "FY 2023-24\nTotal Workers\n494"
+    sp = obs.slide_period(txt)
+    assert sp != "" and obs._fiscal_year(sp) == 2024
+    # a bare label followed by a bare number is still a tile, not a title
+    assert obs.slide_period("9M 2025-26\n156\nMembers with more than 5 years with us") == ""
+
+def test_t238n3_deck_asof_skips_targets_and_past_programmes():
+    # target/forward word in the label
+    rows = obs.build_observations(symbol="NAVKARCORP", doc_key=DECK, page=7, known_at=KNOWN_AT,
+                                  page_text="Shareholding Pattern Promoter & Promoter Group 52.3%",
+                                  reply_rows=[reply(measure="loans", printed_label="NNPA to 0.18%",
+                                                    value_text="52.3", unit="%")], deck_asof="Q2 FY26")
+    assert rows[0]["period"] == "" or rows[0]["period_source"] != "deck_asof"
+    # past programme title
+    rows = obs.build_observations(symbol="NAVKARCORP", doc_key=DECK, page=7, known_at=KNOWN_AT,
+                                  page_text="COVID Resolution Framework\nShareholding Pattern Promoter 52.3%",
+                                  reply_rows=[reply(measure="loans", printed_label="Shareholding Pattern",
+                                                    value_text="52.3", unit="%")], deck_asof="Q2 FY26")
+    assert rows[0]["period"] == "" or rows[0]["period_source"] != "deck_asof"
     # three fiscal years print no single pair: the row's own period is left alone
     three = "FY23 FY24 FY25\n28.50%\nOther Income"
     rows = build([reply(measure="other_income_growth_yoy", printed_label="Other Income",
