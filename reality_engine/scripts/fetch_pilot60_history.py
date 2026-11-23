@@ -698,10 +698,11 @@ def download(row, session, pacer, tries=4):
     return "error", None, status, attempts, last
 
 
-def fetch_rows(jobs, manifest, workers=8, interval=0.3, tries=4, limit=0):
+def fetch_rows(jobs, manifest, workers=8, interval=0.3, tries=4, limit=0, reuse=True):
     """Download every planned row, resuming from the manifest. Returns counts."""
     done = manifest.done()
-    by_name, by_id = existing_index()
+    # --no-reuse (T-241): skip the file-exists walk over every held document (an hour on a busy HDD, 0 reused)
+    by_name, by_id = existing_index() if reuse else ({}, {})
     todo = []
     reused = already = skipped = 0
     pending = []
@@ -713,7 +714,9 @@ def fetch_rows(jobs, manifest, workers=8, interval=0.3, tries=4, limit=0):
             # Every listed metadata row gets a manifest row at once, so the coverage
             # matrix can distinguish "not listed" from "listed, not fetched yet".
             pending.append(_record(row, "pending"))
-        if status == "ok" and path and is_pdf_file(path):
+        # --no-reuse also trusts an 'ok' row without opening its file: 26k opens on a busy HDD took 15+ min, and
+        # universe_to_drive deletes raw files once they are on Drive, which must not trigger a re-download (T-241).
+        if status == "ok" and path and (not reuse or is_pdf_file(path)):
             already += 1
             continue
         if status == "no_file" and not (row.get("attachment") or row.get("url_direct")):
@@ -1097,6 +1100,8 @@ def main(argv=None):
     ap.add_argument("--interval", type=float, default=0.3,
                     help="seconds between BSE requests overall (0.3 = 200/min)")
     ap.add_argument("--tries", type=int, default=4)
+    ap.add_argument("--reuse", action=argparse.BooleanOptionalAction, default=True,
+                    help="link documents already held elsewhere on disk (--no-reuse skips that walk; T-241)")
     ap.add_argument("--order", choices=["bucket", "company"], default="bucket",
                     help="bucket = ARs/results first across companies; company = one company's filings together, "
                          "so its store can be built while the fetch runs (T-241)")
@@ -1154,7 +1159,7 @@ def main(argv=None):
         return 0
     if args.fetch:
         stats = fetch_rows(jobs, manifest, workers=args.workers, interval=args.interval,
-                           tries=args.tries, limit=args.limit)
+                           tries=args.tries, limit=args.limit, reuse=args.reuse)
         run_isins = {row["isin"] for row in universe}
         n = manifest.write_csv()
         if args.out:
