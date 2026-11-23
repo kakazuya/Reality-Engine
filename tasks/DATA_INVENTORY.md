@@ -1,14 +1,14 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-22 05:00 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
-Undocumented: 0 tables and 2 of 75 raw folders.
+Generated 2026-11-23 05:01 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Undocumented: 0 tables and 7 of 84 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
 
-- `nsdl_fpi_fortnight`: 187 files, for example `FIIInvestSectorApril302020.html`, `FIIInvestSector_September302019.html`
-- `nsdl_limits`: 2 files, for example `breach_list_2026-10-06.html`, `red_flag_list_2026-10-06.html`
-- `nsdl_reports`: 7 files, for example `auc_category_2026-10-06.html`, `odi_pnotes_2026-10-06.html`
-- `nse_fii_stats`: 1924 files, for example `fii_stats_01-Apr-2019.xls`, `fii_stats_31-Oct-2025.xls`
+- `nsdl_fpi_fortnight`: 346 files, for example `FIIInestSector_April152014.html`, `FIIInvestSector_September302019.html`
+- `nsdl_limits`: 4 files, for example `breach_list_2026-10-06.html`, `red_flag_list_2026-11-22.html`
+- `nsdl_reports`: 14 files, for example `auc_category_2026-10-06.html`, `odi_pnotes_2026-11-22.html`
+- `nse_fii_stats`: 2933 files, for example `fii_stats_01-Apr-2015.xls`, `fii_stats_31-Oct-2025.xls`
 
 ## Databases
 
@@ -62,7 +62,7 @@ Undocumented: 0 tables and 2 of 75 raw folders.
 | equity_intelligence.db | `company_peer_features` | 4,996 | yes |
 | equity_intelligence.db | `company_peer_graph` | 51,540 | yes |
 | equity_intelligence.db | `company_peer_runs` | 10 | yes |
-| equity_intelligence.db | `corporate_actions` | 27,722 | yes |
+| equity_intelligence.db | `corporate_actions` | 45,007 | yes |
 | equity_intelligence.db | `corporate_documents` | 140,775 | yes |
 | equity_intelligence.db | `corporate_status_flags` | 0 | yes |
 | equity_intelligence.db | `countries` | 4 | yes |
@@ -95,28 +95,28 @@ Undocumented: 0 tables and 2 of 75 raw folders.
 | equity_intelligence.db | `macro_event_sources` | 59 | yes |
 | equity_intelligence.db | `macro_events` | 30 | yes |
 | equity_intelligence.db | `master_companies` | 6,940 | yes |
-| equity_intelligence.db | `mkt_bse_deals` | 272,211 | yes |
-| equity_intelligence.db | `mkt_bse_delivery_daily` | 7,593,049 | yes |
-| equity_intelligence.db | `mkt_bse_eq_daily` | 7,598,245 | yes |
-| equity_intelligence.db | `mkt_bse_index_daily` | 146,095 | yes |
-| equity_intelligence.db | `mkt_bse_insider` | 153,904 | yes |
-| equity_intelligence.db | `mkt_commodity_daily` | 25,255 | yes |
-| equity_intelligence.db | `mkt_commodity_monthly` | 9,208 | yes |
-| equity_intelligence.db | `mkt_fii_dii_cash` | 1,942 | yes |
-| equity_intelligence.db | `mkt_load_log` | 25,791 | yes |
-| equity_intelligence.db | `mkt_nsdl_fpi_daily` | 33,549 | yes |
-| equity_intelligence.db | `mkt_nse_deals` | 279,513 | yes |
-| equity_intelligence.db | `mkt_nse_eq_daily` | 1,388,730 | yes |
+| equity_intelligence.db | `mkt_bse_deals` | 419,635 | yes |
+| equity_intelligence.db | `mkt_bse_delivery_daily` | 14,262,211 | yes |
+| equity_intelligence.db | `mkt_bse_eq_daily` | 14,269,446 | yes |
+| equity_intelligence.db | `mkt_bse_index_daily` | 244,731 | yes |
+| equity_intelligence.db | `mkt_bse_insider` | 179,679 | yes |
+| equity_intelligence.db | `mkt_commodity_daily` | 77,265 | yes |
+| equity_intelligence.db | `mkt_commodity_monthly` | 18,416 | yes |
+| equity_intelligence.db | `mkt_fii_dii_cash` | 4,130 | yes |
+| equity_intelligence.db | `mkt_load_log` | 45,283 | yes |
+| equity_intelligence.db | `mkt_nsdl_fpi_daily` | 51,176 | yes |
+| equity_intelligence.db | `mkt_nse_deals` | 350,947 | yes |
+| equity_intelligence.db | `mkt_nse_eq_daily` | 4,947,209 | yes |
 | equity_intelligence.db | `mkt_nse_full_daily` | 4,564,083 | yes |
-| equity_intelligence.db | `mkt_nse_index_daily` | 208,865 | yes |
-| equity_intelligence.db | `mkt_nse_insider` | 176,865 | yes |
-| equity_intelligence.db | `mkt_nse_participant` | 19,285 | yes |
+| equity_intelligence.db | `mkt_nse_index_daily` | 298,478 | yes |
+| equity_intelligence.db | `mkt_nse_insider` | 341,586 | yes |
+| equity_intelligence.db | `mkt_nse_participant` | 36,499 | yes |
 | equity_intelligence.db | `mkt_nse_pit_filings` | 4,032 | yes |
 | equity_intelligence.db | `mkt_nse_pit_xbrl_facts` | 160,145 | yes |
-| equity_intelligence.db | `mkt_nse_sast` | 37,121 | yes |
-| equity_intelligence.db | `mkt_nse_short` | 46,011 | yes |
-| equity_intelligence.db | `mkt_nse_sme_daily` | 254,181 | yes |
-| equity_intelligence.db | `mkt_report_cells` | 532,344 | yes |
+| equity_intelligence.db | `mkt_nse_sast` | 52,252 | yes |
+| equity_intelligence.db | `mkt_nse_short` | 63,682 | yes |
+| equity_intelligence.db | `mkt_nse_sme_daily` | 288,149 | yes |
+| equity_intelligence.db | `mkt_report_cells` | 1,185,508 | yes |
 | equity_intelligence.db | `moat_evaluations` | 6,397 | yes |
 | equity_intelligence.db | `moat_history` | 71,632 | yes |
 | equity_intelligence.db | `model_explainer_rankings` | 94,968 | yes |
@@ -240,36 +240,45 @@ Undocumented: 0 tables and 2 of 75 raw folders.
 | pilot60_history | 14,301 | 33.57 | 2026-11-16 `manifest.csv` | yes |
 | price_bands | 0 | 0.00 | - | yes |
 | raw_market/amfi_nav | 0 | 0.00 | - | yes |
-| raw_market/bse_bhav | 5 | 0.00 | 2026-11-09 `BhavCopy_BSE_CM_0_0_0_20261109_F_0000.CSV` | yes |
-| raw_market/bse_block | 0 | 0.00 | - | yes |
-| raw_market/bse_bulk | 0 | 0.00 | - | yes |
-| raw_market/bse_corpact | 0 | 0.00 | - | yes |
-| raw_market/bse_deliv | 4 | 0.00 | 2026-11-09 `_manifest.csv` | yes |
-| raw_market/bse_index | 0 | 0.00 | - | yes |
-| raw_market/bse_insider | 0 | 0.00 | - | yes |
+| raw_market/bse_bhav | 2,227 | 0.21 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/bse_block | 109 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/bse_bulk | 109 | 0.03 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/bse_corpact | 109 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/bse_deliv | 2,226 | 0.13 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/bse_index | 420 | 0.04 | 2026-11-22 `SPBSUTIP_2018.json` | yes |
+| raw_market/bse_insider | 109 | 0.01 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/commod | 14 | 0.01 | 2026-11-22 `worldbank_pink_sheet_monthly.xlsx` | yes |
 | raw_market/masters | 11 | 0.06 | 2026-10-08 `nse_SME_EQUITY_L.csv` | yes |
-| raw_market/mc_fiidii | 0 | 0.00 | - | yes |
-| raw_market/nsdl_fpi_daily | 0 | 0.00 | - | yes |
-| raw_market/nsdl_fpi_fortnight | 0 | 0.00 | - | yes |
-| raw_market/nse_block | 0 | 0.00 | - | yes |
-| raw_market/nse_bulk | 0 | 0.00 | - | yes |
-| raw_market/nse_cm_isin | 0 | 0.00 | - | yes |
-| raw_market/nse_corpact | 0 | 0.00 | - | yes |
-| raw_market/nse_corpact_sme | 0 | 0.00 | - | yes |
-| raw_market/nse_fii_stats | 0 | 0.00 | - | yes |
-| raw_market/nse_full | 5 | 0.00 | 2026-11-09 `sec_bhavdata_full_09112026.csv` | yes |
-| raw_market/nse_index | 5 | 0.00 | 2026-11-09 `ind_close_all_09112026.csv` | yes |
-| raw_market/nse_integrated_equities | 0 | 0.00 | - | yes |
-| raw_market/nse_integrated_sme | 0 | 0.00 | - | yes |
-| raw_market/nse_part_oi | 0 | 0.00 | - | yes |
-| raw_market/nse_part_vol | 0 | 0.00 | - | yes |
-| raw_market/nse_pit_gg | 0 | 0.00 | - | yes |
-| raw_market/nse_pit_gg_sme | 0 | 0.00 | - | yes |
+| raw_market/mc_fiidii | 18 | 0.00 | 2026-11-22 `2018.csv` | yes |
+| raw_market/nsdl_fpi_daily | 109 | 0.01 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nsdl_fpi_fortnight | 357 | 0.09 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nsdl_limits | 3 | 0.00 | 2026-11-22 `breach_list_2026-11-22.html` | **undocumented** |
+| raw_market/nsdl_reports | 7 | 0.00 | 2026-11-22 `fpi_quarterly_2026-11-22.html` | **undocumented** |
+| raw_market/nse_block | 606 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nse_bulk | 2,222 | 0.01 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nse_cm | 2,224 | 0.12 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nse_cm_isin | 2,224 | 0.12 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nse_corpact | 109 | 0.01 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nse_corpact_sme | 32 | 0.00 | 2026-11-22 `2018-12-01_2018-12-31.json` | yes |
+| raw_market/nse_fii_stats | 1,010 | 0.03 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nse_full | 5 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nse_index | 1,684 | 0.01 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nse_integrated_equities | 7 | 0.00 | 2026-11-22 `page_007.json` | yes |
+| raw_market/nse_integrated_sme | 13 | 0.00 | 2026-11-22 `page_013.json` | yes |
+| raw_market/nse_mto | 2,224 | 0.12 | 2026-11-22 `_manifest.csv` | **undocumented** |
+| raw_market/nse_part_oi | 1,722 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nse_part_vol | 1,723 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nse_pit | 39 | 0.13 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nse_pit_gg | 1 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nse_pit_gg_sme | 1 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
 | raw_market/nse_pit_gg_xml | 0 | 0.00 | - | yes |
-| raw_market/nse_results_xbrl | 0 | 0.00 | - | yes |
-| raw_market/nse_sast | 0 | 0.00 | - | yes |
-| raw_market/nse_short | 0 | 0.00 | - | yes |
+| raw_market/nse_results_equities | 1,042 | 0.09 | 2026-11-22 `_manifest.csv` | **undocumented** |
+| raw_market/nse_results_sme | 102 | 0.00 | 2026-11-22 `_manifest.csv` | **undocumented** |
+| raw_market/nse_results_xbrl | 5,872 | 0.15 | 2026-11-22 `INTEGRATED_FILING_NONINDAS_1760537_20112026064539_` | yes |
+| raw_market/nse_sast | 46 | 0.01 | 2026-11-22 `2018-12-01_2018-12-31.json` | yes |
+| raw_market/nse_short | 1,041 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
 | raw_market/nse_shp_index | 0 | 0.00 | - | yes |
+| raw_market/nse_sme | 1,422 | 0.01 | 2026-11-22 `_manifest.csv` | yes |
 | rbi | 0 | 0.00 | - | yes |
 | reddit | 0 | 0.00 | - | yes |
 | results_notes_refetch | 0 | 0.00 | - | yes |

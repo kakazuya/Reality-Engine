@@ -6,16 +6,20 @@
 The fetch (``fetch_pilot60_history --fetch --order company``) writes one row per listed filing into its manifest
 database, ``pending`` until downloaded. A company is ready when every row of its ISIN dated on or after
 ``--window-start`` has left ``pending`` (ok, error, skipped or no_file) and at least one row is ``ok``. Every
-``--poll`` seconds the driver rewrites ``<root>/manifest.csv`` (status ``ok`` rows of ready companies only) and
-hands each idle shard the next ``--batch`` ready, unbuilt queue positions of ``<root>/universe_fy27.csv`` as one
-``tg_measure_build --only`` run (its own ``--out-csv``/log per shard). A company with a ``cNN_measure.json`` is
-built; ``tg_measure_build`` skips it anyway. The driver stops when no row is pending, nothing is left to build and
-every shard is idle; ``<root>/follow_status.log`` records each batch and the final counts.
+``--poll`` seconds it hands each idle shard the next ``--batch`` ready, unbuilt queue positions of
+``<root>/universe_fy27.csv`` as one ``tg_measure_build --only`` run, with that batch's own manifest
+(``<root>/manifests/batch_NNNNN_tK.csv``, status ``ok`` rows only) and its own ``<root>/shard_N/measure.csv``. A
+company with a ``cNN_measure.json`` is built (its ``failed`` field is logged as FAILED PARTS); one left without a
+json is relaunched up to ``--tries`` times, then given up. A STALL line is logged when pending rows stop moving
+(fetch dead?). The driver stops when the universe has rows, none is pending, nothing is left to build and every
+shard is idle; ``<root>/follow_status.log`` records each batch and the final counts (built, failed parts, given
+up, never ready).
 """
 from __future__ import annotations
 
 import argparse
 import csv
+import json
 import os
 import sqlite3
 import subprocess
@@ -39,18 +43,20 @@ def log(root: Path, text: str) -> None:
         fh.write(line + "\n")
 
 
-def readiness(db: Path, isins: set[str], window_start: str) -> tuple[set[str], int, list[dict]]:
-    """(ready ISINs, pending rows in the universe, ok rows of ready ISINs) from the fetch manifest, read-only."""
+def readiness(db: Path, isins: set[str], window_start: str) -> tuple[set[str], int, int, dict[str, list[dict]]]:
+    """(ready ISINs, pending rows, universe rows, ok rows by ISIN) from the fetch manifest db, read-only."""
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=120)
     try:
         cur = con.execute(f"SELECT {','.join(CSV_FIELDS)} FROM docs WHERE dissem_ts >= ?", (window_start,))
         pending: dict[str, int] = {}
         ok: dict[str, list[dict]] = {}
+        total = 0
         for values in cur:
             row = dict(zip(CSV_FIELDS, values))
-            isin = row["isin"]
+            isin = str(row["isin"] or "").upper()
             if isin not in isins:
                 continue
+            total += 1
             if row["status"] == "pending":
                 pending[isin] = pending.get(isin, 0) + 1
             elif row["status"] == "ok":
@@ -58,18 +64,30 @@ def readiness(db: Path, isins: set[str], window_start: str) -> tuple[set[str], i
     finally:
         con.close()
     ready = {i for i in ok if i not in pending}
-    rows = [r for i in ready for r in ok[i]]
-    return ready, sum(pending.values()), rows
+    return ready, sum(pending.values()), total, ok
 
 
 def write_manifest(path: Path, rows: list[dict]) -> None:
+    """One batch's own manifest (never rewritten while a shard reads it)."""
     rows = sorted(rows, key=lambda r: (r["symbol_at_time"] or "", r["dissem_ts"] or "", r["newsid"]))
+    path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".csv.part")
     with tmp.open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=CSV_FIELDS)
         w.writeheader()
         w.writerows(rows)
     os.replace(tmp, path)
+
+
+def measure_of(root: Path, pos: int) -> dict | None:
+    name = company_name(pos, None)
+    path = root / name / f"{name}_measure.json"
+    if not path.is_file():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        return {"failed": "unreadable measure json"}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -81,6 +99,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--shards", type=int, default=2)
     ap.add_argument("--batch", type=int, default=5)
     ap.add_argument("--poll", type=float, default=120.0)
+    ap.add_argument("--tries", type=int, default=2, help="launches per company before it is given up")
+    ap.add_argument("--min-free-gb", type=float, default=20.0, help="passed to tg_measure_build")
+    ap.add_argument("--stall-minutes", type=float, default=60.0,
+                    help="log a STALL line when pending rows have not moved for this long")
     ap.add_argument("--once", action="store_true", help="one pass: launch what is ready, wait, exit")
     args = ap.parse_args(argv)
     root = Path(args.root)
@@ -88,44 +110,69 @@ def main(argv: list[str] | None = None) -> int:
     with universe.open(encoding="utf-8", newline="") as fh:
         queue = [r for r in csv.DictReader(fh) if str(r.get("symbol") or "").strip()]
     pos_by_isin = {str(r["isin"]).strip().upper(): i for i, r in enumerate(queue, start=1)}
-    manifest = root / "manifest.csv"
+    isin_by_pos = {v: k for k, v in pos_by_isin.items()}
     env = dict(os.environ, PYTHONIOENCODING="utf-8")
     env.setdefault("REALITY_DATA_ROOT", str(REPO / "reality_engine" / "data"))
     running: dict[int, tuple[subprocess.Popen, list[int]]] = {}
-    claimed: set[int] = set()
-    log(root, f"start: {len(queue)} companies, {args.shards} shards, batch {args.batch}")
+    tries: dict[int, int] = {}
+    given_up: set[int] = set()
+    failed_built: set[int] = set()
+    last_pending, last_move = -1, time.monotonic()
+    log(root, f"start: {len(queue)} companies, {args.shards} shards, batch {args.batch}, "
+              f"manifest db {args.manifest_db}")
     while True:
         for shard, (proc, batch) in list(running.items()):
-            if proc.poll() is not None:
-                log(root, f"shard {shard} rc={proc.returncode} batch {','.join(map(str, batch))}")
-                del running[shard]
+            if proc.poll() is None:
+                continue
+            del running[shard]
+            missing = [pos for pos in batch if measure_of(root, pos) is None]
+            bad = [pos for pos in batch if (measure_of(root, pos) or {}).get("failed")]
+            failed_built.update(bad)
+            for pos in missing:
+                if tries.get(pos, 0) >= args.tries:
+                    given_up.add(pos)
+            log(root, f"shard {shard} rc={proc.returncode} batch {','.join(map(str, batch))}"
+                      + (f" NOT BUILT {','.join(map(str, missing))}" if missing else "")
+                      + (f" FAILED PARTS {','.join(map(str, bad))}" if bad else ""))
         free = [s for s in range(1, args.shards + 1) if s not in running]
         if not free:
             time.sleep(30)
             continue
-        ready, pending_rows, ok_rows = readiness(Path(args.manifest_db), set(pos_by_isin), args.window_start)
+        ready, pending_rows, total_rows, ok = readiness(Path(args.manifest_db), set(pos_by_isin), args.window_start)
+        if pending_rows != last_pending:
+            last_pending, last_move = pending_rows, time.monotonic()
+        elif pending_rows and time.monotonic() - last_move > args.stall_minutes * 60:
+            log(root, f"STALL: {pending_rows} pending rows unchanged for {args.stall_minutes:g} min; "
+                      "is the fetch alive?")
+            last_move = time.monotonic()
+        busy = {pos for _, batch in running.values() for pos in batch}
         todo = sorted(pos_by_isin[i] for i in ready
-                      if pos_by_isin[i] not in claimed
-                      and not (root / company_name(pos_by_isin[i], None)
-                               / f"{company_name(pos_by_isin[i], None)}_measure.json").is_file())
-        if todo:
-            write_manifest(manifest, ok_rows)
+                      if pos_by_isin[i] not in busy and pos_by_isin[i] not in given_up
+                      and measure_of(root, pos_by_isin[i]) is None)
         for shard in free:
             batch, todo = todo[:args.batch], todo[args.batch:]
             if not batch:
                 break
-            claimed.update(batch)
+            for pos in batch:
+                tries[pos] = tries.get(pos, 0) + 1
+            manifest = root / "manifests" / f"batch_{batch[0]:05d}_t{tries[batch[0]]}.csv"
+            write_manifest(manifest, [r for pos in batch for r in ok[isin_by_pos[pos]]])
+            out_dir = root / f"shard_{shard}"
+            out_dir.mkdir(exist_ok=True)
             cmd = [sys.executable, "-m", "reality_engine.scripts.tg_measure_build", "--root", str(root),
                    "--universe", str(universe), "--manifest", str(manifest), "--only", ",".join(map(str, batch)),
                    "--accept-copy", "", "--window-start", args.window_start,
-                   "--out-csv", str(root / f"measure_s{shard}.csv")]
+                   "--min-free-gb", f"{args.min_free_gb:g}", "--out-csv", str(out_dir / "measure.csv")]
             out = (root / f"build_s{shard}.log").open("a", encoding="utf-8")
             running[shard] = (subprocess.Popen(cmd, cwd=REPO, env=env, stdout=out, stderr=subprocess.STDOUT,
                                                creationflags=CREATE_NO_WINDOW), batch)
             log(root, f"shard {shard} start batch {','.join(map(str, batch))} (ready {len(ready)}, "
-                      f"claimed {len(claimed)}, pending rows {pending_rows})")
-        if not running and (args.once or (pending_rows == 0 and not todo)):
-            log(root, f"done: ready {len(ready)}, claimed {len(claimed)}, pending rows {pending_rows}")
+                      f"pending rows {pending_rows})")
+        if not running and (args.once or (total_rows and pending_rows == 0 and not todo)):
+            never = len(pos_by_isin) - len(ready)
+            built = sum(1 for pos in pos_by_isin.values() if measure_of(root, pos) is not None)
+            log(root, f"done: built {built}, with failed parts {len(failed_built)}, given up {len(given_up)}, "
+                      f"never ready (no ok filing or still pending) {never}, pending rows {pending_rows}")
             return 0
         time.sleep(30 if running else args.poll)
 
