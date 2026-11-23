@@ -202,7 +202,9 @@ def process(d: Path, isin: str, symbol: str, args: argparse.Namespace, state: sq
     if local:
         move_raws(local, args, raw_con, listing_dir)
     marks = statuses(raw_con, [p for p, _b in paths])
-    lost = [p for p, _b in paths if marks.get(p) != "on_drive"]
+    # A manifest path with no local file and no row here was moved by an earlier raw_to_drive run (its own manifest
+    # db) or never landed; only a file still on this disk and not on Drive blocks the record (Wolf, 24 Nov).
+    lost = [p for p, _b in paths if marks.get(p) != "on_drive" and os.path.isfile(p)]
     if lost:
         raise RuntimeError(f"{len(lost)} raw files are not on Drive; local copies kept")
     state.execute("INSERT OR REPLACE INTO company (name, symbol, isin, measure_at, raw_files, raw_bytes, "
