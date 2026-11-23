@@ -2020,10 +2020,16 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     out = [item for group in page_groups for item in group]
     if _has_table("obs_fact"):
         obs_stmt_rows = _obs_rows(sym, record_type="statement", terms=terms, as_of=as_of, limit=_cap(limit))
-        # also topic filter? statements tool has topic/terms; apply terms already in _obs_rows via terms
+        plan = _topic_plan(topic) if topic else None
+        filtered_obs = []
         for r in obs_stmt_rows:
             if not r.get("statement"):
                 continue
+            if plan is not None and not _topic_hit(plan, r.get("statement"), r.get("measure")):
+                continue
+            filtered_obs.append(r)
+        remaining = max(0, _cap(limit) - len(out))
+        for r in filtered_obs[:remaining if remaining else _cap(limit)]:
             out.append({"call_date": (r.get("known_at") or "")[:10], "call_period": None, "speaker": r.get("speaker"),
                         "role": None, "section": None, "topics": None, "entities": None,
                         "period_discussed": None, "answer_turn": None, "match": "obs",
@@ -2272,7 +2278,8 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
             item["entity_unsure"] = True    # the text named a candidate the store cannot prove is a subsidiary
         out.append(_add_check(item, r))
     if _has_table("obs_fact"):
-        obs_g = _obs_rows(sym, measure=metric, record_type="guidance", as_of=as_of, limit=_cap(limit))
+        obs_g = _obs_rows(sym, measure=metric, record_type="guidance", as_of=as_of, limit=_cap(limit),
+                          measure_exact=True)
         for r in obs_g:
             item = {"metric": r["measure"], "period": r["period"], "low": r["value"], "high": r["value_high"],
                     "unit": r["unit"], "direction": r["direction"], "said_on": (r.get("known_at") or "")[:10],
@@ -3878,15 +3885,28 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
 
 def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
               period: str | None = None, record_type: str | None = None, status: str | None = None,
-              as_of: str | None = None, limit: int = 20) -> list[dict[str, Any]]:
+              as_of: str | None = None, limit: int = 20, measure_exact: bool = False) -> list[dict[str, Any]]:
     if not _has_table("obs_fact"):
         return []
     day = _day(as_of, "as_of")
     where = ["o.symbol=?"]
     args: list[Any] = [sym]
     if measure:
-        where.append("o.measure LIKE ?")
-        args.append(f"%{measure}%")
+        if measure_exact:
+            cands = _pick("obs_fact", "measure", sym, measure)[0] if _has_table("obs_fact") else []
+            # a contained name is a different measure when it adds a derived suffix (revenue -> revenue_growth_yoy)
+            derived = ("growth", "_pct", "_pp", "change", "_yoy", "_qoq", "margin", "share", "ratio")
+            cands = [c for c in cands if c.lower() == measure.lower()
+                     or not any(d in c.lower() and d not in measure.lower() for d in derived)]
+            if cands:
+                where.append(f"o.measure IN ({','.join('?' * len(cands))})")
+                args.extend(cands)
+            else:
+                where.append("LOWER(o.measure)=LOWER(?)")
+                args.append(measure)
+        else:
+            where.append("o.measure LIKE ?")
+            args.append(f"%{measure}%")
     if record_type:
         where.append("o.record_type=?")
         args.append(record_type)
@@ -3899,54 +3919,65 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
     if label:
         where.append("o.period=?")
         args.append(label)
+    # terms filter in SQL: every term must hit one of the text columns (AND-ed)
+    term_words = [w for w in re.findall(r"\w+", terms or "") if len(w) > 1]
+    text_cols = [c for c in ("statement", "printed_label", "question_context", "measure")
+                 if _has_column("obs_fact", c)]
+    if not text_cols:
+        text_cols = ["measure"]
+    for w in term_words:
+        pat = f"%{w}%"
+        where.append("(" + " OR ".join(f"o.{c} LIKE ?" for c in text_cols) + ")")
+        args.extend([pat] * len(text_cols))
     extra, eargs = _asof(as_of, "o.known_at")
     rows = _q(f"SELECT o.* FROM obs_fact o WHERE {' AND '.join(where)}{extra} "
               f"ORDER BY o.known_at DESC LIMIT ?", (*args, *eargs, _cap(limit)))
     out: list[dict[str, Any]] = []
-    term_words = [w for w in re.findall(r"[\\w]+", terms or "") if len(w) > 1]
+    partial = (not measure_exact) and bool(measure)
     for r in rows:
-        stmt = r["statement"] or ""
-        if term_words and not all(w.lower() in stmt.lower() for w in term_words):
-            # also match measure/printed_label
-            hay = " ".join(str(r[k] or "") for k in ("measure", "printed_label", "question_context"))
-            if not all(w.lower() in hay.lower() for w in term_words):
-                continue
+        keys = set(r.keys())
+        g = lambda k: (r[k] if k in keys else None)
         item = {
-            "measure": r["measure"], "record_type": r["record_type"], "status": r["status"],
-            "source": r["source"], "doc_type": r["doc_type"], "doc_key": r["doc_key"], "page": r["page"],
-            "period": r["period"], "period_source": r["period_source"], "basis": r["basis"],
-            "basis_source": r["basis_source"], "unit": r["unit"], "scale": r["scale"], "value": r["value"],
-            "value_high": r["value_high"], "statement": r["statement"], "speaker": r["speaker"],
-            "direction": r["direction"], "question_context": r["question_context"],
-            "segment": r["segment"], "geography": r["geography"], "customer": r["customer"],
-            "entity_scope": r["entity_scope"], "known_at": r["known_at"],
-            "provenance": _prov("obs_fact", f"{r['doc_key']} p{r['page']}", r["known_at"],
-                                 doc_type=r["doc_type"], title=_trim((r['series_title'] if 'series_title' in r.keys() else None) or '', 120),
-                                 row_id=r["observation_id"]),
+            "measure": g("measure"), "record_type": g("record_type"), "status": g("status"),
+            "source": g("source"), "doc_type": g("doc_type"), "doc_key": g("doc_key"), "page": g("page"),
+            "period": g("period"), "period_source": g("period_source"), "basis": g("basis"),
+            "basis_source": g("basis_source"), "unit": g("unit"), "scale": g("scale"), "value": g("value"),
+            "value_high": g("value_high"), "statement": g("statement"), "speaker": g("speaker"),
+            "direction": g("direction"), "question_context": g("question_context"),
+            "segment": g("segment"), "geography": g("geography"), "customer": g("customer"),
+            "entity_scope": g("entity_scope"), "known_at": g("known_at"),
+            "provenance": _prov("obs_fact", f"{g('doc_key')} p{g('page')}", g("known_at"),
+                                 doc_type=g("doc_type"), title=_trim((g("series_title") if "series_title" in keys else None) or '', 120),
+                                 row_id=g("observation_id")),
         }
+        if partial:
+            item["match"] = "partial"
         _add_money(item, r["value"], r["unit"], r["scale"])
         out.append(item)
     return out
 
 
 def _obs_fin_rows(sym, measure, period, bas, as_of, cap):
-    rows = _obs_rows(sym, measure=measure, period=period, record_type="number", as_of=as_of, limit=cap)
+    rows = _obs_rows(sym, measure=measure, period=period, record_type="number", as_of=as_of, limit=cap,
+                     measure_exact=True)
     out = []
     for r in rows:
         if bas and r.get("basis") and r["basis"] not in ("not_stated",) and r["basis"] != bas:
             continue
         row = {"measure": r["measure"], "period": r["period"], "basis": r["basis"] or "not_stated",
                "definition": "observed", "value": r["value"], "unit": r["unit"], "scale": r["scale"] or 1.0,
-               "status": r["status"], "source": r["source"], "doc_key": r["doc_key"], "page": r["page"],
+               "status": r["status"], "source": "obs_fact", "doc_key": r["doc_key"], "page": r["page"],
                "period_source": r["period_source"], "basis_source": r["basis_source"], "known_at": r["known_at"],
                "provenance": r["provenance"]}
+        row["_table"], row["_known_at"], row["_rowid"], row["_check"] = "obs_fact", r["known_at"], None, None
         _add_money(row, r["value"], r["unit"], r["scale"])
         out.append(row)
     return out
 
 
 def _obs_kpi_rows(sym, kpi, period, as_of, cap):
-    rows = _obs_rows(sym, measure=kpi, period=period, record_type="number", as_of=as_of, limit=cap)
+    rows = _obs_rows(sym, measure=kpi, period=period, record_type="number", as_of=as_of, limit=cap,
+                     measure_exact=True)
     out = []
     for r in rows:
         row = {"metric": r["measure"], "dimension": "total", "value": r["value"], "unit": r["unit"],
