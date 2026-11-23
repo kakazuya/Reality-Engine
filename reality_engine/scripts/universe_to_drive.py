@@ -251,7 +251,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dry-run", action="store_true", help="list companies and bytes; hash, upload and delete nothing")
     ap.add_argument("--once", action="store_true", help="one pass, then exit")
     ap.add_argument("--poll", type=float, default=300.0, help="seconds between passes")
+    ap.add_argument("--stores-remote", default=None,
+                    help="Drive folder for the stores (default <archive>/universe_fy27/stores; the 394 build uses "
+                         "<archive>/tg_full394/stores)")
     a = ap.parse_args(argv)
+    global STORES_REMOTE
+    if a.stores_remote:
+        STORES_REMOTE = a.stores_remote
     root = Path(a.root)
     universe = Path(a.universe) if a.universe else root / "universe_fy27.csv"
     args = argparse.Namespace(**vars(a))
