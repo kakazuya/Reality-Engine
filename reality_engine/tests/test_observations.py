@@ -1,4 +1,5 @@
 """T-230 stage A-F: observation schema, independent checks and the writer (synthetic, no network)."""
+import contextlib
 import json
 import shutil
 import sqlite3
@@ -2103,6 +2104,108 @@ def test_stage_n2_recheck_reverts_a_stale_slide_title_and_a_non_stock_deck_as_of
         assert [(p, s) for p, s, _status in cursor.fetchall()] == [("", ""), ("", "")]
         assert con.execute("SELECT COUNT(*) FROM observation WHERE status='unverified'").fetchone()[0] == 2
         assert stats["slide_title_cleared"] == 1 and stats["deck_asof_cleared"] == 1
+        con.close()
+    finally:
+        _cleanup_store()
+
+
+def test_stage_n2_recheck_rewrites_a_stored_quantity_and_a_growth_period_on_the_same_rows():
+    page = ("Secured a contract for the manufacturing and supply of 697 Boggie Open Military (BOM) Wagons\n"
+            "Other Income\nY-o-Y (%)\nFY23\nFY24\n28.50%")
+    try:
+        _make_store(title="Key Developments", pages=(page,), first_page=14)
+        con = obs.create_db(":memory:")
+        rows = build([
+            reply(measure="volume.sales", printed_label="manufacturing and supply of 697 Boggie Open Military "
+                                                        "(BOM) Wagons", value_text="697", unit="Wagons",
+                  period="Q4FY24", series_title="Secured a contract"),
+            reply(measure="other_income_growth_yoy", printed_label="Other Income", printed_axis="Y-o-Y (%)",
+                  value_text="28.50%", unit="%", period="FY23"),
+        ], page_text=page, words=())
+        rows[0].update({"measure": "volume.sales", "status": "verified", "status_reason": ""})
+        rows[1].update({"period": "FY23", "period_source": "", "status": "verified", "status_reason": ""})
+        obs.write_rows(con, rows)
+        ids = [r[0] for r in con.execute("SELECT observation_id FROM observation ORDER BY observation_id")]
+        stats = obs.recheck_db(con, [str(STORE)])
+        got = [(r[0], r[1]) for r in con.execute("SELECT measure, period FROM observation ORDER BY observation_id")]
+        assert got == [("order.quantity", "Q4FY24"), ("other_income_growth_yoy", "FY24")], got
+        assert [r[0] for r in con.execute("SELECT observation_id FROM observation ORDER BY observation_id")] == ids
+        assert stats["measure_mapped"] == 1 and stats["growth_periods"] == 1, stats
+        con.close()
+    finally:
+        _cleanup_store()
+
+
+def test_recheck_cli_copies_the_baseline_and_applies_the_n2_rule():
+    """The 04:00 no-op: main() rechecked a fresh empty DB and reported success, so the N2 rule never ran."""
+    page = ("About Kalpataru Projects International Ltd. (KPIL)\n"
+            "(1) Consolidated Revenue for FY25, (2) Data as of 31st March 2025\n"
+            "Global Reach 75 Countries")
+    base = Path(".tmp/t230/test_recheck_cli_base.db")
+    out = Path(".tmp/t230/test_recheck_cli_out.db")
+    for path in (base, out):
+        path.unlink(missing_ok=True)
+    try:
+        _make_store(title="About KPIL", pages=(page,), first_page=14)
+        con = obs.create_db(base)
+        rows = build([reply(measure="count.countries", printed_label="Global Reach", value_text="75",
+                            unit="Countries")], page_text=page)
+        rows[0].update({"period": "FY25", "period_source": "slide_title", "status": "verified",
+                        "status_reason": ""})
+        obs.write_rows(con, rows)
+        con.close()
+        rc = obs.main(["--recheck", "--baseline", str(base), "--out", str(out), "--stores", str(STORE)])
+        assert rc == 0
+        check = sqlite3.connect(f"file:{out.as_posix()}?mode=ro", uri=True)
+        try:
+            got = check.execute("SELECT period, period_source, status FROM observation").fetchall()
+        finally:
+            check.close()
+        assert got == [("", "", "unverified")], got
+    finally:
+        _cleanup_store()
+        for path in (base, out):
+            path.unlink(missing_ok=True)
+
+
+def test_recheck_cli_refuses_a_pass_that_read_no_page():
+    """A recheck over an empty --out is a no-op; it must not exit 0 as if the rules were clean."""
+    empty = Path(".tmp/t230/test_recheck_empty.db")
+    empty.unlink(missing_ok=True)
+    try:
+        _make_store(pages=("Revenue 100",))
+        rc = obs.main(["--recheck", "--out", str(empty), "--stores", str(STORE)])
+        assert rc == 2
+    finally:
+        _cleanup_store()
+        empty.unlink(missing_ok=True)
+
+
+def test_recheck_downloads_each_documents_pdf_once_not_once_per_page(monkeypatch):
+    pages = ("Revenue 100 FY25\nRevenue 200 FY25\nRevenue 300 FY25",) * 3
+
+    class Counting:
+        entered = 0
+
+        @contextlib.contextmanager
+        def keep(self):
+            Counting.entered += 1
+            yield
+
+    try:
+        _make_store(pages=pages, first_page=5)
+        monkeypatch.setattr("reality_engine.raw_store.default_store", lambda: Counting())
+        con = obs.create_db(":memory:")
+        rows = []
+        for page_no in (5, 6, 7):
+            rows.extend(obs.build_observations(symbol="NAVKARCORP", doc_key=DECK, page=page_no,
+                                               known_at=KNOWN_AT, page_text=pages[0],
+                                               reply_rows=[reply(measure="revenue.value",
+                                                                 printed_label="Revenue", value_text="100")]))
+        obs.write_rows(con, rows)
+        stats = obs.recheck_db(con, [str(STORE)])
+        assert stats["pages"] == 3, stats
+        assert Counting.entered == 1          # three pages, one document: one keep, one download
         con.close()
     finally:
         _cleanup_store()

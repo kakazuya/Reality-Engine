@@ -3054,16 +3054,41 @@ they are a country/market figure or one client's order. N2 tightens the rules; i
   --baseline D:/RealityEngine/t230/obs_91_i.db`: **still right 118, fixed 18, still wrong 34, changed 11, newly
   broken 0 -- gate pass**. That copy's N2 stats: `slide_title_periods` 153, `slide_title_cleared` 0, `deck_asof`
   25, `deck_asof_cleared` 0, `growth_periods` 27, `customers_named` 171, `scope_cues` 290, `measure_mapped` 527.
-- **Deck recheck (unfinished at the 23 Nov worker stop).** The reduced-scope copy `.tmp/t238n2/deck_scope.db`
-  (9,439 pages, 238,846 rows; copied from `D:/RealityEngine/t238/deck_n.db` by `.tmp/t238n2/make_reduced.py`) was
-  still processing when the worker stopped; no `deck_n2.db` was produced. Finish it with the three commands in the
-  N2 report, then `.tmp/t238n2/verify_cases.py` (the 5 period + 3 scope graded cases), `.tmp/t238n2/analyze.py` (the
-  per-rule revert table and the 20-row period sample) and `python -m reality_engine.scripts.regress observations
-  --db .tmp/t238n2/deck_n2.db --baseline D:/RealityEngine/t238/deck_n.db` (must print newly broken 0).
-- **Tests.** `python -m pytest reality_engine/tests/test_observations.py -q` **157 passed** (7 N2 tests: the title
+- **Deck recheck (T-238 N2, 23 Nov 2026).** Scope = the 9,439 pages of `D:/RealityEngine/t238/deck_n.db` that carry
+  a slide-title/deck-as-of period, a growth/change row with a fiscal period, a market/demand measure, or a volume row
+  with order wording (56,406 rows). The pass is a `--recheck --out <copy>` over the affected pages only (no
+  `--baseline`: that would overwrite the reduced copy), and each rechecked page is merged back wholesale into
+  `.tmp/t238n2/deck_n2.db`, a copy of the stage-N deck DB, so pages outside the pass keep their stage-N values.
+  **This job rechecked a seeded 300-document sample of the scope plus every document holding one of the 8 graded
+  cases: 1,213 pages / 31,948 rows** (`.tmp/t238n2/sub_*.db`, merged by `.tmp/t238n2/merge_subs.py`). The other
+  ~2,562 documents are a 6-14 GB Drive download and did not fit the 2 h budget; finish with `DOCS = 2862` in
+  `.tmp/t238n2/build_subset.py`, then `python .tmp/t238n2/run_subset.py 0..5` and `merge_subs.py` (on a DSH-sandboxed
+  host the fetch needs a 0777 temp root: a 0700 `mkdtemp` directory rejects raw_store's rclone list file, and
+  `run_subset.py` installs one). Results on the rechecked pages: verified 490,408 -> **490,029** (442 verified rows
+  reverted, 63 upgraded), unverified 269,508 -> 269,887, quarantined 1,359 unchanged. By rule (rows whose field
+  changed / verified rows reverted): slide-title period 153/67, deck-as-of period 304/186, growth-pair period
+  484/31, scope (country/industry/customer) 268/29, order quantity 18/0, other measure 31/0, other period 29/21.
+  108 further reverts carry no period/measure/scope change: basis conflict 20, re-derived parts-sum mismatch 89,
+  generic label 7, bridge step 2 -- all re-derived arithmetic refusals, not period fills. **Measure stop rule:
+  measures changed on 42 of 19,607 verified rows on the rechecked pages = 0.21% (limit 2%)**. The 8 graded cases
+  pass in `.tmp/t238n2/deck_n2.db` (KPIL/REPL/INFOBEAN slide-title periods cleared, IRCON 28.50% growth FY24,
+  JWL 697 wagons `order.quantity` with no `volume.sales` left, ADANIPOWER 708 GW country, NISMGMT ₹1.94 Cr
+  customer=Nesco): `python .tmp/t238n2/verify_cases.py`. Gate:
+  `python -m reality_engine.scripts.regress observations --db .tmp/t238n2/deck_n2.db` **still right 40, fixed 4,
+  still wrong 15, changed 1, newly broken 0 -- gate pass** (the one changed row is the known decks394
+  `demand.peak` -> `capacity.total` measure line). The 20-row period sample with page refs is
+  `.tmp/t238n2/sample20.md` (515 period-rule changes: slide-title 153, deck-as-of 304, growth pair 58).
+- **Recheck CLI (T-238 N2 fix).** `--recheck --out X --baseline Y` now copies Y to X before reading (it used to
+  ignore `--baseline` unless `--only` was given, so a recheck with only `--baseline` rechecked a fresh empty DB and
+  exited 0: that is how the 04:00 run "finished" with 0 changes); a recheck that reads 0 pages exits 2 instead of
+  reporting a clean pass; and `recheck_db` holds one `raw_store.keep()` per document, so each deck PDF is fetched
+  once per recheck instead of once per page.
+- **Tests.** `python -m pytest reality_engine/tests/test_observations.py -q` **161 passed** (12 N2 tests: the title
   line vs tile/footnote/column label and the un-truncated 9M label, the deck as-of closed list, the growth pair and
   the three-year refusal, the order-quantity veto, the client heading and customer name, the client-project land on
-  an order-book page, the peak-demand scope, and the recheck clearing a stale slide title and a non-stock deck as-of);
-  `typecheck` clean on `observations.py` and `test_observations.py`.
+  an order-book page, the peak-demand scope, the recheck clearing a stale slide title and a non-stock deck as-of,
+  the recheck rewriting an order quantity and a growth period, plus `--recheck --baseline` applying the N2 rule, a
+  zero-page recheck exiting 2, and one raw-store keep per document); `typecheck` clean on `observations.py` and
+  `test_observations.py`.
 
 

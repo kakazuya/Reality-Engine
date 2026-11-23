@@ -66,6 +66,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import contextlib
 import csv
 import json
 import os
@@ -4327,6 +4328,27 @@ def missing_pages(con: sqlite3.Connection, pages: list[dict[str, Any]]) -> list[
     return [p for p in pages if (str(p["doc_key"]), int(p["page"])) not in done]
 
 
+def _kept_pages(pages: Iterable[tuple[str, int]]) -> Any:
+    """T-238: one raw-store ``keep()`` per document, so a recheck downloads each deck PDF once, not once per page.
+
+    The pages arrive ordered by (doc_key, page).  A deck whose PDF is Drive-only re-fetches it on every
+    ``page_words.words_for`` call outside a keep block, which made the 9,439-page N2 recheck take over 100 minutes
+    and get killed mid-run.  Same idiom as ``page_route._kept``; a local PDF is never downloaded.
+    """
+    from reality_engine import raw_store
+
+    store = raw_store.default_store()
+    current: str | None = None
+    stack = contextlib.ExitStack()
+    with stack:
+        for doc_key, page in pages:
+            if doc_key != current:
+                stack.close()
+                current = doc_key
+                stack.enter_context(store.keep())
+            yield doc_key, page
+
+
 def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                companies: dict[str, tuple[str, str]] | None = None,
                only: Any = None) -> dict[str, Any]:
@@ -4335,7 +4357,8 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
     Only checks that need a new printed source may upgrade an unverified row: an inherited unit or period, a
     measure alias/label mapping, or a stage read from a printed group.  Any other upgrade is refused and reported.
     ``only`` (a :class:`reality_engine.research.selector.Selector`) restricts the pages and rows re-checked;
-    the rest of the DB is left untouched (T-233 scoped fix run).
+    the rest of the DB is left untouched (T-233 scoped fix run).  Each document's PDF is fetched at most once
+    (``_kept_pages``), so a scoped pass over thousands of pages is minutes, not hours.
     """
     store_dbs = list(store_dbs)
     companies = companies if companies is not None else company_index(store_dbs)
@@ -4377,7 +4400,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
         pages = [p for p in pages if only.page(doc_store.get(str(p[0])), str(p[0]), int(p[1]))]
     row_filter = only.where_sql() if only is not None else "1=1"
     con.row_factory = sqlite3.Row
-    for doc_key, page in pages:
+    for doc_key, page in _kept_pages(pages):
         store_db = doc_store.get(str(doc_key))
         if not store_db:
             continue
@@ -4875,10 +4898,11 @@ def main(argv: list[str] | None = None) -> int:
 
     only = None
     if args.only:
-        from reality_engine.research.selector import Selector, copy_db
+        from reality_engine.research.selector import Selector
         only = Selector.load(args.only)
-        if args.baseline:
-            copy_db(args.baseline, args.out)
+    if args.baseline and (args.recheck or args.only):
+        from reality_engine.research.selector import copy_db
+        copy_db(args.baseline, args.out)      # T-238: a recheck reads --out, so the baseline must reach it first
 
     store_dbs: list[str] = []
     doc_types = [t for t in args.doc_types.split(",") if t]
@@ -4906,6 +4930,10 @@ def main(argv: list[str] | None = None) -> int:
         finally:
             back.close()
         print(json.dumps(recheck_stats, indent=2))
+        if not recheck_stats.get("pages"):    # T-238: a recheck that read no page changed nothing, so it is no pass
+            print(f"STOP: --recheck read 0 pages from {args.out}: the DB has no rows on the selected pages, "
+                  "or no --stores/--only selection reaches them", file=sys.stderr)
+            return 2
         if recheck_stats.get("stopped"):
             print(f"STOP: {recheck_stats['stopped']}", file=sys.stderr)
             return 2
