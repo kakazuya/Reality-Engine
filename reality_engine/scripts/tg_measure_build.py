@@ -36,6 +36,9 @@ measure CSV records the deck bytes fetched (``raw_ok_mb``) and the store size (`
 totals and the free space left on the root's drive, and ``--min-free-gb`` (default 50) stops the run before a
 company when it falls below.
 
+``--window-start`` (default 2024-04-01) sets the profile's document window; the T-241 universe build uses
+2026-04-01 (this financial year only).
+
 A company whose ``cNN_measure.json`` exists is read back, not rebuilt, unless ``--force`` is given, so a stopped
 run resumes where it stopped and the aggregate still holds every earlier row.
 """
@@ -397,7 +400,7 @@ def build_company(index: int, symbol: str, key: str, root: Path, manifest_rows: 
 
     py = sys.executable
     profile_cmd = [py, "-m", "reality_engine.pilot3.make_profile", key, "--name", name, "--root", str(base),
-                   "--window-start", DATE, "--compute-start", COMPUTE_START, "--out", str(profile_json)]
+                   "--window-start", getattr(args, "window_start", DATE), "--compute-start", COMPUTE_START, "--out", str(profile_json)]
     if args.doc_types:
         # The decks stay in the raw store (only fetched into its cache while read), so the profile's raw root is
         # the real one; <root>/raw still holds the profile's manifest.
@@ -412,7 +415,7 @@ def build_company(index: int, symbol: str, key: str, root: Path, manifest_rows: 
 
         prof_data = json.loads(profile_json.read_text(encoding="utf-8"))
         symbol = str(((prof_data.get("companies") or [{}])[0]).get("symbol") or symbol)
-        mine, skipped = deck_manifest_rows(prof_data, default_data_root(), DATE)
+        mine, skipped = deck_manifest_rows(prof_data, default_data_root(), getattr(args, "window_start", DATE))
         _write_company_manifest(base / "raw" / "manifest.csv", mine, list(MANIFEST_FIELDS))
         ok_files, ok_bytes = _ok_counts(mine)
         print(f"  manifest       {len(mine)} decks, {skipped} intimation letters skipped, "
@@ -570,6 +573,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--ocr-max-seconds", type=float, default=540.0,
                     help="with --parts ocr: the OCR pass stops cleanly after this and resumes on the next run "
                          "(pilot3 build --ocr-max-seconds, default 540)")
+    ap.add_argument("--window-start", default=DATE,
+                    help="company documents from this date (default %(default)s; T-241 universe build: 2026-04-01)")
     ap.add_argument("--min-free-gb", type=float, default=50.0,
                     help="stop before a company when the root's drive has less free space (0 = no check)")
     args = ap.parse_args(argv)

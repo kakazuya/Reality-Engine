@@ -2526,7 +2526,7 @@ fetcher and runner: queue, name tokens, validation, freezing, load/summarise, fe
 ### Randomised question trials over the Telegram stores (16 Nov 2026)
 
 Shivam's order (16 Nov): build all 91 queue stores, then trial 1, 2, ... until 90% right, fixing each gap with a
-general script. `reality_engine/scripts/tg_trial.py sample --trial N` draws K questions per built company from
+general script. (T-241, 23 Nov: `tg_measure_build --window-start 2026-04-01` builds a this-financial-year-only store; the universe list is every BSE filer since 2026-04-01, `D:/RealityEngine/tg_build/universe_fy27/universe_fy27.csv`.) `reality_engine/scripts/tg_trial.py sample --trial N` draws K questions per built company from
 `questions.db` (default 2: one open, one frozen; `found_unverified` excluded; never a question an earlier trial
 asked) into `D:/RealityEngine/tg_build/trials/trialN/questions.jsonl` plus `batch_XX.jsonl` (whole companies per
 batch, one per answer worker); `--repeat M` also re-asks trial M's open questions to check the fixes. Workers follow
