@@ -273,6 +273,19 @@ def main(argv: list[str] | None = None) -> int:
     rows = queue(universe)
     while True:
         todo = pending(root, state, a.delete)
+        # One rclone copy and one Drive listing per pass for every finished company's raw files (Wolf review: per
+        # company, each upload re-listed all of msi_raw, minutes per company at 4,652 companies).
+        batch_paths = []
+        for name, _d in todo:
+            pos = int(name[1:])
+            if pos <= len(rows) and str(rows[pos - 1].get("isin") or "").strip():
+                isin = str(rows[pos - 1]["isin"]).strip().upper()
+                batch_paths += [p for p, _b in raw_paths(args.manifest_db, isin) if os.path.isfile(p)]
+        if batch_paths:
+            try:
+                move_raws(batch_paths, args, raw_con, args.listing_dir)
+            except Exception as exc:  # per-company processing below reports and retries what is still local
+                print(f"batch raw move: ERROR {exc}", flush=True)
         for name, d in todo:
             pos = int(name[1:])
             if pos > len(rows) or not str(rows[pos - 1].get("isin") or "").strip():
