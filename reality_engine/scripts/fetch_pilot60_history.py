@@ -393,8 +393,10 @@ def http_get(session, url, pacer, tries=4, timeout=120, want_json=False):
             if want_json:
                 try:
                     return json.loads(body.decode("utf-8", "replace")), status, attempts, None
-                except ValueError as exc:
-                    return None, status, attempts, f"bad json: {exc}"
+                except ValueError as exc:   # BSE sometimes serves an HTML error page with 200: retry, then report
+                    last = f"bad json: {exc}"
+                    time.sleep(min(3.0 * 2 ** attempt, 60.0))
+                    continue
             return body, status, attempts, None
         last = f"HTTP {status}"
         if status in (403, 429):  # rate block: rest the whole stream
@@ -416,7 +418,8 @@ def api_rows(session, pacer, code, a, b):
     while page <= 200:
         url = ANN_URL.format(p=page, f=a.strftime("%Y%m%d"), c=code, t=b.strftime("%Y%m%d"))
         payload, status, _n, error = http_get(session, url, pacer, want_json=True)
-        if payload is None and status == 400 and (b - a).days > 14:
+        bad_json = status == 200 and str(error or "").startswith("bad json")
+        if payload is None and (status == 400 or bad_json) and (b - a).days > 14:
             # T-130: the API refuses deep pages (PERSISTENT 2024 at page 6) and some whole years (INDHOTEL 2024 at page 1):
             # fetch the window again as two halves, each shallow enough
             mid = a + (b - a) / 2
@@ -466,7 +469,11 @@ def metadata(universe, resolved, symbols_at, pacer, refresh=False):
             if cache.exists() and not refresh:
                 table = json.loads(cache.read_text(encoding="utf-8"))
             else:
-                table = api_rows(session, pacer, info["code"], a, b)
+                try:
+                    table = api_rows(session, pacer, info["code"], a, b)
+                except RuntimeError as exc:   # one refused window must not stop the other companies: not cached,
+                    logger.warning("metadata %s %s: %s - window skipped, re-run fetches it", sym, a.year, exc)
+                    continue                  # so the next run asks again
                 cache.write_text(json.dumps(table), encoding="utf-8")
             for raw in table:
                 add({"newsid": raw.get("NEWSID"), "code": str(raw.get("SCRIP_CD") or info["code"]),

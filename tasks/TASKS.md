@@ -32,6 +32,7 @@ One row per line, kept in its section.
 - T-214 | OPEN Wolf | P1 | Telegram build: on-demand pilot3 stores for the 93-company queue (D:/RealityEngine/tg_build/build_queue.csv: PEAD score + order win + market cap tiers), fundamentals FY2024-25 onward, script layers first, model reads of table pages only on demand; 10-company measured pilot (time, disk, tokens per company) before the batch | accept: python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('D:/RealityEngine/tg_build/pilot10_measure.csv').exists() else 1)" | from: Shivam 14-15 Nov | opened 2026-11-15
 - T-232 | OPEN Wolf | P1 | Minimal deck stores (doc, doc_page, routes) for the 403 non-91 Telegram companies with decks since FY25 | accept: Shivam | from: Shivam 21 Nov | opened 2026-11-21
 - T-236 | OPEN Wolf | P1 | Market data backfill 2010-2018: NSE/BSE prices + delivery, bulk/block, insider/SAST, corporate actions, FII/DII, NSDL FPI, indices | accept: Shivam | from: Shivam 22 Nov | opened 2026-11-22
+- T-240 | DOING Wolf | P1 | Full store build for the 394 Telegram companies outside the 91: raw fetch (BSE+NSE since FY25), T-214 recipe stores in shards, then hy4 reads (transcripts, results, OCR'd decks; ARs after) | accept: Shivam | from: Shivam 23 Nov | opened 2026-11-23
 
 ## OCR and extraction
 
