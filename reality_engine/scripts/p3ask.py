@@ -47,7 +47,7 @@ import time
 from pathlib import Path
 
 SERVER = Path(__file__).resolve().parents[2] / "plugins" / "reality-data" / "server"
-TOOLS = ("fact", "cells", "kpi", "fin", "ratio", "holding", "statements", "guidance", "docs", "search", "topic",
+TOOLS = ("fact", "cells", "kpi", "fin", "ratio", "holding", "statements", "guidance", "obs", "events", "docs", "search", "topic",
          "semantic", "tech", "ratings", "page", "sql", "calc", "catalog")
 
 

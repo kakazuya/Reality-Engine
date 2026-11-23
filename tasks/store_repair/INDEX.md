@@ -8,6 +8,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 |---|---|---|---|---|---|---|---|---|---|
 | R-013 | fix_written | corrupt | 69/91 (scan) | 2 |  | 138 | comparatives | general | c01, c02, c03, c04, c05, c07, c08, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c23, c24, c25, c26, c27, c28, c29, c30, c32, c33, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c89, c90, c91 |
 | R-015 | open | missed | 85/91 (scan) | 1 | 11 (11) | 96 | comparatives | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
+| R-026 | fix_written | missed | 91/91 (scan) | 1 |  | 91 | load_observations | general |  |
 | R-025 | open | missed | 82/91 (scan) | 1 |  | 82 | ar_statements | general |  |
 | R-014 | fix_written | missed | 40/91 (scan) | 1 | 27 (18) | 67 | docs_collect | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
 | R-020 | fix_written | wrong | 20/91 (scan) | 3 |  | 60 | comparatives | general | c01, c02, c03, c04, c05, c07, c08, c09, c10, c11, c13, c14, c15, c16, c17, c18, c19, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c41, c42, c43, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c88, c89, c90, c91 |
@@ -355,4 +356,17 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Code:** -
 - **Store tables touched:** fin_annual_line
 - **Tags:** cash_flow, xbrl_precedence; **scope:** general
+- **Stores repaired:** -; runs: -
+
+## R-026 (fix_written, part `load_observations`, opened 2026-11-23)
+
+1. **Why it had to be done** (question that exposed it, -): -
+2. **What the problem was:** hy4 observations and T-231 events not served from stores **Root cause:** observations sit in separate DBs; stores lack obs_fact/filing_event tables
+3. **What was missing:** obs_fact, obs_measure_new, filing_event tables and lookups
+4. **How it was fixed:** load_observations.py copies verified/unverified rows; pilot3_obs and pilot3_events tools; fallback in fact/kpi/fin/statements/guidance/topic
+5. **What can come next:** Wolf runs real load on 91 stores after review
+- **Kind:** missed (observations not yet loaded into stores); **severity:** 91/91 companies (scan); **criticality:** 1; **trial questions failed:** -; **priority:** 91
+- **Code:** reality_engine/scripts/load_observations.py
+- **Store tables touched:** obs_fact, obs_measure_new, filing_event
+- **Tags:** T-239, hy4, events; **scope:** general
 - **Stores repaired:** -; runs: -
