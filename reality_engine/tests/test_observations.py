@@ -2000,10 +2000,12 @@ def test_stage_n2_the_slide_title_is_the_title_line_not_a_tile_footnote_or_colum
     repl = ("Page 3 of 12\nRobust Order book (1/2)\nInvestor's Highlights Q4/12 M FY 24\n"
             "Akkalkot Tirtha Kshetra Development")
     assert obs.slide_period(repl) == ""
-    # INFOBEAN: "9M 2025-26" is a column label over one tile, not the slide title
+    # INFOBEAN: the label is stored whole ("9M 2025-26", never the truncated "9M 2025"); T-238 N3 (Wolf): a bare
+    # title over a tile value is a slide title unless the page prints a second fiscal label (multi-period veto)
     bean = ("9M 2025-26\n156\nMembers with more \nthan 5 years with us\nOverview\nFinancials\n"
             "42\nLarge enterprise clients")
-    assert obs.slide_period(bean) == ""
+    assert obs.slide_period(bean) == "9M 2025-26"
+    assert obs.slide_period("9M 2025-26\nQ3 2025-26\n156\nMembers with more than 5 years with us") == ""
     assert obs.fiscal_periods("9M 2025-26 Performance") == ["9M 2025-26"]   # never the truncated "9M 2025"
     # a real title still dates the page, including a subtitle line under a generic stub
     assert obs.slide_period("Key Developments in Q4FY24\nOrder book as of 31st March 2024") == "Q4FY24"
@@ -2040,15 +2042,42 @@ def test_t238n3_growth_change_period_skips_money_change_lines():
     assert obs.growth_change_period("FY24", "other_income_growth_yoy", page) == "FY25"
 
 def test_t238n3_slide_period_allows_a_bare_fiscal_title():
-    assert obs.slide_period("H1 FY26\nMarina 1,49,229") == "H1 FY26"
+    # AJMERA p17: title line "H1 FY26"; the project table under it opens with the Marina row's area.sold
+    # (1,49,229), so the line after the title is a bare number.  T-238 N3 (Wolf): the title still dates the page.
+    ajmera = "H1 FY26\n1,49,229\nMarina\n70%\n17%\n2,18,670\n175\n57,474\n"
+    assert obs.slide_period(ajmera) == "H1 FY26"
+    rows = build([reply(measure="area.sold", printed_label="Marina", value_text="1,49,229", unit="Sq.ft.")],
+                 page_text=ajmera)
+    assert rows[0]["period"] == "H1 FY26" and rows[0]["period_source"] == "slide_title"
     txt = "FY 2023-24\nTotal Workers\n494"
     sp = obs.slide_period(txt)
     assert sp != "" and obs._fiscal_year(sp) == 2024
-    # a bare label followed by a bare number is still a tile, not a title
-    assert obs.slide_period("9M 2025-26\n156\nMembers with more than 5 years with us") == ""
+    # the multi-period table veto stays: two labels in one line, or two labels on the page, date nothing
+    assert obs.slide_period("H1 FY26 Q3 FY26\nMarina 1,49,229") == ""
+    assert obs.slide_period("H1 FY26\nQ3 FY26\nMarina 1,49,229") == ""
+
+def test_t238n3_deck_asof_target_words_are_forward_phrasing_only():
+    def allowed(label, measure="loans"):
+        return obs.deck_asof_allowed(
+            {"measure": measure, "printed_label": label, "series_title": "", "group_path": "", "stage": ""},
+            "Portfolio snapshot")
+    # "to" as a preposition before a noun is not forward-looking: the deck's as-of date still applies
+    assert allowed("Loans to MSME")
+    assert allowed("Exposure to power sector")
+    # "<measure> to <number>" and the forward verbs/targets are
+    assert not allowed("NNPA to 0.18%")
+    assert not allowed("YoY to reach Rs. 445 crore")
+    assert not allowed("Total reach 2,000 outlets by FY27")
+    assert not allowed("Aspire to 10 GW")
 
 def test_t238n3_deck_asof_skips_targets_and_past_programmes():
-    # target/forward word in the label
+    # T-238 N3 (Wolf): "to" as a preposition is not a target -- "Loans to MSME" is still a snapshot
+    rows = obs.build_observations(symbol="NAVKARCORP", doc_key=DECK, page=7, known_at=KNOWN_AT,
+                                  page_text="Shareholding Pattern Promoter & Promoter Group 52.3%",
+                                  reply_rows=[reply(measure="loans", printed_label="Loans to MSME",
+                                                    value_text="52.3", unit="%")], deck_asof="Q2 FY26")
+    assert rows[0]["period"] == "Q2 FY26" and rows[0]["period_source"] == "deck_asof"
+    # target/forward phrasing in the label
     rows = obs.build_observations(symbol="NAVKARCORP", doc_key=DECK, page=7, known_at=KNOWN_AT,
                                   page_text="Shareholding Pattern Promoter & Promoter Group 52.3%",
                                   reply_rows=[reply(measure="loans", printed_label="NNPA to 0.18%",

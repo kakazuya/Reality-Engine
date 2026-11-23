@@ -3034,8 +3034,8 @@ and basis 3/5 but period fill-in **0/5** (4 minor, 1 wrong), plus three rows tha
 they are a country/market figure or one client's order. N2 tightens the rules; it never loosens a check.
 
 - **The four rules.** (1) `slide_period` reads only the page's title line (N2 bullet above): not the first three
-  lines, not footer/header furniture, not a footnote marker, not a bare column label, and never a truncated label
-  ("9M 2025-26" stays whole). (2) `is_stock_measure` is a closed list (capacity.*, shareholding_pct, count.shares,
+  lines, not footer/header furniture, not a footnote marker, and not a bare column label on a multi-period page
+  (N3 below: a bare single-period title is a title). (2) `is_stock_measure` is a closed list (capacity.*, shareholding_pct, count.shares,
   plant/outlet/branch/store/location counts); a customer/country/employee/order count, a ratio or a growth never
   takes the deck's as-of date. (3) `growth_change_period` moves a growth/change row to the later label of the page's
   printed pair (a page printing one pair of fiscal labels; a three-year trend prints no pair and the row keeps its
@@ -3090,5 +3090,57 @@ they are a country/market figure or one client's order. N2 tightens the rules; i
   the recheck rewriting an order quantity and a growth period, plus `--recheck --baseline` applying the N2 rule, a
   zero-page recheck exiting 2, and one raw-store keep per document); `typecheck` clean on `observations.py` and
   `test_observations.py`.
+### Stage N2 round 4 / N3 (T-238: round 3's three rules finished, 23 Nov 2026)
+
+Round 3 (`ec69d466`) added three rules but timed out before its recheck; Wolf's review of that commit found two
+defects and round 4 fixes them, then finishes the recheck and the gates. The multi-period vetoes of N2 stay; the two
+review fixes only restore periods (`slide_title`, deck as-of) that the over-broad rules had cleared.
+
+- **Deck as-of closed list and forward vetoes.** `is_stock_measure` now also accepts `order.book`, `aum.value`,
+  `loans`, `deposits`, `borrowings`, `net_worth` and `total_equity` (capacity.*, shareholding_pct, count.shares and
+  the plant/outlet/branch/store/location counts stay). A row may take the deck's as-of date only when its label
+  names no plan: `DECK_ASOF_TARGET_RE` matches forward phrasing only -- `to reach|touch|be`, `target*`, `aspir*`,
+  `guidance`, `expected to`, `by FY<year>`, and a `<measure> to <number>` label ("NNPA to 0.18%", "YoY to reach
+  Rs. 445 crore") -- so a plain "to" before a noun ("Loans to MSME", "Exposure to power sector") keeps the as-of.
+  A page headed by a past programme (`COVID`, `Resolution Framework`) still refuses it. Corpus effect on the
+  rechecked pages: 16 deck-as-of rows print a " to " in the label (all 16 refused by round 3's WIP regex, e.g.
+  GRPLTD p20 "installed capacity to handle around"); the fixed regex refuses none of them, and no label matching
+  the forward list holds the as-of (0 rows).
+- **A bare fiscal title is a title.** `slide_period` no longer refuses a bare fiscal title because the next line is
+  a bare number: AJMERA p17 prints "H1 FY26" over its project table (Marina, area.sold 1,49,229) and round 2 had
+  cleared that row. The vetoes that stay are the multi-period table: a line printing two labels, or a page printing
+  two distinct labels, dates nothing. `FISCAL_PERIOD_RE` still keeps the printed label whole, so "9M 2025-26" and
+  "FY 2023-24" are stored as printed; `_fiscal_year` reads a range's closing year ("FY 2023-24" = FY24 = 2024).
+- **A money change line is not a growth row.** `GROWTH_CHANGE_RE` matches only `_growth_yoy|_growth_qoq` and
+  `_change_pct|_change_pp` rows, so `growth_change_period` no longer moves `cash_flow.net_change` to the later
+  printed label (NAVINFLUOR p17 keeps -7.40 at FY24 and 1.37 at FY25; round 2 moved both to FY25 and unverified
+  them). A true growth row still takes the later member of an adjacent printed pair.
+- **Recheck (T-238 N3).** The same corpus round 2 rechecked: its 1,213 page-runs are 1,182 distinct pages / 331
+  documents (its extra pass re-ran 31 pages), 31,152 stage-N rows from `D:/RealityEngine/t238/deck_n.db`. The
+  CLI's `--only` selector has no per-document page pairs, so the pass drives the same `recheck_db` path with the
+  exact pair set in six parts (`.tmp/t238n3/run_part.py`, 0777 temp root for the sandbox) and merges the parts
+  into `.tmp/t238n3/deck_n3.db` (`.tmp/t238n3/merge_parts.py`); no model call. Part stats: `deck_asof` 29 +
+  `deck_asof_fixed` 467 = 496 deck as-of periods set or repaired, `slide_title_periods` 77, `growth_periods` 20,
+  `scope_cues` 268, `customers_named` 149, `measure_mapped` 50, `unproven_upgrades` 1 (POONAWALLA row 90428 kept
+  at its stage-B status: the only refusal-to-verify).
+  Verified 490,408 -> **490,268** (227 verified rows reverted, 87 upgraded; round 2: 442 / 63), unverified
+  269,508 -> 269,648, quarantined 1,359 unchanged. By rule (rows changed / verified reverted): deck-as-of period
+  112/78 (round 2: 304/186), slide-title period 34/14 (153/67), period replaced (growth pair or a printed label
+  now stored whole) 576/19 (growth pair 484/31), scope (country/industry/customer) 268/5 -- round 2 counted 29,
+  including the 24 deck-as-of and 5 slide-title reverts listed there -- order quantity 18/0, other measure 31/0,
+  other period 29/21. 95 further reverts carry no period/measure/scope change (basis
+  conflict, re-derived parts-sum mismatch, generic label, bridge step) and 82 upgrades are status-only recoveries.
+  **Measure stop rule: 42 of 19,607 verified rows changed measure = 0.214% (limit 2%).** The 8 graded cases pass
+  (`python .tmp/t238n2/verify_cases.py .tmp/t238n3/deck_n3.db`: KPIL/REPL/INFOBEAN periods cleared, IRCON FY24,
+  JWL 697 `order.quantity`, ADANIPOWER country, NISMGMT customer), AJMERA p17 Marina is `H1 FY26`/`slide_title`,
+  NAVINFLUOR p17 keeps FY24/FY25 verified, and INFOBEAN p5 (20240507) stores the whole "FY 2023-24" (FY24).
+  Gate: `python -m reality_engine.scripts.regress observations --db .tmp/t238n3/deck_n3.db` **still right 40,
+  fixed 4, still wrong 15, changed 1, newly broken 0 -- gate pass** (the known decks394 row `demand.peak` ->
+  `capacity.total`).
+- **Tests.** `python -m pytest reality_engine/tests/test_observations.py -q` **165 passed** (the N3 target-word
+  test: "Loans to MSME"/"Exposure to power sector" keep the as-of, "NNPA to 0.18%"/"YoY to reach..."/"by FY27"/
+  "aspire to 10 GW" do not; the AJMERA-shaped bare title with a bare number under it gets `H1 FY26` and
+  `slide_title` while the one-line and two-line multi-period pages still refuse; the growth/money change pair;
+  the whole "FY 2023-24" label); `typecheck` clean on `observations.py` and `test_observations.py`.
 
 

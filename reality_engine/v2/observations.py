@@ -2316,7 +2316,9 @@ def is_stock_measure(measure: str) -> bool:
     return DECK_ASOF_MEASURES.search(measure or "") is not None
 
 DECK_ASOF_TARGET_RE = re.compile(
-    r"\b(?:to|target|reach|aspire|guidance)\b|\bby\s+FY\b", re.I)
+    r"\b(?:to\s+(?:reach|touch|be)\b|target(?:s|ed|ing)?\b|aspir(?:e|es|ed|ing|ation)\b|guidance\b|"
+    r"expected\s+to\b|\bby\s+FY(?:\s?-?\d{2,4})?\b)"
+    r"|\bto\s+(?:(?:reach|touch|be)\s+)?(?:rs\.?\s*|inr\s*|\u20b9\s*|\$\s*|usd\s*)?\d", re.I)
 PAST_PROGRAMME_RE = re.compile(r"\bCOVID\b|\bResolution Framework\b", re.I)
 
 def deck_asof_allowed(row: dict[str, Any], page_text: str) -> bool:
@@ -2475,7 +2477,10 @@ def slide_period(page_text: str) -> str:
     a multi-period chart has no single period any number on it belongs to, so its flow rows stay no_period.
     N2 (Wolf's hand grade): the label must sit in the title line itself, not in the first three lines.  A first
     line that is a bare label ("9M 2025-26" over one column) or a footnote tile is not the slide's title, and a
-    line that prints only the period plus a page number is furniture; both refuse the fill (KPIL, REPL, INFOBEAN).
+    line that prints only the period plus a page number is furniture; both refuse the fill (KPIL, REPL).
+    N3 (Wolf's recheck): a bare fiscal title stays a title even when the line under it is a bare number --
+    AJMERA p17 prints "H1 FY26" over its project table ("Marina" 1,49,229 area.sold) and the page took no
+    period.  The only vetoes are the multi-period table (a line or a page printing two fiscal labels).
     """
     lines = [norm_space(line) for line in str(page_text or "").splitlines() if norm_space(line)]
     if not lines:
@@ -2490,10 +2495,6 @@ def slide_period(page_text: str) -> str:
             continue                       # page number / nav strip / footer highlight strip, not the title
         periods = fiscal_periods(line)
         bare_title = (len(periods) == 1 and norm_space(line) == norm_space(periods[0]))
-        if bare_title:
-            nxt = lines[i + 1] if i + 1 < len(lines) else ""
-            if _is_bare_number(nxt):
-                return ""
         if not bare_title and not _title_like(line, periods):
             return ""                      # body text or a table label: the title block ends here
         if periods:
