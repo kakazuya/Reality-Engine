@@ -612,3 +612,16 @@ def test_repeated_word_split_lands_on_the_second_header():
                          _w(10, 125, "Cost"), _w(270, 125, "60"), _w(440, 125, "200")])
     texts = [ph[2] for ph in p._header_phrases(0, [{"x0": 270, "x1": 292}, {"x0": 440, "x1": 462}])]
     assert texts == ["Standalone Financial Results", "Consolidated Financial Results"], texts
+
+
+def test_word_value_and_is_num_are_memoised():
+    """T-241: the route asks these for every word on every page; the answer depends on the text only."""
+    rg.word_value.cache_clear()
+    rg._is_num.cache_clear()
+    assert rg.word_value("(1,234)") == "-1234"
+    assert rg._is_num("(1,234)") is True
+    for _ in range(3):
+        assert rg.word_value("(1,234)") == "-1234"
+        assert rg._is_num("(1,234)") is True
+    assert rg.word_value.cache_info().hits >= 1
+    assert rg._is_num.cache_info().hits >= 1

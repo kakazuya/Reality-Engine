@@ -702,13 +702,16 @@ def transcribe(args) -> int:
 
 # ---------- reconcile ----------
 
+_PAREN_VALUE = re.compile(r"\((.+)\)")
+
+
 def _norm_space(s: Any) -> str:
     return " ".join(str(s or "").split())
 
 
 def _norm_value(s: Any) -> str:
     v = _norm_space(s)
-    m = re.fullmatch(r"\((.+)\)", v)
+    m = _PAREN_VALUE.fullmatch(v)
     if m:
         v = "-" + m.group(1)
     v = v.replace(",", "")

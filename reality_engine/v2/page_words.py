@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import re
 import sqlite3
 import time
@@ -61,7 +62,9 @@ def open_pdf(pdf_path: Path | str) -> Any:
     (``raw_store.local`` writes it under ``raw_fetch_`` and deletes it on exit) is never cached."""
     import pymupdf
 
-    key = str(Path(pdf_path).resolve())
+    # Path.resolve() hit the filesystem (GetFinalPathName) once per page: 28 s of the c01 route.  The key only has
+    # to be one spelling per file, and a build passes the same spelling every time, so abspath + case fold do it.
+    key = os.path.normcase(os.path.abspath(os.fspath(pdf_path)))
     cacheable = "raw_fetch_" not in key
     doc = _OPEN.get(key) if cacheable else None
     if doc is None:
@@ -282,18 +285,21 @@ def sibling_ocr_db(store_db: Any) -> Path:
     return path.with_name(f"{path.stem}_ocr.db")
 
 
-def words_for(store_db: Any, doc_key: str, page_no: int, ocr_dbs: Iterable[Any] = ()) -> PageWords:
+def words_for(store_db: Any, doc_key: str, page_no: int, ocr_dbs: Iterable[Any] = (),
+              source_key: str | None = None) -> PageWords:
+    """``source_key`` is the doc row's source PDF when the caller already read it (route: one query per document
+    instead of one store connection per page); None reads it from the store as before."""
     store = raw_store.default_store()
     own = sibling_ocr_db(store_db)
     ocr_dbs = tuple(ocr_dbs or ()) + ((own,) if own.is_file() else ())
-    source_key = None
-    con: Any = connect_ro(store_db)          # a missing store or doc table is an error, not an empty page
-    try:
-        row = con.execute("SELECT source_key FROM doc WHERE doc_key=?", (doc_key,)).fetchone()
-        if row:
-            source_key = row[0]
-    finally:
-        con.close()
+    if source_key is None:
+        con: Any = connect_ro(store_db)          # a missing store or doc table is an error, not an empty page
+        try:
+            row = con.execute("SELECT source_key FROM doc WHERE doc_key=?", (doc_key,)).fetchone()
+            if row:
+                source_key = row[0]
+        finally:
+            con.close()
     pdf_error = ""
 
     text_words: list[Word] = []

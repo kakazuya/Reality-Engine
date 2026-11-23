@@ -12,6 +12,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import io
+import shutil
 import sqlite3
 from pathlib import Path
 
@@ -24,6 +25,7 @@ from reality_engine.tests.test_pilot3_shp_holder import _shp_xml
 NAME = "SHP_0001_01102026100000_WEB.xml"
 OTHER = "SHP_0002_01102026100000_WEB.xml"          # another company's filing: never asked for
 ROOT = "nse_shp_xbrl_universe"
+TMP = Path(__file__).resolve().parents[2] / ".tmp" / "test_pilot3_shp_drive"
 
 
 def _gz(data: bytes) -> bytes:
@@ -40,9 +42,13 @@ def _index(*names: str) -> list[dict]:
 
 
 @pytest.fixture()
-def shp(tmp_path, monkeypatch):
-    """Empty pilot and universe folders, one company whose index names ``NAME``; Drive on, no real raw store."""
-    pilot, universe = tmp_path / "raw" / "nse_shp_xbrl_pilot", tmp_path / ROOT
+def shp(monkeypatch):
+    """Empty pilot and universe folders, one company whose index names ``NAME``; Drive on, no real raw store.
+
+    A plain folder under ``.tmp/`` (pytest's own temp root is denied in the dsh sandbox)."""
+    shutil.rmtree(TMP, ignore_errors=True)
+    TMP.mkdir(parents=True)
+    pilot, universe = TMP / "raw" / "nse_shp_xbrl_pilot", TMP / ROOT
     pilot.mkdir(parents=True)
     universe.mkdir()
     monkeypatch.delenv("REALITY_RAW_FETCH", raising=False)
@@ -52,8 +58,9 @@ def shp(tmp_path, monkeypatch):
     monkeypatch.setattr(stores, "fetch", lambda symbol, table: _index(NAME) if table == "shp_index" else [])
     monkeypatch.setattr(stores, "all_isins", lambda symbol: ("INE000A01010",))
     monkeypatch.setattr(stores, "_shp_raw_store", lambda: raw_store.RawStore(
-        manifest=tmp_path / "none.db", roots={"raw": tmp_path / "raw", ROOT: universe}))
-    return tmp_path
+        manifest=TMP / "none.db", roots={"raw": TMP / "raw", ROOT: universe}))
+    yield TMP
+    shutil.rmtree(TMP, ignore_errors=True)
 
 
 def _drive(tmp_path: Path, monkeypatch, files: dict[str, bytes]) -> dict:
@@ -113,8 +120,7 @@ def test_a_file_the_index_names_is_read_from_the_universe_folder(shp):
 
 
 def test_the_pilot_folder_wins_and_keeps_its_label(shp):
-    with gzip.open(shp / "raw" / "nse_shp_xbrl_pilot" / f"{NAME}.gz", "wb") as fh:
-        fh.write(_shp_xml())
+    (shp / "raw" / "nse_shp_xbrl_pilot" / f"{NAME}.gz").write_bytes(_gz(_shp_xml()))
     (shp / ROOT / f"{NAME}.gz").write_bytes(b"never read: the pilot copy is used")
     conn = _build()
     assert conn.execute("SELECT DISTINCT source_db FROM shp_category WHERE source_kind='xbrl'"
@@ -142,6 +148,25 @@ def test_with_drive_off_the_build_keeps_the_index_rows_and_says_what_is_missing(
     assert seen["asked"] == [] and _counts(conn) == (0, 0, 0)
     assert conn.execute("SELECT COUNT(*) FROM shp_category WHERE source_kind='index'").fetchone()[0] == 2
     assert "1 of 1 shareholding files" in capsys.readouterr().err
+
+
+def test_a_pilot_file_of_another_company_is_not_parsed(shp):
+    """T-241: the pilot folder holds every company's filings; a file this store's ``shp_index`` does not name and
+    whose bytes print none of its ISINs is skipped, so one company's corrupt file cannot fail another's build."""
+    pilot = shp / "raw" / "nse_shp_xbrl_pilot"
+    (pilot / f"{OTHER}.gz").write_bytes(_gz(b"<broken"))          # would raise if it were parsed
+    (pilot / f"{NAME}.gz").write_bytes(_gz(_shp_xml()))
+    conn = _build()
+    assert _counts(conn)[1:] == (3, 1)
+
+
+def test_a_pilot_file_that_prints_the_company_isin_is_still_parsed(shp):
+    """A filing the index does not name still counts when its own bytes print the company's ISIN: the whole-folder
+    read kept those rows, and the filter must keep them too."""
+    (shp / "raw" / "nse_shp_xbrl_pilot" / f"{OTHER}.gz").write_bytes(_gz(_shp_xml()))
+    conn = _build()
+    assert _counts(conn)[1:] == (3, 1)
+    assert conn.execute("SELECT DISTINCT source_file FROM shp_category WHERE source_kind='xbrl'").fetchall() == [(OTHER,)]
 
 
 def test_a_file_held_nowhere_and_a_file_that_does_not_parse_are_named_not_fatal(shp, monkeypatch, capsys):
@@ -174,7 +199,7 @@ def test_the_shareholding_total_judges_which_share_count_is_the_slip():
     rows = [row("standalone", "2024-12-31", 255_440_000), row("consolidated", "2024-12-31", 225_440_000),
             row("standalone", "2026-09-30", 89_166_000), row("consolidated", "2026-09-30", 694_000),
             row("standalone", "2025-06-30", 100_000_000), row("consolidated", "2025-06-30", 90_000_000)]
-    totals = {"2024-12-31": 225_440_000, "2026-09-30": 84_800_000}
+    totals: dict[str, float] = {"2024-12-31": 225_440_000, "2026-09-30": 84_800_000}
     kept = stores._parent_share_count(rows, totals)
     assert [(r[2], r[3]) for r in kept] == [("2024-12-31", "consolidated"), ("2026-09-30", "standalone"),
                                             ("2025-06-30", "standalone")]

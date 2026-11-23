@@ -128,6 +128,7 @@ def _mon(s: str) -> int:
     return _MONTHS[[k for k in _MONTHS if k.startswith(s.lower()[:3])][0]]
 
 
+_FV_AS_FY = re.compile(r"\bFV(?=\s?['’]?\d)")        # OCR reads FY as FV ("04 FV26" is Q4FY26)
 PERIOD_PATTERNS = [
     ("QFY", re.compile(r"(?<![A-Za-z0-9])(?:Q\s?([1-4])|([1-4])\s?Q)\s?[-]?\s?(?:FY\s?)?['’]?\s?(\d{4}-\d{2}|\d{4}|\d{2})(?![\d])", re.I)),
     # OCR reads "Q" as "0"/"O": BAJFINANCE's "1.56% in 02 FY27" is Q2FY27, and its "new loans booked in 01 FY27" Q1FY27
@@ -261,7 +262,7 @@ def keep_period(period_type: str, fiscal_period: str | None, known_at: str | Non
 
 def parse_periods(text: str) -> list[Period]:
     """All period mentions in text, non-overlapping, in order."""
-    text = re.sub(r"\bFV(?=\s?['’]?\d)", "FY", text)     # OCR reads FY as FV ("04 FV26" is Q4FY26)
+    text = _FV_AS_FY.sub("FY", text)     # OCR reads FY as FV ("04 FV26" is Q4FY26)
     found: list[Period] = []
     for kind, rx in PERIOD_PATTERNS:
         for m in rx.finditer(text):
@@ -2178,12 +2179,16 @@ def _label_dim(label: str, dims: list[Dim], company: str) -> str | None:
     return None
 
 
+_OTHERS_RX = re.compile(r"other[s]?", re.I)
+_DIGIT_RX = re.compile(r"\d")
+
+
 def _heading_dim(line: str, nxt: str, dims: list[Dim], company: str) -> tuple[str | None, int]:
     """(dimension, lines consumed) of a heading line; a legend entry may wrap ("Cables &" / "Conductors").
     A two-line entry is tried first, so the wrap is one entry, not "cables" plus a stray "Conductors"."""
     def full(t: str) -> str | None:
         t = " ".join(t.split())
-        if re.fullmatch(r"other[s]?", t, re.I):
+        if _OTHERS_RX.fullmatch(t):
             return "others"
         for d in dims:
             if d.companies and company not in d.companies:
@@ -2193,11 +2198,11 @@ def _heading_dim(line: str, nxt: str, dims: list[Dim], company: str) -> tuple[st
                     return d.dimension
         return None
 
-    if nxt and len((line + " " + nxt).split()) <= 5 and not re.search(r"\d", line + nxt):
+    if nxt and len((line + " " + nxt).split()) <= 5 and not _DIGIT_RX.search(line + nxt):
         d = full(line + " " + nxt)
         if d:
             return d, 2
-    if len(line.split()) <= 4 and not re.search(r"\d", line):
+    if len(line.split()) <= 4 and not _DIGIT_RX.search(line):
         d = full(line)
         if d:
             return d, 1

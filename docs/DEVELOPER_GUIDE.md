@@ -2228,8 +2228,41 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   version prefetched every document up front and was slower (1,167 s): most documents are routed from stored
   text alone. (6) `docs_collect.connect_out` sets `synchronous=NORMAL` under WAL (one commit per document cost 0.25 s).
   Not changed (measured, open): the stores part re-downloads every shareholding XBRL from Drive on each rebuild
-  (92 s of 117 s on c05); `kpi.parse_periods` 14 s (cache hit rate not measured); `RawStore.walk` sorts the whole
-  manifest per call.
+  (92 s of 117 s on c05; T-241 below removed its own 807-file parse, not the download); `kpi.parse_periods` 14 s
+  (cache hit rate not measured); `RawStore.walk` sorts the whole manifest per call.
+- **T-241: two-company build-speed pass (23 Nov 2026, Wolf).** cProfile on copies of `tg_build/full394/c01`
+  (RAILTEL, 3,654 pages, 371 raw files) and c27, one step at a time in-process, same `pages.db` and truth
+  snapshot before/after. Top cumulative wall per step (c01): docs_collect `page_get_textpage` 183 s,
+  `fz_load_page` 169 s, `fz_open_document` 91 s (3,654 pages); stores `_shp_parsed` 123 s (of which the rclone
+  Drive wait 75 s and `parse_shp_xbrl` 38 s over 807 files); kpi `page_get_textpage`/`fz_load_page` 83 s (572
+  pages) and `parse_periods` 34 s; route `page_get_textpage` 177 s, `fz_load_page` 165 s, `fz_open_document`
+  107 s, `JM_make_textpage_dict` 73 s (the second extraction `pdf_words_of` makes only to learn a page's text
+  direction), `Path.resolve` 29 s, 34,587 sqlite `execute` calls (two store connections per page), and
+  `reference_geom.word_value` 55 s (2.7 M calls). Fixed, output-identical: (1) `pilot3.stores._shp_parsed`
+  parsed all 807 SHP XBRL files of the shared pilot folder for every company while `build_shp` keeps only its
+  own ISIN's rows; it now parses a file only when the profile's `shp_index` names it or its bytes print one of
+  the profile companies' ISINs (c01: 807 -> 21 files). (2) `v2.page_route` reads a document's `doc` row and
+  `doc_page` texts once per document, passes the source key to `page_words.words_for` (which no longer opens the
+  store when it is given), and `page_words.open_pdf` keys its cache by `abspath`+`casefold` instead of
+  `Path.resolve()`; `reference_geom.word_value`/`_is_num` (pure string functions) are memoised and
+  `reference_pages._norm_value` compiles its bracket regex once. (3) `kpi` precompiles its per-call
+  `other[s]?`/digit/FV regexes. The unavoidable part is PyMuPDF page parsing in docs_collect, kpi and the route.
+  CPU seconds per step, c01 (same inputs; `make_profile` unchanged): docs_collect 47.8 -> 47.8, stores 29.4 ->
+  7.9, kpi 67.2 -> 64.4, route 195.4 -> 142.9; the 13 parts 121.6 -> 97.3, the whole recipe (docs_collect +
+  parts) 169.4 -> 145.1, with the route 364.8 -> 288.0 (-21 %; stores alone -73 %, route -27 %). Wall on this
+  laptop is I/O-bound (D: raw PDFs) and was not used as the measure.
+  Equality: both companies rebuilt from an empty store with the new code; every table equal under
+  `SELECT * ORDER BY every column` (c01: doc 357, doc_page 3,654, kpi_series 160, shp_category 403; c27: 189,
+  2,200, 709), and c01 `routes.csv` byte-equal to the HEAD route (3,654 rows). Excluded from the table compare:
+  `part_stamp` (the build's own code/input fingerprints) and `schema_meta.migrated_at` (the migration clock).
+  Tests: `test_pilot3_shp_drive.py` (a pilot file of another company is not parsed; one that prints the ISIN
+  still is), `test_v2_page_route.py` (the per-page and per-document reads agree; `words_for` skips the store;
+  the PDF cache keys case-folded paths), `test_v2_reference_geom.py` (the memoised functions), plus the T-214
+  gate below. Files: `reality_engine/pilot3/stores.py`, `reality_engine/pilot3/kpi.py`,
+  `reality_engine/v2/page_route.py`, `reality_engine/v2/page_words.py`,
+  `reality_engine/v2/reference_geom.py`, `reality_engine/v2/reference_pages.py`; tests
+  `reality_engine/tests/test_pilot3_shp_drive.py`, `test_v2_page_route.py`, `test_v2_reference_geom.py`.
+  Full equality/timing sheet: `.tmp/t241/EQUALITY.md` on the worker branch.
 - **T-214 step 3: the 10-company measured script-only build (15 Nov 2026).**
   `reality_engine/scripts/tg_measure_build.py` runs one company at a time through the T-208 recipe above
   (`make_profile` with `--window-start 2024-04-01 --compute-start 2019-01-01`, `docs_collect --profile`, then
