@@ -836,14 +836,16 @@ def _parent_share_count(rows: list[tuple], totals: dict[str, float] | None = Non
     consolidated and in the pattern: standalone dropped.  SEAMECLTD Q3FY20 standalone said 24.53 million against
     25.43 million consolidated and in every neighbouring quarter, before any pattern is held: standalone dropped.
     (Version 1 always kept standalone; version 2 did so whenever the pattern total of that date was missing.)"""
-    by_date: dict[str, dict[str, float]] = {}
+    by_date: dict[str, dict[str, float | None]] = {}
     for r in rows:
         if r[6]:
             by_date.setdefault(r[2], {})[r[3]] = r[6]
 
-    def split(got: dict[str, float]) -> bool:
+    def split(got: dict[str, float | None]) -> bool:
         alone, cons = got.get("standalone"), got.get("consolidated")
-        return bool(alone and cons) and abs(cons - alone) > 0.01 * alone
+        if not alone or not cons:
+            return False
+        return abs(cons - alone) > 0.01 * alone
 
     refs = {d: got.get("standalone") or got.get("consolidated") for d, got in by_date.items()
             if not split(got) and len(got) == 2}
@@ -858,7 +860,11 @@ def _parent_share_count(rows: list[tuple], totals: dict[str, float] | None = Non
             drop.add((day, "consolidated"))
             continue
         ref = refs[near]
-        drop.add((day, "standalone" if abs(got["standalone"] - ref) > abs(got["consolidated"] - ref) else "consolidated"))
+        alone, cons = got.get("standalone"), got.get("consolidated")
+        if alone is None or cons is None or ref is None:
+            drop.add((day, "consolidated"))
+            continue
+        drop.add((day, "standalone" if abs(alone - ref) > abs(cons - ref) else "consolidated"))
     return [r for r in rows if (r[2], r[3]) not in drop]
 
 
@@ -890,23 +896,32 @@ def _shp_raw_store() -> raw_store.RawStore:
     return raw_store.RawStore(roots={**raw_store._default_roots(), SHP_UNIVERSE_LABEL: SHP_XBRL_UNIVERSE})
 
 
-def _shp_parsed() -> tuple[dict[str, dict], dict[str, str]]:
+def _shp_parsed(isins: set[str]) -> tuple[dict[str, dict], dict[str, str]]:
     """Every shareholding XBRL file the build reads, parsed: ``{file name: parse}`` and ``{file name: raw folder}``.
 
-    The local pilot folder is read whole, as before.  R-004 (T-218): a store of any other company held the index's
-    promoter and public lines only, because its filings are not in that folder.  So every file a ``shp_index`` row of
-    the profile's companies names and the pilot folder lacks is looked up by name in the pilot folder and then the
-    universe folder (T-209: every filing since 2024-04-01), on disk or on Drive through ``raw_store``: one download
-    for the lot, deleted once the bytes are read (raw files live only on Drive).  A file held nowhere or unreadable
-    is named on stderr and leaves that quarter with its index rows; ``REALITY_RAW_FETCH=0`` keeps the build offline."""
+    The local pilot folder is read whole, as before, but only the files this profile's companies name or whose bytes
+    print one of their ISINs are parsed.  T-241: the folder holds every company's filings (807 files for the 394
+    build) and ``build_shp`` keeps only the rows whose ISIN belongs to the company, so the other files can never
+    contribute a row; parsing them cost 37 of the part's 45 CPU seconds per company.  R-004 (T-218): a store of any
+    other company held the index's promoter and public lines only, because its filings are not in that folder.  So
+    every file a ``shp_index`` row of the profile's companies names and the pilot folder lacks is looked up by name
+    in the pilot folder and then the universe folder (T-209: every filing since 2024-04-01), on disk or on Drive
+    through ``raw_store``: one download for the lot, deleted once the bytes are read (raw files live only on
+    Drive).  A file held nowhere or unreadable is named on stderr and leaves that quarter with its index rows;
+    ``REALITY_RAW_FETCH=0`` keeps the build offline."""
     parsed: dict[str, dict] = {}
     origin: dict[str, str] = {}
+    named = sorted({str(r["file"]) for symbol in profile.symbols() for r in fetch(symbol, "shp_index")
+                    if r.get("file") and str(r["file"]).startswith("SHP_")})
     if SHP_XBRL.is_dir():
         for path in sorted(SHP_XBRL.glob("*.xml.gz")):
-            parsed[path.name[:-3]] = parse_shp_xbrl(gzip.open(path).read())
-            origin[path.name[:-3]] = SHP_PILOT_LABEL
-    wanted = sorted({str(r["file"]) for symbol in profile.symbols() for r in fetch(symbol, "shp_index")
-                     if r.get("file") and str(r["file"]).startswith("SHP_")} - set(parsed))
+            name = path.name[:-3]
+            blob = gzip.open(path).read()
+            if name not in named and not any(isin.encode() in blob for isin in isins):
+                continue
+            parsed[name] = parse_shp_xbrl(blob)
+            origin[name] = SHP_PILOT_LABEL
+    wanted = [name for name in named if name not in parsed]
     if not wanted:
         if not parsed:   # 8 Nov: raw moved to Drive, the folder was empty and pledge/holder tables came out empty
             print(f"WARNING build_shp: no SHP XBRL files in {SHP_XBRL} and no shp_index file to look up; shp_holder "
@@ -958,7 +973,7 @@ def build_shp(conn: sqlite3.Connection) -> dict:
     encumbrance block), each carrying the file's own ``known_at`` and the percentage base it prints on."""
     schema.create(conn, ("shp_category", "shp_holder", "shp_pledge"))
     counts = {}
-    parsed_files, origin = _shp_parsed()
+    parsed_files, origin = _shp_parsed({isin for symbol in profile.symbols() for isin in all_isins(symbol)})
     bases = {}
     for parsed in parsed_files.values():
         if _quarter(parsed):

@@ -137,15 +137,33 @@ def _page_meta(store_db: Any, doc_key: str, page_no: int) -> tuple[str, str, str
     return (row[0] or "", rp._doc_type_norm(row[1] or ""), row[2] or "", row[3] or "", row[4] or "")
 
 
+def _doc_pages(con: Any, doc_key: str) -> tuple[tuple[str, str, str, str, str], dict[int, tuple[str, str]]]:
+    """The doc row and every stored page of one document, one query each (T-241: the route read the doc row once
+    per page, opening a read-only connection on every page)."""
+    row = con.execute("SELECT symbol, doc_type, source_key FROM doc WHERE doc_key=?", (doc_key,)).fetchone()
+    meta = (row[0] or "", rp._doc_type_norm(row[1] or ""), "", "", row[2] or "") if row else ("", "", "", "", "")
+    pages = {int(page): (text or "", method or "") for page, text, method in
+             con.execute("SELECT page, text, method FROM doc_page WHERE doc_key=?", (doc_key,))}
+    return meta, pages
+
+
 def route_detail(store_db: Any, doc_key: str, page_no: int, ocr_dbs: Iterable[Any] = (),
-                 words: page_words.PageWords | None = None) -> dict[str, str]:
+                 words: page_words.PageWords | None = None, *,
+                 meta: tuple[str, str, str, str, str] | None = None,
+                 source_key: str | None = None) -> dict[str, str]:
     """One page's route with its reason and the word source behind it.
 
     T-238: a ``needs_ocr`` page whose OCR database holds usable words is re-routed on those words with the same
     rules as a text-layer page; the CSV keeps the original reason (the page needed OCR) and names the OCR
     ``word_source`` so the route stays auditable.
+
+    T-241: ``meta`` is the (symbol, doc_type, page text, doc page method, source PDF) tuple the caller already
+    read, and ``source_key`` its source PDF, so a page loop does not open a store connection per page.
     """
-    _symbol, _doc_type, text, method, pdf_path = _page_meta(store_db, doc_key, page_no)
+    if meta is None:
+        _symbol, _doc_type, text, method, pdf_path = _page_meta(store_db, doc_key, page_no)
+    else:
+        _symbol, _doc_type, text, method, pdf_path = meta
     pw = words
     quality = "ok"
     word_source = "store_text"
@@ -154,7 +172,7 @@ def route_detail(store_db: Any, doc_key: str, page_no: int, ocr_dbs: Iterable[An
 
     if method == "needs_ocr" or not text.strip():
         if pw is None:
-            pw = page_words.words_for(store_db, doc_key, page_no, ocr_dbs)
+            pw = page_words.words_for(store_db, doc_key, page_no, ocr_dbs, source_key=source_key)
         quality = pw.quality
         word_source = pw.source
         if pw.source.startswith("ocr") and pw.words:
@@ -182,7 +200,7 @@ def route_detail(store_db: Any, doc_key: str, page_no: int, ocr_dbs: Iterable[An
                 "reason": reason_for(f"{len(figs)} printed figures (fewer than {MIN_FIGURES})")}
 
     if pw is None:
-        pw = page_words.words_for(store_db, doc_key, page_no, ocr_dbs)
+        pw = page_words.words_for(store_db, doc_key, page_no, ocr_dbs, source_key=source_key)
     quality = pw.quality
     word_source = pw.source
     if pw.source.startswith("ocr") and pw.words:
@@ -292,22 +310,33 @@ def run(store_db: str, ocr_dbs: list[str], out: str, symbols: list[str] | None =
 
     results: list[dict[str, str]] = []
     t0 = time.perf_counter()
-    with out_path.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=["doc_key", "page", "doc_type", "route", "reason",
-                                                "word_source", "quality"])
-        writer.writeheader()
-        for doc_key, _symbol, doc_type, page in _pages_prefetched(store_db, symbols, doc_types):
-            info = route_detail(store_db, doc_key, page, ocr_dbs)
-            row = {"doc_key": doc_key, "page": page, "doc_type": doc_type, "route": info["route"],
-                   "reason": info["reason"], "word_source": info["word_source"], "quality": info["quality"]}
-            results.append(row)
-            writer.writerow(row)
-            if export_dir and info["route"] == "needs_ocr":
-                stem = _export_page(store_db, doc_key, page, export_dir)
-                if stem:
-                    exported.append({"stem": stem, "doc_key": doc_key, "page": page})
-            if limit is not None and len(results) >= limit:
-                break
+    con = connect_ro(store_db)
+    current_doc, doc_meta, doc_text = None, ("", "", "", "", ""), {}
+    try:
+        with out_path.open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=["doc_key", "page", "doc_type", "route", "reason",
+                                                    "word_source", "quality"])
+            writer.writeheader()
+            for doc_key, _symbol, doc_type, page in _pages_prefetched(store_db, symbols, doc_types):
+                if doc_key != current_doc:
+                    current_doc = doc_key
+                    doc_meta, doc_text = _doc_pages(con, doc_key)
+                text, method = doc_text.get(page, ("", ""))
+                info = route_detail(store_db, doc_key, page, ocr_dbs,
+                                    meta=(doc_meta[0], doc_meta[1], text, method, doc_meta[4]),
+                                    source_key=doc_meta[4])
+                row = {"doc_key": doc_key, "page": page, "doc_type": doc_type, "route": info["route"],
+                       "reason": info["reason"], "word_source": info["word_source"], "quality": info["quality"]}
+                results.append(row)
+                writer.writerow(row)
+                if export_dir and info["route"] == "needs_ocr":
+                    stem = _export_page(store_db, doc_key, page, export_dir)
+                    if stem:
+                        exported.append({"stem": stem, "doc_key": doc_key, "page": page})
+                if limit is not None and len(results) >= limit:
+                    break
+    finally:
+        con.close()
     if export_dir:
         with (export_dir / "route_export.csv").open("w", newline="", encoding="utf-8") as fh:
             w = csv.DictWriter(fh, fieldnames=["stem", "doc_key", "page"])

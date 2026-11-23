@@ -12,6 +12,7 @@ import pymupdf
 from reality_engine.pilot3 import hp_ocr
 from reality_engine.v2 import page_reader as pr
 from reality_engine.v2 import page_route as route
+from reality_engine.v2 import page_words
 
 BASE = Path(".tmp/test_page_route")
 
@@ -270,3 +271,41 @@ def test_three_tries_then_error(monkeypatch):
     con = sqlite3.connect(str(out))
     assert con.execute("SELECT status FROM page_read").fetchone()[0] == "error"
     con.close()
+
+
+def test_route_detail_reads_the_page_meta_the_caller_already_has():
+    """T-241: a page loop reads the doc row and its pages once per document; the per-page path and the meta path
+    must return the same route, reason and word source."""
+    base = _base()
+    pdf = _pdf(base / "meta.pdf", TABLE_LINES)
+    db = _store(base, "meta", pdf, "Q2FY26 Q1FY26 Revenue 100 200 Profit 40 30")
+    legacy = route.route_detail(str(db), "meta", 1, [])
+    con = route.connect_ro(str(db))
+    try:
+        meta, pages = route._doc_pages(con, "meta")
+    finally:
+        con.close()
+    assert pages[1][0] == "Q2FY26 Q1FY26 Revenue 100 200 Profit 40 30"
+    fast = route.route_detail(str(db), "meta", 1, [],
+                              meta=(meta[0], meta[1], pages[1][0], pages[1][1], meta[4]), source_key=meta[4])
+    assert fast == legacy
+
+
+def test_words_for_skips_the_store_query_when_the_source_key_is_known(monkeypatch):
+    base = _base()
+    pdf = _pdf(base / "known.pdf", PROSE)
+    db = _store(base, "known", pdf, " ".join(PROSE))
+
+    def boom(*args, **kwargs):
+        raise AssertionError("words_for opened the store although the source key was given")
+
+    monkeypatch.setattr(page_words, "connect_ro", boom)
+    got = page_words.words_for(str(db), "known", 1, [], source_key=str(pdf))
+    assert got.source == "script_text" and got.words
+
+
+def test_open_pdf_keys_the_cache_by_case_folded_path():
+    """The path a build passes never changes spelling, so the cache key needs no filesystem resolve (T-241)."""
+    base = _base()
+    pdf = _pdf(base / "Cased.pdf", PROSE)
+    assert page_words.open_pdf(pdf) is page_words.open_pdf(str(pdf).upper())

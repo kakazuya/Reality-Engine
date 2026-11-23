@@ -42,6 +42,7 @@ import argparse
 import csv
 import re
 from collections import Counter, defaultdict
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -74,6 +75,7 @@ _DATE_TYPO = re.compile(r"^(?:0?[1-9]|[12]\d|3[01])[.\-/](?:0?[1-9]|1[0-2])[.\-/
 _MONTH_YEAR = re.compile(r"^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]{0,6}[-'.’/]?(?:\d{2}|(?:19|20)\d{2})$")
 
 
+@lru_cache(maxsize=32768)
 def word_value(text: str) -> str:
     """A printed word as a value key: braces read as brackets ("{367)"), marks and currency signs dropped."""
     t = str(text or "").strip().strip(_STRIP).replace("{", "(").replace("}", ")").replace("[", "(").replace("]", ")")
@@ -128,6 +130,7 @@ def layer_garbled(words: list[tuple[float, float, float, float, str]] | None) ->
     return len(figs) >= GARBLED_MIN_FIGURES and sum(1 for t in figs if not well_formed(t)) / len(figs) >= GARBLED_SHARE
 
 
+@lru_cache(maxsize=32768)
 def _is_num(text: str) -> bool:
     """A number, or the mark a table prints in an empty cell."""
     t = str(text or "").strip().casefold()
