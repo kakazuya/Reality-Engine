@@ -44,7 +44,9 @@ def is_database(path: str) -> bool:
 
 
 def open_manifest(path: str) -> sqlite3.Connection:
-    con = sqlite3.connect(path)
+    # T-241: two universe_to_drive runs and the builds share this manifest; wait for a writer instead of failing
+    # with "database is locked" after sqlite's default 5 s.
+    con = sqlite3.connect(path, timeout=600)
     con.execute("CREATE TABLE IF NOT EXISTS local_file (path TEXT PRIMARY KEY, root TEXT, rel TEXT, size INTEGER, "
                 "mtime REAL, md5 TEXT, status TEXT, drive_path TEXT, deleted_at TEXT)")
     return con
@@ -79,8 +81,9 @@ def step_hash(con: sqlite3.Connection, roots: list[str], files: list[str] | None
         rel = os.path.relpath(p, root).replace("\\", "/")
         con.execute("INSERT OR REPLACE INTO local_file (path, root, rel, size, mtime, md5, status) "
                     "VALUES (?,?,?,?,?,?,NULL)", (p, Path(root).name, rel, st.st_size, st.st_mtime, digest))
-        if n % 2000 == 0:
+        if n % 50 == 0:  # short write transactions: another run may be waiting on this manifest
             con.commit()
+        if n % 2000 == 0:
             print(f"hash: {n} files, {read / 1e9:.1f} GB read, {time.time() - t:.0f} s", flush=True)
     con.commit()
     print(f"hash: done, {n} files, {read / 1e9:.1f} GB read, {time.time() - t:.0f} s", flush=True)

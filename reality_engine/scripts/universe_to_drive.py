@@ -57,7 +57,7 @@ def rclone(args: list[str], check: bool = True) -> subprocess.CompletedProcess[s
 def open_state(path: Path, readonly: bool = False) -> sqlite3.Connection | None:
     if readonly:
         return sqlite3.connect(f"file:{path}?mode=ro", uri=True) if path.is_file() else None
-    con = sqlite3.connect(path)
+    con = sqlite3.connect(path, timeout=600)
     con.execute("CREATE TABLE IF NOT EXISTS company (name TEXT PRIMARY KEY, symbol TEXT, isin TEXT, "
                 "measure_at TEXT, raw_files INTEGER, raw_bytes INTEGER, raw_on_drive INTEGER, "
                 "raw_deleted_at TEXT, stores_at TEXT, store_md5 TEXT)")
