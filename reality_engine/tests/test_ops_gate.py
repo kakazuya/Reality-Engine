@@ -144,3 +144,14 @@ def test_junction_to_the_ssd_is_not_an_hdd_write(env, tmp_path):
     if r.returncode != 0:
         pytest.skip("cannot make a junction here")
     assert not [line for line in og.check(dt.datetime.now(), rules, LOOP) if "ssd_only" in line]
+
+
+def test_two_readers_on_one_output_is_a_breach(env):
+    rules, _ = env
+    reader = "python -m reality_engine.v2.observations --resume --out D:/x/obs_a.db"
+    assert any("2 readers write d:/x/obs_a.db" in line for line in og.check(WED_NIGHT, rules, LOOP + [reader, reader]))
+    backslash = r"python.exe -m reality_engine.v2.observations --out D:\x\obs_a.db"
+    assert any("2 readers" in line for line in og.check(WED_NIGHT, rules, LOOP + [reader, backslash]))
+    wrapper = 'bash -c "' + reader + '"'
+    assert not any("readers write" in line for line in og.check(WED_NIGHT, rules, LOOP + [reader, wrapper]))
+    assert not any("readers write" in line for line in og.check(WED_NIGHT, rules, LOOP + [reader]))

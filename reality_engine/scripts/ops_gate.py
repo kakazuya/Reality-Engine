@@ -155,6 +155,17 @@ def check(now: dt.datetime | None = None, rules: dict[str, Any] | None = None,
                      f"({rules['heartbeat']['source']})")
     cmds = cmdlines if cmdlines is not None else _cmdlines()
     hy4 = rules["hy4"]
+    readers: dict[str, int] = {}
+    for c in cmds:
+        # only the interpreter itself counts: a "bash -c ..." wrapper or the py launcher would double one reader
+        first = os.path.basename(c.split(" ", 1)[0].strip('"')).lower()
+        m = re.search(r"--out[= ](\S+)", c) if "v2.observations" in c and first.startswith("python") else None
+        if m:
+            out = Path(m.group(1).strip("\"'")).as_posix().lower()
+            readers[out] = readers.get(out, 0) + 1
+    for out, n in sorted(readers.items()):
+        if n > 1:   # a loop that survived TaskStop: two readers race on one output and lose pages (24 Nov, 3 times)
+            lines.append(f"RULE hy4: {n} readers write {out} at once - kill the older loop's bash and its reader")
     if not any(hy4["loop_pattern"] in c for c in cmds):
         lines.append(f"RULE hy4: the hy4 loop ({hy4['loop_pattern']}) is not running ({hy4['source']})")
     from reality_engine.v2 import read_gate  # noqa: PLC0415
