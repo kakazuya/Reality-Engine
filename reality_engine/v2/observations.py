@@ -3172,6 +3172,9 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
     if required_unit and not row.get("unit") and not str(row.get("measure") or "").startswith("count."):
         status = "unverified"           # stage H: a count.* row is its own unit ("14 outlets"); the count is the unit
         reasons.append("no_unit: no unit printed for this money/quantity row")
+    if measure is None and not row.get("unit") and not str(row.get("measure") or "").startswith("count."):
+        status = "unverified"           # T-242 (deck grade): a NEW: measure with no unit ("Regulation 30", "since 2021",
+        reasons.append("no_unit: a new measure with no unit printed")   # an unlabelled Rs Cr table) is no fact
     if not row.get("period") or not period_is_printed(row.get("period", "")):
         status = "unverified"
         reasons.append("no_period: no period printed for this row")
@@ -3252,8 +3255,12 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                        companies: dict[str, tuple[str, str]] | None = None,
                        deck_asof: str = "", deck_basis: str = "",
                        ocr_text: str = "", ocr_page: bool = False,
-                       transcript_v2: bool = False) -> list[dict[str, Any]]:
-    """Model reply objects -> checked observation rows (status and status_reason set here)."""
+                       transcript_v2: bool = False, deck_guards: bool = False) -> list[dict[str, Any]]:
+    """Model reply objects -> checked observation rows (status and status_reason set here).
+
+    ``deck_guards`` (T-242, deck pages only): a growth/change row printed after a decrease word is negative, and a
+    page-1/2 filing cover letter gives no rows.
+    """
     measures = measures if measures is not None else measure_index()
     vocab = vocab if vocab is not None else vocab_index()
     word_list = list(words)
@@ -3262,7 +3269,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
     page_groups = {part for raw in reply_rows if isinstance(raw, dict)
                    for part in norm_space(raw.get("group_path")).split(" > ") if part}
     legend_groups = detect_legend(word_list, page_groups)
-    if transcript_v2 and is_cover_letter(page_text, page):
+    if (transcript_v2 or deck_guards) and is_cover_letter(page_text, page):
         return []                              # T-241 guard 3: a filing cover letter is not part of the call
     out: list[dict[str, Any]] = []
     prose: list[dict[str, Any]] = []          # stage M: statement / guidance records, never number-checked
@@ -3383,6 +3390,10 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 row["value_high"] = None       # T-241 guard 4: a high below the low is no range
             if row["value_high"] is None and not high_text:
                 row["value_high"] = printed_range_high(page_text, value_text, row["value"])   # T-241 guard 5
+        elif (deck_guards and row["value"] is not None and row["value"] > 0 and SIGNED_MEASURE.search(row["measure"])
+              and (DECREASE_RE.search(label) or DECREASE_RE.search(_before(page_text, value_text, 40)))):
+            row["value"] = -row["value"]   # T-242 deck guard: "EBITDA decreased 79%", "negative growth 1.9%"
+            row["direction"] = "down"
         if not row["unit"] and value_text.rstrip().endswith("%"):
             row["unit"] = "%"            # T-241: a printed "12%" keeps its percent unit
         if claim == "third_party" and row["entity_scope"] in ("", "company", "parent"):
@@ -4006,6 +4017,8 @@ BY_CHANGE_RE = re.compile(r"\b(?:increas|decreas|reduc|improv|grew|grown|fell|de
 # T-241 (Wolf's fy27_v2 ckpt_0001 grade, 24 Nov): five number guards for v2 transcript rows
 PERIOD_VALUE_RE = re.compile(r"^(?:(?:Q[1-4]|H[12]|9M)\s*(?:FY\s*'?\d{2,4})?|FY\s*'?\d{2,4}(?:\s*[-\u2013]\s*'?\d{2,4})?)$",
                              re.I)
+DECREASE_RE = re.compile(r"\b(?:decreas\w*|declin\w*|de-?growth|negative\s+growth|fell|fall(?:en|ing)?|dropped|"
+                         r"lower\s+by|down\s+by|contract(?:ed|ion))\b", re.I)
 NEGATIVE_WORD_RE = re.compile(r"\bnegative\b|\bloss\s+of\b|\bminus\b|\bnet\s+loss\b", re.I)
 COVER_LETTER_RES = (re.compile(r"\b(?:scrip|security)\s+code\b", re.I),
                     re.compile(r"\bsub(?:ject)?\s*[:\-]", re.I),
@@ -4634,7 +4647,8 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                                         deck_asof="" if transcript else deck_period(store_db, doc_key, check_text),
                                         deck_basis="" if transcript else deck_basis(str(store_db), str(doc_key)),
                                         ocr_text=result["ocr_text"], ocr_page=ocr_read,
-                                        transcript_v2=transcript and TRANSCRIPT_PROMPT == "v2")
+                                        transcript_v2=transcript and TRANSCRIPT_PROMPT == "v2",
+                                        deck_guards=meta.get("doc_type") == "deck")
     return result
 
 
