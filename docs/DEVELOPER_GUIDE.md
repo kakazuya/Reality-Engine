@@ -2304,6 +2304,19 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   fake part, `ram_stop`, timeout, last-5-lines on failure, a `parts.csv` and a `pilot10_measure.csv` row, plus the
   T-232 part/doc-type filters and the deck manifest below).
 
+- **hy4 read gate: maker-checker-verifier (T-241, Shivam 24 Nov 2026).** `reality_engine/v2/read_gate.py`, called by
+  `observations.run` (scoped `--only` runs too). (1) A run that would take an output DB's `page_read` ledger past 200
+  pages needs, for each doc type, an entry in
+  `reality_engine/v2/read_gates.json` at the CURRENT reader fingerprint (sha256 of `observations.template_for(doc_type)` + reader id):
+  a `pass` from a reviewer who is not the prompt's author with >= 60 hand-read rows (`read_gate record`), or a
+  `override` by Shivam with a reason, his quoted words (`--quote`) and optional `--scope` (a substring of the output DB path); a later `fail`
+  withdraws a pass, and any prompt edit changes the fingerprint so earlier passes stop counting. (2) Every 2,000
+  pages in an output DB's `page_read` ledger write `<out>.audit/ckpt_NNNN.jsonl` (60 seeded rows) and STOP the running
+  read (`stopped`); the next run on that DB refuses to start until each checkpoint has a `pass` grade (`read_gate grade --ckpt ... --verdict ...`).
+  A refused run prints `GATE: ...` and exits 3; `.tmp/hy4_always.sh` then moves to the next job. (3)
+  `read_gate status --out <db>` shows gates, pending checkpoints and ledger counts; the managers' 25-minute heartbeats
+  grade pending checkpoints (never the reader's author). First entries 24 Nov: transcript `fail` (Eagle, 110 rows:
+  40 right) and Shivam's override scoped to `obs_transcripts_fy27`. Tests `reality_engine/tests/test_read_gate.py`.
 - **hy4 resume and page ledger (T-241, 24 Nov 2026).** `--resume` now drops the pages already done *before* the
   `--limit` sample is drawn; it used to sample first, so a fixed `--seed` re-picked the same pages every run and the
   rest of the queue was never read (Eagle's audit: 56.2% of 36,767 transcript text pages had a row; 64 of 67 missed
