@@ -82,14 +82,31 @@ def test_running_reader_out_is_watched_even_outside_the_globs(env, tmp_path):
     assert other.as_posix() in og.hy4_outputs(rules, cmds)
 
 
-def test_quota_pace_and_five_hour(env):
+def test_quota_pace_and_five_hour(env, monkeypatch):
+    from reality_engine.scripts import quota_pace
     rules, tmp = env
+    monkeypatch.setattr(quota_pace, "SAMPLES", tmp / "samples.jsonl")
     (tmp / "Wolf").mkdir()
-    (tmp / "Wolf" / "usage_status.json").write_text(json.dumps(
-        {"rate_limits": {"seven_day": {"used_percentage": 20}, "five_hour": {"used_percentage": 95}}}), encoding="utf-8")
+    reset = int((WED_NIGHT + dt.timedelta(hours=1)).timestamp())      # 4 of 5 hours of the window gone
+    usage = {"rate_limits": {"seven_day": {"used_percentage": 20},
+                             "five_hour": {"used_percentage": 10, "resets_at": reset}}}
+    (tmp / "Wolf" / "usage_status.json").write_text(json.dumps(usage), encoding="utf-8")
+    assert any("RULE quota: Wolf: weekly 20%" in line for line in og.check(WED_NIGHT, rules, LOOP))
+    usage["rate_limits"]["five_hour"]["used_percentage"] = 95                      # window used: no pace breach
+    (tmp / "Wolf" / "usage_status.json").write_text(json.dumps(usage), encoding="utf-8")
     lines = og.check(WED_NIGHT, rules, LOOP)
-    assert any("Wolf weekly at 20%" in line for line in lines)
+    assert not any("RULE quota: Wolf: weekly" in line for line in lines)
     assert any("Wolf 5-hour window at 95%" in line for line in lines)
+
+
+def test_quota_plan_spend_share():
+    from reality_engine.scripts import quota_pace
+    now = dt.datetime(2026, 11, 24, 14, 0)
+    u = {"five": 0.0, "weekly": 50.0, "five_reset": int((now + dt.timedelta(hours=5)).timestamp())}
+    p = quota_pace.plan(u, 85.0, now + dt.timedelta(hours=50), now, 8.5)   # 10 windows, 35 points -> 41%
+    assert p["windows_left"] == 10.0 and p["spend_pct"] == 41 and not p["short"]
+    p = quota_pace.plan(u, 95.0, now + dt.timedelta(hours=20), now, 8.5)   # 4 windows reach 84 < 95
+    assert p["short"] and p["spend_pct"] == 100 and p["max_reach"] == 84.0
 
 
 def test_db_on_hdd_outside_allowed_dirs(env):
