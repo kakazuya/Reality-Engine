@@ -82,3 +82,12 @@ def test_reparse_rebuilds_rows_from_page_reply(tmp_path, monkeypatch):
     assert rows == [(-27.0,)]
     assert con.execute("SELECT outcome, rows FROM page_read").fetchall() == [("rows", 1)]
     con.close()
+
+
+def test_guard5_both_ends_share_a_unit():
+    f = obs.printed_range_high
+    assert f("PAT rose by 11% to INR34.5 crores.", "11%", 11.0) is None      # a growth then a level
+    assert f("not more than 3% to 4%.", "3%", 3.0) == 4.0
+    assert f("about INR310-325 crores", "INR310", 310.0) == 325.0
+    assert f("Rs. 58 to Rs. 60, that", "Rs. 58", 58.0) == 60.0
+    assert f("60 to 65% utilisation", "60", 60.0) == 65.0
