@@ -445,3 +445,34 @@ def test_filing_letter_line_on_page_one_is_dropped_but_secretary_remarks_stay():
     stats = osp.attach_statement_speakers(rows, pages)
     assert stats["filing_lines"] == 1 and len(rows) == 2
     assert rows[0]["statement"].startswith("Revenue") and rows[1]["page"] == 9
+
+
+def test_handover_label_corrects_a_carried_manager_and_greetings_are_dropped():
+    from reality_engine.v2 import obs_speaker as osp
+    pages = [(1, "Synth Corp Limited\nMANAGEMENT:\nMr. Gopal Agrawal - Chief Financial Officer\n"
+                 "Mr. Amit Kumar - Managing Director\n"),
+             (2, "Gopal Agrawal: Good evening, everyone. Over to you, Amit.\n"
+                 "Amit Kumar: Thank you, Gopal. Our order book stands at INR 5,000 crores.\n")]
+    carried = {"record_type": "statement", "doc_key": "d", "page": 2, "speaker": "Gopal Agrawal",
+               "status": "verified", "statement": "Our order book stands at INR 5,000 crores."}
+    greeting = {"record_type": "statement", "doc_key": "d", "page": 2, "speaker": "Amit Kumar",
+                "status": "verified", "statement": "Thank you, Gopal. Good evening, everyone."}
+    rows = [carried, greeting]
+    stats = osp.attach_statement_speakers(rows, pages)
+    assert len(rows) == 1 and stats["filing_lines"] == 1
+    assert rows[0]["speaker"] == "Amit Kumar" and rows[0]["speaker_model"] == "Gopal Agrawal"
+    assert rows[0]["status"] == "verified"
+
+
+def test_handover_to_another_person_unverifies_without_a_roster():
+    from reality_engine.v2 import obs_speaker as osp
+    pages = [(5, "Thank you for all your support. Over to you, Shashi.\nRevenue for FY27 will grow 20%.")]
+    row = {"record_type": "statement", "doc_key": "d", "page": 5, "speaker": "Sampath Ravinarayanan",
+           "status": "verified", "statement": "Revenue for FY27 will grow 20%."}
+    nick = dict(row, speaker="Shashidhar Kumar", statement="Revenue for FY27 will grow 20%.")
+    rows = [row]
+    osp.attach_statement_speakers(rows, pages)
+    assert rows[0]["status"] == "unverified" and "speaker_handover" in rows[0]["status_reason"]
+    rows = [nick]
+    osp.attach_statement_speakers(rows, pages)
+    assert rows[0]["status"] == "verified"                    # "Shashi" is a nickname of the stored speaker
