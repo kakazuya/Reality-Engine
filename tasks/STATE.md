@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-21 03:20 IST (Wolf)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-24 22:46 IST (dsh)
 History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -8,10 +8,8 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
-00000. 24 Nov (T-242, Eagle merged dsh d8719f81): deck ranges fill value_high (11 pilot rows), date/quarter/FY values unverified (21 rows, 0 verified lost).
-00000. 24 Nov 19:50 (Eagle): T-242 v3 GATE PASSED (2fae7ddac53e), ckpt_0001 pass 46/13/1/0; hy4 on v3; speaker, cover-line, label fixes merged. NEXT: fy27_v3 reparse + ckpt re-grade; events r4 + city fix + loader repoint merged; AR re-grade after cb0efb86.
-0000000. 24 Nov (dsh, merged): AR row gates (unit/ageing-party label/narrative growth/page-head basis): graded W/P 9 of 11 handled, R lost 0/42; fresh re-grade by Eagle.
-00. 24 Nov 16:55 (Wolf): AR statement lines never verified (XBRL holds them); pilot verified 3,017->1,414 with Eagle's exemptions.
+00000. 24 Nov 23:05 (Eagle): T-242 transcripts v3 (2fae7ddac53e): 394 ckpt_0002 PASS 54/5/0/1; speaker label/hand-over checks + greeting drop merged (9dc2524d). NEXT: fy27_v3/394_v3 live reparse; fund_raise r5 (dsh a7c04bff, grade 30/16/10/4 FAIL) then fresh grade; universe events r4 run.
+00000. 24 Nov 23:05 (Eagle merged): AR gate PASS 57/0/3/0 (48d75aa69de7); AR gates net-cash sign + bound subsidiary (aa31ca82, + parent-prefix fix), statement lines never verified; deck ranges/date values (d8719f81, + 9M fix). AR bulk may start (Wolf).
 0000. 24 Nov 15:15 (Eagle): T-242 merged v2 guards 10-16 (f1fac770) + filing_events fixes 1-6 (tuned on the graded 60: fresh-seed grade needed). NEXT: reparse fresh 394_v2 snapshot -> Wolf grades 60 verified; events on 20 new stores -> Wolf grades.
 000. 24 Nov 19:00 (Wolf): T-242: call statements gate (numbers only via v2/corroborate.py); deck whose-figure prompt GATE PASSED 55/4/0/1 (fp ea5e621d2826); deck bulk in hy4 loop; AR row guards dsh cb0efb86; v3 fy27 ckpt_0001 grading (dsh 5edabb75).
 00. 20 Nov (Eagle): T-226 script_reader + T-227 script_cells on main (V2 contract s16); r32 rules; NEXT: write the 81 + rewrite the 10 with r32 (paused by T-242). T-225 round 10 (Eagle-t225-r10) unmerged, Shivam's call.

@@ -173,7 +173,8 @@ def test_ar_gate_spares_off_statement_notes_and_dimensioned_rows():
 def _gate_row(**kw):
     row = {"record_type": "number", "status": "verified", "status_reason": "", "measure": "",
            "printed_label": "", "printed_axis": "", "series_title": "", "value_text": "1.00", "unit": "",
-           "unit_family": "", "scale": 1.0, "basis": "", "new_driver_node": ""}
+           "unit_family": "", "scale": 1.0, "basis": "", "new_driver_node": "",
+           "entity_scope": "company", "segment": ""}
     row.update(kw)
     return row
 
@@ -260,3 +261,68 @@ def test_basis_mention_in_body_text_does_not_flip_a_row():
            "printed_label": "Revenue from operations", "unit": "Rs crore", "scale": 1e7, "value": 120.0}
     o.apply_ar_row_gates([row], body)
     assert row["basis"] == "consolidated"
+
+
+# T-242 fresh2: a 'Net cash / EBITDA' chart (net cash is the opposite of debt) and a subsidiary's statements bound
+# inside the parent's annual report (Blue Dart Aviation Limited's ROIC).
+def test_ar_row_gate_gates_a_net_cash_chart_stored_as_net_debt():
+    row = _gate_row(measure="net_debt_to_ebitda", series_title="Net cash / EBITDA", value_text="1.3")
+    obs.apply_ar_row_gates([row], "Financial Highlights Net Cash (INR Mn) FY 26 1.3")
+    assert row["status"] == "unverified" and row["status_reason"].startswith("ar_net_cash_sign:")
+    # a net cash FLOW is a cash-flow line, not the net cash stock the measure signs the wrong way
+    flow = _gate_row(measure="net_debt", printed_label="Net cash flow from operating activities")
+    obs.apply_ar_row_gates([flow], "")
+    assert flow["status"] == "verified"
+    # a net-debt chart keeps its sign
+    debt = _gate_row(measure="net_debt_to_ebitda", series_title="Net debt / EBITDA")
+    obs.apply_ar_row_gates([debt], "")
+    assert debt["status"] == "verified"
+
+
+def test_ar_row_gate_unverifies_a_subsidiarys_statements_and_keeps_the_own_company():
+    row = _gate_row(measure="NEW:return_on_invested_capital",
+                    printed_label="Return on Invested Capital (ROIC)", unit="%", value_text="0.64%")
+    obs.apply_ar_row_gates([row], "Blue Dart Aviation Limited\nNotes to the standalone financial statements\n"
+                                  "Return on Invested Capital (ROIC) 0.64%", company="Blue Dart Express Limited")
+    assert (row["entity_scope"], row["segment"]) == ("subsidiary", "Blue Dart Aviation Limited")
+    assert row["status"] == "unverified" and row["status_reason"].startswith("ar_other_entity:")
+    own = _gate_row(measure="NEW:return_on_invested_capital",
+                    printed_label="Return on Invested Capital (ROIC)", unit="%", value_text="0.64%")
+    obs.apply_ar_row_gates([own], "Blue Dart Express Limited Notes to the standalone financial statements\n"
+                                  "Blue Dart Aviation Limited is a wholly owned subsidiary.\n"
+                                  "Return on Invested Capital (ROIC) 0.64%", company="Blue Dart Express Limited")
+    assert (own["entity_scope"], own["status"], own["segment"]) == ("company", "verified", "")
+    # the store's name is abbreviated and its initials spaced: those are the company's own statement pages
+    for printed, store_name in (("A. K. Capital Services Limited\nNOTES TO THE CONSOLIDATED FINANCIAL STATEMENTS",
+                                 "AK Capital Services Limited"),
+                                ("The Bombay Dyeing and Manufacturing Company Limited | Annual Report 2025-26\n"
+                                 "NOTES to the Consolidated Financial Statements",
+                                 "Bombay Dyeing & Mfg Company Limited")):
+        kept = _gate_row(measure="NEW:return_on_invested_capital", printed_label="ROIC", unit="%")
+        obs.apply_ar_row_gates([kept], printed, company=store_name)
+        assert (kept["entity_scope"], kept["status"]) == ("company", "verified"), (printed, kept["status_reason"])
+
+
+def test_ar_row_gate_reads_a_bound_subsidiarys_running_header():
+    # the W #57 page: the entity is named only in the printed running header, after its ratio table
+    page = ("276\n37 FINANCIAL INSTRUMENTS\nReturn on Invested Capital (ROIC) 0.64%\n"
+            "Notes forming part of Financial Statements as of and for the year ended March 31, 2026\n"
+            "BLUE DART AVIATION LIMITED | FINANCIALS | ANNUAL REPORT 2025-2026\n")
+    row = _gate_row(measure="NEW:return_on_invested_capital",
+                    printed_label="Return on Invested Capital (ROIC)", unit="%", value_text="0.64%")
+    obs.apply_ar_row_gates([row], page, company="Blue Dart Express Limited")
+    assert (row["entity_scope"], row["segment"]) == ("subsidiary", "BLUE DART AVIATION LIMITED")
+    assert row["status"] == "unverified" and "ar_other_entity" in row["status_reason"]
+    # a page naming only the store company stays company scope
+    own = _gate_row(measure="NEW:return_on_invested_capital",
+                    printed_label="Return on Invested Capital (ROIC)", unit="%", value_text="0.64%")
+    obs.apply_ar_row_gates([own], "BLUE DART EXPRESS LIMITED | FINANCIALS | ANNUAL REPORT 2025-2026\n"
+                                  "Return on Invested Capital (ROIC) 0.64%", company="Blue Dart Express Limited")
+    assert (own["entity_scope"], own["status"]) == ("company", "verified")
+
+
+def test_parent_name_plus_words_is_another_entity():
+    from reality_engine.v2.observations import _is_own_entity
+    assert not _is_own_entity("Tata Motors Finance Limited", "Tata Motors Limited")
+    assert _is_own_entity("The Bombay Dyeing and Manufacturing Company Limited", "Bombay Dyeing & Mfg Company Limited")
+    assert _is_own_entity("A. K. Capital Services Limited", "AK Capital Services Limited")
