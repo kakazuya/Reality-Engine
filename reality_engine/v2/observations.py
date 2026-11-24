@@ -3191,6 +3191,20 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             "new_driver_node": norm_space(raw.get("new_driver_node")).lower(),
         })
         row["is_total"] = 1 if row["_is_total"] else 0
+        # T-241 v2 transcript prompt: the range's upper end, the sign of a fall, the speaker and the printed period
+        # words; a v1 reply carries none of these keys, so its rows are unchanged
+        high_text = norm_space(raw.get("high_text"))
+        if high_text:
+            row["value_high"] = parse_number(high_text)
+        if (norm_space(raw.get("sign")) == "-" and row["value"] is not None and row["value"] > 0
+                and SIGNED_MEASURE.search(row["measure"] + " " + row["unit"])):
+            row["value"] = -row["value"]
+            row["direction"] = "down"
+        if raw.get("speaker"):
+            row["speaker"] = norm_space(raw.get("speaker"))[:200]
+        printed = norm_space(raw.get("period_printed"))
+        if printed and printed != row["period"]:
+            row["period_source"] = printed[:120]
         for dim in DIMS:
             row[dim] = canonical_dim(vocab, dim, row.get(dim, ""))
         row["stage"] = canonical_stage(vocab, row.get("stage", "")) or stage_from_group(vocab, row["group_path"])
@@ -3799,6 +3813,114 @@ Transcript page text (verbatim):
 >>>"""
 
 
+# T-241 (24 Nov, Eagle audit of 110 hy4 transcript rows): v1 left period free text ('the quarter', a call date) on
+# ~140k of 158k number/guidance rows, kept one end of a printed range, lost the sign of declines, stored no speaker on
+# any number and kept list numbers / years / postcodes as values. v2 resolves the period against the call's own
+# quarter and returns the range's upper end, the sign and the speaker. Chosen with --transcript-prompt v2.
+TRANSCRIPT_PROMPT = "v1"
+# a sign is kept only on a movement (growth / change / bps); a level (days, margin, amount) is never negated
+SIGNED_MEASURE = re.compile(r"growth|change|_yoy|_qoq|delta|bps|basis points", re.I)
+
+PROMPT_TRANSCRIPT_V2 = """Read one page of an Indian company's earnings-call transcript (its text layer only, no image)
+and return every number management states, every management statement and every guidance target. Output ONE JSON
+object per line (JSON Lines): no array, no markdown, no prose. Every object names its "type" and holds these keys:
+
+Number: {{"type": "number", "measure": "one id from the dictionary below", "printed_label": "the words printed
+immediately before the number, verbatim", "value_text": "the number exactly as printed (the lower end of a range)",
+"high_text": "the upper end of a printed range exactly as printed, else empty", "sign": "- when the sentence says
+the quantity fell / declined / dropped / degrew / was negative / was a loss, else empty", "unit": "unit as printed,
+WITH its scale word (crore, lakh, million, billion, bps) and its noun (tonnes, MW, stores)", "period": "fiscal label
+(rules below)", "period_printed": "the period words exactly as printed, empty when none",
+"period_kind": "actual|estimate|target", "basis": "standalone|consolidated|",
+"entity_scope": "company|subsidiary|industry|country|customer|peer", "segment": "", "product": "", "geography": "",
+"customer": "", "speaker": "the speaker name printed for the passage this number sits in", "new_definition": "",
+"new_driver_node": ""}}
+Statement: {{"type": "statement", "measure": "one id from the dictionary below", "text": "one management speaker's
+whole passage on one topic, verbatim from its first word to its last full stop", "speaker": "the speaker name
+printed for it", "question_context": "when the passage only makes sense with the question, that question's topic
+in one line; else empty", "direction": "up|down|flat|", "new_definition": "", "new_driver_node": ""}}
+Guidance: {{"type": "guidance", "measure": "one id from the dictionary below", "period": "fiscal label (rules below)",
+"low": "the lower or only printed number", "high": "the upper printed number, or empty", "unit": "unit as printed
+with its scale word", "direction": "up|down|flat|", "speaker": "the speaker name", "text": "the sentence that states
+the target, verbatim", "new_definition": "", "new_driver_node": ""}}
+
+This call: filed {known_at}; it discusses {call_quarter} (Indian fiscal year April-March: Q1 = Apr-Jun, Q2 = Jul-Sep,
+Q3 = Oct-Dec, Q4 = Jan-Mar; FY26 ends 31 March 2026).
+
+Rules:
+- The page text is the only source. Copy every number and every sentence exactly as printed; never compute, round,
+  convert, paraphrase or complete a sentence the page does not print. Skip greetings, vote of thanks, safe-harbour
+  text, operator notes, analyst small talk and page headers.
+- Speakers: a page may open mid-answer; the speaker is then the last "Name:" label before the text, or the
+  management speaker whose answer this page continues. Emit numbers and guidance ONLY when management states them.
+  An analyst's figure, an analyst's arithmetic ("so that comes to 1,100 crores?") or a number management merely
+  repeats back from the question is never a number row; emit it only when management states it as its own figure.
+- Never a value: page numbers, years or dates ("2024", "FY25" -> 25, "Q2" -> 2), list markers ("number one",
+  "first", "2 things"), postcodes, phone numbers, times, ratings ("4-star"), counts of questions or speakers,
+  the age of an anecdote ("2 months back"), or a hypothetical ("let's say 100", "suppose", "for example", "if").
+- period: a fiscal label, one of "Q1 FY25", "H1 FY25", "9M FY25", "FY25", or "FY26-FY28" for a span. Resolve
+  relative words against this call: "this quarter", "the quarter", "during the quarter" -> {call_quarter};
+  "last quarter" / "sequentially" -> the quarter before; "same quarter last year" -> that quarter a year earlier;
+  "this year", "current year", "full year" -> the fiscal year of {call_quarter}; "next year" -> the fiscal year after;
+  "H2" / "second half" -> that half of the current fiscal year; "first half" / "H1" -> H1 of it. A stock (order book,
+  cash, debt, headcount, stores, capacity) stated "as on date" or "currently" -> {call_quarter}.
+  A comparison figure carries ITS OWN period: in "INR 749 crores in H1 FY '25 as against INR 857 crores in H1 FY '24"
+  the 857 row is "H1 FY24", and "as against INR 64 crores in Q1" is the earlier quarter, never the call's quarter.
+  A year printed in calendar form ("by 2030", "December 2025") keeps that wording. Put the printed words in
+  "period_printed". When no period is printed or implied, leave "period" empty.
+- range: "12% to 15%", "600-700 crores", "50%-60%" -> value_text "12%" and high_text "15%". "Minimum 60%" or
+  "500+ crores" is a single number with "minimum" / "+" kept in the printed_label.
+- A date or a deadline ("by 30th November", "from 1st April") is never a number row; it stays in the statement.
+- sign: only on a growth, change or movement row (never on a level such as days, a margin or an amount); stated as falling ("declined 19.2%", "degrowth of 5%", "down 120 bps")
+  sets "sign": "-"; value_text stays exactly as printed.
+- measure: EXACTLY the printed quantity. Pick a dictionary id only when the meaning is the same (a call's "cash profit"
+  is cash_profit, not cash_generated_from_operations; a segment's or one customer's revenue or growth is revenue.mix
+  with that segment / customer named, never the company's revenue; an order-book split is not a revenue mix; a JV's
+  result is not the company's). Never force-fit a broader, narrower or different-entity id. When nothing in the
+  dictionary means exactly this quantity, write "NEW:<snake_case_id>" with "new_definition" (one line: what it is)
+  and "new_driver_node" (revenue|cost|margin|capex|capacity|debt|equity|working_capital|none).
+- basis: "standalone" or "consolidated" only when this sentence or its paragraph says so; never guess it.
+- statement: one management speaker's continuous passage on ONE topic, copied verbatim from its first word to its
+  last full stop -- normally 2-5 sentences. Never split a passage into single sentences and never cut it at a PDF
+  line break or mid-sentence. A passage that runs onto the next page is stored whole on the page where it starts;
+  when this page itself ends mid-sentence, stop at its last complete sentence. Management speakers only; when the
+  speaker changes, start a new statement. When the answer alone does not make sense ("Yes. 2.5%"), keep it verbatim
+  and put the question's topic in "question_context". Keep the sentence that holds a number together with the
+  sentence that qualifies it. A reported actual is a number, not a statement.
+- direction: "up" when the statement says the item rises or improves, "down" when it falls or worsens, "flat" when it
+  stays unchanged; empty when it says none of the three.
+- guidance: only a forward target management gives ("we expect 10-12% revenue growth in FY27"). A reported actual, a
+  hypothetical, an analyst's estimate or an outside forecast is never guidance.
+- Every guidance row, and every number row whose sentence says what will happen or why (will, should, expect,
+  guidance, target, because, due to, continue, next N months/quarters), MUST also emit that same sentence as a
+  statement row with the same measure and speaker.
+
+Measure dictionary (id -- name -- unit family -- driver node):
+{dictionary}
+
+Transcript page text (verbatim):
+<<<
+{text}
+>>>"""
+
+
+def call_quarter(known_at: str) -> str:
+    """The fiscal quarter a call discusses: the last quarter that ended before its filing month ("Q1 FY25")."""
+    m = re.match(r"(\d{4})-(\d{2})", known_at or "")
+    if not m:
+        return "the quarter just reported"
+    year, month = int(m.group(1)), int(m.group(2))
+    if month <= 3:
+        q, fy = 3, year            # filed Jan-Mar: Oct-Dec just ended -> Q3 FY(year)
+    elif month <= 6:
+        q, fy = 4, year            # filed Apr-Jun: Jan-Mar -> Q4 FY(year)
+    elif month <= 9:
+        q, fy = 1, year + 1        # filed Jul-Sep: Apr-Jun -> Q1 FY(year+1)
+    else:
+        q, fy = 2, year + 1        # filed Oct-Dec: Jul-Sep -> Q2 FY(year+1)
+    return f"Q{q} FY{fy % 100:02d}"
+
+
 def dictionary_text(measures: dict[str, dict[str, str]]) -> str:
     return "\n".join(f"{mid} -- {m['name']} -- {m['unit_family']} -- {m['driver_node']}"
                      for mid, m in measures.items())
@@ -4106,8 +4228,13 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
     if not image_b64 and not layout.strip():
         result["skip"] = "no image and no text"
         return result
-    template = PROMPT_TRANSCRIPT if transcript else PROMPT
-    prompt = template.format(dictionary=dictionary_text(measure_index()), text=layout[:TEXT_LAYER_CHARS])
+    if transcript and TRANSCRIPT_PROMPT == "v2":
+        prompt = PROMPT_TRANSCRIPT_V2.format(dictionary=dictionary_text(measure_index()),
+                                             text=layout[:TEXT_LAYER_CHARS], known_at=meta["known_at"][:10],
+                                             call_quarter=call_quarter(meta["known_at"]))
+    else:
+        template = PROMPT_TRANSCRIPT if transcript else PROMPT
+        prompt = template.format(dictionary=dictionary_text(measure_index()), text=layout[:TEXT_LAYER_CHARS])
     call = call_reader(prompt, image_b64, doc_key, page)
     if call.get("quota"):
         result["quota"] = call["quota"]
@@ -4949,6 +5076,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="with --only: copy this DB to --out first, then patch the copy")
     parser.add_argument("--reader", default=READER,
                         help="MODELS registry entry to read with (default hy4-flash-free; T-234 bake-off)")
+    parser.add_argument("--transcript-prompt", choices=("v1", "v2"), default="v1",
+                        help="T-241 transcript prompt: v1 (default) or v2 (fiscal periods, ranges, sign, speaker)")
     parser.add_argument("--text-only", action="store_true",
                         help="send the stored text layer only, no page image (T-234 text readers; transcript "
                              "pages are text-only already)")
@@ -4957,6 +5086,7 @@ def main(argv: list[str] | None = None) -> int:
         set_reader(args.reader)
     except KeyError:
         parser.error(f"unknown --reader {args.reader!r}; known: {', '.join(sorted(rp.MODELS))}")
+    globals()["TRANSCRIPT_PROMPT"] = args.transcript_prompt     # T-241: v1 unless the A/B picks v2
 
     only = None
     if args.only:

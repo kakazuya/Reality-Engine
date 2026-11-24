@@ -2314,6 +2314,19 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
 - **hy4 output DB locking (T-241, 24 Nov 2026).** `v2/observations.py` opens its `--out` database with a 120 s
   sqlite timeout: a row count run against the live output DB once killed a run at commit ("database is locked").
   Read a live output DB with short queries only; `--resume` re-reads any page whose rows were not committed.
+- **Transcript prompt v2 (T-241, 24 Nov 2026, Eagle).** `--transcript-prompt v2` (default `v1`) reads transcript
+  pages with `PROMPT_TRANSCRIPT_V2`: the prompt is told the call's own quarter (`call_quarter(known_at)`: the last
+  quarter that ended before the filing month, e.g. filed 2024-08-09 -> `Q1 FY25`) and resolves "the quarter",
+  "this year", "H2", "next year" into fiscal labels (`Q1 FY25`, `H1 FY25`, `9M FY25`, `FY25`); a comparison figure
+  keeps its own period; the printed words go to `period_source`. A number row now also carries `high_text`
+  (-> `value_high`), `sign` (`-` -> negative `value`, `direction='down'`, only when the measure or unit is a movement:
+  `SIGNED_MEASURE` = growth / change / yoy / qoq / bps, so a level such as inventory days is never negated) and
+  `speaker`. The prompt drops analyst figures and arithmetic, dates, years, list markers, postcodes, ratings and
+  hypotheticals as values, and sets basis only when the sentence says it. A v1 reply carries none of the new keys,
+  so v1 rows are unchanged. A/B on 40 pages of 8 seed-241 calls (pages 3-7), 40 seeded number/guidance rows per arm
+  hand-graded: v1 11 right / 21 partial / 5 wrong / 3 junk, v2 23 / 9 / 5 / 3; fiscal-label periods 21% -> 81% of
+  rows, speaker on 0 -> 54%; fact recall on those pages 70 vs 69 of 72. After the first round the prompt also gives a comparison figure its own period (`Rs. 857 crores in H1 FY '24` -> `H1 FY24`) and drops dates as values; patched re-run (`ab_v2c`): 79% fiscal-label periods, speaker on 58%, 40 ranges with `value_high`, recall 69 of 72. The read gate (`read_gate.py`) needs an
+  independent pass at v2's fingerprint before a bulk v2 read. Tests `reality_engine/tests/test_transcript_prompt_v2.py`.
 - **T-232: minimal deck stores for the non-91 Telegram companies (21 Nov 2026).** The deck-observation reader
   (`v2/observations.py`, T-230) reads `company`, `doc`, `doc_page` and `routes.csv` beside a store, and nothing
   else; a Telegram-list company the 91-store build does not cover gets exactly that from its investor
