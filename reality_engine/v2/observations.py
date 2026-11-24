@@ -3608,6 +3608,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 row["segment"] = canonical_dim(vocab, "segment", part)
             else:
                 scale_notes.append("mix_without_segment: a share row must name its part")
+        if deck_guards and norm_space(str(raw.get("entity_scope") or "")).lower().replace("-", "_") in DECK_GROUP_SCOPES:
+            row["entity_scope"] = "peer"          # Eagle: canonical_scope maps 'group' to company; on a deck it is not
         if deck_guards and row["entity_scope"] == "subsidiary" and not row["segment"]:
             scale_notes.append("subsidiary_unnamed: a group company's figure must name the entity in segment")
         if deck_guards and row["entity_scope"] in NOT_COMPANY_SCOPES:
@@ -4245,6 +4247,7 @@ TRANSCRIPT_ADJUSTED_RE = re.compile(
 # T-241 (Wolf's fy27_v2 ckpt_0001 grade, 24 Nov): five number guards for v2 transcript rows
 PERIOD_VALUE_RE = re.compile(r"^(?:(?:Q[1-4]|H[12]|9M)\s*(?:FY\s*'?\d{2,4})?|FY\s*'?\d{2,4}(?:\s*[-\u2013]\s*'?\d{2,4})?)$",
                              re.I)
+DECK_GROUP_SCOPES = frozenset({"group", "group_company", "parent_company", "holding", "holding_company"})
 NOT_COMPANY_SCOPES = frozenset({"industry", "country", "peer", "customer"})   # T-242 deck strict grade: 3 of 5 junk
 DECREASE_RE = re.compile(r"\b(?:decreas\w*|declin\w*|de-?growth|negative\s+growth|fell|fall(?:en|ing)?|dropped|"
                          r"lower\s+by|down\s+by|contract(?:ed|ion))\b", re.I)

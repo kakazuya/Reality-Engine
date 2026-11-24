@@ -61,3 +61,10 @@ def test_unnamed_subsidiary_row_is_not_verified_on_decks():
                  "printed_label": "EBITDA margin", "value_text": "12.5%", "unit": "%", "period": "FY26",
                  "entity_scope": "subsidiary"}])
     assert rows and rows[0]["status"] != "verified" and "subsidiary_unnamed" in rows[0]["status_reason"]
+
+
+def test_group_scope_on_a_deck_is_a_peer_never_verified():
+    rows = _rows("Consolidated Balance Sheet Share capital 494", [{"type": "number", "measure": "share_capital",
+                 "printed_label": "Share capital", "value_text": "494", "unit": "Rs crore", "period": "FY26",
+                 "entity_scope": "group"}])
+    assert rows and rows[0]["entity_scope"] == "peer" and rows[0]["status"] != "verified"

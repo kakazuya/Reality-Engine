@@ -2954,7 +2954,7 @@ The model never computes: `compute()` evaluates each calc expression with an AST
 - **Deck "whose figure" prompt (T-242, 24 Nov 2026, Wolf).** The strict deck grade's 5 junk rows were all someone
   else's figure (SIAM production, government capex, Ambuja's balance sheet in ACC's deck, a media market size, RBIC's
   margin in Bosch's deck). `template_for('deck')` = `PROMPT + DECK_ENTITY_RULES`: the deck's company name and symbol
-  (from the store's `company` table) and a whose-figure rule (company / subsidiary named in segment / peer incl. a parent
+  (from the store's `company` table) and a whose-figure rule (company / subsidiary named in segment / peer incl. a parent; a reply scope "group" or "parent company" is peer on decks
   or group company / industry / country; unclear = not written). With `deck_guards`, a `subsidiary` row with no
   `segment` is `subsidiary_unnamed` (never verified). Deck fingerprint e6d289ddd672 -> ea5e621d2826 (annual_report and
   results unchanged); needs a fresh pilot and a 60-row non-author grade.
