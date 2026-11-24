@@ -31,6 +31,17 @@
    "evidence": "D:/RealityEngine/t241/prompt_ab/v2e_wolf_grades.md",
    "note": "v2e, fresh seed 2413: 51 right / 7 partial / 0 wrong / 2 junk",
    "at": "2026-11-24 13:16"
+  },
+  {
+   "doc_type": "transcript",
+   "fingerprint": "e95108f16e65",
+   "verdict": "pass",
+   "reviewer": "Wolf",
+   "author": "Eagle (v2 prompt; guards Eagle+Hydrogen)",
+   "rows": 60,
+   "evidence": "D:/RealityEngine/t242/grades/reparse4_statements/grades.csv",
+   "note": "v2 statements gate (Shivam 24 Nov): strict Opus blind grade 47/11/0/2 of 60 verified statements on reparsed4; call numbers unverified by apply_transcript_number_gate (ed3c8097). Replaces a 15:11 entry wrongly made under the v1 fingerprint (voided before commit)",
+   "at": "2026-11-24 15:12"
   }
  ]
 }
