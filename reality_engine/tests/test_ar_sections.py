@@ -167,3 +167,96 @@ def test_ar_gate_spares_off_statement_notes_and_dimensioned_rows():
             {"record_type": "number", "status": "verified", "status_reason": "", "measure": "inventories"}]
     obs.apply_ar_statement_gate(rows)
     assert [r["status"] for r in rows] == ["verified", "unverified"]
+
+
+# T-242: four script-catchable AR number errors (T-242 fresh grade: 7 of 60 verified rows wrong).
+def _gate_row(**kw):
+    row = {"record_type": "number", "status": "verified", "status_reason": "", "measure": "",
+           "printed_label": "", "printed_axis": "", "series_title": "", "value_text": "1.00", "unit": "",
+           "unit_family": "", "scale": 1.0, "basis": "", "new_driver_node": ""}
+    row.update(kw)
+    return row
+
+
+def test_ar_row_gate_gates_an_ageing_bucket_stored_as_the_headline_measure():
+    row = _gate_row(measure="trade_payables", printed_label="More than 3 years", unit="Lakh",
+                    printed_axis="As at 31st March, 2025")
+    obs.apply_ar_row_gates([row], "(Amount in Lakh)")
+    assert row["status"] == "unverified" and "ar_qualified_label" in row["status_reason"]
+    plain = _gate_row(measure="trade_payables", unit="Lakh",
+                      printed_label="(ii) Total outstanding dues of creditors other than MSME")
+    obs.apply_ar_row_gates([plain], "(Amount in Lakh)")
+    assert plain["status"] == "verified"
+
+
+def test_ar_row_gate_gates_a_related_party_transaction_stored_as_the_headline_measure():
+    row = _gate_row(measure="raw_material_cost", unit="Lakh",
+                    printed_label="Purchase of raw materials Beekaylon Synthetics Private Limited",
+                    series_title="RELATED PARTY DISCLOSURES")
+    obs.apply_ar_row_gates([row], "` In Lakhs")
+    assert row["status"] == "unverified" and "ar_qualified_label" in row["status_reason"]
+    # a party-only label is the row's dimension, not a mixed-up transaction: it stays
+    for measure, label in (("loans", "A2Z Waste Management (Moradabad) Limited"),
+                           ("shareholding_pct", "Asian Paints International Private Limited")):
+        party = _gate_row(measure=measure, printed_label=label, unit="%")
+        obs.apply_ar_row_gates([party], "")
+        assert party["status"] == "verified", (measure, party["status_reason"])
+
+
+def test_ar_row_gate_gates_a_narrative_change_label_with_no_measure():
+    row = _gate_row(measure="profit_before_tax_growth_yoy", printed_label="an increase of", unit="%")
+    obs.apply_ar_row_gates([row], "")
+    assert row["status"] == "unverified" and "ar_narrative_growth" in row["status_reason"]
+    for measure, label in (("pat_margin", "Net profit ratio"), ("gross_profit_growth_yoy", "Gross Margin")):
+        named = _gate_row(measure=measure, printed_label=label, unit="%")
+        obs.apply_ar_row_gates([named], "")
+        assert named["status"] == "verified", (label, named["status_reason"])
+
+
+def test_ar_row_gate_gates_an_unknown_unit_and_a_label_noun_as_the_unit():
+    unknown = _gate_row(measure="raw_material_cost", printed_label="Purchase of raw materials", unit="`")
+    obs.apply_ar_row_gates([unknown], "")
+    assert unknown["status"] == "unverified" and "ar_unit_unknown" in unknown["status_reason"]
+    noun = _gate_row(measure="NEW:current_maturities_vehicle_loans", printed_label="- vehicle loans",
+                     unit="vehicle", new_driver_node="debt")
+    obs.apply_ar_row_gates([noun], "")
+    assert noun["status"] == "unverified" and "ar_unit_unknown" in noun["status_reason"]
+    for unit, node in (("per equity share", "equity"), ("years", "equity")):
+        ok = _gate_row(measure="NEW:share_premium_per_equity_share", printed_label="at a premium of",
+                       unit=unit, new_driver_node=node)
+        obs.apply_ar_row_gates([ok], "")
+        assert ok["status"] == "verified", (unit, ok["status_reason"])
+
+
+def test_ar_row_gate_fills_a_blank_unit_from_the_page_scale_note():
+    money = _gate_row(measure="NEW:tax_on_other_disallowance", printed_label="(D) Other Disallowance")
+    obs.apply_ar_row_gates([money], "Reconciliation (Rs.in lacs) 31.03.2025 (D) Other Disallowance 0.00")
+    assert (money["unit"], money["scale"], money["status"]) == ("Lakhs", 1e5, "verified")
+    ratio = _gate_row(measure="dscr", printed_label="Debt Service Coverage ratio (times)")
+    obs.apply_ar_row_gates([ratio], "Ratio Analysis Current ratio (times) Debt Service Coverage ratio (times)")
+    assert (ratio["unit"], ratio["scale"]) == ("Times", 1.0)
+    shares = _gate_row(measure="count.shares", printed_label="No. of Shares")
+    obs.apply_ar_row_gates([shares], "(Amount in Lakh)")
+    assert shares["unit"] == ""                        # a count is never given a money page's scale
+    ambiguous = _gate_row(measure="NEW:other_disallowance")
+    obs.apply_ar_row_gates([ambiguous], "(₹ in million) (Amount in Lakh)")
+    assert ambiguous["unit"] == ""                     # two scale notes prove nothing
+
+
+def test_ar_row_gate_sets_the_basis_the_page_heading_prints():
+    row = _gate_row(measure="NEW:trade_receivables_ageing_unbilled", printed_label="Undisputed - considered good",
+                    printed_axis="Unbilled", unit="(₹ in million)", basis="consolidated")
+    obs.apply_ar_row_gates([row], "Notes to the standalone financial statements for the year ended 31 March, 2026")
+    assert (row["basis"], row["basis_source"]) == ("standalone", "page_heading")
+    both = _gate_row(measure="NEW:trade_receivables_ageing_unbilled", printed_label="Undisputed", basis="consolidated")
+    obs.apply_ar_row_gates([both], "Standalone financial statements\nConsolidated financial statements")
+    assert both["basis"] == "consolidated"             # both headings: nothing to override with
+
+
+def test_basis_mention_in_body_text_does_not_flip_a_row():
+    from reality_engine.v2 import observations as o
+    body = "Directors' Report. " + "Revenue grew on strong demand across all segments. " * 8 +         "Details are in the standalone financial statements."
+    row = {"record_type": "number", "status": "verified", "basis": "consolidated", "measure": "revenue",
+           "printed_label": "Revenue from operations", "unit": "Rs crore", "scale": 1e7, "value": 120.0}
+    o.apply_ar_row_gates([row], body)
+    assert row["basis"] == "consolidated"
