@@ -217,6 +217,15 @@ CREATE TABLE IF NOT EXISTS measure_alias (
     canonical TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS page_read (
+    doc_key TEXT NOT NULL,
+    page INTEGER NOT NULL,
+    outcome TEXT NOT NULL,
+    rows INTEGER NOT NULL DEFAULT 0,
+    read_at TEXT NOT NULL,
+    PRIMARY KEY (doc_key, page)
+);
+
 CREATE TABLE IF NOT EXISTS page_ocr (
     doc_key TEXT NOT NULL,
     page INTEGER NOT NULL,
@@ -4359,6 +4368,10 @@ def select_pages(pages: list[dict[str, Any]], limit: int, seed: int,
 def missing_pages(con: sqlite3.Connection, pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Pages with no observation row yet (T-230 stage B resume: skip what a stopped run already wrote)."""
     done = {(str(row[0]), int(row[1])) for row in con.execute("SELECT DISTINCT doc_key, page FROM observation")}
+    # T-241: a page read whose rows were all dropped (cover, disclaimer) or that has nothing to read is in the
+    # page_read ledger and is not read again; errors and parse failures are not recorded, so they are retried.
+    done |= {(str(row[0]), int(row[1])) for row in con.execute(
+        "SELECT doc_key, page FROM page_read WHERE outcome IN ('rows','empty','skip')")}
     return [p for p in pages if (str(p["doc_key"]), int(p["page"])) not in done]
 
 
@@ -4768,6 +4781,13 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
     if only is not None:                      # T-233: a scoped re-read is exactly the selection, not a sample
         pages = [p for p in pages if only.page(p["store"], p["doc_key"], p["page"])]
         selected = pages
+    elif resume:
+        # T-241 (24 Nov): resume used to sample `limit` pages first and drop the done ones after, so a fixed seed
+        # re-picked the same pages every run and the rest of the queue was never read; drop the done pages first.
+        con0 = create_db(out)
+        todo = missing_pages(con0, pages)
+        con0.close()
+        selected = select_pages(todo, limit, seed, required)
     else:
         selected = select_pages(pages, limit, seed, required)
     statement_filter = {"kept": len(pages), "dropped": sum(dropped_by_reason.values()),
@@ -4819,6 +4839,8 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                 continue
             if result.get("skip"):
                 stats["skipped"] += 1
+                con.execute("INSERT OR REPLACE INTO page_read VALUES (?,?,?,?,?)",
+                            (result["doc_key"], int(result["page"]), "skip", 0, ist_now()))
                 continue
             if result.get("error"):
                 stats["errors"] += 1
@@ -4840,6 +4862,11 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                                                         "page": result["page"], "raw": result["raw"][:2000]})
                 else:
                     stats["dropped_all"] += 1      # a letterhead / cover page whose every row the script dropped
+                    con.execute("INSERT OR REPLACE INTO page_read VALUES (?,?,?,?,?)",
+                                (result["doc_key"], int(result["page"]), "empty", 0, ist_now()))
+            else:
+                con.execute("INSERT OR REPLACE INTO page_read VALUES (?,?,?,?,?)",
+                            (result["doc_key"], int(result["page"]), "rows", len(rows), ist_now()))
             write_rows(con, rows)
             if result.get("ocr_text"):
                 con.execute("INSERT OR REPLACE INTO page_ocr VALUES (?,?,?,?,?)",

@@ -2304,6 +2304,13 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   fake part, `ram_stop`, timeout, last-5-lines on failure, a `parts.csv` and a `pilot10_measure.csv` row, plus the
   T-232 part/doc-type filters and the deck manifest below).
 
+- **hy4 resume and page ledger (T-241, 24 Nov 2026).** `--resume` now drops the pages already done *before* the
+  `--limit` sample is drawn; it used to sample first, so a fixed `--seed` re-picked the same pages every run and the
+  rest of the queue was never read (Eagle's audit: 56.2% of 36,767 transcript text pages had a row; 64 of 67 missed
+  facts sat on pages with no row). Table `page_read(doc_key, page, outcome, rows, read_at)` records every page
+  read: `rows`, `empty` (every row dropped: cover, disclaimer) or `skip` (nothing to read); those are not read
+  again, while errors and parse failures stay unrecorded and are retried. Coverage = rows in `page_read`
+  over the doc pages. Tests `test_ledger_pages_are_not_reread_but_errors_are`, `test_resume_samples_from_unread_pages_only`.
 - **hy4 output DB locking (T-241, 24 Nov 2026).** `v2/observations.py` opens its `--out` database with a 120 s
   sqlite timeout: a row count run against the live output DB once killed a run at commit ("database is locked").
   Read a live output DB with short queries only; `--resume` re-reads any page whose rows were not committed.
