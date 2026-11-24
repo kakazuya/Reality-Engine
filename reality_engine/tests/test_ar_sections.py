@@ -93,3 +93,67 @@ def test_round2_phrase_in_prose_is_not_kept_but_a_table_is():
     assert not ars.keep("The Board is pleased to present the report. " + prose)
     assert ars.section_of("Statement of something\n" + TABLE) == ("table", True)
     assert ars.section_of("Note 5 Property, plant and equipment\n" + TABLE) == ("xbrl_schedule", False)
+
+
+# T-242: an annual report's statement line is never verified by the page check; the XBRL stays as filed.
+AR_PAGE = ("Balance Sheet as at 31 March 2026 (INR crore) FY26\n"
+           "Total assets 2,345.67\nCash and cash equivalents 12.00\n"
+           "Installed capacity 500 MW\n"
+           "Number of employees 1,200")
+
+
+def _ar_reply(**kw):
+    base = {"series_id": "s1", "series_title": "", "measure": "total_assets", "printed_label": "",
+            "printed_axis": "FY26", "value_text": "", "unit": "", "scale": 1, "period": "FY26",
+            "period_kind": "actual", "segment": "", "product": "", "geography": "", "plant": "",
+            "customer": "", "group_path": "", "group_source": "", "stage": "",
+            "entity_scope": "company", "is_total": False}
+    base.update(kw)
+    return base
+
+
+def _ar_rows():
+    return obs.build_observations(symbol="ARCO", doc_key="D:/x/annual_report/a.pdf", page=10,
+                                  known_at="2026-08-10T10:00:00", page_text=AR_PAGE, reply_rows=[
+                                      _ar_reply(printed_label="Total assets", value_text="2,345.67",
+                                                unit="INR crore"),
+                                      _ar_reply(measure="cash_and_cash_equivalents",
+                                                printed_label="Cash and cash equivalents",
+                                                value_text="12.00", unit="INR crore"),
+                                      _ar_reply(measure="capacity.total", printed_label="Installed capacity",
+                                                value_text="500", unit="MW"),
+                                      _ar_reply(measure="count.employees", printed_label="Number of employees",
+                                                value_text="1,200", unit="count")])
+
+
+def test_ar_statement_lines_go_unverified_and_an_operating_measure_stays():
+    rows = _ar_rows()
+    assert all(row["status"] == "verified" for row in rows)   # what the page check alone says today
+    obs.apply_ar_statement_gate(rows)
+    status = {row["measure"]: row["status"] for row in rows}
+    assert status == {"total_assets": "unverified", "cash_and_cash_equivalents": "unverified",
+                      "capacity.total": "verified", "count.employees": "verified"}
+    assert "XBRL holds statement lines" in rows[0]["status_reason"]
+
+
+def test_a_new_statement_line_name_is_gated_and_an_operating_name_is_not():
+    assert obs.is_statement_line("NEW:other_financial_liability_item")
+    assert obs.is_statement_line("NEW:trade_payables_others")
+    assert not obs.is_statement_line("NEW:coal_quantity")
+    assert not obs.is_statement_line("capacity.total")
+    rows = [{"record_type": "number", "status": "verified", "measure": "NEW:trade_payables_others",
+             "status_reason": ""}]
+    obs.apply_ar_statement_gate(rows)
+    assert rows[0]["status"] == "unverified"
+
+
+def test_a_deck_row_is_untouched_and_only_an_annual_report_statement_line_is_gated():
+    rows = [{"record_type": "number", "status": "verified", "measure": "total_assets", "status_reason": ""}]
+    obs.apply_number_gates(rows, "deck")
+    assert rows[0]["status"] == "verified"
+    call = [{"record_type": "number", "status": "verified", "measure": "pat", "status_reason": ""}]
+    obs.apply_number_gates(call, "transcript")
+    assert call[0]["status"] == "unverified" and "transcript_number" in call[0]["status_reason"]
+    obs.apply_number_gates(rows, "annual_report")
+    assert rows[0]["status"] == "unverified" and "ar_statement_line" in rows[0]["status_reason"]
+
