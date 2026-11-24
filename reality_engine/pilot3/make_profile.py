@@ -157,14 +157,57 @@ def bse_family(conn: sqlite3.Connection, isins: list[str], table: dict) -> str:
     return UNKNOWN
 
 
+def _has_table(conn: sqlite3.Connection, name: str) -> bool:
+    return conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,)).fetchone() is not None
+
+
+def filed_name(conn: sqlite3.Connection, isin: str, bse_code: str,
+               results_conn: sqlite3.Connection | None = None) -> str | None:
+    """A company name some store files for this ISIN (then BSE code): the exchange security master, the results
+    filings, then the shareholding index.  ``None`` when none holds one."""
+    lookups: list[tuple[sqlite3.Connection | None, str, str, str]] = [
+        (conn, "security_master", "SELECT name FROM security_master WHERE isin=? AND name IS NOT NULL AND name<>'' "
+                                  "LIMIT 1", isin),
+        (conn, "security_master", "SELECT name FROM security_master WHERE bse_code=? AND name IS NOT NULL "
+                                  "AND name<>'' LIMIT 1", bse_code),
+        (results_conn, "filings", "SELECT company FROM filings WHERE isin=? AND company IS NOT NULL AND company<>'' "
+                                  "ORDER BY filing_ts DESC LIMIT 1", isin),
+        (results_conn, "filings", "SELECT company FROM filings WHERE scrip_code=? AND company IS NOT NULL "
+                                  "AND company<>'' ORDER BY filing_ts DESC LIMIT 1", bse_code),
+        (conn, "shp_index", "SELECT name FROM shp_index WHERE isin=? AND name IS NOT NULL AND name<>'' "
+                            "ORDER BY quarter_end DESC LIMIT 1", isin),
+    ]
+    for store, table_name, sql, value in lookups:
+        if store is None or not value or not _has_table(store, table_name):
+            continue
+        row = store.execute(sql, (value,)).fetchone()
+        if row and row[0]:
+            return str(row[0]).strip()
+    return None
+
+
 def company_row(conn: sqlite3.Connection, key: str, table: dict,
-                results_conn: sqlite3.Connection | None = None) -> dict:
-    """One company entry from the stores.  ``key`` is a symbol or an ISIN; everything else is joined by ISIN."""
+                results_conn: sqlite3.Connection | None = None, fallback: dict | None = None) -> dict:
+    """One company entry from the stores.  ``key`` is a symbol or an ISIN; everything else is joined by ISIN.
+
+    ``fallback`` (``{"isin": ..., "bse_code": ...}`` from the universe row) is used only when ``key`` finds no
+    ``master_companies`` row: master is searched by that ISIN or BSE code, and failing that the entry is
+    synthesized from the fallback ids (``"master": False``).  No fallback and no master row raises ``KeyError``.
+    """
     text = key.strip().upper()
     master = conn.execute("SELECT isin, nse_symbol, bse_code, company_name, industry FROM master_companies "
                           "WHERE nse_symbol=? OR isin=? LIMIT 1", (text, text)).fetchone()
+    fb_isin = str((fallback or {}).get("isin") or "").strip().upper()
+    fb_bse = str((fallback or {}).get("bse_code") or "").strip()
+    if master is None and (fb_isin or fb_bse):
+        master = conn.execute("SELECT isin, nse_symbol, bse_code, company_name, industry FROM master_companies "
+                              "WHERE (isin=? AND ?<>'') OR (CAST(bse_code AS TEXT)=? AND ?<>'') "
+                              "ORDER BY CASE WHEN isin=? THEN 0 ELSE 1 END LIMIT 1",
+                              (fb_isin, fb_isin, fb_bse, fb_bse, fb_isin)).fetchone()
     if master is None:
-        raise KeyError(f"{key!r} is not in master_companies")
+        if not (fb_isin or fb_bse):
+            raise KeyError(f"{key!r} is not in master_companies")
+        return synthesized_row(conn, text, fb_isin, fb_bse, table, results_conn)
     symbol = master["nse_symbol"] or text
     isins = issuer_isins(conn, symbol, master["isin"], str(master["bse_code"] or ""), results_conn)
     basic, industry = label_of(conn, isins, symbol)
@@ -175,6 +218,25 @@ def company_row(conn: sqlite3.Connection, key: str, table: dict,
             family = bse_family(conn, isins, table)
     return {"symbol": symbol, "name": master["company_name"], "bse_code": str(master["bse_code"] or ""),
             "isins": isins, "sector": family, "lender": is_lender(basic, industry, table)}
+
+
+def synthesized_row(conn: sqlite3.Connection, symbol: str, isin: str, bse_code: str, table: dict,
+                    results_conn: sqlite3.Connection | None = None) -> dict:
+    """The entry of a company ``master_companies`` lacks (BSE-only, SME, a new listing), built from the universe
+    row's ids.  The sector comes from the same taxonomy path as a master row; it is never guessed from the symbol
+    text, so a company no taxonomy labels stays ``unknown``."""
+    if not isin and bse_code and _has_table(conn, "security_master"):
+        row = conn.execute("SELECT isin FROM security_master WHERE bse_code=? AND isin IS NOT NULL AND isin<>'' "
+                           "LIMIT 1", (bse_code,)).fetchone()
+        isin = str(row[0]) if row else ""
+    isins = issuer_isins(conn, symbol, isin, bse_code, results_conn) if isin else []
+    basic, industry = label_of(conn, isins, symbol)
+    family = family_of(basic, industry, table)
+    if family == UNKNOWN and basic is None and industry is None:
+        family = bse_family(conn, isins, table)
+    name = filed_name(conn, isins[0] if isins else "", bse_code, results_conn) or symbol
+    return {"symbol": symbol, "name": name, "bse_code": bse_code, "isins": isins, "sector": family,
+            "lender": is_lender(basic, industry, table), "master": False}
 
 
 def cross_check(profile: dict, db: Path) -> list[dict]:
@@ -235,7 +297,11 @@ def mapped_share(conn: sqlite3.Connection, table: dict) -> dict:
 
 
 def make_profile(keys: list[str], name: str, root: Path, window_start: str | None, compute_start: str | None,
-                 conn: sqlite3.Connection | None = None, raw_root: Path | None = None) -> dict:
+                 conn: sqlite3.Connection | None = None, raw_root: Path | None = None,
+                 fallback: dict | None = None) -> dict:
+    """The build profile of ``keys``.  ``fallback`` (``{"isin", "bse_code"}``) applies to a single key only."""
+    if fallback and len(keys) != 1:
+        raise ValueError("an isin/bse_code fallback needs exactly one company")
     conn = conn or connect_ro(str(main_store()))
     conn.row_factory = sqlite3.Row
     results_path = results_store()
@@ -244,7 +310,7 @@ def make_profile(keys: list[str], name: str, root: Path, window_start: str | Non
     return {"name": name, "pages_db": str(root / "pages.db"), "raw_root": str(raw_root or root / "raw"),
             "manifest": str(root / "raw" / "manifest.csv"), "out": str(root / f"{name}.db"),
             "window_start": window_start, "compute_start": compute_start,
-            "companies": [company_row(conn, key, table, results_conn) for key in keys]}
+            "companies": [company_row(conn, key, table, results_conn, fallback) for key in keys]}
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -259,11 +325,18 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--check-db", type=Path, default=None,
                     help="a built pilot3 database: compare each lender flag with the company's filed lines")
+    ap.add_argument("--isin", default=None,
+                    help="the universe row's ISIN: used when the company is not in master_companies (one company)")
+    ap.add_argument("--bse-code", default=None,
+                    help="the universe row's BSE code: used when the company is not in master_companies (one company)")
     args = ap.parse_args(argv)
+    fallback = {"isin": args.isin or "", "bse_code": args.bse_code or ""} if (args.isin or args.bse_code) else None
+    if fallback and len(args.companies) != 1:
+        ap.error("--isin/--bse-code take exactly one company")
     conn = connect_ro(str(main_store()))
     conn.row_factory = sqlite3.Row
     profile = make_profile(args.companies, args.name, args.root, args.window_start, args.compute_start, conn,
-                           args.raw_root)
+                           args.raw_root, fallback)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(profile, indent=1), encoding="utf-8")
     for company in profile["companies"]:

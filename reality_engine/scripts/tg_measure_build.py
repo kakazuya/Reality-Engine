@@ -361,11 +361,12 @@ def _blank_row(name: str, symbol: str, ok_files: int, ok_bytes: int, parts: list
 
 
 def build_company(index: int, symbol: str, key: str, root: Path, manifest_rows: list[dict], fields: list[str],
-                  args: argparse.Namespace) -> tuple[dict, list[dict], str]:
+                  args: argparse.Namespace, entry: dict | None = None) -> tuple[dict, list[dict], str]:
     """Run the recipe for one company; return (measure row, step rows, "" or the reason the run must stop).
 
     ``symbol`` is the universe row's symbol; ``key`` is what ``make_profile`` resolves (the row's ISIN for a deck
-    build, the symbol otherwise)."""
+    build, the symbol otherwise).  ``entry`` is the universe row: its ``isin`` / ``bse_code`` go to make_profile as
+    ``--isin`` / ``--bse-code``, so a company missing from master_companies still gets a profile (T-241)."""
     name = company_name(index, args.doc_types)
     base = root / name
     base.mkdir(parents=True, exist_ok=True)
@@ -407,6 +408,12 @@ def build_company(index: int, symbol: str, key: str, root: Path, manifest_rows: 
         from reality_engine.config import RAW_ROOT
 
         profile_cmd += ["--raw-root", str(RAW_ROOT)]
+    entry_isin = str((entry or {}).get("isin") or "").strip().upper()
+    entry_bse = str((entry or {}).get("bse_code") or "").strip()
+    if entry_isin:
+        profile_cmd += ["--isin", entry_isin]
+    if entry_bse:
+        profile_cmd += ["--bse-code", entry_bse]
     made = step("make_profile", profile_cmd)
     if made["rc"] != 0 or not profile_json.is_file():
         return _blank_row(name, symbol, ok_files, ok_bytes, parts, failed, tails, wall0), parts, ""
@@ -506,7 +513,7 @@ def run(args: argparse.Namespace) -> int:
             stop_reason = f"free space on {root} fell under {args.min_free_gb:g} GB"
             print(f"STOP: {stop_reason}", flush=True)
             break
-        row, parts, stop = build_company(index, symbol, key, root, manifest_rows, fields, args)
+        row, parts, stop = build_company(index, symbol, key, root, manifest_rows, fields, args, entry)
         cached.write_text(json.dumps(row, indent=1), encoding="utf-8")
         write_parts_csv(parts, root / name / "parts.csv")
         print(f"  done: wall {row['wall_s']}s, store {row.get('store_mb') or 0} MB, "
