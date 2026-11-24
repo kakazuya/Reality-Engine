@@ -3075,3 +3075,21 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   verified). Tests: 3 new in `reality_engine/tests/test_ar_sections.py` with their counters ("Net cash flow from
   operating activities" stays verified; a page headed with the company's own name stays `company`). The
   `read_gate` annual_report fingerprint is unchanged (`48d75aa69de7`): no prompt or template touched.
+- **Deck rows take their basis from a per-period page footnote (T-242, 24 Nov 2026, `v2/observations.py`).** A deck
+  footer can pair each period with its own basis ("FY26 CONSOLIDATED, FY25 STANDALONE", or two lines "FY26
+  Consolidated" / "FY25 Standalone"); the page-level `detect_basis` / `page_basis` read one word for the whole page,
+  and `page_basis` accepts a bare "standalone" but not a bare "consolidated", so BAIKAKAJI p33 (obs 30422) stored
+  the FY26 cell (11.37 Rs Cr) `basis='standalone'`. With `deck_guards`, `page_footnote_bases(page_text)` finds the
+  period-basis pairings (`PAGE_BASIS_PAIR_RE`) only when two or more distinct periods are paired;
+  `fiscal_year_key` normalises FY26 / FY2026 / FY 2025-26 to '26' and row periods are compared at the same annual
+  granularity (a "Q1 FY26" / "H1 FY26" period is not the year and stays untouched). Each number row whose period is
+  one of the paired years takes that basis with `basis_source='page_footnote'`. One pairing or none: no change (the
+  existing `footnote_basis` and page rules stay). A period missing from the pairing keeps the page result.
+  `--recheck` applies the same rule for deck pages, so a fresh read and a recheck agree. Measured in-process,
+  read-only, on the 476 docs / 16,695 pages behind `D:/RealityEngine/hy4_out/obs_decks_fy27.db`: 51 pages print a
+  period-basis pairing, 3 pair two or more; 56 of the 66,653 number rows would change basis (16 verified / 40
+  unverified), under the 300-verified stop. Examples: BAIKAKAJI p33 FY26 balance-sheet rows standalone ->
+  consolidated; the other two are the same template page (8562ffcf p33) and a cash-flow page with "FY26
+  Consolidated" / "FY25 Standalone" on separate lines (f9e69bcc p21). No prompt or template change:
+  `read_gate.fingerprint('deck')` stays `ea5e621d2826`. Tests: 3 new in
+  `reality_engine/tests/test_deck_guards.py` (17 pass).

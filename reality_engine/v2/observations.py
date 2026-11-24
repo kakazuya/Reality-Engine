@@ -1689,6 +1689,44 @@ def footnote_basis(page_text: str, period: str) -> str:
     return ""
 
 
+# T-242: a deck footer may pair more than one period with its own basis ("FY26 CONSOLIDATED, FY25 STANDALONE");
+# the page-wide basis rules then read one word for the whole page.  BAIKAKAJI p33 stored the FY26 column as
+# standalone because the footer also prints "FY25 STANDALONE".
+PAGE_BASIS_PAIR_RE = re.compile(
+    r"(?P<period>\bFY\s?-?\s?(?:\d{4}|\d{2})(?:\s?-\s?(?:\d{4}|\d{2}))?\b)"
+    r"(?:\s+(?:are|is|were|was|have\s+been|has\s+been))?"
+    r"[^\w]{0,6}(?:(?:on\s+)?(?:a\s+)?(?:the\s+)?)?(?P<basis>standalone|consolidated)\b", re.I)
+ANNUAL_FY_RE = re.compile(r"^\s*FY\s?-?\s?(\d{4}|\d{2})(?:\s?-\s?(\d{4}|\d{2}))?\s*$", re.I)
+
+
+def fiscal_year_key(label: str) -> str:
+    """The fiscal year an annual period label names, as a two-digit key: FY26 / FY2026 / FY 2025-26 -> '26'."""
+    match = ANNUAL_FY_RE.match(norm_match(label))
+    if not match:
+        return ""
+    return f"{int(match.group(2) or match.group(1)) % 100:02d}"
+
+
+def page_footnote_bases(page_text: str) -> dict[str, str]:
+    """T-242: the basis a page footnote pairs with each period, when it pairs two or more periods.
+
+    "FY26 CONSOLIDATED, FY25 STANDALONE" gives each column its own basis; the page-level rules would read one word
+    for the whole page.  Keyed by fiscal year ('26'); {} for a single pairing or none, which the existing page and
+    footnote rules already handle.
+    """
+    text = norm_match(page_text)
+    found: dict[str, set[str]] = {}
+    for match in PAGE_BASIS_PAIR_RE.finditer(text):
+        before = text[max(0, match.start() - 4):match.start()]
+        if re.search(r"(?:Q[1-4]|H[12]|9M)\s*$", before, re.I):
+            continue                     # "H1 FY26 consolidated" names the half, not the year
+        key = fiscal_year_key(match.group("period"))
+        if key:
+            found.setdefault(key, set()).add(match.group("basis").lower())
+    bases = {key: next(iter(values)) for key, values in found.items() if len(values) == 1}
+    return bases if len(bases) >= 2 else {}
+
+
 # T-238 stage N2 scope cues.  A figure whose heading names a country / industry / market, or a named client,
 # customer or project, is never the company's own measure.
 MARKET_SCOPE_RE = re.compile(r"\b(?:peak demand|market size|industry (?:size|demand|volume)|tam)\b", re.I)
@@ -3304,6 +3342,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
     word_list = list(words)
     reply_rows = list(reply_rows)
     text = norm_space(page_text)
+    period_bases = page_footnote_bases(page_text) if deck_guards else {}
     page_groups = {part for raw in reply_rows if isinstance(raw, dict)
                    for part in norm_space(raw.get("group_path")).split(" > ") if part}
     legend_groups = detect_legend(word_list, page_groups)
@@ -3585,6 +3624,11 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         if foot:
             row["basis"] = foot
             row["basis_source"] = ""
+        if period_bases:                    # T-242: a footnote that pairs each period with its own basis
+            _key = fiscal_year_key(row["period"])
+            if _key and _key in period_bases:
+                row["basis"] = period_bases[_key]
+                row["basis_source"] = "page_footnote"
         cue = scope_cue(row, page_text)
         if cue:
             row["entity_scope"] = cue
@@ -6121,6 +6165,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             meta = None                 # a fixture store without a doc_type column is no annual report
         ar_page = bool(meta) and meta["doc_type"] == "annual_report"
         raw_text = page_text_of(store_db, doc_key, int(page))
+        page_footnote = page_footnote_bases(raw_text) if bool(meta) and meta["doc_type"] == "deck" else {}
         try:
             pw = page_words.words_for(store_db, doc_key, int(page))
             words = pw.words
@@ -6312,6 +6357,12 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                 row["basis"] = foot          # a footnote names this period's basis (id 20120)
                 row["basis_source"] = ""
                 stats["footnote_basis"] += 1
+            if page_footnote:                    # T-242: a footnote pairs each period with its own basis
+                key = fiscal_year_key(row["period"] or "")
+                if key and key in page_footnote:
+                    row["basis"] = page_footnote[key]
+                    row["basis_source"] = "page_footnote"
+                    stats["footnote_basis"] += 1
             basis_changed = bool(row["basis"]) and row["basis"] != old_basis
             cue = scope_cue(row, raw_text)
             if cue:

@@ -226,3 +226,15 @@ T-242 deck value guards: code+tests done (test_deck_guards 13 passed), pilot mea
   tmp_path dirs are mode 0o700 and unlistable; tests ran with a job-local plugin forcing 0o777. The failed
   basetemp `t242_pt/` at the workspace root cannot be removed from inside; controller removes it host-side.
 
+## T-242 deck per-period basis footnote (24 Nov, DeepSeek)
+- Done: `page_footnote_bases`/`fiscal_year_key` in `v2/observations.py`: a deck footnote pairing >=2 periods with
+  bases ("FY26 CONSOLIDATED, FY25 STANDALONE"; FY26/FY2026/FY 2025-26 normalise to '26') sets each number row's
+  basis for its period, `basis_source='page_footnote'`; one pairing or none does nothing; `--recheck` applies the
+  same rule. 3 new tests in `test_deck_guards.py` (17 pass).
+- Measured read-only on `D:/RealityEngine/hy4_out/obs_decks_fy27.db` (476 docs, 16,695 pages): 51 pages print a
+  period-basis pairing, 3 pair two or more; 56 of 66,653 number rows change basis (16 verified / 40 unverified),
+  under the 300-verified stop. read_gate deck fp ea5e621d2826 unchanged.
+- Next: docs (DEVELOPER_GUIDE entry, V2 contract schema line + I8, STATE line); full suite result; controller
+  re-measures on the live deck DB / merges.
+
+

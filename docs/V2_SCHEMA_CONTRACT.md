@@ -1925,7 +1925,9 @@ Writer: `reality_engine/v2/observations.py` (DDL is its `SCHEMA` constant; tests
   `estimate` / `target`), `period_source` (`deck_asof` when the period is the deck's own as-of quarter, `slide_title`
   when the page's title line names it, `column_header` when the printed header over the value does, `label_instant`
   for an "as at <date>" label, else empty), `basis` (`standalone` / `consolidated` / empty), `basis_source`
-  (`deck` when every basis word the deck prints names that one basis, else empty), `series_kind` (`level` / `bridge`),
+  (`deck` when every basis word the deck prints names that one basis, `page_heading` when a printed AR page heading
+  names it, `page_footnote` when a deck footnote pairs the row's period with its basis, else empty),
+  `series_kind` (`level` / `bridge`),
   `segment`, `product`,
   `geography`, `plant`,
   `customer`, `group_path` (verbatim, e.g. "Projects Under Review"), `group_source` (`printed` / `legend_inferred` /
@@ -2444,6 +2446,11 @@ applied by `--recheck` and gated by the golden sets.
   `demand.peak`) are fixed.
 - **I8 footnote basis.** `footnote_basis` reads a printed note such as "FY23 & FY24 financial numbers are on Standalone
   basis" and overrides the page basis for that period only (id 20120 RAJESH FY24 -> standalone; 77 rows here).
+  T-242 deck: a footnote that pairs two or more periods with their own bases ("FY26 CONSOLIDATED, FY25 STANDALONE",
+  or two lines "FY26 Consolidated" / "FY25 Standalone") gives each number row its period's basis with
+  `basis_source='page_footnote'` (`page_footnote_bases`; fiscal years normalise FY26 / FY2026 / FY 2025-26 -> '26,
+  and only an annual period matches, so "Q1 FY26" is untouched; one pairing or none is left to the rule above and
+  the page rules).
 - **Schema:** `observation.value_kind TEXT NOT NULL DEFAULT ''` (SCHEMA + `MIGRATIONS`, so an old output DB migrates).
   Golden lines may gate on it because `diff_fields` reads any row column.
 - **Build/recheck parity:** `build_observations` now takes `head = page_head(page_text)` from the raw page text; the
