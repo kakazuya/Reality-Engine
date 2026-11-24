@@ -325,6 +325,8 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{name} {symbol}: ERROR {exc}; local files kept, retried next poll", flush=True)
         if a.once:
             return 0
+        # one line per pass so job_watch can tell an idle poller from a stalled one (24 Nov)
+        print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} poll: {len(todo)} stores this pass", flush=True)
         time.sleep(a.poll)
 
 
