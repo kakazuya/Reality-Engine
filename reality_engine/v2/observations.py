@@ -3173,7 +3173,7 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
 
 
 MIX_MEASURE_RE = re.compile(
-    r"^(?:revenue\.mix|mix\.share|volume\.mix)$|order.*book|_(?:mix|(?<!per_)share)$",
+    r"^(?:revenue\.mix|mix\.share|volume\.mix)$|_(?:mix|(?<!per_)share)$",   # a total order book needs no part
     re.I,
 )
 _MIX_PREFIX_RE = re.compile(
