@@ -127,3 +127,48 @@ def test_nine_million_is_not_a_period():
     from reality_engine.v2.observations import deck_date_value
     assert not deck_date_value("9M", "customers") and not deck_date_value("9M", "")
     assert deck_date_value("9M FY27", "") and deck_date_value("9MFY26", "")
+
+
+def test_deck_page_footnote_pairs_each_period_with_its_basis():
+    """BAIKAKAJI p33 (obs 30422): the footer prints FY26 CONSOLIDATED, FY25 STANDALONE, so the page-level rule
+    stored the FY26 column as standalone.  Each period takes its own basis."""
+    text = ("BALANCE SHEET\nEQUITY & LIABILITIES\n\u20b9 CR\nFY26\nFY25\n"
+            "Share capital\n21.40\n2.25\nOther current liab. & provisions\n11.37\n22.99\n"
+            "AUDITED \u00b7 AS AT 31 MAR \u00b7 FY26 CONSOLIDATED, FY25 STANDALONE \u00b7 ALL FIGURES IN \u20b9 CR")
+    reply = [{"type": "number", "measure": "other_liabilities_and_provisions",
+              "printed_label": "Other current liab. & provisions", "value_text": "11.37", "unit": "Rs crore",
+              "period": "FY26"},
+             {"type": "number", "measure": "other_liabilities_and_provisions",
+              "printed_label": "Other current liab. & provisions", "value_text": "22.99", "unit": "Rs crore",
+              "period": "FY25"},
+             {"type": "number", "measure": "share_capital", "printed_label": "Share capital",
+              "value_text": "21.40", "unit": "Rs crore", "period": "FY 2025-26"},
+             {"type": "number", "measure": "share_capital", "printed_label": "Share capital",
+              "value_text": "2.25", "unit": "Rs crore", "period": "FY25"}]
+    rows = _rows(text, reply)
+    assert [r["basis"] for r in rows] == ["consolidated", "standalone", "consolidated", "standalone"]
+    assert {r["basis_source"] for r in rows} == {"page_footnote"}
+    from reality_engine.v2.observations import fiscal_year_key
+    assert fiscal_year_key("FY26") == fiscal_year_key("FY2026") == fiscal_year_key("FY 2025-26") == "26"
+
+
+def test_deck_page_with_one_consolidated_heading_is_untouched():
+    text = "Consolidated Balance Sheet\nShare capital\n494\nFY26"
+    reply = [{"type": "number", "measure": "share_capital", "printed_label": "Share capital",
+              "value_text": "494", "unit": "Rs crore", "period": "FY26"}]
+    row = _rows(text, reply)[0]
+    assert row["basis"] == "consolidated" and row["basis_source"] != "page_footnote"
+    one_pair = _rows("Share capital 494 FY26\nFY26 figures are consolidated", reply)[0]
+    assert one_pair["basis_source"] != "page_footnote"      # a single pairing is not this rule
+
+
+def test_deck_period_not_in_the_footnote_pairing_is_untouched():
+    text = "Revenue\n100\n90\nFY26 CONSOLIDATED, FY25 STANDALONE"
+    reply = [{"type": "number", "measure": "revenue.value", "printed_label": "Revenue",
+              "value_text": "100", "unit": "Rs crore", "period": "FY26"},
+             {"type": "number", "measure": "revenue.value", "printed_label": "Revenue",
+              "value_text": "90", "unit": "Rs crore", "period": "FY24"}]
+    rows = _rows(text, reply)
+    assert rows[0]["basis"] == "consolidated" and rows[0]["basis_source"] == "page_footnote"
+    # FY24 is not in the pairing: it keeps the page-level result and no page_footnote source
+    assert rows[1]["basis"] == "standalone" and rows[1]["basis_source"] == ""

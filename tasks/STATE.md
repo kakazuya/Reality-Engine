@@ -6,6 +6,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Extraction: `v2/page_words.py` -> `page_layout.py` -> `page_route.py` (T-189, four routes; only table_or_chart read, on the page IMAGE) -> `reference_geom.py` (T-185) -> `page_reader.py` writes page_cell verified/unverified/quarantined, served by `pilot3_cells`. T-199 atoms (`page_atom` v10): `docs/PILOT3_BLUEPRINT.md` T-199 block.
 - Checker T-225 merged 18 Nov: Dots right cells kept dev 384/426, FROZEN 464/773 (60.0%, baseline 47.7%), 0 wrong; Beam frozen 8 wrong (text layer). Target >=95% not met; T-225 open. Split `D:/RealityEngine/t225_split`; notes V2 contract "Round 1-5".
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
+- 24 Nov (deck basis T-242): per-period footnote bases -> `basis_source='page_footnote'` (56 rows, 16 verified/40 unverified; deck fp ea5e621d2826); tests 17 pass; V2 §I8 + guide entry.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 24 Nov 23:05 (Eagle): T-242 transcripts v3 (2fae7ddac53e): 394 ckpt_0002 PASS 54/5/0/1; speaker label/hand-over checks + greeting drop merged (9dc2524d). NEXT: fy27_v3/394_v3 live reparse; fund_raise r5 (dsh a7c04bff, grade 30/16/10/4 FAIL) then fresh grade; universe events r4 run.
