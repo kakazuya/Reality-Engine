@@ -773,3 +773,25 @@ def test_build_writes_one_row_per_filing_and_keeps_doc_known_at(monkeypatch: pyt
     finally:
         con.close()
         out.unlink(missing_ok=True)
+
+
+def test_t242_load_docs_reads_press_releases_too(tmp_path, monkeypatch):
+    """T-242: a press release that announces an order is read like an announcement; other doc types are not."""
+    import sqlite3
+
+    db = tmp_path / "c01" / "c01.db"
+    db.parent.mkdir()
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE doc (doc_key TEXT, symbol TEXT, isin TEXT, title TEXT, filing_date TEXT, "
+                "known_at TEXT, pages INTEGER, doc_type TEXT)")
+    con.execute("CREATE TABLE doc_page (doc_key TEXT, page INTEGER, text TEXT)")
+    for key, kind in (("a", "announcement"), ("p", "press_release"), ("t", "transcript")):
+        con.execute("INSERT INTO doc VALUES (?,?,?,?,?,?,?,?)", (key, "X", "INE0", key, "2026-08-01",
+                                                                 "2026-08-01", 1, kind))
+        con.execute("INSERT INTO doc_page VALUES (?,?,?)", (key, 1, f"page of {kind}"))
+    con.commit()
+    con.close()
+    monkeypatch.setattr(fe, "store_path", lambda store: db)
+    import reality_engine.research.driver_claims as dc
+    monkeypatch.setattr(dc, "ocr_page_texts", lambda store, kinds: {})
+    assert sorted(d["doc_key"] for d in fe.load_docs("c01")) == ["a", "p"]

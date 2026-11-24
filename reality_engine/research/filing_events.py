@@ -4,7 +4,8 @@ The factor study needs events an investor can date: an order won, a capex approv
 raise approved or allotted.  T-228's generic claim extractor read every transcript and annual report and got 18 of
 50 verified rows wrong, mostly a fact restated across calls or a parent-company fact filed under a subsidiary.  An
 exchange announcement is filed once, on one day, and carries the event itself, so this module builds the table from
-``doc_type='announcement'`` only.
+``doc_type='announcement'`` and, since T-242 (24 Nov 2026), ``doc_type='press_release'`` (``EVENT_DOC_TYPES``):
+the universe stores file some order wins as a press release (4 of 1,188 page-1 texts in full394 read as one).
 
 Rules, each from the 91 measured stores (T-228 stage 2c) or the brief:
 * classification is deterministic, on the exchange title plus the first page: a cue word per class, and the cue
@@ -1586,6 +1587,9 @@ def _drop_restated_capacity(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 # ------------------------------------------------------------------ documents
+EVENT_DOC_TYPES = ("announcement", "press_release")   # T-242: order wins also arrive as press releases
+
+
 def load_docs(store: str) -> list[dict[str, Any]]:
     """Every announcement of one store with its first pages (main DB, OCR fallback) -- read-only."""
     from reality_engine.db.readonly import connect_ro
@@ -1596,7 +1600,8 @@ def load_docs(store: str) -> list[dict[str, Any]]:
     try:
         doc_rows: list[Any] = list(con.execute(
             "SELECT doc_key, symbol, isin, title, filing_date, known_at, pages FROM doc "
-            "WHERE doc_type='announcement' ORDER BY COALESCE(known_at, filing_date), doc_key") or [])
+            f"WHERE doc_type IN ({','.join('?' for _ in EVENT_DOC_TYPES)}) "
+            "ORDER BY COALESCE(known_at, filing_date), doc_key", EVENT_DOC_TYPES) or [])
         docs: list[dict[str, Any]] = [
             {column: row[column] for column in
              ("doc_key", "symbol", "isin", "title", "filing_date", "known_at", "pages")}
@@ -1608,7 +1613,7 @@ def load_docs(store: str) -> list[dict[str, Any]]:
             pages[str(row["doc_key"])][int(row["page"])] = str(row["text"] or "")
     finally:
         con.close()
-    ocr = ocr_page_texts(store, ("announcement",))
+    ocr = ocr_page_texts(store, EVENT_DOC_TYPES)
     out: list[dict[str, Any]] = []
     for doc in docs:
         key = str(doc["doc_key"])
