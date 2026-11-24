@@ -32,6 +32,8 @@ Files:
   - Store page text: C:/RealityEngine/tg_build/full394/cNNN/cNNN.db for 394_v2, and
     C:/RealityEngine/tg_build/universe_fy27/cNNN/cNNN.db for fy27; table doc_page.
 
+Evidence: 14 failing statement rows in the two checkpoint samples above (10 speaker missing/company name/initials, 3 no-referent cuts, 1 cover-letter J); dsh 635e3735 strict grade, counts in ckpt_0002.grade.json and fy27 ckpt_0001.grade.json; 0 wrong statements in 33.
+
 Steps:
 1. Read the checkpoint jsonl rows that are statements. Find the 14 failing rows by their pattern: empty speaker,
    a speaker equal to the company name, a speaker with one token or initials only, a statement under 60
