@@ -3176,9 +3176,13 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
     if not row.get("period") or not period_is_printed(row.get("period", "")):
         status = "unverified"
         reasons.append("no_period: no period printed for this row")
-    if (row.get("value_kind") or "") == "lower_bound":
+    value_kind = row.get("value_kind") or ""
+    if value_kind == "lower_bound":
         status = "unverified"
         reasons.append("lower_bound: the page prints a threshold ('more than' / 'crossed'), not the actual figure")
+    elif value_kind == "upper_bound":
+        status = "unverified"
+        reasons.append("upper_bound: the page prints a cap ('less than' / 'up to'), not the actual figure")
     return status, reasons
 
 
@@ -3358,14 +3362,41 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         high_text = norm_space(raw.get("high_text"))
         if high_text:
             row["value_high"] = parse_number(high_text)
-        if (claim or transcript_v2) and BY_CHANGE_RE.search(label) and not SIGNED_MEASURE.search(row["measure"]):
-            # T-241 v2e: "inventory days have decreased by 8" is a change, never the level (Wolf v2d #40)
-            root = canonical_new_measure(row["measure"]).removeprefix(NEW_PREFIX)
-            row["measure"] = f"{NEW_PREFIX}{root}_change"
-            row["new_definition"] = row["new_definition"] or f"change in {root} over the period, as stated ('by X')"
-            if re.search(r"decreas|reduc|declin|fell|drop|down", label, re.I) and row["value"] is not None:
-                row["value"] = -abs(row["value"])
-                row["direction"] = "down"
+        if claim or transcript_v2:
+            # T-241 v2e + T-242 guard 18: "decreased by 8" / "increased by around 120 cr" / "added 15 stores this quarter"
+            # is a change, never the level (Wolf v2d #40 & reparse3 P-rows)
+            val_sent = _value_sentence(page_text, label, value_text)
+            change_ctx = val_sent or page_text
+            before_chg = _before_clause(change_ctx, value_text, 80)
+            after_chg = FORWARD_CLAUSE_BREAK_RE.split(page_text_after(change_ctx, value_text, 80))[0]
+            if not SIGNED_MEASURE.search(row["measure"]) and not ADDITION_MEASURE_RE.search(row["measure"]):
+                is_by_chg = bool(BY_CHANGE_RE.search(label) or BY_CHANGE_RE.search(before_chg))
+                is_add_chg = bool(
+                    (ADDED_CHANGE_RE.search(label) or ADDED_CHANGE_RE.search(before_chg))
+                    and QUARTER_CHANGE_AFTER_RE.search(after_chg)
+                )
+                if is_by_chg or is_add_chg:
+                    orig_measure = row["measure"]
+                    root = canonical_new_measure(orig_measure).removeprefix(NEW_PREFIX)
+                    row["measure"] = f"{NEW_PREFIX}{root}_change"
+                    row["new_definition"] = (
+                        row["new_definition"] or f"change in {root} over the period, as stated"
+                    )
+                    if not row["new_driver_node"]:
+                        m_info = measures.get(orig_measure)
+                        node = (m_info["driver_node"].split(".", 1)[0]
+                                if m_info and m_info.get("driver_node") else "none")
+                        row["new_driver_node"] = node if node in NEW_NODES else "none"
+                    cue_txt = f"{label} {before_chg}".strip()
+                    if is_by_chg and re.search(r"decreas|reduc|declin|fell|drop|down", cue_txt, re.I) \
+                            and row["value"] is not None:
+                        row["value"] = -abs(row["value"])
+                        row["direction"] = "down"
+                    elif is_add_chg:
+                        row["direction"] = "up"
+                    elif is_by_chg and re.search(r"increas|improv|grew|grown|rose|risen|went\s+up|expand",
+                                                 cue_txt, re.I):
+                        row["direction"] = "up"
         if (norm_space(raw.get("sign")) == "-" and row["value"] is not None and row["value"] > 0
                 and SIGNED_MEASURE.search(row["measure"] + " " + row["unit"])):
             low, high = row["value"], row["value_high"]      # T-242: a range flips as a whole
@@ -3523,9 +3554,15 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 heading = " | ".join([row["series_title"], row["printed_label"], row["printed_axis"]])
                 row["customer"] = client_name(heading) or norm_space(row["series_title"]) or \
                     norm_space(row["printed_label"])
-        row["value_kind"] = lower_bound_kind(row)
-        row["adjusted"] = 1 if ADJUSTED_RE.search(" ".join(
-            [row["printed_label"], row["printed_axis"], row["series_title"]])) else 0
+        row["value_kind"] = (
+            transcript_bound_kind(label, page_text, value_text)
+            if (claim or transcript_v2)
+            else lower_bound_kind(row)
+        )
+        row["adjusted"] = 1 if (
+            ADJUSTED_RE.search(" ".join([row["printed_label"], row["printed_axis"], row["series_title"]]))
+            or ((claim or transcript_v2) and transcript_adjusted_cue(label, page_text, value_text))
+        ) else 0
         if doc_owner_symbol and row["entity_scope"] in ("company", "subsidiary", ""):
             row["entity_scope"] = "parent"
         if is_industry:
@@ -4075,8 +4112,49 @@ Transcript page text (verbatim):
 # quarter and returns the range's upper end, the sign and the speaker. Chosen with --transcript-prompt v2.
 TRANSCRIPT_PROMPT = "v1"
 # a sign is kept only on a movement (growth / change / bps); a level (days, margin, amount) is never negated
-BY_CHANGE_RE = re.compile(r"\b(?:increas|decreas|reduc|improv|grew|grown|fell|declin|rose|risen|went\s+(?:up|down)|"
-                          r"expand|contract|dropp?)\w*\s+by$", re.I)
+_CHANGE_TAIL_GAP = (
+    r"(?:\s+(?:about|around|roughly|nearly|approximately|approx\.?|almost|over|under|"
+    r"more\s+than|less\s+than|up\s+to))?(?:\s+(?:rs\.?|inr|\u20b9|\$|usd|us\$))?$"
+)
+BY_CHANGE_RE = re.compile(
+    r"\b(?:increas|decreas|reduc|improv|grew|grown|fell|declin|rose|risen|went\s+(?:up|down)|"
+    r"expand|contract|dropp?)\w*\s+by" + _CHANGE_TAIL_GAP,
+    re.I,
+)
+ADDED_CHANGE_RE = re.compile(
+    r"\b(?<!value-)(?<!value )(?:added(?:\s+another)?|net\s+additions?\s+of|incremental|additions?\s+of)"
+    + _CHANGE_TAIL_GAP,
+    re.I,
+)
+QUARTER_CHANGE_AFTER_RE = re.compile(
+    r"\b(?:(?:during|in)\s+(?:the\s+|this\s+)?quarter|(?:just\s+)?this\s+quarter|"
+    r"(?:during|in)\s+Q[1-4]\b|sequentially|QoQ)\b",
+    re.I,
+)
+ADDITION_MEASURE_RE = re.compile(r"(?:\.add$|_additions?$)", re.I)
+_BOUND_TAIL_GAP = (
+    r"(?:\s+(?:about|around|roughly|nearly|approximately|approx\.?|almost))*"
+    r"\s*(?:(?:rs\.?|inr|\u20b9|\$|usd|us\$)\s*)?$"
+)
+UPPER_BOUND_TAIL_RE = re.compile(
+    r"(?:\bno[t]?\s+more\s+than|\bno[t]?\s+exceeding|\bless\s+than|\bbelow|\bup\s*to|\bupto|"
+    r"\bat\s+most|\b(?:a\s+)?maximum\s+of|\bmaximum)" + _BOUND_TAIL_GAP,
+    re.I,
+)
+LOWER_BOUND_TAIL_RE_V2 = re.compile(
+    r"(?:\bno[t]?\s+less\s+than|\bmore\s+than|\bover|\bat\s+least|\bupwards\s+of|"
+    r"\bin\s+excess\s+of|\babove|\bexceed(?:s|ing|ed)?|\bcrossed|\b(?:a\s+)?minimum\s+of|\bminimum)"
+    + _BOUND_TAIL_GAP,
+    re.I,
+)
+TRANSCRIPT_ADJUSTED_RE = re.compile(
+    r"\b(?:exclud(?:e|es|ing)|adjusted|pre[- ]?ind[- ]?as(?:\s*116)?|"
+    r"like[- ]for[- ]like|(?:on\s+a\s+)?comparable\s+basis|pro[- ]?forma|"
+    r"normalis(?:ed|ing)|normaliz(?:ed|ing)|hypothetical)\b|"
+    r"\bex-(?!(?:factory|mill|works|showroom|warehouse|depot|plant|mine|port|"
+    r"dividend|bonus|rights|gratia|post|ante)\b)[a-z][a-z0-9-]*\b",
+    re.I,
+)
 # T-241 (Wolf's fy27_v2 ckpt_0001 grade, 24 Nov): five number guards for v2 transcript rows
 PERIOD_VALUE_RE = re.compile(r"^(?:(?:Q[1-4]|H[12]|9M)\s*(?:FY\s*'?\d{2,4})?|FY\s*'?\d{2,4}(?:\s*[-\u2013]\s*'?\d{2,4})?)$",
                              re.I)
@@ -4235,6 +4313,44 @@ def _before_clause(page_text: str, value_text: str, width: int = 80) -> str:
     """The value's own preceding clause (cut at '.', '?', ';' or ' and ', max ``width`` chars)."""
     before = _before(page_text, value_text, width)
     return FORWARD_CLAUSE_BREAK_RE.split(before)[-1] if before else ""
+
+
+def transcript_bound_kind(label: str, page_text: str, value_text: str) -> str:
+    """T-242 guard 17: a bound ('more than', 'over', 'less than', 'up to', 'at most') is not a point value."""
+    lbl = norm_space(label)
+    vt = norm_space(value_text)
+    if vt and lbl.endswith(vt):
+        lbl = lbl[: len(lbl) - len(vt)].rstrip()
+    sent = _value_sentence(page_text, label, value_text)
+    clause = _before_clause(sent or page_text, value_text, 80)
+    for text in (lbl, clause):
+        if not text:
+            continue
+        if UPPER_BOUND_TAIL_RE.search(text):
+            return "upper_bound"
+        if LOWER_BOUND_TAIL_RE_V2.search(text):
+            return "lower_bound"
+    return ""
+
+
+_AFTER_ADJ_BREAK_RE = re.compile(
+    r"(?<!\brs)\.(?!\d)|[?;]|(?:^|\s+)and\s+|,\s+(?!(?:exclud|ex-|if\s+we\s+exclud|"
+    r"pre[- ]?ind|on\s+a\s+comparable|like[- ]for[- ]like|pro[- ]?forma|adjusted|normali))",
+    re.I,
+)
+
+
+def transcript_adjusted_cue(label: str, page_text: str, value_text: str) -> bool:
+    """T-242 guard 19: an adjusted/ex-basis cue in the value's own clause or label sets ``adjusted``."""
+    lbl = norm_space(label)
+    if lbl and TRANSCRIPT_ADJUSTED_RE.search(lbl):
+        return True
+    sent = _value_sentence(page_text, label, value_text)
+    ctx = sent or page_text
+    before_clause = _before_clause(ctx, value_text, 80)
+    after_raw = page_text_after(ctx, value_text, 120)
+    after_clause = _AFTER_ADJ_BREAK_RE.split(after_raw)[0] if after_raw else ""
+    return bool(TRANSCRIPT_ADJUSTED_RE.search(f"{before_clause} {after_clause}"))
 
 
 def forward_number_cue(label: str, page_text: str, value_text: str) -> bool:

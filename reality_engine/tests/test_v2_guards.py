@@ -362,3 +362,203 @@ def test_transcript_numbers_never_verified_by_page_check_alone():
     o.apply_transcript_number_gate(rows)
     assert [r["status"] for r in rows] == ["unverified", "unverified", "quarantined", "verified"]
     assert "transcript_number" in rows[1]["status_reason"] and rows[1]["status_reason"].startswith("x; ")
+
+def test_guard17_bounds_set_value_kind_and_mark_unverified():
+    # Real ACMESOLAR sentences: "more than 9% interest cost" and "sufficient liquidity of more than 3,000 crores"
+    acme = _rows(
+        "So, three projects are yet to be refinanced. So, they are still running at more than 9% interest cost. "
+        "We have sufficient liquidity of more than 3,000 crores.",
+        [
+            {"type": "number", "measure": "NEW:interest_cost", "printed_label": "more than",
+             "value_text": "9%", "unit": "%", "period": "Q1 FY26", "new_definition": "interest cost",
+             "new_driver_node": "cost", "claim_type": "company_actual", "entity_scope": "company"},
+            {"type": "number", "measure": "cash_and_cash_equivalents",
+             "printed_label": "sufficient liquidity of more than", "value_text": "3,000",
+             "unit": "crores", "period": "Q1 FY26", "claim_type": "company_actual", "entity_scope": "company"},
+        ],
+    )
+    assert all(r["value_kind"] == "lower_bound" and r["status"] == "unverified"
+               and "lower_bound:" in r["status_reason"] for r in acme)
+
+    # Lower and upper bound cues
+    bounds = _rows(
+        "Capex over 500 crores, margin at least 15%, revenue upwards of 100 crores, debt in excess of 50 crores. "
+        "Attrition less than 5%, margin below 10%, stake up to 25%, capex at most 40 crores, "
+        "cost not more than 12%, maximum of 8 plants.",
+        [
+            {"type": "number", "measure": "capex", "printed_label": "Capex over", "value_text": "500",
+             "unit": "crores", "period": "Q1 FY26", "claim_type": "company_actual", "entity_scope": "company"},
+            {"type": "number", "measure": "ebitda_margin", "printed_label": "margin at least", "value_text": "15%",
+             "unit": "%", "period": "Q1 FY26", "claim_type": "company_actual", "entity_scope": "company"},
+            {"type": "number", "measure": "revenue_from_operations", "printed_label": "revenue upwards of",
+             "value_text": "100", "unit": "crores", "period": "Q1 FY26", "claim_type": "company_actual",
+             "entity_scope": "company"},
+            {"type": "number", "measure": "borrowings", "printed_label": "debt in excess of", "value_text": "50",
+             "unit": "crores", "period": "Q1 FY26", "claim_type": "company_actual", "entity_scope": "company"},
+            {"type": "number", "measure": "NEW:attrition", "printed_label": "Attrition less than", "value_text": "5%",
+             "unit": "%", "period": "Q1 FY26", "new_definition": "attrition rate", "new_driver_node": "cost",
+             "claim_type": "company_actual", "entity_scope": "company"},
+            {"type": "number", "measure": "ebitda_margin", "printed_label": "margin below", "value_text": "10%",
+             "unit": "%", "period": "Q1 FY26", "claim_type": "company_actual", "entity_scope": "company"},
+            {"type": "number", "measure": "mix.share", "printed_label": "stake up to", "value_text": "25%",
+             "unit": "%", "segment": "jv", "period": "Q1 FY26", "claim_type": "company_actual",
+             "entity_scope": "company"},
+            {"type": "number", "measure": "capex", "printed_label": "capex at most", "value_text": "40",
+             "unit": "crores", "period": "Q1 FY26", "claim_type": "company_actual", "entity_scope": "company"},
+            {"type": "number", "measure": "NEW:cost_ratio", "printed_label": "cost not more than", "value_text": "12%",
+             "unit": "%", "period": "Q1 FY26", "new_definition": "cost ratio", "new_driver_node": "cost",
+             "claim_type": "company_actual", "entity_scope": "company"},
+            {"type": "number", "measure": "count.plants", "printed_label": "maximum of", "value_text": "8",
+             "unit": "plants", "period": "Q1 FY26", "claim_type": "company_actual", "entity_scope": "company"},
+        ],
+    )
+    by_vt = {r["value_text"]: r for r in bounds}
+    for vt in ("500", "15%", "100", "50"):
+        assert by_vt[vt]["value_kind"] == "lower_bound" and by_vt[vt]["status"] == "unverified"
+    for vt in ("5%", "10%", "25%", "40", "12%", "8"):
+        assert by_vt[vt]["value_kind"] == "upper_bound" and by_vt[vt]["status"] == "unverified"
+        assert "upper_bound:" in by_vt[vt]["status_reason"]
+
+    # Counter-tests: point followed by bound, and comparative "less than last year's 12%"
+    ce = _rows(
+        "Revenue grew 20% to more than INR500 crores. Margin is less than last year's 12%.",
+        [
+            {"type": "number", "measure": "revenue_growth_yoy", "printed_label": "Revenue grew",
+             "value_text": "20%", "unit": "%", "period": "Q1 FY26", "claim_type": "company_actual",
+             "entity_scope": "company"},
+            {"type": "number", "measure": "revenue_from_operations", "printed_label": "to more than",
+             "value_text": "INR500", "unit": "crores", "period": "Q1 FY26", "claim_type": "company_actual",
+             "entity_scope": "company"},
+            {"type": "number", "measure": "ebitda_margin", "printed_label": "Margin is less than last year's",
+             "value_text": "12%", "unit": "%", "period": "FY25", "claim_type": "company_actual",
+             "entity_scope": "company"},
+        ],
+    )
+    ce_by = {r["value_text"]: r for r in ce}
+    assert ce_by["20%"]["value_kind"] == "" and ce_by["20%"]["status"] == "verified"
+    assert ce_by["INR500"]["value_kind"] == "lower_bound" and ce_by["INR500"]["status"] == "unverified"
+    assert ce_by["12%"]["value_kind"] == "" and ce_by["12%"]["status"] == "verified"
+
+
+def test_guard18_quarterly_increase_and_addition_become_change():
+    # Real CANBK sentence ("increased by around 9,000-10,000 crores") + quarterly additions
+    canbk = _rows(
+        "Now, our AFS book is also increased by around 9,000-10,000 crores even in this quarter also.",
+        [{"type": "number", "measure": "NEW:afs_book",
+          "printed_label": "our AFS book is also increased by around",
+          "value_text": "9,000", "unit": "crores", "period": "Q4 FY24",
+          "new_definition": "AFS book", "new_driver_node": "none",
+          "claim_type": "company_actual", "entity_scope": "company"}],
+    )
+    assert canbk[0]["measure"] == "NEW:afs_book_change"
+    assert (canbk[0]["value"], canbk[0]["value_high"]) == (9000.0, 10000.0)
+    assert canbk[0]["direction"] == "up"
+
+    q_adds = _rows(
+        "Deposits increased by 120 crores during the quarter. "
+        "We had net additions of 2 lakh customers in Q2 and incremental 20 branches sequentially.",
+        [
+            {"type": "number", "measure": "NEW:deposits", "printed_label": "Deposits increased by",
+             "value_text": "120", "unit": "crores", "period": "Q2 FY26", "new_definition": "deposits",
+             "new_driver_node": "none", "claim_type": "company_actual", "entity_scope": "company"},
+            {"type": "number", "measure": "count.customers", "printed_label": "net additions of",
+             "value_text": "2 lakh", "unit": "lakh customers", "period": "Q2 FY26",
+             "claim_type": "company_actual", "entity_scope": "company"},
+            {"type": "number", "measure": "count.outlets", "printed_label": "incremental",
+             "value_text": "20", "unit": "branches", "period": "Q2 FY26",
+             "claim_type": "company_actual", "entity_scope": "company"},
+        ],
+    )
+    by_vt = {r["value_text"]: r for r in q_adds}
+    assert by_vt["120"]["measure"] == "NEW:deposits_change" and by_vt["120"]["direction"] == "up"
+    assert by_vt["2 lakh"]["measure"] == "NEW:count.customers_change" and by_vt["2 lakh"]["direction"] == "up"
+    assert by_vt["20"]["measure"] == "NEW:count.outlets_change" and by_vt["20"]["direction"] == "up"
+    assert all(r["status"] == "verified" for r in q_adds)
+
+    # Counter-test: "we have 450 stores, having added 15 this quarter" -> 450 stays level, 15 becomes change
+    ce = _rows(
+        "we have 450 stores, having added 15 this quarter",
+        [
+            {"type": "number", "measure": "count.outlets", "printed_label": "we have",
+             "value_text": "450", "unit": "stores", "period": "Q2 FY26",
+             "claim_type": "company_actual", "entity_scope": "company"},
+            {"type": "number", "measure": "count.outlets", "printed_label": "having added",
+             "value_text": "15", "unit": "stores", "period": "Q2 FY26",
+             "claim_type": "company_actual", "entity_scope": "company"},
+        ],
+    )
+    ce_by = {r["value_text"]: r for r in ce}
+    assert ce_by["450"]["measure"] == "count.outlets" and ce_by["450"]["status"] == "verified"
+    assert ce_by["15"]["measure"] == "NEW:count.outlets_change" and ce_by["15"]["direction"] == "up"
+    assert ce_by["15"]["status"] == "verified"
+
+
+def test_guard19_adjusted_basis_flagged_in_clause_only():
+    # Real SYRMA sentence: "if we exclude the unutilized IPO proceeds" comes AFTER the value
+    syrma = _rows(
+        "Our ROCE for the quarter is 11% if we exclude the unutilized IPO proceeds and goodwill from the capital employed.",
+        [{"type": "number", "measure": "roce", "printed_label": "Our ROCE for the quarter is",
+          "value_text": "11%", "unit": "%", "period": "Q1 FY25",
+          "claim_type": "company_actual", "entity_scope": "company"}],
+    )
+    assert syrma[0]["adjusted"] == 1 and syrma[0]["status"] == "unverified"
+    assert "adjusted/hypothetical figure, not the reported measure" in syrma[0]["status_reason"]
+
+    # All adjusted-basis cues in clause/label
+    cues = _rows(
+        "ROCE excluding IPO proceeds is 22%. EBITDA margin ex-other income is 18%. "
+        "Adjusted PAT stood at INR42 crores. Pre-Ind AS 116 EBITDA margin was 14%. "
+        "Like-for-like revenue growth was 9%. On a comparable basis, margin was 12%. "
+        "Pro forma revenue was INR500 crores.",
+        [
+            {"type": "number", "measure": "roce", "printed_label": "ROCE excluding IPO proceeds is",
+             "value_text": "22%", "unit": "%", "period": "Q1 FY25", "claim_type": "company_actual",
+             "entity_scope": "company"},
+            {"type": "number", "measure": "ebitda_margin", "printed_label": "EBITDA margin ex-other income is",
+             "value_text": "18%", "unit": "%", "period": "Q1 FY25", "claim_type": "company_actual",
+             "entity_scope": "company"},
+            {"type": "number", "measure": "pat", "printed_label": "Adjusted PAT stood at",
+             "value_text": "INR42", "unit": "crores", "period": "Q1 FY25", "claim_type": "company_actual",
+             "entity_scope": "company"},
+            {"type": "number", "measure": "ebitda_margin", "printed_label": "Pre-Ind AS 116 EBITDA margin was",
+             "value_text": "14%", "unit": "%", "period": "Q1 FY25", "claim_type": "company_actual",
+             "entity_scope": "company"},
+            {"type": "number", "measure": "revenue_growth_yoy", "printed_label": "Like-for-like revenue growth was",
+             "value_text": "9%", "unit": "%", "period": "Q1 FY25", "claim_type": "company_actual",
+             "entity_scope": "company"},
+            {"type": "number", "measure": "ebitda_margin", "printed_label": "margin was",
+             "value_text": "12%", "unit": "%", "period": "Q1 FY25", "claim_type": "company_actual",
+             "entity_scope": "company"},
+            {"type": "number", "measure": "revenue_from_operations", "printed_label": "Pro forma revenue was",
+             "value_text": "INR500", "unit": "crores", "period": "Q1 FY25", "claim_type": "company_actual",
+             "entity_scope": "company"},
+        ],
+    )
+    assert all(r["adjusted"] == 1 and r["status"] == "unverified"
+               and "adjusted/hypothetical figure, not the reported measure" in r["status_reason"] for r in cues)
+
+    # Counter-tests: "excluding" in another sentence, another comma clause, and delivery term "ex-factory" do not fire
+    ce = _rows(
+        "ROCE excluding IPO proceeds is 22%. EBITDA margin for the quarter stood at 17%. "
+        "We are selling refined sugar at Rs3990 per quintal ex-factory. "
+        "Revenue was INR28,840 crores, up 77% year-on-year, supported by zinc cost, excluding royalty, 776 per ton.",
+        [
+            {"type": "number", "measure": "ebitda_margin", "printed_label": "EBITDA margin for the quarter stood at",
+             "value_text": "17%", "unit": "%", "period": "Q1 FY25", "claim_type": "company_actual",
+             "entity_scope": "company"},
+            {"type": "number", "measure": "NEW:sugar_realisation", "printed_label": "selling refined sugar at",
+             "value_text": "Rs3990", "unit": "Rs per quintal", "period": "Q1 FY25",
+             "new_definition": "sugar realisation", "new_driver_node": "revenue",
+             "claim_type": "company_actual", "entity_scope": "company"},
+            {"type": "number", "measure": "revenue_growth_yoy", "printed_label": "up",
+             "value_text": "77%", "unit": "%", "period": "H1 FY26", "claim_type": "company_actual",
+             "entity_scope": "company"},
+            {"type": "number", "measure": "NEW:zinc_cost_per_ton", "printed_label": "excluding royalty,",
+             "value_text": "776", "unit": "$ per ton", "period": "H1 FY26",
+             "new_definition": "zinc cost per ton", "new_driver_node": "cost",
+             "claim_type": "company_actual", "entity_scope": "company"},
+        ],
+    )
+    ce_by = {r["value_text"]: r for r in ce}
+    assert all(ce_by[vt]["adjusted"] == 0 and ce_by[vt]["status"] == "verified" for vt in ("17%", "Rs3990", "77%"))
+    assert ce_by["776"]["adjusted"] == 1 and ce_by["776"]["status"] == "unverified"
