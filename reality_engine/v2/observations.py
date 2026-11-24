@@ -3172,9 +3172,6 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
     if required_unit and not row.get("unit") and not str(row.get("measure") or "").startswith("count."):
         status = "unverified"           # stage H: a count.* row is its own unit ("14 outlets"); the count is the unit
         reasons.append("no_unit: no unit printed for this money/quantity row")
-    if measure is None and not row.get("unit") and not str(row.get("measure") or "").startswith("count."):
-        status = "unverified"           # T-242 (deck grade): a NEW: measure with no unit ("Regulation 30", "since 2021",
-        reasons.append("no_unit: a new measure with no unit printed")   # an unlabelled Rs Cr table) is no fact
     if not row.get("period") or not period_is_printed(row.get("period", "")):
         status = "unverified"
         reasons.append("no_period: no period printed for this row")
@@ -3401,7 +3398,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 low, high = row["value"], row["value_high"]
                 row["value"], row["value_high"] = (-high, -low) if high is not None else (-low, None)
         elif (deck_guards and row["value"] is not None and row["value"] > 0 and SIGNED_MEASURE.search(row["measure"])
-              and (DECREASE_RE.search(label) or DECREASE_RE.search(_before(page_text, value_text, 40)))):
+              and (DECREASE_RE.search(label) or DECREASE_RE.search(_clause_before(page_text, value_text, 40)))):
             row["value"] = -row["value"]   # T-242 deck guard: "EBITDA decreased 79%", "negative growth 1.9%"
             row["direction"] = "down"
         if not row["unit"] and value_text.rstrip().endswith("%"):
@@ -3514,6 +3511,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 row["segment"] = canonical_dim(vocab, "segment", part)
             else:
                 scale_notes.append("mix_without_segment: a share row must name its part")
+        if (deck_guards or transcript_v2) and row["measure"].startswith("NEW:") and not row["unit"]:
+            scale_notes.append("no_unit: a new measure with no unit printed")   # T-242 deck grade: "Regulation 30"
         row["_scale_notes"] = scale_notes
         row["status"], reasons = evaluate_status(row, text, measures, page_text, ocr_text, ocr_page)
         row["status_reason"] = "; ".join(reasons)
@@ -4111,6 +4110,11 @@ def page_text_after(page_text: str, value_text: str, width: int) -> str:
     text = norm_space(page_text)
     idx = text.find(value_text) if value_text else -1
     return text[idx + len(value_text): idx + len(value_text) + width] if idx >= 0 else ""
+
+
+def _clause_before(page_text: str, value_text: str, width: int) -> str:
+    """``_before`` cut at the last '.', ';' or ',' so another clause's word ("costs declined; revenue grew 12%") is out."""
+    return re.split(r"[.;,]", _before(page_text, value_text, width))[-1]
 
 
 def _before(page_text: str, value_text: str, width: int) -> str:

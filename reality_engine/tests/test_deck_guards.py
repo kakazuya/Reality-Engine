@@ -20,6 +20,9 @@ def test_decrease_word_makes_a_growth_row_negative_on_decks_only():
     up = "EBITDA increased 12% YoY."
     assert _rows(up, [{"type": "number", "measure": "ebitda_growth_yoy", "printed_label": "EBITDA increased",
                        "value_text": "12%", "unit": "%", "period": "Q1 FY27"}])[0]["value"] == 12.0
+    other = "Costs declined; revenue grew 12% YoY."          # Eagle: another clause's word never flips the value
+    assert _rows(other, [{"type": "number", "measure": "revenue_growth_yoy", "printed_label": "revenue grew",
+                          "value_text": "12%", "unit": "%", "period": "Q1 FY27"}])[0]["value"] == 12.0
 
 
 def test_deck_cover_letter_page_gives_no_rows():
@@ -34,5 +37,5 @@ def test_new_measure_without_unit_is_never_verified():
     text = "Profit as per IGAAP 845 Profit as per Ind AS 812 Q1 FY27"
     rows = _rows(text, [{"type": "number", "measure": "NEW:profit_as_per_igaap", "printed_label": "Profit as per IGAAP",
                          "value_text": "845", "unit": "", "period": "Q1 FY27",
-                         "new_definition": "x", "new_driver_node": "none"}], deck=False)
+                         "new_definition": "x", "new_driver_node": "none"}])
     assert rows and rows[0]["status"] != "verified" and "no_unit" in rows[0]["status_reason"]
