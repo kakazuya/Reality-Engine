@@ -1791,6 +1791,28 @@ def test_stage_m_guidance_verifies_on_its_value_and_period_words():
     assert worded == []                  # no printed number: a statement, not a guidance row
 
 
+def test_t241_guidance_gets_the_same_scale_as_number_rows():
+    page = (
+        "We expect revenue of 80 Crores in FY27, volume of 28 crore liters in FY27, "
+        "industry size of 2 lakh crore in FY27, and 10-12% revenue growth in FY27."
+    )
+    rows = build([
+        {"type": "guidance", "measure": "revenue.value", "period": "FY27",
+         "low": "80", "unit": "Crores", "text": "We expect revenue of 80 Crores in FY27."},
+        {"type": "guidance", "measure": "volume.sales", "period": "FY27",
+         "low": "28", "unit": "crore liters", "text": "We expect volume of 28 crore liters in FY27."},
+        {"type": "guidance", "measure": "revenue.value", "period": "FY27",
+         "low": "2", "unit": "lakh crore", "text": "We expect industry size of 2 lakh crore in FY27."},
+        {"type": "guidance", "measure": "revenue_growth_yoy", "period": "FY27",
+         "low": "10", "high": "12", "unit": "%", "text": "We expect 10-12% revenue growth in FY27."},
+    ], page_text=page)
+    by_unit = {r["unit"]: r for r in rows}
+    assert by_unit["Crores"]["scale"] == 1e7 and by_unit["Crores"]["unit_family"] == "money"
+    assert by_unit["crore liters"]["scale"] == 1e7 and by_unit["crore liters"]["unit_family"] == "count"
+    assert by_unit["lakh crore"]["scale"] == 1e12 and by_unit["lakh crore"]["unit_family"] == "money"
+    assert by_unit["%"]["scale"] == 1 and by_unit["%"]["unit_family"] == "percent"
+
+
 def test_stage_m_index_new_measures_and_cluster_proposed_merges():
     con = obs.create_db(":memory:")
     rows = (("NEW:jv_pbt", "profit before tax of the joint venture", "margin", "money"),

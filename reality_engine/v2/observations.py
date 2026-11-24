@@ -2944,10 +2944,29 @@ def evaluate_statement(row: dict[str, Any], hay_match: str,
     return ("unverified" if reasons else "verified"), reasons
 
 
+def _apply_scale(row: dict[str, Any], raw: dict[str, Any], text: str, page_text: str,
+                 head: str, measure: dict[str, str] | None) -> list[str]:
+    """Apply the printed-scale / money-scale / per-unit scale rules to one observation row."""
+    row["scale"], scale_notes = printed_scale(raw.get("scale", 1), row, text)
+    row["unit_family"] = infer_unit_family(row["unit"]) or row.get("unit_family", "")
+    if row["unit_family"] == "money" and float(row["scale"] or 1) == 1:
+        factor = money_scale([row["unit"], row["printed_axis"], row["series_title"], head])
+        if factor:
+            row["scale"] = factor
+    if (row["unit"] or "").strip().upper() in MT_UNITS and float(row["scale"] or 1) == 1:
+        resolved = resolve_mt_scale(page_text)
+        if resolved:
+            row["scale"] = resolved
+    measure_family = measure["unit_family"] if measure else row["unit_family"]
+    if apply_per_unit_scale(row, measure_family):
+        scale_notes = []           # a crore scale on a per-unit price is never a printed scale
+    return scale_notes
+
+
 def evaluate_guidance(row: dict[str, Any], hay_match: str,
                       measures: dict[str, dict[str, str]]) -> tuple[str, list[str]]:
     """T-238 stage M: guidance verifies when its sentence is printed and its value and period words are in it."""
-    reasons: list[str] = []
+    reasons: list[str] = list(row.pop("_scale_notes", []))
     _measure, why = declared_measure(row.get("measure", ""), row.get("new_definition", ""),
                                      row.get("new_driver_node", ""), measures)
     if why:
@@ -3006,7 +3025,8 @@ def statement_observation(*, symbol: str, doc_key: str, page: int, known_at: str
 
 
 def guidance_observation(*, symbol: str, doc_key: str, page: int, known_at: str, raw: dict[str, Any],
-                         hay_match: str, measures: dict[str, dict[str, str]]) -> dict[str, Any] | None:
+                         hay_match: str, measures: dict[str, dict[str, str]],
+                         page_text: str = "") -> dict[str, Any] | None:
     low_text = norm_space(raw.get("low") or raw.get("value_text"))
     high_text = norm_space(raw.get("high"))
     low, high = parse_number(low_text), parse_number(high_text)
@@ -3021,6 +3041,8 @@ def guidance_observation(*, symbol: str, doc_key: str, page: int, known_at: str,
     row["value_text"] = low_text if high_text in ("", low_text) else f"{low_text}-{high_text}"
     row["period_kind"] = period_kind_for(raw.get("period_kind", ""), row["period"]) or "target"
     row["statement"] = norm_space(raw.get("text") or raw.get("statement"))
+    row["_scale_notes"] = _apply_scale(row, raw, norm_space(page_text), page_text, page_head(page_text),
+                                       measures.get(row["measure"]))
     row["status"], reasons = evaluate_guidance(row, hay_match, measures)
     row["status_reason"] = "; ".join(reasons)
     return row
@@ -3181,9 +3203,12 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         if record_type == "guidance" and norm_space(raw.get("claim_type")).lower() not in ("", "company_target"):
             continue                 # T-241 v2: a government / industry target or an ask is not company guidance
         if record_type in ("statement", "guidance"):
-            build_prose = statement_observation if record_type == "statement" else guidance_observation
-            record = build_prose(symbol=symbol, doc_key=doc_key, page=page, known_at=known_at, raw=raw,
-                                 hay_match=hay_match, measures=measures)
+            if record_type == "statement":
+                record = statement_observation(symbol=symbol, doc_key=doc_key, page=page, known_at=known_at,
+                                               raw=raw, hay_match=hay_match, measures=measures)
+            else:
+                record = guidance_observation(symbol=symbol, doc_key=doc_key, page=page, known_at=known_at,
+                                              raw=raw, hay_match=hay_match, measures=measures, page_text=page_text)
             if record is not None:
                 prose.append(record)
             continue
@@ -3295,19 +3320,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                                   measure["unit_family"] if measure else "")
             if inferred:
                 row["unit"], row["unit_family"], row["scale"] = inferred
-        row["scale"], scale_notes = printed_scale(raw.get("scale", 1), row, text)
-        row["unit_family"] = infer_unit_family(row["unit"]) or row.get("unit_family", "")
-        if row["unit_family"] == "money" and float(row["scale"] or 1) == 1:
-            factor = money_scale([row["unit"], row["printed_axis"], row["series_title"], head])
-            if factor:
-                row["scale"] = factor
-        if (row["unit"] or "").strip().upper() in MT_UNITS and float(row["scale"] or 1) == 1:
-            resolved = resolve_mt_scale(page_text)
-            if resolved:
-                row["scale"] = resolved
-        measure_family = measure["unit_family"] if measure else row["unit_family"]
-        if apply_per_unit_scale(row, measure_family):
-            scale_notes = []           # a crore scale on a per-unit price is never a printed scale
+        scale_notes = _apply_scale(row, raw, text, page_text, head, measure)
         if row["period"] and comparative_period(
                 row["period"], page_text, " ".join([row["printed_label"], row["printed_axis"]])):
             row["period"] = ""         # stage L: a date inside "(31 March 2024 : NIL)" is not this row's period
