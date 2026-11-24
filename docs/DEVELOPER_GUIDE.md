@@ -2996,6 +2996,13 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   first name/surname or initials resolves when exactly one name matches, else the label is kept and the row is
   unverified `speaker_unresolved:`; a statement still without a label is unverified `speaker_unresolved: no speaker
   label...`; a statement under 8 words opening yes/no/right/correct/sure is unverified `no_referent:`.
+  **Widening that guard (T-242, 25 Nov 2026) was built, measured and reverted -- not merged.** Five structural shapes
+  (lowercase start = mid-sentence, a bare ordinal whose list is outside, a short reply whose topic is only a pronoun
+  or a demonstrative, a short passage whose only figure is a percentage with no metric, plus the yes/no rule) flag all
+  8 P rows of the fy27_v3 ckpt_0003 grade, but on that DB they turn 1,984 of 15,517 verified statements unverified
+  (12.79%); the cheapest set that still covers all 8 graded rows is 5.99%, over the brief's 5% stop bar, so nothing
+  shipped. Per-rule counts, the 30-row seed-5 sample and the three options (raise the bar / high-precision shapes only
+  / gate at the answer layer) are in `tasks/t242_no_referent_v3_measure.md`.
   `build_doc_context` now skips a page-1 filing cover letter (its "Reference:" line read as a speaker and killed the
   roster), `is_cover_letter` needs 2 of 3 marks (scrip/BSE code/trading symbol/listing department/Regulation 30,
   "Sub.:", "Dear Sir/Madam") so a "BSE Scrip:" transcript cover (UNOMINDA) and a "Sub.:" Reg 30 intimation

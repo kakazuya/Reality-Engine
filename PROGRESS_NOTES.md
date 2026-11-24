@@ -237,4 +237,21 @@ T-242 deck value guards: code+tests done (test_deck_guards 13 passed), pilot mea
 - Next: docs (DEVELOPER_GUIDE entry, V2 contract schema line + I8, STATE line); full suite result; controller
   re-measures on the live deck DB / merges.
 
+## T-242 no_referent widening (25 Nov, DeepSeek) — MEASURED, NOT MERGED
+
+- Built the brief's five structural shapes in `no_referent_reason` (lowercase start / bare ordinal / pronoun-or-
+  demonstrative-only topic / bare percentage / existing short yes-no) with 23 tests passing; all 8 fy27_v3 ckpt_0003
+  P ids flagged by the intended rule, plus the counter-tests kept verified.
+- Measured read-only on `D:/RealityEngine/hy4_out/obs_transcripts_fy27_v3.db`: 15,517 verified statements, 1,984
+  would turn unverified = **12.79% (pronoun/demonstrative 1,303, mid-sentence 410, percentage 146, ordinal 86,
+  yes-no 39)**. Cheapest set that still covers all 8 graded rows = 5.99% (pronoun capped at 15 words, BIOCON missed);
+  high-precision shapes alone = 3.83% (4 of 8 rows).
+- Stop condition (>5%) fired at every covering set, so the candidate was reverted: tree is clean at HEAD, v3 prompt fp
+  `2fae7ddac53e` unchanged (verified by hashing PROMPT_TRANSCRIPT_V3; `read_gate status` without `--transcript-prompt v3`
+  shows the v1 fp 12e603811501). Baseline `test_obs_speaker.py` 22 passed.
+- Docs: `tasks/t242_no_referent_v3_measure.md` (per-rule table, 30-row seed-5 sample, options), DEVELOPER_GUIDE
+  statement-fixes entry, STATE line. Sandbox note: pytest tmp_path dirs are mode 0o700 and unlistable/writable here;
+  runs used a job-local plugin (`.tmp/t242_tmpplugin.py`) forcing default-mode temp dirs.
+
+
 
