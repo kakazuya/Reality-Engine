@@ -918,11 +918,28 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
         no_ref = no_referent_reason(str(row.get("statement") or ""))
         if no_ref:
             reasons.append(no_ref)
+        if str(row.get("statement") or "").rstrip().rstrip("\"')”’").endswith("?"):
+            # Eagle v3 spot check (24 Nov, 1,436 pages): 43 verified passages ending in '?' were analysts'
+            # questions; a manager's "Why? Because ..." inside an answer does not END in '?' (Wolf)
+            reasons.append("question_end: a passage ending in a question is not a management statement")
         if reasons:
             row["status_reason"] = "; ".join(p for p in (str(row.get("status_reason") or ""), *reasons) if p)
             if row.get("status") == "verified":
                 row["status"] = "unverified"
                 stats["unverified"] += 1
+    seen: set[tuple[Any, Any, str, str]] = set()        # Eagle v3 spot check: 19 statements stored twice on one page
+    keep: list[dict[str, Any]] = []
+    statement_at = set(indexes)
+    for i, row in enumerate(rows):
+        if i in statement_at:
+            key = (row.get("doc_key"), row.get("page"), str(row.get("speaker") or ""),
+                   " ".join(str(row.get("statement") or "").split()).lower())
+            if key in seen:
+                stats["duplicates"] = stats.get("duplicates", 0) + 1
+                continue
+            seen.add(key)
+        keep.append(row)
+    rows[:] = keep
     return stats
 
 
