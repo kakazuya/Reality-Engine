@@ -1,20 +1,28 @@
 """T-242: which annual-report pages are worth a model read (Shivam 24 Nov: "useful sections of the annual report").
 
-An annual report's routed ``table_or_chart`` pages (~271k across the built stores) are mostly pages a model read adds
-nothing to: the primary statements (XBRL already holds them), auditor's reports, governance, remuneration, AGM notices,
-market-price tables, BRSR and CSR. ``section_of(text)`` names the section a page belongs to, read from its heading zone
-(the first ``HEAD`` characters) and, for notes, from note titles anywhere on the page; ``keep(text)`` is True only for
-sections in ``KEEP``.
+Round 2 (24 Nov, after a hand audit of 80 pages, ``D:/RealityEngine/t242/ar_audit/ar_audit.csv``: keep-list precision
+42%, about half the useful pages dropped because no keep heading matched): the rule is now DROP-LIST FIRST. hy4 is
+free, so a page is read unless its heading zone (first ``HEAD`` characters) names a boilerplate section, or it is prose
+with no figure table.
 
-Keep (figures a filing states only here): management discussion and analysis, financial / operating highlights and
-multi-year summaries, segment information, order book / capacity / production, subsidiaries' salient features
-(AOC-1), and the notes that carry off-statement facts: contingent liabilities and commitments, related parties,
-borrowings terms, CWIP and receivable ageing, revenue disaggregation.
+``section_of(text)`` -> (section, keep?):
+1. a heading-zone DROP section wins (auditor's report, governance, notice, CSR/BRSR, secretarial, remuneration,
+   market data, cover letter, employee benefits / HR, primary statements, policies, and the note schedules XBRL
+   already holds: PPE, share capital, other equity, deferred tax, payables, inventories, other income/expenses, EPS) -- except that a notes page
+   ("Notes to / forming part of the financial statements", "other explanatory information" running headers) skips the
+   primary-statement / policies / CSR drops (Eagle, 40 stores: ~340 off-balance notes pages were lost to those
+   running headers);
+2. a KEEP heading (MD&A, highlights, segment, operations, subsidiaries / AOC-1, off-balance notes, related-party
+   amounts, hedges, disputes, ratios, material RPTs) keeps the page; a KEEP phrase lower on the page keeps it only on
+   a figure table (``numeric_table``), so a narrative that mentions "related party transactions" stays out;
+3. otherwise a figure table is kept as ``table`` (a model read of a correct schedule costs nothing but quota);
+   prose is dropped.
 
-Drop wins over keep when the heading itself is a drop section (an auditor's report that mentions "contingent
-liabilities" stays dropped). A page with no recognised section is dropped (unsure = no read); ``python -m
-reality_engine.v2.ar_sections --stores-root <root>`` prints the kept / dropped counts per section so the rule is
-measured, not assumed.
+``kept_pages(pages)`` applies this per report; an unheaded page right after a kept running section (MD&A, risks,
+highlights) continues it only when it is not prose-only.  ``needs_ocr`` pages arrive with empty text and are dropped
+unless they continue a kept section: their OCR text is not in the store until T-238 OCR runs.
+
+``python -m reality_engine.v2.ar_sections --stores-root <root>`` prints kept / dropped counts per section.
 """
 from __future__ import annotations
 
@@ -27,71 +35,101 @@ import sqlite3
 from pathlib import Path
 
 HEAD = 400
+MIN_DIGIT_LINES = 8
 
 DROP = {
-    "auditor_report": r"independent auditor|auditor[’']?s report|report on the audit|key audit matter|caro|"
+    "auditor_report": r"independent auditor|auditor[’']?s report|report on the audit|key audit matter|\bcaro\b|"
                       r"companies \(auditor[’']?s report\) order",
+    "audit_annex": r"annexure .{0,40}referred to in paragraph|certificate of non-disqualification|"
+                   r"internal financial controls? (?:over|with reference to) financial reporting",
     "governance": r"corporate governance|board of directors comprised|board meetings|committee meetings|"
-                  r"terms of reference|nomination and remuneration|stakeholders[’']? relationship",
+                  r"terms of reference|nomination and remuneration|stakeholders[’']? relationship|"
+                  r"independent directors? .{0,40}(?:integrity|expertise)",
     "secretarial": r"secretarial audit|form no\.? mr-3|form mgt|annual return",
     "remuneration": r"remuneration of (?:directors|key managerial)|ratio of the remuneration|median remuneration",
     "notice": r"notice is hereby given|annual general meeting|e-voting|remote e-voting|item no\.?\s*\d|"
-              r"explanatory statement",
-    "csr_brsr": r"corporate social responsibility|csr committee|business responsibility|brsr|"
-                r"conservation of energy|technology absorption",
+              r"explanatory statement|\bresolved\b",
     "market_data": r"market price data|share price performance|means of communication|distribution of shareholding|"
                    r"listing on stock exchanges|insider trading",
-    "primary_statement": r"cash flow statement|statement of cash flows|balance sheet as at|"
+    "cover_letter": r"scrip code|dear sir|listing department",
+    "employee": r"defined benefit|gratuity|actuarial|plan assets|employee benefit|"
+                r"learning and development|human resource",
+    "csr_brsr": r"corporate social responsibility|csr committee|business responsibility|brsr|"
+                r"conservation of energy|technology absorption|essential indicators|leadership indicators|"
+                r"principle \d|\bei-\d|ghg emissions|air emissions",
+    "primary_statement": r"cash flow statement|statement of cash flows|(?:consolidated |standalone )?balance sheet|"
                          r"statement of profit and loss|statement of changes in equity",
+    "xbrl_schedule": r"property,? plant (?:and|&) equipment|share capital|other equity|fair value hierarchy|"
+                     r"deferred tax|financial instruments by category|other (?:current |non-current )?(?:assets|"
+                     r"liabilities)|trade payables|inventories|cash and cash equivalents|other income|finance costs|"
+                     r"other expenses|earnings per (?:equity )?share|intangible assets|right[- ]of[- ]use",
     "policies": r"material accounting policies|significant accounting policies|basis of preparation|"
                 r"use of estimates and judgements",
-    "cover_letter": r"scrip code|dear sir|listing department",
-    "brsr_tables": r"essential indicators|leadership indicators|principle \d|\bei-\d|ghg emissions|air emissions",
-    "audit_annex": r"annexure .{0,40}referred to in paragraph|certificate of non-disqualification|"
-                   r"internal financial controls? (?:over|with reference to) financial reporting",
 }
+NOTES_EXEMPT = {"primary_statement", "policies", "csr_brsr"}
+NOTES_HEAD = re.compile(r"notes? (?:to|forming part of)|other explanatory information", re.I)
 
 KEEP = {
     "mdna": r"management[’']?s? discussion|management discussion and analysis|financial performance review|"
-            r"operational performance|key financial ratios|details of significant changes",
+            r"operational performance|details of significant changes",
     "highlights": r"financial highlights|key performance indicators|performance highlights|at a glance|"
                   r"(?:ten|10|five|5)[- ]year (?:financial )?(?:summary|highlights|performance|record)|"
                   r"financial summary|key metrics",
     "segment": r"segment information|operating segments?|segment[- ]wise|segment reporting|segment revenue",
     "operations": r"order book|order inflow|installed capacity|capacity utili[sz]ation|production volumes?|"
                   r"sales volumes?|plant[- ]wise|product[- ]wise",
-    "subsidiaries": r"aoc-1|salient features of the financial statements? of subsidiar|"
+    "subsidiaries": r"aoc-1|salient features of (?:the )?financial statements? of (?:the )?subsidiar|"
                     r"performance (?:and financial position )?of (?:each of )?the subsidiar",
     "notes_offbalance": r"contingent liabilit|capital commitments?|related party (?:transactions|disclosures)|"
+                        r"name\(?s?\)? of the related part(?:y|ies)|"
                         r"terms of (?:repayment|borrowings)|security (?:offered|created) for (?:the )?borrowings|"
                         r"capital work[- ]in[- ]progress ageing|cwip ageing|trade receivables? ageing|"
-                        r"disaggregat(?:ed|ion) (?:of )?revenue|revenue from contracts with customers",
-    "directors_report": r"state of (?:the )?company[’']?s affairs|financial results|"
-                        r"material changes and commitments",
+                        r"disaggregat(?:ed|ion) (?:of )?revenue|revenue from contracts with customers|"
+                        r"cash flow hedges?|notional (?:principal )?amounts?|forward contracts|"
+                        r"redemption of .{0,40}debentures|non-convertible debentures",
     "ratios": r"analytical ratios|ratios to be disclosed|key financial ratios",
     "risks_outlook": r"risks and (?:threats|concerns)|opportunities and threats|outlook|industry structure",
     "disputes": r"pending litigations?|statutory dues .{0,60}dispute|forum where (?:the )?dispute is pending|"
-                r"enforcement directorate|attached (?:the )?propert",
+                r"enforcement directorate|attached (?:the )?propert|show cause notice|\bnclt\b|investigation",
     "material_rpt": r"material (?:related party transactions|rpts?)|information provided by the management",
 }
 
+NEEDS_TABLE = {"notes_offbalance", "material_rpt", "subsidiaries"}   # audit: a narrative that names them has no amounts
+
 _DROP = {k: re.compile(v, re.I) for k, v in DROP.items()}
 _KEEP = {k: re.compile(v, re.I) for k, v in KEEP.items()}
+_DIGIT_TOKEN = re.compile(r"\d[\d,]*(?:\.\d+)?")
+
+
+def numeric_table(text: str) -> bool:
+    """A page with a figure table: at least MIN_DIGIT_LINES lines carrying an amount, or (one-line text layers) at
+    least 4x as many number tokens."""
+    raw = str(text or "")
+    lines = [line for line in raw.splitlines() if re.search(r"\d{2,}", line)]
+    if len(lines) >= MIN_DIGIT_LINES:
+        return True
+    return len(_DIGIT_TOKEN.findall(raw)) >= 4 * MIN_DIGIT_LINES
 
 
 def section_of(text: str) -> tuple[str, bool]:
-    """(section name, keep?) for one annual-report page; ("", False) when nothing is recognised."""
+    """(section name, keep?) for one annual-report page; ("", False) for prose nothing recognises."""
     t = re.sub(r"\s+", " ", str(text or ""))
     head = t[:HEAD]
+    notes = bool(NOTES_HEAD.search(head))
     for name, rx in _DROP.items():
+        if notes and name in NOTES_EXEMPT:
+            continue
         if rx.search(head):
             return name, False
+    table = numeric_table(text)
     for name, rx in _KEEP.items():
-        if rx.search(head):
+        if rx.search(head) and (table or name not in NEEDS_TABLE):
             return name, True
-    for name in ("notes_offbalance", "segment", "operations", "subsidiaries", "ratios", "disputes"):  # lower on page
-        if _KEEP[name].search(t):
-            return name, True
+    if table:
+        for name, rx in _KEEP.items():          # a keep phrase lower on the page counts only on a figure table
+            if rx.search(t):
+                return name, True
+        return "table", True
     return "", False
 
 
@@ -99,15 +137,14 @@ def keep(text: str) -> bool:
     return section_of(text)[1]
 
 
-CONTINUES = {"mdna", "risks_outlook", "highlights", "segment", "operations", "subsidiaries", "material_rpt"}
+CONTINUES = {"mdna", "risks_outlook", "highlights"}
 
 
 def kept_pages(pages: list[tuple[int, str]]) -> dict[int, str]:
     """{page: section} to read in ONE annual report, given (page, text) of its candidate pages.
 
-    A section's heading sits on its first page only, so an unrecognised page right after a kept page of a running
-    section (MD&A, risks, highlights, segment, operations, subsidiaries, material RPTs) continues that section; a
-    page whose heading is a drop section ends it.
+    An unrecognised page right after a kept page of a running narrative section (MD&A, risks, highlights) continues
+    it; a drop heading ends it.  Empty text (a ``needs_ocr`` page) continues a running section too.
     """
     out: dict[int, str] = {}
     running, last = "", -10

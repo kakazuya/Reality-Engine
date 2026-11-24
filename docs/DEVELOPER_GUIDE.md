@@ -2837,3 +2837,12 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   of 14,743 table pages kept (22%). Wired into `observations.pages_from_store`, `observations.run`, and the CLI via
   `--ar-sections` (off by default, `ar_sections=False`), filtering only `annual_report` pages and counting dropped
   pages under `dropped["ar_section"]` while leaving other document types untouched.
+- **Annual-report selector round 2 (T-242, 24 Nov 2026, Wolf).** A hand audit of 80 pages (Sonnet, read-only,
+  `D:/RealityEngine/t242/ar_audit/ar_audit.csv`) found the round-1 keep-list 42% precise with about half the useful
+  pages dropped. `ar_sections` is now drop-list first: a heading-zone boilerplate section (audit, governance, notice,
+  CSR/BRSR, employee benefits, primary statements, policies, and the XBRL note schedules: PPE, share capital, other
+  equity, deferred tax, payables, inventories, EPS...) drops the page, except that a notes running header skips the
+  primary-statement/policies/CSR drops (Eagle); keep headings for off-balance notes, material RPTs and subsidiaries need
+  a figure table (`numeric_table`: >= 8 lines with amounts); any other figure table is kept as `table`; prose is
+  dropped. `needs_ocr` pages have empty text and are dropped unless they continue a kept MD&A/risks/highlights section.
+  120 universe stores: 8,055 of 14,743 table pages kept (55%). Re-audit of precision and recall before the AR pilot.

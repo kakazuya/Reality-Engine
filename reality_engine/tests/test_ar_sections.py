@@ -11,8 +11,9 @@ def test_drop_heading_beats_keep_words():
 
 def test_keep_mdna_and_note_lower_on_page():
     assert ars.keep("Management Discussion and Analysis Industry overview revenue grew")
-    assert ars.section_of("Notes to accounts 31 March 2026 ... 38 Contingent liabilities and commitments")[0] == \
-        "notes_offbalance"
+    table = "\n".join(f"Claim {i} 1,{i}23.45 1,{i}10.20" for i in range(10))
+    assert ars.section_of("Notes to accounts 31 March 2026 ... 38 Contingent liabilities and commitments\n"
+                          + table)[0] == "notes_offbalance"
 
 
 def test_unrecognised_page_continues_running_section_then_stops():
@@ -49,3 +50,18 @@ def test_pages_from_store_ar_sections_filters_only_when_enabled(tmp_path: Path):
     kept_pages = obs.pages_from_store(store_db, doc_types=("annual_report",), ar_sections=True, dropped=dropped)
     assert [p["page"] for p in kept_pages] == [1, 2]
     assert dropped == {"ar_section": 2}
+
+
+TABLE = "\n".join(f"Line item {i} 1,{i}23.45 1,{i}10.20" for i in range(10))
+
+
+def test_round2_notes_running_header_does_not_drop_offbalance_notes():
+    page = "Notes forming part of the Balance Sheet as at 31 March 2026\n38 Contingent liabilities\n" + TABLE
+    assert ars.section_of(page) == ("notes_offbalance", True)
+
+
+def test_round2_phrase_in_prose_is_not_kept_but_a_table_is():
+    prose = "Directors' Report. All related party transactions were on an arm's length basis and approved."
+    assert not ars.keep("The Board is pleased to present the report. " + prose)
+    assert ars.section_of("Statement of something\n" + TABLE) == ("table", True)
+    assert ars.section_of("Note 5 Property, plant and equipment\n" + TABLE) == ("xbrl_schedule", False)
