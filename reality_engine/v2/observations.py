@@ -3250,8 +3250,9 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             continue
         if (claim or transcript_v2) and PERIOD_VALUE_RE.match(value_text):
             continue                 # T-241 guard 2: a period label ("Q2", "FY27", "H1FY28") is not a value
-        if (claim or transcript_v2) and label.strip().lower().rstrip(".:") in BARE_LABEL:
-            continue                 # T-242 guard 7: a row labelled "to" / "Rs." repeats the end of a range row
+        if ((claim or transcript_v2) and label.strip().lower().rstrip(".:") in BARE_LABEL
+                and RANGE_START_RE.search(_before(page_text, value_text, 40))):
+            continue                 # T-242 guard 7: "310 to INR320" -- the 320 row repeats the range's upper end
         row: dict[str, Any] = {key: norm_space(raw.get(key)) for key in ROW_TEXT_KEYS}
         if junk_measure(row["measure"]):
             continue                 # page number, phone, address, PIN, CIN/DIN, signature date: not a quantity
@@ -3946,7 +3947,9 @@ RANGE_TAIL_RE = re.compile(r"\s*(?:to|-|\u2013|\u2014)\s*(?:INR|Rs\.?|USD|US\$|\
 INNER_RANGE_RE = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*%?\s*(?:-|\u2013|\u2014|to)\s*(?:INR|Rs\.?|USD|US\$|\$|\u20b9)?\s*"
                             r"(\d[\d,]*(?:\.\d+)?)", re.I)
 FRACTION_RE = re.compile(r"^\s*(\d{1,2})\s*/\s*(\d{1,2})\s*(?:rd|th|ds)?\s*$", re.I)
-BARE_LABEL = frozenset({"to", "rs", "rs.", "inr", "and", "or", "-", "upto", "up to", "of", "around", "about"})
+BARE_LABEL = frozenset({"to", "rs", "rs.", "inr", "-", "upto", "up to"})
+RANGE_START_RE = re.compile(r"\d[\d,.]*\s*%?\s*(?:crores?|cr|lakhs?|bn|billion|mn|million)?\s*"
+                            r"(?:to|-|\u2013|\u2014)\s*(?:INR|Rs\.?|USD|US\$|\$|\u20b9)?\s*$", re.I)
 COST_OF_FUNDS_RE = re.compile(r"\bcost\s+of\s+(?:funds|borrowings?|deposits)\b|\bborrowing\s+(?:at|cost)\b|"
                               r"\bborrow(?:ed|s)?\s+at\b", re.I)
 
