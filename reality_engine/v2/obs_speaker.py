@@ -874,13 +874,30 @@ _GREETING_SENTENCE_RE = re.compile(
     r"^(?:thank\s+you|thanks|good\s+(?:morning|afternoon|evening)|hello|hi|welcome|over\s+to\s+you"
     r"|i\s+(?:would\s+)?(?:now\s+)?(?:like\s+to\s+)?(?:hand|pass)\s+(?:it\s+)?over"
     r"|(?:now\s+)?(?:i\s+would|i'd|let\s+me)\s+(?:like\s+to\s+)?(?:take|walk)\s+you\s+through"
-    r"|(?:i\s+)?(?:hope|trust)\s+(?:you|everyone)\s+(?:are|is)\s+(?:doing\s+)?well)\b", re.I)
+    r"|(?:i\s+)?(?:hope|trust)\s+(?:you|everyone)\s+(?:are|is)\s+(?:doing\s+)?well"
+    # call logistics (394_v3 ckpt_0002 J): "I'll come back into the queue", "I'll join back the queue"
+    r"|(?:i\s*(?:'ll|’ll|\s+will)\s+|let\s+me\s+|please\s+|i\s+)?(?:come\s+back|get\s+back|fall\s+back|join\s+back"
+    r"|rejoin|go\s+back|step\s+back)\s+(?:in(?:to)?\s+|to\s+|in\s+)?(?:the\s+)?(?:queue|line)"
+    r"|(?:that's|that\s+is|those\s+are)\s+(?:all|it)\s+(?:from\s+my\s+side|for\s+me|from\s+me)"
+    r"|(?:all\s+the\s+)?best(?:\s+of\s+luck|\s+wishes)?(?:\s+for\s+the\s+(?:coming|next|future)\s*(?:quarters?|years?)?)?)\b",
+    re.I)
+_GREETING_TAIL_WORDS = 8     # what follows the greeting phrase: a name, "for your question", "for joining us"
+
+
+def _greeting_sentence(sentence: str) -> bool:
+    """One sentence that is only a greeting: the phrase plus a short tail with no figure ("Thank you, Vaibhav" is;
+    "Thank you, Vaibhav, it is approximately INR5,400 crores ..." is not)."""
+    match = _GREETING_SENTENCE_RE.match(sentence)
+    if not match:
+        return False
+    tail = sentence[match.end():]
+    return not re.search(r"\d", tail) and len(re.findall(r"[A-Za-z]+", tail)) <= _GREETING_TAIL_WORDS
 
 
 def greeting_only(statement: str) -> bool:
     """T-242 (fy27_v3 ckpt_0002 J): a passage made only of greetings, thanks and hand-overs carries no statement."""
     sentences = [x.strip() for x in re.split(r"(?<=[.!?])\s+", str(statement or "")) if x.strip()]
-    return bool(sentences) and all(_GREETING_SENTENCE_RE.match(x) for x in sentences)
+    return bool(sentences) and all(_greeting_sentence(x) for x in sentences)
 
 
 _HANDOVER_RE = re.compile(
