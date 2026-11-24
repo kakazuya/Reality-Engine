@@ -2856,4 +2856,10 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   ("EBITDA decreased 79%" was +79); a page-1/2 filing cover letter gives no rows. On deck and v2 transcript rows a NEW:
   measure with no unit is `no_unit` (unverified): "Regulation 30", "since 2021" and unlabelled Rs Cr tables
   were verified. Tests `reality_engine/tests/test_deck_guards.py`.
+- **Deck entity guard (T-242, 24 Nov 2026, Wolf).** Strict deck grade (`D:/RealityEngine/t242/deck_grade2/deck_grade2_strict.md`,
+  verified 48/5/2/5): the reader already tags SIAM production and a market size `industry` and government capex
+  `country`, but the script verified them. With `deck_guards`, a row whose `entity_scope` is industry, country, peer or
+  customer is `not_company` (served labelled, never verified). Another company's statement inside a deck (Ambuja's
+  balance sheet in ACC's deck) and an unnamed subsidiary's margin are still tagged `company` by the reader: prompt work.
+  Grader warning: some decks print the value BEFORE its label (BLACKROSE p, 4 of 60 pages); grade by the arithmetic.
 
