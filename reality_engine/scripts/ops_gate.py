@@ -157,9 +157,12 @@ def check(now: dt.datetime | None = None, rules: dict[str, Any] | None = None,
     hy4 = rules["hy4"]
     readers: dict[str, int] = {}
     for c in cmds:
-        m = re.search(r"--out[= ](\S+)", c) if "v2.observations" in c else None
+        # only the interpreter itself counts: a "bash -c ..." wrapper or the py launcher would double one reader
+        first = os.path.basename(c.split(" ", 1)[0].strip('"')).lower()
+        m = re.search(r"--out[= ](\S+)", c) if "v2.observations" in c and first.startswith("python") else None
         if m:
-            readers[m.group(1)] = readers.get(m.group(1), 0) + 1
+            out = Path(m.group(1).strip("\"'")).as_posix().lower()
+            readers[out] = readers.get(out, 0) + 1
     for out, n in sorted(readers.items()):
         if n > 1:   # a loop that survived TaskStop: two readers race on one output and lose pages (24 Nov, 3 times)
             lines.append(f"RULE hy4: {n} readers write {out} at once - kill the older loop's bash and its reader")
