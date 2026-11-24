@@ -4790,6 +4790,11 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
         selected = select_pages(todo, limit, seed, required)
     else:
         selected = select_pages(pages, limit, seed, required)
+    if only is None:
+        # T-241 maker-checker-verifier: a bulk read needs an independent passing audit of this reader, and every
+        # earlier audit checkpoint of this output DB must be graded pass (raises read_gate.GateError otherwise).
+        from reality_engine.v2 import read_gate
+        read_gate.check(list(doc_types), len(selected), out)
     statement_filter = {"kept": len(pages), "dropped": sum(dropped_by_reason.values()),
                         "by_reason": dict(sorted(dropped_by_reason.items(), key=lambda kv: -kv[1]))}
     if skip_statements:
@@ -4871,6 +4876,9 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                 con.execute("INSERT OR REPLACE INTO page_read VALUES (?,?,?,?,?)",
                             (result["doc_key"], int(result["page"]), "rows", len(rows), ist_now()))
             write_rows(con, rows)
+            if only is None:
+                from reality_engine.v2 import read_gate
+                read_gate.maybe_checkpoint(con, out)
             if result.get("ocr_text"):
                 con.execute("INSERT OR REPLACE INTO page_ocr VALUES (?,?,?,?,?)",
                             (result["doc_key"], int(result["page"]), result["ocr_text"], OCR_READER, ist_now()))
@@ -5005,10 +5013,24 @@ def main(argv: list[str] | None = None) -> int:
         if ":" in item:
             sub, page = item.rsplit(":", 1)
             required.append((sub.strip(), int(page)))
-    stats = run(store_dbs, args.limit, args.workers, args.out,
+    from reality_engine.v2.read_gate import GateError
+    try:
+        stats = _run_main(args, store_dbs, doc_types, required, only)
+    except GateError as exc:
+        print(f"GATE: {exc}", file=sys.stderr)
+        return 3
+    return _report(stats)
+
+
+def _run_main(args: argparse.Namespace, store_dbs: list[str], doc_types: list[str],
+              required: list[tuple[str, int]], only: Any) -> dict[str, Any]:
+    return run(store_dbs, args.limit, args.workers, args.out,
                 doc_types=doc_types, seed=args.seed, required=required,
                 propose_limit=args.propose_limit, resume=args.resume, skip_statements=args.skip_statements,
                 only=only, text_only=args.text_only)
+
+
+def _report(stats: dict[str, Any]) -> int:
     print(json.dumps(stats, indent=2))
     if stats.get("stopped"):
         print(f"STOP: {stats['stopped']}", file=sys.stderr)

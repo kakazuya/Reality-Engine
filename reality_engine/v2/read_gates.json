@@ -1,0 +1,24 @@
+{
+ "gates": [
+  {
+   "doc_type": "transcript",
+   "fingerprint": "12e603811501",
+   "verdict": "fail",
+   "reviewer": "Eagle",
+   "author": "T-230/T-238 reader prompt",
+   "rows": 110,
+   "evidence": "D:/RealityEngine/reports/2026-11-24_hy4_transcript_audit.xlsx",
+   "note": "40 right, 49 partial, 11 wrong, 10 junk (seed 241)",
+   "at": "2026-11-24 12:46"
+  },
+  {
+   "doc_type": "transcript",
+   "fingerprint": "12e603811501",
+   "verdict": "override",
+   "by": "Shivam",
+   "reason": "24 Nov 12:40: read universe transcripts with the current prompt while Eagle's prompt A/B runs; rows go through the post-read fix pass",
+   "scope": "obs_transcripts_fy27",
+   "at": "2026-11-24 12:46"
+  }
+ ]
+}
