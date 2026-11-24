@@ -2849,4 +2849,10 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   (`(target - weekly) / (k * windows)`), with what the current window should show by now. `k` (weekly points per full
   window) starts at 8.5 and is learned from `.tmp/quota_samples.jsonl` (weekly growth / 5-hour growth inside one
   window). The ops gate flags an account whose 5-hour use is >10 points behind that pace.
+- **Deck guards (T-242, 24 Nov 2026, Wolf; deck pilot grade `D:/RealityEngine/t242/deck_grade/deck_grade.md`: verified
+  31/7/2/3 of 43).** `build_observations(deck_guards=True)` (set for doc_type deck): a growth/change measure printed
+  after a decrease word in its own clause (`DECREASE_RE`: decreased, declined, de-growth, negative growth, fell, lower by...) is negative
+  ("EBITDA decreased 79%" was +79); a page-1/2 filing cover letter gives no rows. On deck and v2 transcript rows a NEW:
+  measure with no unit is `no_unit` (unverified): "Regulation 30", "since 2021" and unlabelled Rs Cr tables
+  were verified. Tests `reality_engine/tests/test_deck_guards.py`.
 

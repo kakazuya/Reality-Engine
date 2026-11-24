@@ -3252,8 +3252,12 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                        companies: dict[str, tuple[str, str]] | None = None,
                        deck_asof: str = "", deck_basis: str = "",
                        ocr_text: str = "", ocr_page: bool = False,
-                       transcript_v2: bool = False) -> list[dict[str, Any]]:
-    """Model reply objects -> checked observation rows (status and status_reason set here)."""
+                       transcript_v2: bool = False, deck_guards: bool = False) -> list[dict[str, Any]]:
+    """Model reply objects -> checked observation rows (status and status_reason set here).
+
+    ``deck_guards`` (T-242, deck pages only): a growth/change row printed after a decrease word is negative, and a
+    page-1/2 filing cover letter gives no rows.
+    """
     measures = measures if measures is not None else measure_index()
     vocab = vocab if vocab is not None else vocab_index()
     word_list = list(words)
@@ -3262,7 +3266,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
     page_groups = {part for raw in reply_rows if isinstance(raw, dict)
                    for part in norm_space(raw.get("group_path")).split(" > ") if part}
     legend_groups = detect_legend(word_list, page_groups)
-    if transcript_v2 and is_cover_letter(page_text, page):
+    if (transcript_v2 or deck_guards) and is_cover_letter(page_text, page):
         return []                              # T-241 guard 3: a filing cover letter is not part of the call
     out: list[dict[str, Any]] = []
     prose: list[dict[str, Any]] = []          # stage M: statement / guidance records, never number-checked
@@ -3393,6 +3397,10 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 # so "25 to 30 bps reduction" is -30..-25, never -25..+30
                 low, high = row["value"], row["value_high"]
                 row["value"], row["value_high"] = (-high, -low) if high is not None else (-low, None)
+        elif (deck_guards and row["value"] is not None and row["value"] > 0 and SIGNED_MEASURE.search(row["measure"])
+              and (DECREASE_RE.search(label) or DECREASE_RE.search(_clause_before(page_text, value_text, 40)))):
+            row["value"] = -row["value"]   # T-242 deck guard: "EBITDA decreased 79%", "negative growth 1.9%"
+            row["direction"] = "down"
         if not row["unit"] and value_text.rstrip().endswith("%"):
             row["unit"] = "%"            # T-241: a printed "12%" keeps its percent unit
         if claim == "third_party" and row["entity_scope"] in ("", "company", "parent"):
@@ -3503,6 +3511,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 row["segment"] = canonical_dim(vocab, "segment", part)
             else:
                 scale_notes.append("mix_without_segment: a share row must name its part")
+        if (deck_guards or transcript_v2) and row["measure"].startswith("NEW:") and not row["unit"]:
+            scale_notes.append("no_unit: a new measure with no unit printed")   # T-242 deck grade: "Regulation 30"
         row["_scale_notes"] = scale_notes
         row["status"], reasons = evaluate_status(row, text, measures, page_text, ocr_text, ocr_page)
         row["status_reason"] = "; ".join(reasons)
@@ -4020,6 +4030,8 @@ BY_CHANGE_RE = re.compile(r"\b(?:increas|decreas|reduc|improv|grew|grown|fell|de
 # T-241 (Wolf's fy27_v2 ckpt_0001 grade, 24 Nov): five number guards for v2 transcript rows
 PERIOD_VALUE_RE = re.compile(r"^(?:(?:Q[1-4]|H[12]|9M)\s*(?:FY\s*'?\d{2,4})?|FY\s*'?\d{2,4}(?:\s*[-\u2013]\s*'?\d{2,4})?)$",
                              re.I)
+DECREASE_RE = re.compile(r"\b(?:decreas\w*|declin\w*|de-?growth|negative\s+growth|fell|fall(?:en|ing)?|dropped|"
+                         r"lower\s+by|down\s+by|contract(?:ed|ion))\b", re.I)
 NEGATIVE_WORD_RE = re.compile(r"\bnegative\b|\bloss\s+of\b|\bminus\b|\bnet\s+loss\b", re.I)
 COVER_LETTER_RES = (re.compile(r"\b(?:scrip|security)\s+code\b", re.I),
                     re.compile(r"\bsub(?:ject)?\s*[:\-]", re.I),
@@ -4098,6 +4110,11 @@ def page_text_after(page_text: str, value_text: str, width: int) -> str:
     text = norm_space(page_text)
     idx = text.find(value_text) if value_text else -1
     return text[idx + len(value_text): idx + len(value_text) + width] if idx >= 0 else ""
+
+
+def _clause_before(page_text: str, value_text: str, width: int) -> str:
+    """``_before`` cut at the last '.', ';' or ',' so another clause's word ("costs declined; revenue grew 12%") is out."""
+    return re.split(r"[.;,]", _before(page_text, value_text, width))[-1]
 
 
 def _before(page_text: str, value_text: str, width: int) -> str:
@@ -4669,7 +4686,8 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                                         deck_asof="" if transcript else deck_period(store_db, doc_key, check_text),
                                         deck_basis="" if transcript else deck_basis(str(store_db), str(doc_key)),
                                         ocr_text=result["ocr_text"], ocr_page=ocr_read,
-                                        transcript_v2=transcript and TRANSCRIPT_PROMPT == "v2")
+                                        transcript_v2=transcript and TRANSCRIPT_PROMPT == "v2",
+                                        deck_guards=meta.get("doc_type") == "deck")
     return result
 
 
