@@ -2896,6 +2896,25 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   (`transcript_number:` reason) after `build_observations` in both the read path and `--reparse`. The guards still run
   (their tests check the page check). A call number earns verified only from a filing we hold (results XBRL or a
   verified deck row, same company, measure and period within 1%): Eagle's corroboration matcher, separate step.
+- **Call-number corroboration (`v2/corroborate.py`, tests `reality_engine/tests/test_corroborate.py`, T-242,
+  24 Nov 2026, DeepSeek).** The other half of the transcript
+  gate. A call NUMBER earns `verified` from a store row with the same symbol and normalised period (`Q2 FY27` ->
+  `Q2FY27`), a compatible basis (a stated basis is required; an empty one takes consolidated then standalone, and the
+  citation names it) and `value*scale` within 1% (0.05 absolute for percentages; with `value_high`, any filed value
+  inside the printed range). `NUMBER_MAP` sends revenue_from_operations/pat to `fin_quarter_xbrl` then `ratio_panel`,
+  pbt/total_income to the XBRL lines, ebitda and the `*_pct` margin/growth rows to `ratio_panel` (EBITDA has no XBRL
+  line), and order.book/order.intake/capex/capacity/volume to `kpi_series`; a measure with no filed counterpart is
+  counted and left alone. A GUIDANCE row matches the store's `guidance` row (same metric and target period, `said_on`
+  within 120 days, low/high within 1%). A filed row is `pre_call` when its `known_at` is at most one day after the
+  call's, else `post_call` (still a citation, it says the filing came later); unit families never cross, so a USD or
+  tonne filing never corroborates a rupee number. The CLI copies `--obs` (never edits it) and rewrites only the
+  matched rows' reason to `corroborated: <table>.<metric> <period> <basis> = <value> <unit> (<pre|post>_call)`:
+  `python -m reality_engine.v2.corroborate --obs <db> --stores-root C:/RealityEngine/tg_build/full394 --out
+  C:/RealityEngine/t242/394_v2_corroborated.db [--limit-symbols N]`. Measured 24 Nov on `394_v2_reparsed4.db`
+  (350 stores, 262 symbols): 10,543 call rows considered, 352 corroborated (327 `pre_call` / 25 `post_call`;
+  `fin_quarter_xbrl` 154, `ratio_panel` 146, `guidance` 52), 1,938 number rows with a counterpart unmatched, 7,932
+  rows with no filed counterpart at all (6,648 number, 1,284 guidance; 2,874 distinct number measures), 407 empty
+  period, ~7 s; the input DB is byte-identical after the run.
 - **Quota handoff rule is per account (T-242, 24 Nov 2026, Wolf).** `ops_gate.quota_lines` raises "5-hour window at N%
   - hand work to..." only in the session whose `CLAUDE_CONFIG_DIR` (default `~/.claude`) is that account's config: the
   manager that received the work no longer gets blocked by the other account's full window until its reset.
