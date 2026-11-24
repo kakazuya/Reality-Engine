@@ -865,6 +865,11 @@ def load_pages(store_db: str | Path, doc_key: str) -> list[tuple[int, str]]:
     return [(int(p), str(t or "")) for p, t in rows]
 
 
+_FILING_LINE_RE = re.compile(r"\bfor\s+your\s+(?:kind\s+)?information\s+and\s+(?:records?|necessary)|"
+                             r"\b(?:please|kindly)\s+take\s+(?:the\s+same\s+|the\s+above\s+|above\s+)?on\s+(?:your\s+)?record\b|"
+                             r"\bregulation\s+30\b|\bplease\s+find\s+(?:enclosed|attached)\b|\benclosed\s+herewith\b", re.I)
+
+
 def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int, str]],
                               symbol: str = "", company_names: Iterable[str] = ()) -> dict[str, int]:
     """T-242: carry a page-break speaker, resolve/flag a junk label and a referentless reply, in place.
@@ -933,10 +938,18 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
             if row.get("status") == "verified":
                 row["status"] = "unverified"
                 stats["unverified"] += 1
+    for i in indexes:                              # 394_v3 ckpt_0001 J (NLCINDIA p1): a filing letter's closing line
+        row = rows[i]
+        # only the letter's own wording, whoever signs it: a company secretary's real opening remarks stay (Wolf)
+        if int(row.get("page") or 0) <= 2 and _FILING_LINE_RE.search(str(row.get("statement") or "")):
+            row["_drop"] = True
+            stats["filing_lines"] = stats.get("filing_lines", 0) + 1
     seen: set[tuple[Any, Any, str, str]] = set()        # Eagle v3 spot check: 19 statements stored twice on one page
     keep: list[dict[str, Any]] = []
     statement_at = set(indexes)
     for i, row in enumerate(rows):
+        if row.get("_drop"):
+            continue
         if i in statement_at:
             key = (row.get("doc_key"), row.get("page"), str(row.get("speaker") or ""),
                    " ".join(str(row.get("statement") or "").split()).lower())

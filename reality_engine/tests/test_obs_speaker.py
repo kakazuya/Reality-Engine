@@ -431,3 +431,17 @@ def test_statement_by_an_analyst_on_the_roster_is_unverified():
     osp.attach_statement_speakers(rows, pages)
     assert rows[0]["status"] == "unverified" and "speaker_is_analyst" in rows[0]["status_reason"]
     assert rows[1]["status"] == "verified"
+
+
+def test_filing_letter_line_on_page_one_is_dropped_but_secretary_remarks_stay():
+    from reality_engine.v2 import obs_speaker as osp
+    pages = [(1, "Company Secretary & Compliance Officer: This is for your information and record.")]
+    letter = {"record_type": "statement", "doc_key": "d", "page": 1, "status": "verified",
+              "speaker": "Company Secretary & Compliance Officer",
+              "statement": "This is for your information and record."}
+    remarks = dict(letter, statement="Revenue for the quarter grew 12% and margins held at 18%.")
+    late = dict(letter, page=9)
+    rows = [letter, remarks, late]
+    stats = osp.attach_statement_speakers(rows, pages)
+    assert stats["filing_lines"] == 1 and len(rows) == 2
+    assert rows[0]["statement"].startswith("Revenue") and rows[1]["page"] == 9
