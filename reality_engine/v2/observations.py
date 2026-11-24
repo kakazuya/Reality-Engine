@@ -3926,6 +3926,7 @@ NEGATIVE_WORD_RE = re.compile(r"\bnegative\b|\bloss\s+of\b|\bminus\b|\bnet\s+los
 COVER_LETTER_RES = (re.compile(r"\b(?:scrip|security)\s+code\b", re.I),
                     re.compile(r"\bsub(?:ject)?\s*[:\-]", re.I),
                     re.compile(r"\bdear\s+(?:sir|sirs|madam)\b", re.I))
+CURRENCY_RE = re.compile(r"INR|Rs\.?|USD|US\$|\$|\u20b9|rupees", re.I)
 RANGE_TAIL_RE = re.compile(r"\s*(?:to|-|\u2013|\u2014)\s*(?:INR|Rs\.?|USD|US\$|\$|\u20b9)?\s*(\d[\d,]*(?:\.\d+)?)", re.I)
 
 
@@ -3943,8 +3944,15 @@ def printed_range_high(page_text: str, value_text: str, value: float | None) -> 
     idx = text.find(value_text)
     if idx < 0:
         return None
-    m = RANGE_TAIL_RE.match(text[idx + len(value_text): idx + len(value_text) + 40])
+    tail = text[idx + len(value_text): idx + len(value_text) + 40]
+    m = RANGE_TAIL_RE.match(tail)
     if not m:
+        return None
+    # the two ends share a unit: "rose by 11% to INR34.5 crores" is a growth and a new level, never a range
+    low_pct, high_pct = value_text.rstrip().endswith("%"), tail[m.end():].lstrip().startswith("%")
+    if low_pct != high_pct and not (not low_pct and high_pct and re.fullmatch(r"[\d.,\s]+", value_text)):
+        return None
+    if CURRENCY_RE.search(tail[:m.start(1)]) and not CURRENCY_RE.search(value_text):
         return None
     high = parse_number(m.group(1))
     if high is None or high <= value or high > abs(value) * 20:
