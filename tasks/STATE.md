@@ -8,6 +8,11 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
+0000000. 24 Nov (DeepSeek T-242): AR row gates in `v2/observations.py` (`apply_ar_row_gates`: unit / ageing-or-party
+  label / narrative growth / page-heading basis) after the statement gate; on the 60 graded rows W/P 9 of 11 handled,
+  0 of 42 R lost; full 200-page sample verified 1,414 -> 1,390. 15 AR-section tests pass (2 `tmp_path` tests blocked
+  by the sandbox's temp-dir ACL); `read_gate` annual_report fp 48d75aa69de7. NEXT: controller re-grades 60 fresh AR
+  rows, host-side test run.
 00. 24 Nov 16:55 (Wolf): AR statement lines never verified (XBRL holds them; DEVELOPER_GUIDE); pilot verified 3,017->1,124, graded W 9/10 gone; Eagle's exemptions (off-statement notes, dimensioned rows) 17:05 -> 1,414 verified. NEXT: fresh 60-row AR grade.
 00000. 24 Nov 18:45 (Eagle): T-242 transcript prompt v3 (5-page windows + call header) merged and GATE PASSED (fp 2fae7ddac53e; 15-call pilot, 60 statements 52/8/0/0 by DeepSeek 4ec6ea39). NEXT: hy4 loop transcripts on --transcript-prompt v3; numbers stay gated on filings. hungerg-free overloaded, dropped (Shivam).
 0000. 24 Nov 15:15 (Eagle): T-242 merged v2 guards 10-16 (f1fac770) + filing_events fixes 1-6 (tuned on the graded 60: fresh-seed grade needed). NEXT: reparse fresh 394_v2 snapshot -> Wolf grades 60 verified; events on 20 new stores -> Wolf grades.

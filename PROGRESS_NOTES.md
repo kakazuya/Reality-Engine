@@ -202,3 +202,9 @@
 - Next: controller runs the accepted tests outside the sandbox, merges, and adds the T-239 line to tasks/STATE.md
   (brief forbids editing it here). Remove the sandbox-made dirs `.t239base/`, `t239base/` (listing denied; cannot
   delete from inside).
+
+## T-242 AR row gates (24 Nov, DeepSeek)
+- Implemented `apply_ar_row_gates(rows, page_text)` in `v2/observations.py`: unknown/label-noun unit, ageing-or-party qualifier label, narrative growth, page-heading basis; wired in `apply_number_gates` annual_report branch and the read/reparse/recheck callers now pass page text.
+- Measured on the 60 graded rows of pilot_ar_reparsed2.db (read-only): 4 W gated + 1 W corrected (basis) + 4 P units corrected = 9 of 11 W/P; 0 of 42 R lost. Full 200-page sample: verified 1,414 -> 1,390 (24 gated), 294 unit/scale/basis corrections.
+- Tests: 6 new in test_ar_sections.py (with counters), 15 pass with the 2 tmp_path tests deselected; the 2 errors are the sandbox temp-dir ACL (os.scandir denied, not code). Typecheck: no new error in the changed file. read_gate annual_report fp 48d75aa69de7 (unchanged).
+- Docs: DEVELOPER_GUIDE (new entry + wiring sentence), tasks/STATE.md. NEXT: controller re-grades 60 fresh AR rows host-side.

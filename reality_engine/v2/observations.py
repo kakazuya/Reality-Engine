@@ -3696,12 +3696,169 @@ def apply_ar_statement_gate(rows: list[dict[str, Any]]) -> None:
             row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", AR_STATEMENT_REASON) if p)
 
 
-def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2: bool = True) -> None:
-    """T-242: the number gates that depend on the document type (a call number, an AR statement line)."""
+AR_SCALE_NOTE_RE = re.compile(
+    r"\(\s*[^()]{0,20}?\bin\s+(lakhs?|lacs?|crores?|crs?|millions?|billions?|thousands?)\b[^()]{0,40}\)"
+    r"|\(\s*times\s*\)", re.I)
+AR_NOT_MONEY_CUE_RE = re.compile(
+    r"\b(?:ratio|turnover|times|rank|margin|count|number of|shares?|units?|employees?)\b|%", re.I)
+AR_RATIO_CUE_RE = re.compile(r"\b(?:ratio|turnover|coverage|times)\b", re.I)
+AR_PER_UNIT_RE = re.compile(r"\bper\s+(?:equity\s+)?(?:share|unit|tonne|ton|kg|km|mt)\b|/ ?(?:share|unit|tonne|ton|kg|km|mt)\b",
+                            re.I)
+AR_MONEY_MEASURE_RE = re.compile(
+    r"loan|borrowing|payable|receivable|expense|cost|revenue|income|deposit|advance|salary|"
+    r"premium|amount|value|debt|dividend|interest|charge", re.I)
+AR_QUANTITY_MEASURE_RE = re.compile(
+    r"quantity|volume|count|number|production|capacity|spindles|sites|branches|locations|"
+    r"employees|shares|units|patents|meetings|companies|allottees|members", re.I)
+AR_BUCKET_LABEL_RE = re.compile(
+    r"\bmore\s+than\s+\d+|\bless\s+than\s+\d+|\bnot\s+due\b|"
+    r"(?:^|[\s(])(?:<|>)\s*\d+|\b\d+\s*(?:-|to)\s*\d+\s*(?:days?|months?|years?)", re.I)
+AR_AGEING_MEASURE_RE = re.compile(r"ageing|aging|related|rpt|bucket|overdue", re.I)
+AR_PARTY_LABEL_RE = re.compile(
+    r"\b(?:private\s+limited|pvt\.?\s+ltd|\bltd\.?\b|\bllp\b|\blimited\b)\b|"
+    r"\b(?:mr|mrs|ms|dr)\.?\s+[A-Z][a-z]+\b[^,;]{0,40}\b(?:director|manager|officer|kmp|ceo|cfo)\b", re.I)
+AR_TRANSACTION_WORD_RE = re.compile(
+    r"\b(?:purchase|purchases|sale|sales|sold|discount|royalty|rent|interest|remuneration|commission|"
+    r"advance|loan|deposit|reimbursement|services?|goods|materials?|dividend)\b", re.I)
+AR_NARRATIVE_WORDS = frozenset(
+    "a an the increase increased increasing of by to on in for and grew grow growth rose risen rise up "
+    "down decrease decreased decline declined fell fall higher lower yoy y-o-y percent per cent "
+    "approximately about around nearly over slight slightly marginal marginally compared versus vs basis "
+    "year fy from while which was were is are at".split())
+AR_CHANGE_WORD_RE = re.compile(
+    r"\b(?:increase|increased|increasing|grow|grew|growth|rose|risen|rise|up|down|decrease|decreased|"
+    r"decline|declined|fell|fall|higher|lower)\b", re.I)
+AR_HEADING_BASIS_RE = re.compile(r"\b(standalone|consolidated)\b[^.\n]{0,40}?\bfinancial statements?\b", re.I)
+AR_NEW_NODE_FAMILY = {"revenue": "money", "cost": "money", "capex": "money", "debt": "money",
+                      "equity": "money", "working_capital": "money", "capacity": "capacity",
+                      "margin": "percent"}
+
+
+def ar_scale_note(page_text: str) -> tuple[str, str, float] | None:
+    """The page's one printed scale note: ``(unit, family, scale)``; None when it prints none or several kinds."""
+    kinds: set[tuple[str, float]] = set()
+    for match in AR_SCALE_NOTE_RE.finditer(norm_space(page_text)):
+        word = (match.group(1) or "times").lower()
+        if word == "times":
+            kinds.add(("ratio", 1.0))
+        else:
+            factor = _scale_factor(word)
+            if factor:
+                kinds.add(("money", float(factor)))
+    if len(kinds) != 1:
+        return None
+    family, factor = kinds.pop()
+    if family == "ratio":
+        return "Times", family, 1.0
+    unit = {1e3: "Thousands", 1e5: "Lakhs", 1e6: "Millions", 1e7: "Crores", 1e9: "Billions"}.get(factor)
+    return (unit, family, factor) if unit else None
+
+
+def ar_measure_family(row: dict[str, Any]) -> str:
+    """The unit family an AR row's measure declares (dictionary, else a declared NEW driver node's family)."""
+    measure = norm_space(row.get("measure"))
+    family = _MEASURE_FAMILY.get(measure, "")
+    if family:
+        return family
+    node = norm_space(row.get("new_driver_node")).lower().split(".", 1)[0]
+    return AR_NEW_NODE_FAMILY.get(node, "")
+
+
+def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> None:
+    """T-242: the annual-report number errors a script can catch from the row and its page.
+
+    A fresh strict grade after the AR statement gate was 49 right / 4 partial / 7 wrong: a >3-year ageing bucket
+    stored as ``trade_payables``, a related party's purchase stored as ``raw_material_cost``, a narrative
+    "an increase of" stored as ``profit_before_tax_growth_yoy``, a label noun ("vehicle") stored as the unit, and a
+    standalone note page stored ``consolidated``.  So, for annual-report number rows only:
+
+    1. unit: a unit the unit vocabulary does not recognise (a lone backtick) is gated; a blank unit takes the
+       page's one printed scale note ("(Rs. in lacs)", "(times)", "(₹ in million)") when that note fits the
+       measure;
+    2. qualifier label: an ageing/overdue bucket or a party-with-transaction label under a headline measure is a
+       slice, not the measure (a party-only label stays: it is the row's dimension);
+    3. narrative growth: a percent row whose whole label is change words ("an increase of") names no measure;
+    4. basis: the page heading's standalone/consolidated statement overrides a disagreeing basis.
+
+    The row stays served; only its status/label changes.  Not the existing guards: this runs after
+    :func:`apply_ar_statement_gate`.
+    """
+    text = norm_space(page_text)
+    note = ar_scale_note(text)
+    heading = {match.group(1).lower() for match in AR_HEADING_BASIS_RE.finditer(text)}
+    basis = next(iter(heading)) if len(heading) == 1 else ""
+    for row in rows:
+        if norm_space(row.get("record_type") or "number") != "number":
+            continue
+        if basis and str(row.get("basis") or "") != basis:
+            row["basis"] = basis
+            row["basis_source"] = "page_heading"
+        unit = norm_space(row.get("unit"))
+        cues = " ".join(norm_space(row.get(key)) for key in
+                        ("measure", "printed_label", "printed_axis", "series_title"))
+        if not unit and note:
+            note_unit, note_family, note_scale = note
+            measure_family = ar_measure_family(row)
+            fits = (family_ok(measure_family, note_family)
+                    if note_family == "ratio"
+                    else family_ok(measure_family, "money"))
+            if note_family == "ratio":
+                fits = fits and (measure_family == "ratio" or bool(AR_RATIO_CUE_RE.search(cues)))
+            elif not measure_family:
+                fits = fits and not AR_NOT_MONEY_CUE_RE.search(cues)
+            if fits:
+                row["unit"], row["unit_family"], row["scale"] = note_unit, note_family, note_scale
+                unit = note_unit
+        if str(row.get("status") or "") != "verified":
+            continue
+        measure = norm_space(row.get("measure"))
+        headline = measure in _MEASURE_FAMILY and not AR_AGEING_MEASURE_RE.search(measure)
+        reason = ""
+        unit_family = infer_unit_family(unit)
+        # ponytail: only a unit with no alphabetic unit word ("`"), or a label noun on a money measure ("vehicle
+        # loans" -> "vehicle"), is gated.  The vocabulary also misses real units ("Percentage", "kilograms"); gating
+        # those would label mostly-right rows unverified, so the gate waits for the unit vocabulary to grow.
+        if unit and not unit_family and not re.search(r"[A-Za-z]", unit) and not AR_PER_UNIT_RE.search(unit):
+            reason = f"ar_unit_unknown: {unit!r} is not a unit the page vocabulary knows"
+        elif unit_family in ("count", "capacity", "length", "area", "energy") \
+                and AR_MONEY_MEASURE_RE.search(measure) and not AR_QUANTITY_MEASURE_RE.search(measure):
+            reason = f"ar_unit_unknown: {unit!r} is the row's label noun, not the money unit the measure needs"
+        label = norm_space(row.get("printed_label"))
+        if not reason and headline and AR_BUCKET_LABEL_RE.search(label) \
+                and not _measure_names_qualifier(measure, label):
+            reason = f"ar_qualified_label: {label!r} is an ageing/overdue bucket, not {measure}"
+        party = AR_PARTY_LABEL_RE.search(label)
+        if not reason and headline and party and AR_TRANSACTION_WORD_RE.search(label[:party.start()]):
+            # the transaction phrase must come BEFORE the party name: "Investment Services Pvt. Ltd." is a party
+            reason = f"ar_qualified_label: {label!r} is one related party's transaction, not {measure}"
+        if not reason and (unit_family == "percent" or "%" in unit) \
+                and _narrative_change_label(label):
+            reason = f"ar_narrative_growth: {label!r} is a change phrase with no measure"
+        if reason:
+            row["status"] = "unverified"
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", reason) if p)
+
+
+def _measure_names_qualifier(measure: str, label: str) -> bool:
+    flat_measure = re.sub(r"[^a-z0-9]+", "", measure.lower())
+    flat_label = re.sub(r"[^a-z0-9]+", "", label.lower())
+    return bool(flat_label) and flat_label in flat_measure
+
+
+def _narrative_change_label(label: str) -> bool:
+    words = [word for word in re.split(r"[^a-z0-9-]+", label.lower()) if word and not word.isdigit()]
+    return bool(words) and bool(AR_CHANGE_WORD_RE.search(label)) \
+        and all(word in AR_NARRATIVE_WORDS for word in words)
+
+
+def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2: bool = True,
+                       page_text: str = "") -> None:
+    """T-242: the number gates that depend on the document type (a call number, an AR statement line, an AR row)."""
     if doc_type == "transcript" and transcript_v2:
         apply_transcript_number_gate(rows)       # Shivam 24 Nov: call numbers need a filing to verify
     elif doc_type == "annual_report":
         apply_ar_statement_gate(rows)
+        apply_ar_row_gates(rows, page_text)
 
 
 def apply_parts_sum(rows: list[dict[str, Any]], stats: dict[str, Any] | None = None) -> None:
@@ -4904,7 +5061,7 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
                                       deck_asof=deck_period(store_db, doc_key, check_text),
                                       deck_basis=deck_basis(str(store_db), str(doc_key)),
                                       ocr_text=str(ocr_row[0] or "") if ocr_row else "", ocr_page=ocr_page)
-            apply_ar_statement_gate(rows)          # T-242: an AR statement line is XBRL's, never page-verified
+            apply_number_gates(rows, doc_type, page_text=check_text)   # T-242: AR statement line + row gates
             stats["ar_pages"] += 1
         else:
             ctx_key = (store_db, str(doc_key))
@@ -5357,7 +5514,7 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                                         ocr_text=result["ocr_text"], ocr_page=ocr_read,
                                         transcript_v2=transcript and transcript_v2_mode(),
                                         deck_guards=meta.get("doc_type") == "deck")
-    apply_number_gates(result["rows"], str(meta.get("doc_type") or ""))
+    apply_number_gates(result["rows"], str(meta.get("doc_type") or ""), page_text=check_text)
     return result
 
 
@@ -6024,6 +6181,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             before_gate = sum(1 for row in updated if row["status"] == "verified")
             apply_ar_statement_gate(updated)
             stats["ar_statement_rows"] += before_gate - sum(1 for row in updated if row["status"] == "verified")
+            apply_ar_row_gates(updated, raw_text)   # T-242: unit / qualifier / narrative / basis row gates
         for row in updated:
             old_status = str(row["_old_status"])
             old_reason = str(row["_old_reason"])
