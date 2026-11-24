@@ -2311,6 +2311,14 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   fake part, `ram_stop`, timeout, last-5-lines on failure, a `parts.csv` and a `pilot10_measure.csv` row, plus the
   T-232 part/doc-type filters and the deck manifest below).
 
+- **Raw files to Drive without a build (`raw_only_to_drive`, T-241, Shivam 24 Nov 13:35: "Don't worry about the store
+  build ... Just download their files and send them up onto Google Drive").** `python -m
+  reality_engine.scripts.raw_only_to_drive --delete --poll 300 --listing-dir C:/RealityEngine/tg_build/raw_only/drive_index`
+  takes every ISIN of the history fetch manifest with no `pending` row left and moves its `status='ok'` files still on
+  disk and older than `--min-age` (900 s) in one batch per pass (`--max-files` 20,000): raw_to_drive hash, compare,
+  upload, delete only when md5 and size are on Drive. It never touches stores or `to_drive.db`; a later build reads the
+  files back from Drive through `raw_store`. First pass 24 Nov 13:46: 676 files, 1.2 GB. Log
+  `C:/RealityEngine/tg_build/raw_only/raw_only.log`. Tests `reality_engine/tests/test_raw_only_to_drive.py`.
 - **Ops gate: Shivam's operating rules as checks (T-241, 24 Nov 2026).** `reality_engine/scripts/ops_gate.py` reads
   `ops_rules.json` (each rule carries its source; edit only on Shivam's word) and prints one `RULE <name>: ...` line per
   breach (exit 1) or `ops_gate: ok`: `heartbeat` (no live `job_watch wait` of THIS account - waiter files record
