@@ -8,8 +8,8 @@ split. The factor study needs dated, quantified corporate events, one row per fi
 extractor over calls and annual reports restated facts across documents and stored parent-company facts under a
 subsidiary.
 
-Code `reality_engine/research/filing_events.py`; tests `reality_engine/tests/test_filing_events.py` (32 tests, no
-network: 12 stage-A real excerpts, 17 stage-B excerpts from Wolf's cited filings, and synthetic traps; every real
+Code `reality_engine/research/filing_events.py`; tests `reality_engine/tests/test_filing_events.py` (85 tests, no
+network: stage-A real excerpts, stage-B/C/T-242 excerpts from the graded filings, and synthetic traps; every real
 excerpt quotes its `doc_key`). Output DB `--out`, default `.tmp/t231/events.db`; stores are read with `connect_ro`
 (`mode=ro`) and never written.
 
@@ -18,6 +18,7 @@ excerpt quotes its `doc_key`). Output DB `--out`, default `.tmp/t231/events.db`;
 `event` -- one row per (announcement, class, seq). Columns: `store`, `symbol`, `isin`, `doc_key`, `kind`, `method`
 (`script` | `model`), `status`, `entity_scope`, `why`, `title`, `filing_date`, `event_date`, `known_at`, `page`,
 `seq`, `amount_inr_cr`, `amount_usd_mn`, `value_text`, `value_annual`, `value_total`, `share_pct`, `customer`,
+`customer_desc` (T-242 round 4: a printed category, never a named awarder),
 `execution_months`, `order_kind`, `purpose`, `completion`, `capacity_value`, `capacity_unit`, `plant`,
 `price_per_share`, `shares`, `instrument`, `raise_stage`, `raise_id`, `raise_primary`, `quote`, `amends`, `detail`;
 `UNIQUE (doc_key, kind, seq)` is one event per filing per class, `seq` splitting a multi-order letter. `kind` is
@@ -92,8 +93,9 @@ stores: 251 events, 0 quarantined, no non-order row verified.
   dated rows (approval Nov 2024, allotment Mar 2025) under one id and one primary.
 * **C2 recap fold.** The same order 8-120 days later (press release recapping an earlier disclosure) folds only
   when the value repeats within 0.05% or the later text names the earlier filing date, plus the same customer;
-  within 7 days the 1% rule stands. Different customers stay separate (KRYSTAL 551/556, ABINFRA 397/439); the later
-  document goes to `amend`.
+  within 7 days the 0.5% rule stands (round 4; the round-3 note said 1%, the code used 0.005), and a customer
+  printed once in full and once as its initialism (`TPSODL and TPWODL`) is the same customer. Different customers
+  stay separate (KRYSTAL 551/556, ABINFRA 397/439); the later document goes to `amend`.
 * **C3 vetoes.** "Completion of project/order"; "exploring", "to consider", "proposal to", "enabling resolution",
   borrowing limits (capex and raises); a buyer-side EPC contract ("signed/entered into ... EPC contract ...
   with", "EPC contract to be entered into between"); "ballot" never matches allotment (the recall title filter
@@ -106,6 +108,50 @@ stores: 251 events, 0 quarantined, no non-order row verified.
   ("9 for every 26"); an equity + warrant issue sums the distinct counts; a letter with two orders gives two rows
   (`seq` 1, 2), and a fresh LOA plus a variation gives one row each.
 
+## 3c. T-242 round 4 (24 Nov 2026): customers, roll-ups, aggregates, duplicates
+
+Seven script fixes from the second fresh strict 60-row grade (25 unseen stores:
+`C:/RealityEngine/t242/events_grade_fresh4/grades.csv`, R/P/W/J = 46/11/2/1, 5.0% W+J at the bar). Each fix is
+asserted by a test in `test_filing_events.py`.
+
+1. **Customer clean-up in one place** (`_clean_party`). A trailing salutation (`Dear Sir/Madam`, `Respected
+   Sir/Ma'am`) and a trailing city/address after a legal suffix (`Signatureglobal (India) Limited Mumbai` ->
+   `Signatureglobal (India) Limited`) are cut; `_ANNEXURE_AWARDER` may no longer begin a name inside a word
+   (`\s*(?<!\w)` before the captured name). The **cause** of `uth Central Railway` was not this module but
+   `pilot3/order_wins.py` `_OC`: the trailing `(?:\s?\(?s\)?)?` after `Order/Contract` consumed the space and the
+   `S` of the next word. The plural is now attached or bracketed (`(?:\s*\(\s*s\s*\)|s)?`) and the trailing junk
+   character is punctuation-only (`[^\w\s]?`), so `order(s)` / `orders` / `Order/Contract X` all end at the value.
+   `_FROM_ENTITY` accepts one bracketed token (`GAIL (India) Limited`, fresh4 #24) and the body-name capture no
+   longer runs across a `|`-separated headline.
+2. **`customer_desc`** (new nullable `event` column; `COLUMNS`, `SCHEMA`, and `_ensure_event_columns` which adds it
+   to an older `--baseline` copy before a scoped merge). A customer value that is all lower case or starts
+   `a|an|leading|key|domestic|customers|clients|one of|...` is a description, not an awarder; `_split_customer`
+   moves it out and leaves `customer` NULL (`A hyperscale partner`, `Domestic Telecom Operator`, `Leading telecom
+   infrastructure company`, `key customers in the renewable energy sector`). It runs on script and model rows.
+3. **Period roll-up veto** (`_ORDER_ROLLUP`): `awarded orders worth X in FY24`, `orders received during the
+   year/quarter` are aggregates, not an order (fresh4 W #51: 900 cr "awarded in FY24"). `order inflow/intake for
+   FY` is read on the **title only** (`_ORDER_INFLOW_TITLE`): a genuine order-win release (KEC, TRANSRAILL) quotes
+   its own order inflow in a later paragraph, and vetoing the body would drop the real order (round-4 regression,
+   fixed before the final run).
+4. **Title aggregate over a split table** (`_FILING_TOTAL` full-rupee branch + `order_fields`). When the title
+   prints the aggregate and the table prints one item of it, the row is the printed aggregate: SUGSLLOYD's title
+   214.27 crore with table cells 115.0194 + 99.2543 (fresh4 W #38) is now one verified row of 214.27, not the first
+   cell. The body's "aggregate order value ... is ₹ 2,14,27,36,930/-" is the printed confirmation; no printed
+   aggregate, no correction.
+5. **Cross-filing duplicate** (`_same_customer`): a customer printed once in full and once as its initialism
+   (`TPSODL and TPWODL` vs `TP Southern Odisha Distribution Limited TP Western Odisha ...`) is the same customer,
+   so the next-day press release (fresh4 J #44) folds into the earlier row through the existing 7-day,
+   `_same_value` 0.5% path and lands in `amend`. A token-subset rule was tried and removed: it folded graded R #7
+   (`Golden Temple`, 8.9 cr) into a different 3.7083 cr row whose `value_annual` is 8.9.
+6. **Tests.** Six new cases in `test_filing_events.py` (one per step, from the quoted rows); 85 passed.
+7. **Measured** on the 25 fresh4 stores before -> after: 303 -> 301 events, `order_win` verified 133 (97 script +
+   36 model) -> 132 (96 + 36); one quarantined SUGSLLOYD row became verified when the same aggregate rule fixed
+   its 0.0047 -> 4.68 cr reading; the two lost rows are the intended W #51 (roll-up) and J #44 (duplicate folded).
+   All 11 P customer rows are correct (7 needed: 2 leading cuts, 3 salutations, 1 city, 1 pattern miss -> 5
+   descriptions moved to `customer_desc` and the GAIL name found), and **no graded R row changed amount, customer
+   or status**. On the 20 fresh3 stores the round-3 result is unchanged: 251 events, `order_win` verified 193, 0
+   rows lost vs `events_round3.db`, only customer clean-ups changed.
+
 ## 4. Model fallback
 
 Only a classified **order win** whose printed value the script could not fill is sent, once, to `hy4-flash-free`
@@ -117,8 +163,9 @@ run made 0 new requests (the cache held the earlier replies) and produced 14 ver
 
 ## 5. Duplicates, amendments, parent scope
 
-* **B2 same order filed twice**: same symbol, kind `order_win`, value within 1% (annual base or `value_total` counts),
-  same customer when both printed (or an exactly equal value when one is missing), filing dates within 7 days: the
+* **B2 same order filed twice**: same symbol, kind `order_win`, value within 0.5% (annual base or `value_total`
+  counts), same customer when both printed (an initialism of the full name counts, round 4; or an exactly equal
+  value when one is missing), filing dates within 7 days: the
   earlier `known_at` row stands; the later document goes to `amend` (28 links this run: 24 same-order twins, 4 real
   addenda/corrigenda).
 * **B3 amendment links** are on `event.amends` (PREMEXPLN 163 -> 155).
@@ -143,6 +190,11 @@ python -m reality_engine.research.filing_events --out .tmp/t231/events_fix.db \
   --baseline D:/RealityEngine/t231/events.db --only .tmp/sel.json --workers 4
 python -m reality_engine.scripts.regress events --db .tmp/t231/events_fix.db \
   --baseline D:/RealityEngine/t231/events.db
+# T-242 round 4 on the unseen sets (stores read from the universe build, read-only)
+T228_STORE_ROOT=C:/RealityEngine/tg_build/full394 python -m reality_engine.research.filing_events \
+  --stores $(cat C:/RealityEngine/t242/fresh4_stores.txt) --workers 4 \
+  --out .tmp/events_round4_fresh4.db --cache .tmp/events_cache.db \
+  --report-file .tmp/events_round4_fresh4_report.md      # and the same with fresh3_stores.txt
 ```
 
 T-233's golden set (`reality_engine/tests/golden/events.jsonl`, 69 rows from
@@ -173,9 +225,9 @@ Recall (30 random order/contract/allot titled filings, seed 9, pool 914): 10 sho
 ## 7. Checks
 
 ```bash
-python -m pytest -q reality_engine/tests/test_filing_events.py   # 79 passed (T-242 round 3)
+python -m pytest -q reality_engine/tests/test_filing_events.py   # 85 passed (T-242 round 4)
 python plugins/code-tools/ct.py typecheck reality_engine/research/filing_events.py \
-  reality_engine/tests/test_filing_events.py                     # 0 errors
+  reality_engine/tests/test_filing_events.py                     # 2 pre-existing sys.stdout.reconfigure errors
 ```
 
 ## 8. Limitations / not built
@@ -191,7 +243,8 @@ python plugins/code-tools/ct.py typecheck reality_engine/research/filing_events.
 * `capacity_commissioned` is intentionally narrow: planned expansions are `other` (or a capex approval when a
   quantified board approval exists).
 * A multi-line "Broad consideration" cell with several per-order values is read as the first value by
-  `order_wins`; only the headline-aggregate case is corrected.
+  `order_wins`; round 4 corrects it when the title prints the aggregate and the body prints that total (the
+  headline-aggregate case), otherwise the first item stays.
 * Parent/subsidiary dedupe across stores is not built (no announcement in the 91 carried a parent label); the 3
   parent-labelled capex rows are kept with `entity_scope='parent'`.
 * `tasks/STATE.md` is not edited: the brief forbids it; the controller should add the T-231 status/accept line.
