@@ -4468,7 +4468,7 @@ DECK_DATE_VALUE_RE = re.compile(
     r"^(?:"
     r"Q[1-4]\s*(?:FY\s*['\u2019]?\d{2,4})?"
     r"|H[12]\s*(?:FY\s*['\u2019]?\d{2,4})?"
-    r"|9M\s*(?:FY\s*['\u2019]?\d{2,4})?"
+    r"|9M\s*FY\s*['\u2019]?\d{2,4}"                       # a bare '9M' is nine million, not a period
     r"|FY\s*['\u2019]?\d{2,4}(?:\s*[-/]\s*['\u2019]?\d{2,4})?"
     r"|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*[-/]?\s*['\u2019]?\d{2,4}"
     r"|\d{1,2}\s*(?:(?:and|&|,)\s*\d{1,2}\s*)*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"

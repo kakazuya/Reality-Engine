@@ -121,3 +121,9 @@ def test_plain_value_has_no_high_end():
                         "value_text": "22", "unit": "Crore", "period": "FY26"}])[0]
     assert row["value"] == 22.0 and row["value_high"] is None
 
+
+
+def test_nine_million_is_not_a_period():
+    from reality_engine.v2.observations import deck_date_value
+    assert not deck_date_value("9M", "customers") and not deck_date_value("9M", "")
+    assert deck_date_value("9M FY27", "") and deck_date_value("9MFY26", "")
