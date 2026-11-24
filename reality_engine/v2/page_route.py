@@ -118,6 +118,8 @@ def _images_share(pdf_path: Any, page_no: int) -> float:
                 x0, y0, x1, y1 = info.get("bbox") or (0, 0, 0, 0)
                 share = max(share, abs((x1 - x0) * (y1 - y0)) / area)
             return share
+    except RuntimeError:        # raw manifest unreadable (raw_store, T-241): fail the build part, never misroute
+        raise
     except Exception:
         return 0.0
 
@@ -251,6 +253,8 @@ def _export_page(store_db: Any, doc_key: str, page_no: int, out_dir: Path) -> st
                 one.insert_pdf(src, from_page=page_no - 1, to_page=page_no - 1)
                 one.save(str(out_dir / f"{stem}.pdf"))
         return stem
+    except RuntimeError:        # raw manifest unreadable (raw_store, T-241)
+        raise
     except Exception:
         return ""
 

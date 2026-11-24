@@ -20,10 +20,10 @@ import hashlib
 import os
 import shutil
 import sqlite3
-import time
 import subprocess
 import tempfile
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -147,6 +147,11 @@ ARCH17_ROOT_ID = "1aSQEfkMMGmpEpDDq7tI9MH7kmNJNemTH"
 ARCH17_TOP = "arch17"
 
 
+LOAD_TIMEOUT_S = 60      # one connect's wait on a locked manifest (T-241)
+LOAD_TRIES = 3
+LOAD_BACKOFF_S = 300     # a failed load is not retried for this long
+
+
 def _norm(path) -> str:
     """One spelling per path: forward slashes, lower case, no ``..`` (Windows callers vary)."""
     text = os.fspath(path).replace("\\", "/")
@@ -205,6 +210,7 @@ class RawStore:
         self._children_data: dict[tuple[str, str], dict[str, str]] = {}
         self._loaded = False
         self._load_lock = threading.Lock()
+        self._fail: tuple[float, Exception] | None = None   # (retry after, error) of the last failed load
         self._fetched: dict[tuple[str, str], Path] = {}
         self._keep_dir: Path | None = None
 
@@ -226,7 +232,15 @@ class RawStore:
             return
         with self._load_lock:               # page_reader shares one store across worker threads
             if not self._loaded:
-                self._load()                # a failed load raises here and is tried again on the next lookup
+                # A failed load is remembered for LOAD_BACKOFF_S so a busy manifest costs one wait, not one per page.
+                if self._fail and time.monotonic() < self._fail[0]:
+                    raise RuntimeError(f"raw manifest {self.manifest} unreadable (retry later): {self._fail[1]}")
+                try:
+                    self._load()
+                except RuntimeError as exc:
+                    self._fail = (time.monotonic() + LOAD_BACKOFF_S, exc)
+                    raise
+                self._fail = None
                 self._loaded = True
 
     def _load(self) -> None:
@@ -238,9 +252,9 @@ class RawStore:
         # then fail loudly so the build part fails and is retried instead.
         rows = None
         last: Exception | None = None
-        for attempt in range(4):
+        for attempt in range(LOAD_TRIES):
             try:
-                con = sqlite3.connect(f"file:{self.manifest.as_posix()}?mode=ro", uri=True, timeout=300)
+                con = sqlite3.connect(f"file:{self.manifest.as_posix()}?mode=ro", uri=True, timeout=LOAD_TIMEOUT_S)
                 try:
                     rows = con.execute("SELECT root, rel, md5, drive_path FROM local_file "
                                        "WHERE drive_path IS NOT NULL AND drive_path != ''").fetchall()
@@ -249,7 +263,8 @@ class RawStore:
                 break
             except sqlite3.OperationalError as exc:      # locked / busy: wait and retry
                 last = exc
-                time.sleep(30 * (attempt + 1))
+                if attempt + 1 < LOAD_TRIES:
+                    time.sleep(20 * (attempt + 1))
             except sqlite3.DatabaseError:                 # not a sqlite file: no manifest, as before
                 return
         if rows is None:

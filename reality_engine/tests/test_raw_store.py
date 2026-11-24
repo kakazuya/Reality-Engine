@@ -268,3 +268,30 @@ def test_keep_fetches_on_first_use_once_and_cleans_up(tmp_path):
         assert len(calls) == 1
     assert not kept.exists()                              # deleted on exit
     assert store._keep_dir is None
+
+
+def test_busy_manifest_raises_then_loads(tmp_path, monkeypatch):
+    """T-241: a locked manifest raises (never loads as empty), the failure is remembered, and rows load once free."""
+    import sqlite3 as _sq
+
+    from reality_engine import raw_store as rs
+    m = tmp_path / "m.db"
+    con = _sq.connect(m)
+    con.execute("CREATE TABLE local_file (path TEXT PRIMARY KEY, root TEXT, rel TEXT, size INTEGER, mtime REAL, "
+                "md5 TEXT, status TEXT, drive_path TEXT, deleted_at TEXT)")
+    con.execute("INSERT INTO local_file VALUES ('x','raw','a/b.pdf',1,0,'d41d','on_drive','msi_raw/raw/a/b.pdf',NULL)")
+    con.commit()
+    monkeypatch.setattr(rs, "LOAD_TIMEOUT_S", 0.1)
+    monkeypatch.setattr(rs.time, "sleep", lambda s: None)
+    con.execute("BEGIN EXCLUSIVE")
+    store = rs.RawStore(roots={"raw": tmp_path / "raw"}, manifest=m)
+    import pytest as _pt
+    with _pt.raises(RuntimeError):
+        store.drive_path(tmp_path / "raw" / "a" / "b.pdf")
+    with _pt.raises(RuntimeError, match="retry later"):          # remembered: no second wait
+        store.drive_path(tmp_path / "raw" / "a" / "b.pdf")
+    con.rollback()
+    con.close()
+    monkeypatch.setattr(rs, "LOAD_BACKOFF_S", 0)
+    store._fail = None
+    assert store.drive_path(tmp_path / "raw" / "a" / "b.pdf") == "msi_raw/raw/a/b.pdf"
