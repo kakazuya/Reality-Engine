@@ -4107,6 +4107,21 @@ _QUOTA: dict[str, float] = {"seconds": 0.0}
 _QUOTA_LOCK = threading.Lock()
 
 
+def apply_prompt_choice(transcript_prompt: str) -> None:
+    """Set the transcript prompt (and the reader set_reader chose) here AND on the imported module.
+
+    Run as ``python -m`` this file is ``__main__``; read_gate imports ``reality_engine.v2.observations``, a second
+    module object, so a choice made only here left the gate fingerprinting v1 while v2 read (24 Nov bug).
+    """
+    import importlib
+    globals()["TRANSCRIPT_PROMPT"] = transcript_prompt     # T-241: v1 unless the A/B picks v2
+    imported = importlib.import_module("reality_engine.v2.observations")
+    if imported.__dict__ is not globals():
+        imported.TRANSCRIPT_PROMPT = transcript_prompt
+        imported.OBS_READER = OBS_READER
+        imported.READER = READER
+
+
 def template_for(doc_type: str) -> str:
     """The prompt template a page of ``doc_type`` is read with; read_gate fingerprints exactly this (T-241)."""
     if "transcript" in str(doc_type):
@@ -5201,7 +5216,7 @@ def main(argv: list[str] | None = None) -> int:
         set_reader(args.reader)
     except KeyError:
         parser.error(f"unknown --reader {args.reader!r}; known: {', '.join(sorted(rp.MODELS))}")
-    globals()["TRANSCRIPT_PROMPT"] = args.transcript_prompt     # T-241: v1 unless the A/B picks v2
+    apply_prompt_choice(args.transcript_prompt)
 
     only = None
     if args.only:

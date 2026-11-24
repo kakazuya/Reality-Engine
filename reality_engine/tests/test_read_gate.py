@@ -135,3 +135,23 @@ def test_checkpoint_stops_the_running_read(gates, tmp_path, monkeypatch):
     con.close()
     with pytest.raises(rg.GateError, match="not graded"):
         rg.check(["deck"], 1, out)
+
+
+def test_override_scope_is_the_exact_output_name(gates, tmp_path):
+    rg.save([_entry(verdict="override", by="Shivam", reason="x", quote="q", scope="obs_transcripts_fy27")])
+    with pytest.raises(rg.GateError):
+        rg.check(["transcript"], 5000, tmp_path / "obs_transcripts_fy27_v2.db")
+
+
+def test_cli_prompt_choice_reaches_the_gate():
+    """python -m runs observations as __main__ (a second module object); the gate must still see v2."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("__obs_as_main__", obs.__file__)
+    main_copy = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(main_copy)
+    try:
+        main_copy.apply_prompt_choice("v2")
+        assert obs.TRANSCRIPT_PROMPT == "v2"
+        assert rg.fingerprint("transcript") == "e95108f16e65"
+    finally:
+        obs.TRANSCRIPT_PROMPT = "v1"
