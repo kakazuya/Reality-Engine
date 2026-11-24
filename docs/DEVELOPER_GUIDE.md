@@ -2951,4 +2951,7 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   segment/geography/product/customer/plant. Measured on the 200-page pilot rows: verified 3,017 -> 1,414 (was 1,124);
   graded W gated 9 of 10 (unchanged), graded R kept verified 21 of 42 (was 18); the 28 graded rows still verified
   are 21 R / 6 P / 1 W (75% right, 3.6% W+J).
+- **Checkpoint grading note (T-242, 24 Nov 2026, Wolf).** An ungraded hy4 checkpoint is not an ops-gate breach while
+  `ckpt_NNNN.grading.md` (grader job id and owner) is under 3 h old; after that it breaches again. A `.fix.md` still
+  covers only a FAILED grade.
 

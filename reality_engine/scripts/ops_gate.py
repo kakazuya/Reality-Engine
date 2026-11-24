@@ -181,6 +181,9 @@ def check(now: dt.datetime | None = None, rules: dict[str, Any] | None = None,
             fix = read_gate.audit_dir(out) / name.replace(".jsonl", ".fix.md")
             if not bad.endswith("not graded") and fix.is_file() and now.timestamp() - fix.stat().st_mtime < 86400:
                 continue    # a failed audit with a named fix under 24 h old (Eagle: a forgotten fix must not hide)
+            grading = read_gate.audit_dir(out) / name.replace(".jsonl", ".grading.md")
+            if bad.endswith("not graded") and grading.is_file() and now.timestamp() - grading.stat().st_mtime < 3 * 3600:
+                continue    # a named grader is on it (job id + owner in the note); stale after 3 h
             lines.append(f"RULE hy4: audit checkpoint of {out} needs a passing grade ({bad}) - grade it (a manager who did "
                          "not write its prompt), or for a fail write ckpt_NNNN.fix.md naming the fix and its owner")
     peak = in_peak(now, rules)
