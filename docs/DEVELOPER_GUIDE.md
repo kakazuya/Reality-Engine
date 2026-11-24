@@ -2863,3 +2863,29 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   balance sheet in ACC's deck) and an unnamed subsidiary's margin are still tagged `company` by the reader: prompt work.
   Grader warning: some decks print the value BEFORE its label (BLACKROSE p, 4 of 60 pages); grade by the arithmetic.
 
+- **Annual-report useful sections (`v2/ar_sections.py`, T-242, 24 Nov 2026, Wolf).** `kept_pages(pages)` picks the AR
+  table pages worth a hy4 read: MD&A, highlights, segment, operations (order book, capacity), subsidiaries (AOC-1),
+  off-balance notes (contingent liabilities, related parties, borrowing terms, ageing, revenue split), ratios,
+  disputes, material RPTs; a heading-zone drop section (audit, governance, notice, CSR/BRSR, primary statements,
+  policies) wins; an unheaded page after a running kept section continues it. Measured on 120 universe stores: 3,309
+  of 14,743 table pages kept (22%). Wired into `observations.pages_from_store`, `observations.run`, and the CLI via
+  `--ar-sections` (off by default, `ar_sections=False`), filtering only `annual_report` pages and counting dropped
+  pages under `dropped["ar_section"]` while leaving other document types untouched.
+- **Annual-report selector round 2 (T-242, 24 Nov 2026, Wolf).** A hand audit of 80 pages (Sonnet, read-only,
+  `D:/RealityEngine/t242/ar_audit/ar_audit.csv`) found the round-1 keep-list 42% precise with about half the useful
+  pages dropped. `ar_sections` is now drop-list first: a heading-zone boilerplate section (audit, governance, notice,
+  CSR/BRSR, employee benefits, primary statements, policies, and the XBRL note schedules: PPE, share capital, other
+  equity, deferred tax, payables, inventories, EPS...) drops the page, except that a notes running header skips the
+  primary-statement/policies/CSR drops (Eagle); keep headings for off-balance notes, material RPTs and subsidiaries need
+  a figure table (`numeric_table`: >= 8 lines with amounts); any other figure table is kept as `table`; prose is
+  dropped. `needs_ocr` pages have empty text and are dropped unless they continue a kept MD&A/risks/highlights section.
+  120 universe stores: 8,055 of 14,743 table pages kept (55%). Re-audit of precision and recall before the AR pilot.
+- **Annual-report selector round 3: safe drops + hy4 triage (T-242, 24 Nov 2026, Wolf).** The round-2 re-audit
+  (`D:/RealityEngine/t242/ar_audit2/ar_audit2.md`) found the figure-table fallback 15% precise. Both audits (160 pages,
+  `D:/RealityEngine/t242/ar_gold/gold.json`) now score any selector offline (`eval.py <module>`): round 1 39% precise /
+  44% recall, round 2 27% / 81%, hy4 text-only triage 67% / 100% (`hy4_classify.py`, 198k input tokens for 160 pages).
+  `--ar-sections` therefore drops only `SAFE_DROP` headings (notice, governance, audit, CSR/BRSR, remuneration, market
+  data, cover letters, policies; 30 of 160 gold pages, no useful one) and empty pages, then asks hy4 `TRIAGE_PROMPT`
+  per page; verdicts are cached in `C:/RealityEngine/t242/ar_triage.db`; an unparsed reply counts as useful and is
+  not cached. Eagle's review: the triage runs in `run()` on the SAMPLED pages only (`triage_selection`: the seeded order, topped up until `--limit` useful pages, at most `TRIAGE_OVERSAMPLE`=3 x limit questions, after `read_gate.check` of `limit` reads), and `TRIAGE_PROMPT` is part of `read_gate.fingerprint('annual_report')`; `needs_ocr` AR pages have no text and are safe-dropped until their OCR words exist. The gold set wrote the triage definition, so a fresh hand audit of triage verdicts gates the AR bulk.
+

@@ -46,6 +46,9 @@ def fingerprint(doc_type: str) -> str:
     from reality_engine.v2 import observations as obs
 
     template = obs.template_for(doc_type)
+    if doc_type == "annual_report":            # T-242 (Eagle): the triage prompt picks the pages, so it is the reader too
+        from reality_engine.v2 import ar_sections
+        template += "\n" + ar_sections.TRIAGE_PROMPT
     return hashlib.sha256(f"{obs.OBS_READER}\n{template}".encode("utf-8")).hexdigest()[:12]
 
 
