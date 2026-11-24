@@ -132,7 +132,7 @@ def test_guard12_forward_number_converted_to_guidance_and_past_actuals_kept():
         "we said the full year will be between Rs.1200 Crores to 1300 Crores we have done Rs.485 Crores in the first half",
         [
             {"type": "number", "measure": "revenue.value", "printed_label": "the full year will be between",
-             "value_text": "Rs.1200", "high_text": "1300", "unit": "Crores", "period": "FY27",
+             "value_text": "Rs.1200", "unit": "Crores", "period": "FY27",
              "claim_type": "company_actual", "entity_scope": "company"},
             {"type": "number", "measure": "revenue.value", "printed_label": "we have done",
              "value_text": "Rs.485", "unit": "Crores", "period": "H1 FY27", "claim_type": "company_actual",
@@ -228,3 +228,126 @@ def test_guard12_forward_number_converted_to_guidance_and_past_actuals_kept():
     assert (ce_by["16%"]["value"], ce_by["16%"]["value_high"]) == (16.0, None)
     assert ce_by["Rs.500"]["record_type"] == "number" and ce_by["Rs.500"]["status"] == "verified"
     assert (ce_by["Rs.500"]["value"], ce_by["Rs.500"]["value_high"]) == (500.0, None)
+
+
+def test_guard13_industry_figures_and_our_market_share():
+    # AWFIS: office stock, vacancy, supply in India are industry figures even if model marks verified
+    awfis = _rows(
+        "Let me give you a little color on the industry landscape: India's Grade A office stock across the "
+        "top 7 cities now stands at 887 million square feet. Vacancy still fell by 42 basis points to 15.9%.",
+        [
+            {"type": "number", "measure": "NEW:industry_grade_a_office_stock",
+             "printed_label": "India's Grade A office stock across the top 7 cities now stands at",
+             "value_text": "887", "unit": "million sq ft", "period": "Q2 FY27",
+             "new_definition": "Grade A office stock", "new_driver_node": "none",
+             "claim_type": "company_actual", "entity_scope": "company"},
+            {"type": "number", "measure": "NEW:office_vacancy",
+             "printed_label": "Vacancy still fell by 42 basis points to",
+             "value_text": "15.9%", "unit": "%", "period": "Q2 FY27",
+             "new_definition": "Office vacancy rate", "new_driver_node": "none",
+             "claim_type": "company_actual", "entity_scope": "company"},
+        ],
+    )
+    assert all(r["entity_scope"] == "industry" and r["status"] == "unverified"
+               and "industry_figure:" in r["status_reason"] for r in awfis)
+
+    # NOCIL: China 1.9% from IRSG / NEW:market_ measure
+    nocil = _rows(
+        "According to IRSG data, China has grown up by almost 1.9% in the last year.",
+        [{"type": "number", "measure": "volume_growth_yoy", "printed_label": "has grown up by almost",
+          "value_text": "1.9%", "unit": "%", "period": "FY25",
+          "claim_type": "company_actual", "entity_scope": "company"}],
+    )
+    assert nocil[0]["entity_scope"] == "industry"
+    assert nocil[0]["status"] == "unverified"
+    assert "industry_figure:" in nocil[0]["status_reason"]
+
+    # Counter-example: "our market share" and "our share of the market" stay company facts
+    ours = _rows(
+        "Our market share is 18% in FY26 and our share of the market in south India is 22%.",
+        [
+            {"type": "number", "measure": "market.share", "printed_label": "Our market share is",
+             "value_text": "18%", "unit": "%", "period": "FY26",
+             "claim_type": "company_actual", "entity_scope": "company"},
+            {"type": "number", "measure": "market.share", "printed_label": "our share of the market in south India is",
+             "value_text": "22%", "unit": "%", "period": "FY26",
+             "claim_type": "company_actual", "entity_scope": "company"},
+        ],
+    )
+    assert all(r["entity_scope"] == "company" and r["status"] == "verified" for r in ours)
+
+
+def test_guard14_analyst_speaker_never_verified():
+    # SYRMA: analyst Deepak Krishnan asked 3.6%, management J.S. Gujral corrected to 4.6%
+    text = (
+        "Moderator: Thank you very much. The first question we have is from the line of Deepak Krishnan "
+        "from Kotak Institutional Equity. Please go ahead. "
+        "Deepak Krishnan: I just wanted to understand why the margins come to about 3.6%. "
+        "J.S. Gujral: For the quarter the margin is 4.6%."
+    )
+    rows = _rows(text, [
+        {"type": "number", "measure": "ebitda_margin", "printed_label": "the margins come to about",
+         "value_text": "3.6%", "unit": "%", "period": "Q1 FY25", "speaker": "Deepak Krishnan",
+         "claim_type": "company_actual", "entity_scope": "company"},
+        {"type": "number", "measure": "ebitda_margin", "printed_label": "the margin is",
+         "value_text": "4.6%", "unit": "%", "period": "Q1 FY25", "speaker": "J.S. Gujral",
+         "claim_type": "company_actual", "entity_scope": "company"},
+    ])
+    by_val = {r["value_text"]: r for r in rows}
+    assert by_val["3.6%"]["status"] == "unverified"
+    assert "not_management:" in by_val["3.6%"]["status_reason"]
+    assert by_val["4.6%"]["status"] == "verified"
+
+    # Explicit speaker_role != 'management' also triggers not_management
+    role_rows = _rows(
+        "The next question is from Amit Shah from XYZ. Margins were 12%.",
+        [{"type": "number", "measure": "ebitda_margin", "printed_label": "Margins were",
+          "value_text": "12%", "unit": "%", "period": "Q1 FY25", "speaker": "Some Speaker",
+          "speaker_role": "analyst", "claim_type": "company_actual", "entity_scope": "company"}],
+    )
+    assert role_rows[0]["status"] == "unverified" and "not_management:" in role_rows[0]["status_reason"]
+
+
+def test_guard15_one_sentence_many_rows_dedups_and_flags_measure_conflict():
+    # Same sentence, same value mapped to cost_of_funds (3x) and nim (2x) -> keep 1 per measure, both unverified
+    text = (
+        "Now, end of the day, the Bank is borrowing money at 6.3% and we are getting a NIM of 6.3% in Q2 FY25. "
+        "Separately, our deposit cost stood at 6.3% in Q2 FY25."
+    )
+    rows = _rows(text, [
+        {"type": "number", "measure": "cost_of_funds", "printed_label": "the Bank is borrowing money at",
+         "value_text": "6.3%", "unit": "%", "period": "Q2 FY25", "claim_type": "company_actual",
+         "entity_scope": "company"},
+        {"type": "number", "measure": "cost_of_funds", "printed_label": "at",
+         "value_text": "6.3%", "unit": "%", "period": "Q2 FY25", "claim_type": "company_actual",
+         "entity_scope": "company"},
+        {"type": "number", "measure": "cost_of_funds", "printed_label": "borrowing money at",
+         "value_text": "6.3%", "unit": "%", "period": "Q2 FY25", "claim_type": "company_actual",
+         "entity_scope": "company"},
+        {"type": "number", "measure": "nim", "printed_label": "we are getting a NIM of",
+         "value_text": "6.3%", "unit": "%", "period": "Q2 FY25", "claim_type": "company_actual",
+         "entity_scope": "company"},
+        {"type": "number", "measure": "nim", "printed_label": "NIM of",
+         "value_text": "6.3%", "unit": "%", "period": "Q2 FY25", "claim_type": "company_actual",
+         "entity_scope": "company"},
+        {"type": "number", "measure": "cost_of_funds", "printed_label": "our deposit cost stood at",
+         "value_text": "6.3%", "unit": "%", "period": "Q2 FY25", "claim_type": "company_actual",
+         "entity_scope": "company"},
+    ])
+    # First sentence has 2 rows (1 cost_of_funds + 1 nim), both unverified with measure_conflict;
+    # second sentence has 1 cost_of_funds row, verified.
+    assert len(rows) == 3
+    sent1 = [r for r in rows if r["printed_label"] != "our deposit cost stood at"]
+    sent2 = [r for r in rows if r["printed_label"] == "our deposit cost stood at"]
+    assert {r["measure"] for r in sent1} == {"cost_of_funds", "nim"}
+    assert all(r["status"] == "unverified" and "measure_conflict:" in r["status_reason"] for r in sent1)
+    assert len(sent2) == 1 and sent2[0]["status"] == "verified"
+
+
+def test_guard16_range_tail_with_unit_word():
+    f = obs.printed_range_high
+    assert f("Rs.1200 Crores to 1300 Crores", "Rs.1200", 1200.0) == 1300.0
+    assert f("18 percent to 20 percent", "18", 18.0) == 20.0
+    assert f("5 million to 6 million", "5", 5.0) == 6.0
+    assert f("PAT rose by 11 percent to 34.5 crores", "11", 11.0) is None
+    assert f("18 million to 20%", "18", 18.0) is None
