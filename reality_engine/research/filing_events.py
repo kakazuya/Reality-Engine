@@ -869,9 +869,12 @@ def _clean_party(text: Any, *, from_annexure: bool = False) -> str | None:
     # T-242: an annexure cell that runs into the letter's salutation or the city after the legal suffix.
     value = re.sub(r"[\s,;:/&.\-]*\b(?:dear\s+|respected\s+)?(?:sirs?|madams?|ma['’]?ams?)"
                    r"(?:\s*[/,&-]\s*(?:sirs?|madams?|ma['’]?ams?))?[\s,;:/&.\-]*$", "", value, flags=re.I)
+    # A bare place after a company's legal suffix is an address ("Signatureglobal (India) Limited Mumbai"); after a
+    # public body's word it is usually the name ("Municipal Corporation Jodhpur"), so there only a comma cuts it.
     entity = re.match(
-        r"^(?P<name>.+?\b(?:Limited|Ltd|LLP|Corporation|Corpn|Nigam|Authority|Railways?|Division))"
-        r"\s*(?:,\s*)?(?P<tail>[A-Z][A-Za-z.]{2,})$", value)
+        r"^(?P<name>.+?\b(?:Limited|Ltd|LLP))\s*(?:,\s*)?(?P<tail>[A-Z][A-Za-z.]{2,})$", value) or re.match(
+        r"^(?P<name>.+?\b(?:Corporation|Corpn|Nigam|Authority|Railways?|Division)),\s*(?P<tail>[A-Z][A-Za-z.]{2,})$",
+        value)
     if entity and not re.search(_ENTITY_TAIL, entity.group("tail"), re.I):
         value = entity.group("name")
     if from_annexure:
