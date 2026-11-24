@@ -46,3 +46,34 @@ def test_industry_scope_is_never_verified_on_decks():
     rows = _rows(text, [{"type": "number", "measure": "capex", "printed_label": "Central Govt. Capex",
                          "value_text": "11,110", "unit": "Rs Bn", "period": "FY26", "entity_scope": "country"}])
     assert rows and rows[0]["status"] != "verified" and "not_company" in rows[0]["status_reason"]
+
+
+def test_deck_prompt_names_the_company_and_ar_prompt_is_unchanged():
+    from reality_engine.v2 import observations as o
+    deck = o.template_for("deck")
+    assert "{company}" in deck and "{company}" not in o.template_for("annual_report")
+    text = deck.format(dictionary="", text="", known_at="", call_quarter="", company="ACC Limited", symbol="ACC")
+    assert "by ACC Limited (ACC)" in text and '"peer" for any other company' in text
+
+
+def test_unnamed_subsidiary_row_is_not_verified_on_decks():
+    rows = _rows("RBIC EBITDA margin 12.5%", [{"type": "number", "measure": "ebitda_margin",
+                 "printed_label": "EBITDA margin", "value_text": "12.5%", "unit": "%", "period": "FY26",
+                 "entity_scope": "subsidiary"}])
+    assert rows and rows[0]["status"] != "verified" and "subsidiary_unnamed" in rows[0]["status_reason"]
+
+
+def test_group_scope_on_a_deck_is_a_peer_never_verified():
+    rows = _rows("Consolidated Balance Sheet Share capital 494", [{"type": "number", "measure": "share_capital",
+                 "printed_label": "Share capital", "value_text": "494", "unit": "Rs crore", "period": "FY26",
+                 "entity_scope": "group"}])
+    assert rows and rows[0]["entity_scope"] == "peer" and rows[0]["status"] != "verified"
+
+
+def test_parts_sum_does_not_reverify_a_market_figure_on_decks():
+    text = "Premium Liquor Market in India (USD Bn) Rum 10 Gin 21 Total 31"
+    reply = [{"type": "number", "series_id": "s1", "measure": "market.value", "printed_label": lab, "value_text": v,
+              "unit": "USD Bn", "period": "FY26", "entity_scope": "country", "is_total": tot}
+             for lab, v, tot in (("Rum", "10", False), ("Gin", "21", False), ("Total", "31", True))]
+    rows = _rows(text, reply)
+    assert rows and all(r["status"] != "verified" for r in rows)

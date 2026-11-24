@@ -2955,6 +2955,13 @@ The model never computes: `compute()` evaluates each calc expression with an AST
 - **Checkpoint grading note (T-242, 24 Nov 2026, Wolf).** An ungraded hy4 checkpoint is not an ops-gate breach while
   `ckpt_NNNN.grading.md` (grader job id and owner) is under 3 h old; after that it breaches again. A `.fix.md` still
   covers only a FAILED grade.
+- **Deck "whose figure" prompt (T-242, 24 Nov 2026, Wolf).** The strict deck grade's 5 junk rows were all someone
+  else's figure (SIAM production, government capex, Ambuja's balance sheet in ACC's deck, a media market size, RBIC's
+  margin in Bosch's deck). `template_for('deck')` = `PROMPT + DECK_ENTITY_RULES`: the deck's company name and symbol
+  (from the store's `company` table) and a whose-figure rule (company / subsidiary named in segment / peer incl. a parent; a reply scope "group" or "parent company" is peer on decks
+  or group company / industry / country; unclear = not written). With `deck_guards`, a `subsidiary` row with no
+  `segment` is `subsidiary_unnamed` (never verified). Deck fingerprint e6d289ddd672 -> ea5e621d2826 (annual_report and
+  results unchanged); needs a fresh pilot and a 60-row non-author grade.
 
 - **Transcript statement speakers (`v2/obs_speaker.py` `attach_statement_speakers`, T-242, 24 Nov 2026, DeepSeek).**
   The strict 60-row statement grade (`D:/RealityEngine/t242/grades/reparse4_statements/`) failed only on attribution:
@@ -2991,3 +2998,8 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   this guard, and REGAAL's "I have to calculate that" answer is not a yes/no reply. Tests: seven in
   `reality_engine/tests/test_obs_speaker.py` and guard 3b in `test_v2_guards.py`. The read-gate fingerprint is
   unchanged (`e95108f16e65`): only the prompt template and reader id are hashed, never this script.
+- **Deck final pass (T-242, Wolf).** `apply_parts_sum`/`apply_path_sum` re-verified market rows (Indian liquor market
+  parts summing to its total) after the `not_company` guard; with `deck_guards` a final pass in `build_observations`
+  downgrades any verified non-company or unnamed-subsidiary row. The general risk (a sum proof upgrading a row an
+  earlier guard flagged, on AR and transcripts too) is open: count first, then a structural rule.
+

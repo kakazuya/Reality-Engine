@@ -3608,6 +3608,10 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 row["segment"] = canonical_dim(vocab, "segment", part)
             else:
                 scale_notes.append("mix_without_segment: a share row must name its part")
+        if deck_guards and norm_space(str(raw.get("entity_scope") or "")).lower().replace("-", "_") in DECK_GROUP_SCOPES:
+            row["entity_scope"] = "peer"          # Eagle: canonical_scope maps 'group' to company; on a deck it is not
+        if deck_guards and row["entity_scope"] == "subsidiary" and not row["segment"]:
+            scale_notes.append("subsidiary_unnamed: a group company's figure must name the entity in segment")
         if deck_guards and row["entity_scope"] in NOT_COMPANY_SCOPES:
             scale_notes.append(f"not_company: a {row['entity_scope']} figure is served labelled, never verified")
         if (deck_guards or transcript_v2) and row["measure"].startswith("NEW:") and not row["unit"]:
@@ -3628,6 +3632,13 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
     if v2_mode:
         out = apply_measure_conflicts(out, page_text)   # T-242 guard 15: dedup per measure / flag multi-measure value
     apply_guidance_statements(prose)          # stage O: a guidance value also needs its statement row
+    if deck_guards:                           # parts-sum and path-sum proofs must not re-verify someone else's figure
+        for row in out:
+            if row.get("status") == "verified" and (row.get("entity_scope") in NOT_COMPANY_SCOPES or (
+                    row.get("entity_scope") == "subsidiary" and not row.get("segment"))):
+                row["status"] = "unverified"
+                row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "",
+                                                              "not_company: final deck pass") if p)
     return out + prose
 
 
@@ -4243,6 +4254,7 @@ TRANSCRIPT_ADJUSTED_RE = re.compile(
 # T-241 (Wolf's fy27_v2 ckpt_0001 grade, 24 Nov): five number guards for v2 transcript rows
 PERIOD_VALUE_RE = re.compile(r"^(?:(?:Q[1-4]|H[12]|9M)\s*(?:FY\s*'?\d{2,4})?|FY\s*'?\d{2,4}(?:\s*[-\u2013]\s*'?\d{2,4})?)$",
                              re.I)
+DECK_GROUP_SCOPES = frozenset({"group", "group_company", "parent_company", "holding", "holding_company"})
 NOT_COMPANY_SCOPES = frozenset({"industry", "country", "peer", "customer"})   # T-242 deck strict grade: 3 of 5 junk
 DECREASE_RE = re.compile(r"\b(?:decreas\w*|declin\w*|de-?growth|negative\s+growth|fell|fall(?:en|ing)?|dropped|"
                          r"lower\s+by|down\s+by|contract(?:ed|ion))\b", re.I)
@@ -4980,12 +4992,27 @@ def apply_prompt_choice(transcript_prompt: str) -> None:
         imported.READER = READER
 
 
+DECK_ENTITY_RULES = """
+WHOSE FIGURE (decks): this presentation is by {company} ({symbol}). Before every object decide whose figure it is:
+- "company" ONLY for {company}'s own figure (its standalone or consolidated numbers, its own plants and products).
+- "subsidiary" for a named subsidiary, JV or associate of {company}: put that entity's name in "segment". A page
+  titled with another entity's name ("RBIC", "BFL", "<name> Ltd") is about that entity, not {company}.
+- "peer" for any other company's figures, including a parent or group company whose statements are printed in this
+  deck (for example the group's consolidated balance sheet); never "company".
+- "industry" for a market, sector or industry size, share or growth (a chart with a source line such as SIAM,
+  CRISIL, IBEF, CMIE, Statista); "country" for government, budget, GDP or national figures.
+When the page does not make clear that a figure is {company}'s own, do not write it.
+"""
+
+
 def template_for(doc_type: str) -> str:
     """The prompt template a page of ``doc_type`` is read with; read_gate fingerprints exactly this (T-241)."""
     if "transcript" in str(doc_type):
         if TRANSCRIPT_PROMPT == "v3":
             return PROMPT_TRANSCRIPT_V3
         return PROMPT_TRANSCRIPT_V2 if TRANSCRIPT_PROMPT == "v2" else PROMPT_TRANSCRIPT
+    if str(doc_type) == "deck":                 # T-242 strict deck grade: 5 of 5 junk were someone else's figure
+        return PROMPT + DECK_ENTITY_RULES
     return PROMPT
 
 
@@ -5347,8 +5374,15 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
         result["skip"] = "no image and no text"
         return result
     template = template_for(meta["doc_type"])
+    company = ""
+    if "{company}" in template:
+        try:
+            company = _store_company_name(store_db, meta["symbol"])
+        except Exception:
+            company = ""
     prompt = template.format(dictionary=dictionary_text(measure_index()), text=layout[:TEXT_LAYER_CHARS],
-                             known_at=meta["known_at"][:10], call_quarter=call_quarter(meta["known_at"]))
+                             known_at=meta["known_at"][:10], call_quarter=call_quarter(meta["known_at"]),
+                             company=company or meta["symbol"], symbol=meta["symbol"])
     call = call_reader(prompt, image_b64, doc_key, page)
     if call.get("quota"):
         result["quota"] = call["quota"]
