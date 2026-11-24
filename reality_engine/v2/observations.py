@@ -588,6 +588,39 @@ MEASURES: tuple[tuple[str, str, str, str], ...] = (
 
 # id -> unit family (stage G: the label-map unit guard reads this)
 _MEASURE_FAMILY: dict[str, str] = {m[0]: m[2] for m in MEASURES}
+_MEASURE_NODE: dict[str, str] = {m[0]: m[3] for m in MEASURES}
+
+# T-242: the annual-report statement gate.  The vocabulary's own driver-tree node (the fourth field of MEASURES) is
+# the tag that says whether a money measure is a financial-statement line -- a balance-sheet, P&L or cash-flow node
+# -- or an operating measure (capacity, volumes, order book, employees, segment KPIs).  A statement line's AR page
+# read is never the authority: the filing's XBRL is ("XBRL stays as filed", Shivam 8 Nov).
+STATEMENT_NODES = frozenset({
+    "none: balance-sheet line", "none: balance-sheet total", "none: accounting line", "none: accounting total",
+    "none: accounting result", "none: below-EBITDA profit line", "none: share of associates, below EBITDA",
+    "none: tax line", "none: tax liability", "none: cash-flow line", "none: working-capital stock",
+    "none: investments",
+    "revenue.total", "cost.other", "cost.employee", "cost.raw_material", "cost.power_fuel", "margin.ebitda",
+    "margin.gross", "debt.level", "debt.cost", "working_capital.days", "capex.amount", "equity.shares",
+})
+STATEMENT_UNIT_FAMILIES = frozenset({"money", "money_per_unit"})
+# Reviewed operating measures that sit on a statement node and keep every check: a pre-sales figure, a per-tonne
+# or per-kg KPI, a market input price, a planned capex and a share price are not lines of the financial statements.
+OPERATING_MONEY_MEASURES = frozenset({
+    "capex.estimated", "crude_oil_price", "ebitda_per_kg", "ebitda_per_tonne", "realestate.presales",
+    "share_price",
+})
+# A declared ``NEW:<id>`` the dictionary lacks has no node: a statement word in its name marks a statement line
+# (e.g. NEW:other_financial_liability_item, NEW:trade_payables_others).  Deliberately not in the list: "equity"
+# and "tax" alone (a shareholding or a tax-dispute disclosure is not a statement line) and "capital" (an offer).
+NEW_STATEMENT_WORDS = frozenset({
+    "asset", "assets", "liability", "liabilities", "payable", "payables", "receivable", "receivables",
+    "inventory", "inventories", "borrowing", "borrowings", "expense", "expenses", "expenditure", "income",
+    "revenue", "revenues", "sale", "sales", "cash", "provision", "provisions", "dividend", "depreciation",
+    "amortisation", "amortization", "eps", "profit", "deposits", "claims", "outgoes",
+})
+STATEMENT_LINE = frozenset(mid for mid, node in _MEASURE_NODE.items()
+                           if node in STATEMENT_NODES and _MEASURE_FAMILY[mid] in STATEMENT_UNIT_FAMILIES
+                           and mid not in OPERATING_MONEY_MEASURES)
 
 # Near-duplicate model ids -> one dictionary id (T-230 stage C3). Applied before the dictionary check.
 MEASURE_ALIASES: dict[str, str] = {
@@ -3619,6 +3652,47 @@ def measure_root(measure_id: str) -> str:
     return norm_space(measure_id).split(".", 1)[0]
 
 
+AR_STATEMENT_REASON = "ar_statement_line: XBRL holds statement lines; served labelled"
+
+
+def is_statement_line(measure: str) -> bool:
+    """T-242: True for a measure that is a balance-sheet, P&L or cash-flow line of the financial statements."""
+    mid = norm_space(measure or "")
+    if mid.startswith(NEW_PREFIX):
+        mid = mid[len(NEW_PREFIX):].strip()      # a declared NEW id is judged on its bare name
+    if mid in STATEMENT_LINE:
+        return True
+    if mid in _MEASURE_NODE:
+        return False                             # a dictionary measure is classified by its own node tag
+    words = set(re.split(r"[^a-z0-9]+", mid.lower()))
+    return bool(words & NEW_STATEMENT_WORDS)
+
+
+def apply_ar_statement_gate(rows: list[dict[str, Any]]) -> None:
+    """T-242 (Shivam 8 Nov: "XBRL stays as filed"): an annual report's statement line is never verified by the
+    page check alone.
+
+    Of the 60 strict-graded AR number rows, 10 were wrong and every one of the statement-line ones was a subset
+    of the line or a wrong column: one bank balance as cash and cash equivalents, USD-only trade payables as the
+    total, a deferred-tax line as inventories, a director's AOC-2 dividend as dividend paid, segment allocated
+    expenses as total expenses.  The row stays served, labelled unverified; the XBRL results are the authority.
+    Operating measures (capacity, volumes, order book, employees, segment KPIs) keep today's checks.
+    """
+    for row in rows:
+        if (row.get("record_type") or "number") == "number" and row.get("status") == "verified" \
+                and is_statement_line(str(row.get("measure") or "")):
+            row["status"] = "unverified"
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", AR_STATEMENT_REASON) if p)
+
+
+def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2: bool = True) -> None:
+    """T-242: the number gates that depend on the document type (a call number, an AR statement line)."""
+    if doc_type == "transcript" and transcript_v2:
+        apply_transcript_number_gate(rows)       # Shivam 24 Nov: call numbers need a filing to verify
+    elif doc_type == "annual_report":
+        apply_ar_statement_gate(rows)
+
+
 def apply_parts_sum(rows: list[dict[str, Any]], stats: dict[str, Any] | None = None) -> None:
     """The rows a model marks as a printed total must equal the parts it printed in the same series and group.
 
@@ -4710,11 +4784,14 @@ _QUOTA_LOCK = threading.Lock()
 
 
 def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: Any = None) -> dict[str, Any]:
-    """T-241: rebuild transcript rows from the stored raw replies (``page_reply``) with today's parsing and guards.
+    """T-241/T-242: rebuild transcript and annual-report rows from the stored raw replies (``page_reply``) with
+    today's parsing and guards.
 
     No model call.  Every selected page's rows are deleted and rebuilt from its reply; the ``page_read`` outcome is
     updated.  A reply written by the v2 transcript prompt (its fingerprint in ``page_reply.fingerprint``) gets the
-    v2 guards.  Only transcript pages are re-parsed (a deck page also needs its words / OCR text); others are counted.
+    v2 guards, and an annual-report page is rebuilt with the reader's own inputs (text layer, words, deck as-of and
+    basis, stored OCR text) and then its statement lines are gated (T-242).  A deck page also needs its words / OCR
+    text, so it is counted, not re-parsed.
     """
     import hashlib
     v2_fp = hashlib.sha256(f"{OBS_READER}\n{PROMPT_TRANSCRIPT_V2}".encode("utf-8")).hexdigest()[:12]
@@ -4732,7 +4809,7 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
         except sqlite3.Error:
             continue
     stats: dict[str, Any] = {"pages": 0, "no_store": 0, "not_transcript": 0, "unselected": 0,
-                             "rows_before": 0, "rows_after": 0, "v2_pages": 0}
+                             "rows_before": 0, "rows_after": 0, "v2_pages": 0, "ar_pages": 0}
     doc_speaker_ctx: dict[tuple[str, str], tuple[list[str], list[str]]] = {}
     replies = con.execute("SELECT doc_key, page, fingerprint, raw FROM page_reply ORDER BY doc_key, page").fetchall()
     for doc_key, page, fingerprint, raw in replies:
@@ -4744,27 +4821,10 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
             stats["unselected"] += 1
             continue
         meta = page_meta(store_db, doc_key)
-        if not meta or meta["doc_type"] != "transcript":
+        doc_type = str(meta["doc_type"]) if meta else ""
+        if doc_type not in ("transcript", "annual_report"):
             stats["not_transcript"] += 1
             continue
-        ctx_key = (store_db, str(doc_key))
-        if ctx_key not in doc_speaker_ctx:
-            try:
-                s_con = connect_ro(store_db, timeout_s=60)
-                try:
-                    doc_pages = s_con.execute(
-                        "SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page", (doc_key,)
-                    ).fetchall()
-                finally:
-                    s_con.close()
-                dctx = obs_speaker.build_doc_context([(int(p), str(t or "")) for p, t in doc_pages])
-                doc_speaker_ctx[ctx_key] = (
-                    list(dict.fromkeys(dctx.analyst_names + dctx.moderator_names)),
-                    list(dctx.mgmt_names),
-                )
-            except sqlite3.Error:
-                doc_speaker_ctx[ctx_key] = ([], [])
-        analyst_list, mgmt_list = doc_speaker_ctx[ctx_key]
         owner = ""
         try:
             owner = doc_owner(store_db, doc_key, companies, meta["symbol"])
@@ -4773,12 +4833,50 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
         text = page_text_of(store_db, doc_key, page)
         reply_rows, _bad = parse_reply(str(raw or ""))
         v2 = f"transcript:{v2_fp}" in str(fingerprint or "")
-        rows = build_observations(symbol=meta["symbol"], doc_key=doc_key, page=int(page), known_at=meta["known_at"],
-                                  page_text=text, reply_rows=reply_rows, doc_owner_symbol=owner,
-                                  companies=companies, transcript_v2=v2,
-                                  analyst_speakers=analyst_list, mgmt_speakers=mgmt_list)
-        if v2:
-            apply_transcript_number_gate(rows)          # Shivam 24 Nov: call numbers need a filing to verify
+        if doc_type == "annual_report":
+            check_text, words, ocr_page = text, [], False
+            try:
+                pw = page_words.words_for(store_db, doc_key, int(page))
+                words = pw.words if pw else []
+                ocr_page = bool(words and pw.source.startswith("ocr"))
+            except Exception:
+                pass
+            if ocr_page:
+                check_text = page_layout.layout_text(words)
+            ocr_row = con.execute("SELECT text FROM page_ocr WHERE doc_key=? AND page=?",
+                                  (str(doc_key), int(page))).fetchone()
+            rows = build_observations(symbol=meta["symbol"], doc_key=doc_key, page=int(page),
+                                      known_at=meta["known_at"], page_text=check_text, words=words,
+                                      reply_rows=reply_rows, doc_owner_symbol=owner, companies=companies,
+                                      deck_asof=deck_period(store_db, doc_key, check_text),
+                                      deck_basis=deck_basis(str(store_db), str(doc_key)),
+                                      ocr_text=str(ocr_row[0] or "") if ocr_row else "", ocr_page=ocr_page)
+            apply_ar_statement_gate(rows)          # T-242: an AR statement line is XBRL's, never page-verified
+            stats["ar_pages"] += 1
+        else:
+            ctx_key = (store_db, str(doc_key))
+            if ctx_key not in doc_speaker_ctx:
+                try:
+                    s_con = connect_ro(store_db, timeout_s=60)
+                    try:
+                        doc_pages = s_con.execute(
+                            "SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page", (doc_key,)
+                        ).fetchall()
+                    finally:
+                        s_con.close()
+                    dctx = obs_speaker.build_doc_context([(int(p), str(t or "")) for p, t in doc_pages])
+                    doc_speaker_ctx[ctx_key] = (
+                        list(dict.fromkeys(dctx.analyst_names + dctx.moderator_names)),
+                        list(dctx.mgmt_names),
+                    )
+                except sqlite3.Error:
+                    doc_speaker_ctx[ctx_key] = ([], [])
+            analyst_list, mgmt_list = doc_speaker_ctx[ctx_key]
+            rows = build_observations(symbol=meta["symbol"], doc_key=doc_key, page=int(page),
+                                      known_at=meta["known_at"], page_text=text, reply_rows=reply_rows,
+                                      doc_owner_symbol=owner, companies=companies, transcript_v2=v2,
+                                      analyst_speakers=analyst_list, mgmt_speakers=mgmt_list)
+            apply_number_gates(rows, doc_type, transcript_v2=v2)   # Shivam 24 Nov: a call number needs a filing
         stats["rows_before"] += int(con.execute("SELECT COUNT(*) FROM observation WHERE doc_key=? AND page=?",
                                                 (doc_key, int(page))).fetchone()[0])
         con.execute("DELETE FROM observation WHERE doc_key=? AND page=?", (doc_key, int(page)))
@@ -5066,8 +5164,7 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                                         ocr_text=result["ocr_text"], ocr_page=ocr_read,
                                         transcript_v2=transcript and TRANSCRIPT_PROMPT == "v2",
                                         deck_guards=meta.get("doc_type") == "deck")
-    if transcript:
-        apply_transcript_number_gate(result["rows"])    # Shivam 24 Nov: call numbers need a filing to verify
+    apply_number_gates(result["rows"], str(meta.get("doc_type") or ""))
     return result
 
 
@@ -5413,7 +5510,8 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
     measure alias/label mapping, or a stage read from a printed group.  Any other upgrade is refused and reported.
     ``only`` (a :class:`reality_engine.research.selector.Selector`) restricts the pages and rows re-checked;
     the rest of the DB is left untouched (T-233 scoped fix run).  Each document's PDF is fetched at most once
-    (``_kept_pages``), so a scoped pass over thousands of pages is minutes, not hours.
+    (``_kept_pages``), so a scoped pass over thousands of pages is minutes, not hours.  An annual report's
+    statement-line rows are re-gated (T-242), so a recheck never re-verifies one.
     """
     store_dbs = list(store_dbs)
     companies = companies if companies is not None else company_index(store_dbs)
@@ -5449,7 +5547,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                              "unit_family_fixed": 0, "is_total_rows": 0, "parts_sum_restored": 0,
                              "basis_header": 0, "period_header": 0, "generic_labels": 0,
                              "parts_degenerate": 0, "comparative_periods": 0, "instant_periods": 0,
-                             "basis_page": 0}
+                             "basis_page": 0, "ar_statement_rows": 0}
     pages = list(con.execute("SELECT DISTINCT doc_key, page FROM observation ORDER BY doc_key, page"))
     if only is not None:                      # T-233: a scoped recheck touches only the selected pages
         pages = [p for p in pages if only.page(doc_store.get(str(p[0])), str(p[0]), int(p[1]))]
@@ -5460,6 +5558,11 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
         if not store_db:
             continue
         stats["pages"] += 1
+        try:
+            meta = page_meta(store_db, doc_key)
+        except Exception:
+            meta = None                 # a fixture store without a doc_type column is no annual report
+        ar_page = bool(meta) and meta["doc_type"] == "annual_report"
         raw_text = page_text_of(store_db, doc_key, int(page))
         try:
             pw = page_words.words_for(store_db, doc_key, int(page))
@@ -5724,6 +5827,10 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
         stats["bridge_rows"] += sum(1 for r in updated if r["series_kind"] == "bridge")
         stats["basis_set"] += sum(1 for r in updated if r["basis"])
         stats["basis_conflicts"] += apply_basis_conflicts(updated)
+        if ar_page:                    # T-242: a recheck never re-verifies an annual report's statement line
+            before_gate = sum(1 for row in updated if row["status"] == "verified")
+            apply_ar_statement_gate(updated)
+            stats["ar_statement_rows"] += before_gate - sum(1 for row in updated if row["status"] == "verified")
         for row in updated:
             old_status = str(row["_old_status"])
             old_reason = str(row["_old_reason"])
@@ -5983,7 +6090,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--reader", default=READER,
                         help="MODELS registry entry to read with (default hy4-flash-free; T-234 bake-off)")
     parser.add_argument("--reparse", action="store_true",
-                        help="T-241: copy --baseline to --out and rebuild its transcript rows from page_reply (no model)")
+                        help="T-241: copy --baseline to --out and rebuild its transcript/annual-report rows "
+                             "from page_reply (no model)")
     parser.add_argument("--transcript-prompt", choices=("v1", "v2"), default="v1",
                         help="T-241 transcript prompt: v1 (default) or v2 (fiscal periods, ranges, sign, speaker)")
     parser.add_argument("--text-only", action="store_true",
