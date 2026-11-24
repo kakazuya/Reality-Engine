@@ -28,7 +28,7 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 from reality_engine.v2 import observations as obs  # noqa: E402
 
-CFG = r"C:\Users\warri\.claude-neo"
+CFG = os.environ.get("SONNET_SETTLE_CONFIG", r"C:\Users\warri\.claude-neo")   # Eagle: C:\Users\warri\.claude
 LIMIT_5H = 75
 LIMIT_7D = 95
 STALE_S = 1800
