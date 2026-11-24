@@ -20,6 +20,17 @@
    "scope": "obs_transcripts_fy27",
    "at": "2026-11-24 12:46",
    "quote": "Shivam 24 Nov ~12:40 IST, replying to the trade-off (hold 394 unread pages until the prompt A/B, read universe transcripts meanwhile): \"point it to first reading.\""
+  },
+  {
+   "doc_type": "transcript",
+   "fingerprint": "e95108f16e65",
+   "verdict": "pass",
+   "reviewer": "Wolf",
+   "author": "Eagle",
+   "rows": 60,
+   "evidence": "D:/RealityEngine/t241/prompt_ab/v2e_wolf_grades.md",
+   "note": "v2e, fresh seed 2413: 51 right / 7 partial / 0 wrong / 2 junk",
+   "at": "2026-11-24 13:16"
   }
  ]
 }
