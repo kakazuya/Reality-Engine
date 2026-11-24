@@ -11,12 +11,23 @@ import sqlite3
 import time
 from pathlib import Path
 
+# Entries that share a source form an ordered priority list (T-242, 24 Nov, Eagle): for each symbol the FIRST db that
+# holds rows for it is loaded, so the gated T-242 reads (transcript prompt v3, deck whose-figure prompt) replace the
+# older reads company by company as hy4 reaches them, and a company not read yet keeps its older rows.
 OBS_SOURCES = [
+    ("deck_fy27", "D:/RealityEngine/hy4_out/obs_decks_fy27.db", "deck"),
     ("deck", "D:/RealityEngine/t230/obs_91_j.db", "deck"),
     ("annual_report", "D:/RealityEngine/t230/obs_ar_91_m.db", "annual_report"),
+    ("transcript_fy27_v3", "D:/RealityEngine/hy4_out/obs_transcripts_fy27_v3.db", "transcript"),
+    ("transcript_394_v3", "D:/RealityEngine/hy4_out/obs_transcripts_394_v3.db", "transcript"),
     ("transcript", "D:/RealityEngine/t238/obs_transcripts_91o.db", "transcript"),
 ]
-EVENTS_DB = "D:/RealityEngine/t231/events.db"
+EVENTS_DB = "D:/RealityEngine/t231/events.db"            # the last fallback
+# T-242 filing_events round 4 (only order_win verified); same first-db-with-rows rule per symbol.
+EVENTS_PRIORITY = [
+    "C:/RealityEngine/t242/events_round4_fresh4.db",
+    "C:/RealityEngine/t242/events_round4_fresh3.db",
+]
 
 DOC_TYPE = {"deck": "deck", "annual_report": "annual_report", "transcript": "transcript"}
 
@@ -87,9 +98,16 @@ def _create_tables(con, obs_cols):
     con.execute("""CREATE TABLE IF NOT EXISTS obs_measure_new (
         new_id TEXT, definition TEXT, driver_node TEXT, observations INTEGER,
         pages INTEGER, examples TEXT, first_known_at TEXT, source TEXT)""")
-    ev_cols = _cols(EVENTS_DB, "event")
+    ev_cols: list[str] = []                         # the union of every events db's columns, in first-seen order
+    for ev_db in [*EVENTS_PRIORITY, EVENTS_DB]:
+        if Path(ev_db).is_file():
+            ev_cols += [c for c in _cols(ev_db, "event") if c not in ev_cols]
     ev_defs = [f'"{c}"' for c in ev_cols]
     con.execute(f'CREATE TABLE IF NOT EXISTS filing_event ({", ".join(ev_defs)})')
+    have = {r[1] for r in con.execute("PRAGMA table_info(filing_event)").fetchall()}
+    for c in ev_cols:
+        if c not in have:                            # an older store: add the round-3/4 columns (customer_desc, ...)
+            con.execute(f'ALTER TABLE filing_event ADD COLUMN "{c}"')
 
 
 def _load_store(store_path: Path, symbol: str | None = None) -> dict:
@@ -119,13 +137,24 @@ def _load_store(store_path: Path, symbol: str | None = None) -> dict:
                       f"VALUES ({','.join('?' * (len(obs_cols) + 2 + len(CHECK_COLS)))})")
         id_pos = obs_cols.index("observation_id") if "observation_id" in obs_cols else None
 
+        done_sources: set[str] = set()
         for source_key, db_path, source in OBS_SOURCES:
+            if source in done_sources:
+                continue                          # a higher-priority db already gave this symbol's rows
+            if not Path(db_path).is_file():
+                continue
             t0 = time.perf_counter()
             src_con = _ro(db_path)
-            con.execute("DELETE FROM obs_fact WHERE symbol=? AND source=?", (symbol, source))
             rows = src_con.execute(
                 f"SELECT {placeholders} FROM observation WHERE symbol=? AND status IN ('verified','unverified')",
                 (symbol,)).fetchall()
+            if not rows and any(s == source and k != source_key for k, _p, s in OBS_SOURCES[
+                    OBS_SOURCES.index((source_key, db_path, source)) + 1:]):
+                src_con.close()
+                continue                          # nothing here for this symbol: try the next db of this source
+            con.execute("DELETE FROM obs_fact WHERE symbol=? AND source=?", (symbol, source))
+            done_sources.add(source)
+            stats.setdefault("obs_db", {})[source] = db_path
             checks = load_checks(db_path) if id_pos is not None else {}
             none = (None,) * len(CHECK_COLS)
             vals = [list(r) + [source, DOC_TYPE[source]]
@@ -168,16 +197,24 @@ def _load_store(store_path: Path, symbol: str | None = None) -> dict:
         # filing_event
         t0 = time.perf_counter()
         con.execute("DELETE FROM filing_event WHERE symbol=?", (symbol,))
-        ev_con = _ro(EVENTS_DB)
-        ev_cols = [c[1] for c in ev_con.execute("PRAGMA table_info(event)").fetchall()]
+        table_cols = {c[1] for c in con.execute("PRAGMA table_info(filing_event)").fetchall()}
+        ev_rows, ev_cols = [], []
+        for ev_db in [*EVENTS_PRIORITY, EVENTS_DB]:
+            if not Path(ev_db).is_file():
+                continue
+            ev_con = _ro(ev_db)
+            ev_cols = [c[1] for c in ev_con.execute("PRAGMA table_info(event)").fetchall() if c[1] in table_cols]
+            ev_rows = ev_con.execute(
+                f"SELECT {','.join(ev_cols)} FROM event WHERE symbol=? AND status IN ('verified','unverified')",
+                (symbol,)).fetchall()
+            ev_con.close()
+            if ev_rows:
+                stats["events_db"] = ev_db
+                break
         ev_placeholders = ",".join("?" * len(ev_cols))
-        ev_rows = ev_con.execute(
-            f"SELECT {','.join(ev_cols)} FROM event WHERE symbol=? AND status IN ('verified','unverified')",
-            (symbol,)).fetchall()
         if ev_rows:
             con.executemany(f"INSERT INTO filing_event ({','.join(ev_cols)}) VALUES ({ev_placeholders})", ev_rows)
         stats["events"] = len(ev_rows)
-        ev_con.close()
         stats["timings"]["events"] = time.perf_counter() - t0
         print(f"{symbol} events: {len(ev_rows)} rows in {stats['timings']['events']:.3f}s", flush=True)
 
