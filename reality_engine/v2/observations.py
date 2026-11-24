@@ -6125,7 +6125,13 @@ def main(argv: list[str] | None = None) -> int:
 
     store_dbs: list[str] = []
     doc_types = [t for t in args.doc_types.split(",") if t]
-    if args.stores_root:
+    if args.stores_root and args.reparse:
+        # T-242 (Eagle): a re-parse must find every page's store; --sample (default 5) left 197 of 200 AR pages
+        # as no_store.  Every cNN/cNN.db under the root, no sampling.
+        root = Path(args.stores_root)
+        store_dbs = [str(p / f"{p.name}.db") for p in sorted(root.iterdir())
+                     if p.is_dir() and (p / f"{p.name}.db").is_file()]
+    elif args.stores_root:
         store_dbs = seed_stores(args.stores_root, args.sample, args.seed,
                                 [s for s in args.ensure.split(",") if s], doc_types=doc_types)
     if args.stores:

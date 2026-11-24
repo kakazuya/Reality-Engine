@@ -2935,7 +2935,9 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   deliberately absent (a shareholding or a tax-dispute disclosure is not one). Wired by `apply_number_gates(rows,
   doc_type)` in the read path (`process_page`) and in `--reparse`; `--reparse` now also rebuilds `annual_report`
   pages from `page_reply` with the reader's own inputs (text layer, words, deck as-of/basis, stored OCR text), and
-  `--recheck` re-applies the gate so a recheck never re-verifies one. Measured on a copy of
+  `--recheck` re-applies the gate so a recheck never re-verifies one. With `--reparse`, `--stores-root` means EVERY
+  `cNN/cNN.db` under the root (Eagle, 24 Nov: it used to take the `--sample 5` seeded stores, so 197 of 200 AR
+  pages came back `no_store`). Measured on a copy of
   `D:/RealityEngine/hy4_out/pilot_ar_fy27.db` (200 pages, 5,607 rows) with `--reparse`: verified 3,017 -> 1,124
   (1,878 rows gated; the rest of the change is re-parse input drift). Of the 60 graded rows: 9 of 10 W now
   unverified (the tenth, AVL `NEW:loyalty_rewards_given_away`, is a period error on prose, not a statement line),
