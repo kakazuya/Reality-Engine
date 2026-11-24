@@ -39,3 +39,10 @@ def test_new_measure_without_unit_is_never_verified():
                          "value_text": "845", "unit": "", "period": "Q1 FY27",
                          "new_definition": "x", "new_driver_node": "none"}])
     assert rows and rows[0]["status"] != "verified" and "no_unit" in rows[0]["status_reason"]
+
+
+def test_industry_scope_is_never_verified_on_decks():
+    text = "Central Govt. Capex (Rs Bn) FY26 11,110 Source: Union Budget"
+    rows = _rows(text, [{"type": "number", "measure": "capex", "printed_label": "Central Govt. Capex",
+                         "value_text": "11,110", "unit": "Rs Bn", "period": "FY26", "entity_scope": "country"}])
+    assert rows and rows[0]["status"] != "verified" and "not_company" in rows[0]["status_reason"]
