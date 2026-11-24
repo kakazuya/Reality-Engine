@@ -45,7 +45,7 @@ def fingerprint(doc_type: str) -> str:
     """The reader's identity for ``doc_type``: its prompt template and reader id (12 hex chars)."""
     from reality_engine.v2 import observations as obs
 
-    template = obs.PROMPT_TRANSCRIPT if "transcript" in doc_type else obs.PROMPT
+    template = obs.template_for(doc_type)
     return hashlib.sha256(f"{obs.OBS_READER}\n{template}".encode("utf-8")).hexdigest()[:12]
 
 
@@ -71,7 +71,8 @@ def allowed(doc_type: str, fp: str, entries: list[dict[str, Any]], out: str | Pa
             continue
         if e.get("verdict") == "pass" and e.get("reviewer") and e.get("reviewer") != e.get("author"):
             ok = e
-        elif e.get("verdict") == "override" and str(e.get("by") or "").lower() == "shivam" and e.get("reason"):
+        elif e.get("verdict") == "override" and str(e.get("by") or "").lower() == "shivam" and e.get("reason") \
+                and e.get("quote"):
             if str(e.get("scope") or "") in Path(str(out)).as_posix():
                 ok = e
         elif e.get("verdict") == "fail":
@@ -104,8 +105,10 @@ def check(doc_types: list[str], pages: int, out: str | Path, gate_file: Path | N
     if bad:
         raise GateError(f"audit checkpoints of {out} need a passing grade first: {'; '.join(bad)} "
                         f"(python -m reality_engine.v2.read_gate grade ...)")
-    if pages <= PILOT_PAGES:
+    done = _ledger_count(out)
+    if done + pages <= PILOT_PAGES:     # the pilot allowance is per output DB, so chunked runs cannot dodge it
         return
+    pages = done + pages
     entries = load(gate_file)
     for doc_type in doc_types:
         fp = fingerprint(doc_type)
@@ -113,6 +116,21 @@ def check(doc_types: list[str], pages: int, out: str | Path, gate_file: Path | N
             raise GateError(f"no passing independent audit for doc type {doc_type!r} at reader fingerprint {fp}; "
                             f"a bulk run of {pages} pages needs one (hand-read >= {SAMPLE_ROWS} seeded rows, "
                             f"then read_gate record), or Shivam's override")
+
+
+def _ledger_count(out: str | Path) -> int:
+    """Pages already in ``out``'s page_read ledger (0 when the DB or table does not exist yet)."""
+    path = Path(str(out))
+    if str(out) == ":memory:" or not path.is_file():
+        return 0
+    try:
+        con = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True, timeout=30)
+        try:
+            return int(con.execute("SELECT COUNT(*) FROM page_read").fetchone()[0])
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return 0
 
 
 def _pages_read(con: sqlite3.Connection) -> int:
@@ -136,11 +154,12 @@ def maybe_checkpoint(con: sqlite3.Connection, out: str | Path, seed: int = 241) 
                         (CHECKPOINT_PAGES,)).fetchall()
     keys = {(str(a), int(b)) for a, b in pages}
     rows = [r for r in con.execute("SELECT observation_id, symbol, doc_key, page, record_type, measure, "
-                                   "printed_label, value, value_text, unit, scale, period, basis, statement, "
-                                   "status FROM observation WHERE status != 'quarantined'")
+                                   "printed_label, value, value_high, value_text, unit, scale, period, period_source, "
+                                   "basis, statement, speaker, status, status_reason FROM observation WHERE status != 'quarantined'")
             if (str(r[2]), int(r[3])) in keys]
     cols = ["observation_id", "symbol", "doc_key", "page", "record_type", "measure", "printed_label", "value",
-            "value_text", "unit", "scale", "period", "basis", "statement", "status"]
+            "value_high", "value_text", "unit", "scale", "period", "period_source", "basis", "statement", "speaker",
+            "status", "status_reason"]
     pick = random.Random(seed + k).sample(rows, min(SAMPLE_ROWS, len(rows)))
     with sample.open("w", encoding="utf-8") as fh:
         for r in pick:
@@ -167,6 +186,7 @@ def main(argv: list[str] | None = None) -> int:
     ov.add_argument("--doc-type", required=True)
     ov.add_argument("--by", required=True)
     ov.add_argument("--reason", required=True)
+    ov.add_argument("--quote", required=True, help="Shivam's own words and the time he gave them (for audit)")
     ov.add_argument("--scope", default="", help="only output DBs whose path contains this text")
     gr = sub.add_parser("grade")
     gr.add_argument("--ckpt", required=True)
@@ -205,7 +225,8 @@ def main(argv: list[str] | None = None) -> int:
             print("REFUSED: only Shivam overrides the gate", file=sys.stderr)
             return 2
         entries.append({"doc_type": a.doc_type, "fingerprint": fingerprint(a.doc_type), "verdict": "override",
-                        "by": a.by, "reason": a.reason, "scope": a.scope, "at": _now()})
+                        "by": a.by, "reason": a.reason, "quote": a.quote, "scope": a.scope,
+                        "at": _now()})
     elif a.cmd == "grade":
         sample = Path(a.ckpt)
         if not sample.is_file():

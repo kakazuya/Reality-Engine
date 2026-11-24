@@ -2305,13 +2305,14 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   T-232 part/doc-type filters and the deck manifest below).
 
 - **hy4 read gate: maker-checker-verifier (T-241, Shivam 24 Nov 2026).** `reality_engine/v2/read_gate.py`, called by
-  `observations.run` (not for `--only` scoped re-reads). (1) A run over 200 pages needs, for each doc type, an entry in
-  `reality_engine/v2/read_gates.json` at the CURRENT reader fingerprint (sha256 of the prompt template + reader id):
+  `observations.run` (scoped `--only` runs too). (1) A run that would take an output DB's `page_read` ledger past 200
+  pages needs, for each doc type, an entry in
+  `reality_engine/v2/read_gates.json` at the CURRENT reader fingerprint (sha256 of `observations.template_for(doc_type)` + reader id):
   a `pass` from a reviewer who is not the prompt's author with >= 60 hand-read rows (`read_gate record`), or a
-  `override` by Shivam with a reason and optional `--scope` (a substring of the output DB path); a later `fail`
+  `override` by Shivam with a reason, his quoted words (`--quote`) and optional `--scope` (a substring of the output DB path); a later `fail`
   withdraws a pass, and any prompt edit changes the fingerprint so earlier passes stop counting. (2) Every 2,000
-  pages in an output DB's `page_read` ledger write `<out>.audit/ckpt_NNNN.jsonl` (60 seeded rows); the next run on
-  that DB refuses to start until each checkpoint has a `pass` grade (`read_gate grade --ckpt ... --verdict ...`).
+  pages in an output DB's `page_read` ledger write `<out>.audit/ckpt_NNNN.jsonl` (60 seeded rows) and STOP the running
+  read (`stopped`); the next run on that DB refuses to start until each checkpoint has a `pass` grade (`read_gate grade --ckpt ... --verdict ...`).
   A refused run prints `GATE: ...` and exits 3; `.tmp/hy4_always.sh` then moves to the next job. (3)
   `read_gate status --out <db>` shows gates, pending checkpoints and ledger counts; the managers' 25-minute heartbeats
   grade pending checkpoints (never the reader's author). First entries 24 Nov: transcript `fail` (Eagle, 110 rows:

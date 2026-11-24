@@ -3887,6 +3887,11 @@ _QUOTA: dict[str, float] = {"seconds": 0.0}
 _QUOTA_LOCK = threading.Lock()
 
 
+def template_for(doc_type: str) -> str:
+    """The prompt template a page of ``doc_type`` is read with; read_gate fingerprints exactly this (T-241)."""
+    return PROMPT_TRANSCRIPT if "transcript" in str(doc_type) else PROMPT
+
+
 def ist_now() -> str:
     return datetime.now(timezone(timedelta(hours=5, minutes=30))).isoformat(timespec="seconds")
 
@@ -4106,7 +4111,7 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
     if not image_b64 and not layout.strip():
         result["skip"] = "no image and no text"
         return result
-    template = PROMPT_TRANSCRIPT if transcript else PROMPT
+    template = template_for(meta["doc_type"])
     prompt = template.format(dictionary=dictionary_text(measure_index()), text=layout[:TEXT_LAYER_CHARS])
     call = call_reader(prompt, image_b64, doc_key, page)
     if call.get("quota"):
@@ -4790,11 +4795,11 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
         selected = select_pages(todo, limit, seed, required)
     else:
         selected = select_pages(pages, limit, seed, required)
-    if only is None:
-        # T-241 maker-checker-verifier: a bulk read needs an independent passing audit of this reader, and every
-        # earlier audit checkpoint of this output DB must be graded pass (raises read_gate.GateError otherwise).
-        from reality_engine.v2 import read_gate
-        read_gate.check(list(doc_types), len(selected), out)
+    # T-241 maker-checker-verifier: a bulk read needs an independent passing audit of this reader, and every
+    # earlier audit checkpoint of this output DB must be graded pass (raises read_gate.GateError otherwise).
+    # Scoped (--only) runs are gated too; the pilot allowance counts pages already in the output's ledger.
+    from reality_engine.v2 import read_gate
+    read_gate.check(list(doc_types), len(selected), out)
     statement_filter = {"kept": len(pages), "dropped": sum(dropped_by_reason.values()),
                         "by_reason": dict(sorted(dropped_by_reason.items(), key=lambda kv: -kv[1]))}
     if skip_statements:
@@ -4849,6 +4854,7 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                 if not result.get("image_note"):
                     con.execute("INSERT OR REPLACE INTO page_read VALUES (?,?,?,?,?)",
                                 (result["doc_key"], int(result["page"]), "skip", 0, ist_now()))
+                    con.commit()
                 continue
             if result.get("error"):
                 stats["errors"] += 1
@@ -4876,9 +4882,13 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                 con.execute("INSERT OR REPLACE INTO page_read VALUES (?,?,?,?,?)",
                             (result["doc_key"], int(result["page"]), "rows", len(rows), ist_now()))
             write_rows(con, rows)
-            if only is None:
-                from reality_engine.v2 import read_gate
-                read_gate.maybe_checkpoint(con, out)
+            con.commit()                    # the page_read row too (write_rows of no rows does not commit)
+            ckpt = read_gate.maybe_checkpoint(con, out)
+            if ckpt is not None:            # a failed or ungraded audit must stop the reading, not the next run
+                stats["stopped"] = f"audit checkpoint {ckpt.name} written: grade it (read_gate grade) to continue"
+                for other in futures:
+                    other.cancel()
+                break
             if result.get("ocr_text"):
                 con.execute("INSERT OR REPLACE INTO page_ocr VALUES (?,?,?,?,?)",
                             (result["doc_key"], int(result["page"]), result["ocr_text"], OCR_READER, ist_now()))
