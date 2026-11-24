@@ -871,7 +871,8 @@ _FILING_LINE_RE = re.compile(r"\bfor\s+your\s+(?:kind\s+)?information\s+and\s+(?
 
 
 _GREETING_SENTENCE_RE = re.compile(
-    r"^(?:thank\s+you|thanks|good\s+(?:morning|afternoon|evening)|hello|hi|welcome|over\s+to\s+you"
+    r"^(?:(?:now|so|and|with\s+that)\s+)?"
+    r"(?:thank\s+you|thanks|good\s+(?:morning|afternoon|evening|night)|hello|hi|welcome|over\s+to\s+you"
     r"|i\s+(?:would\s+)?(?:now\s+)?(?:like\s+to\s+)?(?:hand|pass)\s+(?:it\s+)?over"
     r"|(?:now\s+)?(?:i\s+would|i'd|let\s+me)\s+(?:like\s+to\s+)?(?:take|walk)\s+you\s+through"
     r"|(?:i\s+)?(?:hope|trust)\s+(?:you|everyone)\s+(?:are|is)\s+(?:doing\s+)?well"
@@ -883,6 +884,14 @@ _GREETING_SENTENCE_RE = re.compile(
     re.I)
 _GREETING_TAIL_WORDS = 8     # what follows the greeting phrase: a name, "for your question", "for joining us"
 
+_PERIOD_LABEL_RE = re.compile(r"\b(?:[QH][1-4]\s*FY\s*\d{2,4}|FY\s*\d{2,4}|[QH][1-4])\b", re.I)
+_ABBREV_DOT_RE = re.compile(r"\b(?:Mr|Mrs|Ms|Dr|Shri|Sh|Prof|Sr|Smt|Er|Capt|vs|etc)\.", re.I)
+
+
+def _has_figure(text: str) -> bool:
+    """A digit in the sentence, except a fiscal-period label ("Q2FY27 / H1FY27" is not a figure)."""
+    return bool(re.search(r"\d", _PERIOD_LABEL_RE.sub(" ", text)))
+
 
 def _greeting_sentence(sentence: str) -> bool:
     """One sentence that is only a greeting: the phrase plus a short tail with no figure ("Thank you, Vaibhav" is;
@@ -891,13 +900,47 @@ def _greeting_sentence(sentence: str) -> bool:
     if not match:
         return False
     tail = sentence[match.end():]
-    return not re.search(r"\d", tail) and len(re.findall(r"[A-Za-z]+", tail)) <= _GREETING_TAIL_WORDS
+    return not _has_figure(tail) and len(re.findall(r"[A-Za-z]+", tail)) <= _GREETING_TAIL_WORDS
+
+
+# Opening welcome: any length when the sentence welcomes the audience ("... a warm welcome to all participants"),
+# provided it states no figure (fy27_v3 ckpt_0003: "... for Q2FY27 and H1FY27").
+_WELCOME_OPEN_RE = re.compile(r"^(?:good\s+(?:morning|afternoon|evening)|hello|hi|welcome|greetings)\b", re.I)
+
+# Closing/opening housekeeping that names no figure (fy27_v3 ckpt_0003: "audio recording ... uploaded", "stay safe").
+_LOGISTICS_SENTENCE_RE = re.compile(
+    r"\bthank\s+you\b[^.]*\bfor\s+(?:joining|attending|taking\s+(?:your\s+)?(?:valuable\s+)?time|being\s+(?:here|with\s+us))"
+    r"|\bkeep\s+(?:you|everyone)\s+(?:all\s+)?posted\b"
+    r"|\bsend\s+(?:in\s+)?your\b[^.]{0,40}\b(?:questions?|queries)\b"
+    r"|\b(?:questions?|queries)\b[^.]{0,40}\b(?:unanswered|unaddressed)\b"
+    r"|\b(?:for\s+)?any\s+(?:further|other|more)\s+(?:questions?|queries)\b"
+    r"|\b(?:audio\s+recording|transcripts?|webcast|recording|presentation)\b[^.]{0,80}\b(?:uploaded|available)\b"
+    r"|\b(?:uploaded|available)\b[^.]{0,80}\b(?:website|stock\s+exchanges?)\b"
+    r"|^looking\s+forward\s+to\b"
+    r"|\bstay\s+(?:healthy|safe|well)\b"
+    r"|^i\s+hope\s+you\b", re.I)
+
+
+def _sentences(text: str) -> list[str]:
+    """Split on . ! ? followed by space, keeping a title's dot inside its sentence ("to Mr. Sohoni ...")."""
+    guarded = _ABBREV_DOT_RE.sub(lambda m: m.group(0)[:-1] + "\u2024", str(text or ""))
+    return [x.replace("\u2024", ".").strip() for x in re.split(r"(?<=[.!?])\s+", guarded) if x.strip()]
+
+
+def _boilerplate_sentence(sentence: str) -> bool:
+    """A welcome or housekeeping sentence with no figure in it; only a sentence that says "welcome" may be long."""
+    if _has_figure(sentence):
+        return False
+    if re.search(r"\bwelcome\b", sentence, re.I) and _WELCOME_OPEN_RE.match(sentence):
+        return True
+    return bool(_LOGISTICS_SENTENCE_RE.search(sentence))
 
 
 def greeting_only(statement: str) -> bool:
-    """T-242 (fy27_v3 ckpt_0002 J): a passage made only of greetings, thanks and hand-overs carries no statement."""
-    sentences = [x.strip() for x in re.split(r"(?<=[.!?])\s+", str(statement or "")) if x.strip()]
-    return bool(sentences) and all(_greeting_sentence(x) for x in sentences)
+    """T-242 (fy27_v3 ckpt_0002/0003 J): a passage made only of greetings, thanks, housekeeping and hand-overs
+    carries no statement; any one sentence with substance keeps it."""
+    sentences = _sentences(statement)
+    return bool(sentences) and all(_greeting_sentence(x) or _boilerplate_sentence(x) for x in sentences)
 
 
 _HANDOVER_RE = re.compile(

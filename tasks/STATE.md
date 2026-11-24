@@ -8,7 +8,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
-00000. 24 Nov 23:05 (Eagle): T-242 transcripts v3 (2fae7ddac53e): 394 ckpt_0002 PASS 54/5/0/1; speaker label/hand-over checks + greeting drop merged (9dc2524d). NEXT: fy27_v3/394_v3 live reparse; fund_raise r5 (dsh a7c04bff, grade 30/16/10/4 FAIL) then fresh grade; universe events r4 run.
+00000. 24 Nov 23:05 (Eagle): T-242 transcripts v3 (2fae7ddac53e): 394 ckpt_0002 PASS 54/5/0/1; speaker label/hand-over checks + greeting drop merged (9dc2524d); ckpt_0003 greeting widening (welcome of any length, closing logistics, 'good night', 'Now' hand-over) on branch, drops 10 of 15,517 verified statements (0.06%). NEXT: fy27_v3/394_v3 live reparse; fund_raise r5 (dsh a7c04bff, grade 30/16/10/4 FAIL) then fresh grade; universe events r4 run.
 00000. 24 Nov 23:05 (Eagle merged): AR gate PASS 57/0/3/0 (48d75aa69de7); AR gates net-cash sign + bound subsidiary (aa31ca82, + parent-prefix fix), statement lines never verified; deck ranges/date values (d8719f81, + 9M fix). AR bulk may start (Wolf).
 0000. 24 Nov 15:15 (Eagle): T-242 merged v2 guards 10-16 (f1fac770) + filing_events fixes 1-6 (tuned on the graded 60: fresh-seed grade needed). NEXT: reparse fresh 394_v2 snapshot -> Wolf grades 60 verified; events on 20 new stores -> Wolf grades.
 000. 24 Nov 19:00 (Wolf): T-242: call statements gate (numbers only via v2/corroborate.py); deck whose-figure prompt GATE PASSED 55/4/0/1 (fp ea5e621d2826); deck bulk in hy4 loop; AR row guards dsh cb0efb86; v3 fy27 ckpt_0001 grading (dsh 5edabb75).
