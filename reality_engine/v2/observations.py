@@ -4689,6 +4689,47 @@ Transcript page text (verbatim):
 >>>"""
 
 
+# T-242 v3 (Shivam 24 Nov 17:15): a transcript is read in windows of TRANSCRIPT_WINDOW pages, one hy4 call per window,
+# with the call's company, date and quarters in a header.  Blind strict grade on 5 calls (60 rows per method): window
+# statements 25/4/0/1 vs page-by-page 21/7/2/0; numbers 20/3/7/0 vs 18/3/9/0; speaker filled 100% vs 76%.  One reply
+# holds at most 16,000 output tokens, so a whole call (a 40-page call needs ~70k) is read in windows, never in one call.
+TRANSCRIPT_WINDOW = 5
+TRANSCRIPT_V3_HEAD = """Read the earnings-call transcript pages below (text layer only, no image). They are pages {first}-{last}
+of ONE call; read them as one continuous conversation: a speaker's turn continues across page breaks until the next
+"Name:" label, and an answer belongs to the question just before it.
+Company: {name} ({symbol}). Call filed {known_at}. This call reports {call_quarter}; the year-ago quarter is
+{year_ago}; the previous quarter is {prev_quarter}. "This year" / "current year" is FY{fy}.
+EVERY object you output MUST carry "page": the page number (from the === PAGE n === marker) where its value or its
+statement's first word is printed. {context_rule}
+"""
+
+
+def _v3_body(v2: str) -> str:
+    body = v2.replace("Read one page of an Indian company's earnings-call transcript (its text layer only, no image)",
+                      "Read these pages of an Indian company's earnings-call transcript")
+    for kind in ("number", "statement", "guidance"):
+        body = body.replace('{{"type": "%s",' % kind, '{{"type": "%s", "page": <the === PAGE n === number>,' % kind)
+    return body
+
+
+PROMPT_TRANSCRIPT_V3 = TRANSCRIPT_V3_HEAD + "\n" + _v3_body(PROMPT_TRANSCRIPT_V2)
+
+
+def transcript_v2_mode() -> bool:
+    """v2 and v3 replies share the v2 schema, so both get the v2 guards and gates."""
+    return TRANSCRIPT_PROMPT in ("v2", "v3")
+
+
+def quarters_around(call_q: str) -> tuple[str, str, str]:
+    """('Q1 FY27') -> ('Q1 FY26', 'Q4 FY26', '27'): the year-ago quarter, the previous quarter, the fiscal year."""
+    m = re.match(r"Q(\d) FY(\d\d)", call_q or "")
+    if not m:
+        return "the same quarter last year", "the previous quarter", "of this call"
+    q, fy = int(m.group(1)), int(m.group(2))
+    prev = f"Q{q - 1} FY{fy:02d}" if q > 1 else f"Q4 FY{fy - 1:02d}"
+    return f"Q{q} FY{fy - 1:02d}", prev, f"{fy:02d}"
+
+
 def call_quarter(known_at: str) -> str:
     """The fiscal quarter a call discusses: the last quarter that ended before its filing month ("Q1 FY25")."""
     m = re.match(r"(\d{4})-(\d{2})", known_at or "")
@@ -4806,6 +4847,7 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
     """
     import hashlib
     v2_fp = hashlib.sha256(f"{OBS_READER}\n{PROMPT_TRANSCRIPT_V2}".encode("utf-8")).hexdigest()[:12]
+    v3_fp = hashlib.sha256(f"{OBS_READER}\n{PROMPT_TRANSCRIPT_V3}".encode("utf-8")).hexdigest()[:12]
     store_dbs = list(store_dbs)
     companies = company_index(store_dbs)
     doc_store: dict[str, str] = {}
@@ -4843,7 +4885,7 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
             owner = ""
         text = page_text_of(store_db, doc_key, page)
         reply_rows, _bad = parse_reply(str(raw or ""))
-        v2 = f"transcript:{v2_fp}" in str(fingerprint or "")
+        v2 = f"transcript:{v2_fp}" in str(fingerprint or "") or f"transcript:{v3_fp}" in str(fingerprint or "")
         if doc_type == "annual_report":
             check_text, words, ocr_page = text, [], False
             try:
@@ -4919,6 +4961,8 @@ def apply_prompt_choice(transcript_prompt: str) -> None:
 def template_for(doc_type: str) -> str:
     """The prompt template a page of ``doc_type`` is read with; read_gate fingerprints exactly this (T-241)."""
     if "transcript" in str(doc_type):
+        if TRANSCRIPT_PROMPT == "v3":
+            return PROMPT_TRANSCRIPT_V3
         return PROMPT_TRANSCRIPT_V2 if TRANSCRIPT_PROMPT == "v2" else PROMPT_TRANSCRIPT
     return PROMPT
 
@@ -5091,6 +5135,127 @@ def propose_measures(con: sqlite3.Connection, limit: int = 300, workers: int = 2
     return {"labels": len(todo), "proposed": written, "quota": quota_hit}
 
 
+def _store_company_name(store_db: str | Path, symbol: str) -> str:
+    try:
+        con = connect_ro(store_db, timeout_s=60)
+        try:
+            row = con.execute("SELECT name FROM company WHERE symbol=? LIMIT 1", (symbol,)).fetchone()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        row = None
+    return str(row[0]) if row and row[0] else symbol
+
+
+def process_window(store_db: str | Path, doc_key: str, own: list[int], context: list[int],
+                   companies: dict[str, tuple[str, str]] | None = None) -> list[dict[str, Any]]:
+    """T-242 v3: one hy4 call reads the transcript pages ``own`` (plus ``context`` pages shown for the speaker only).
+
+    Returns one result per owned page in process_page's shape, so run() writes them unchanged: each page keeps the
+    reply objects that name it ("page") as its own JSONL ``raw`` (so --reparse rebuilds a page alone), and the call's
+    tokens and seconds sit on the first page only.  Rows naming no owned page are dropped and counted.
+    """
+    base = [{"store": str(store_db), "doc_key": doc_key, "page": pg} for pg in own]
+    stop = quota_seconds()
+    if stop > 0:
+        return [{**b, "quota": stop} for b in base]
+    meta = page_meta(store_db, doc_key)
+    if not meta:
+        return [{**b, "skip": "no doc row"} for b in base]
+    owner = ""
+    if companies:
+        try:
+            owner = doc_owner(store_db, doc_key, companies, meta["symbol"])
+        except Exception:
+            owner = ""
+    texts = {pg: page_text_of(store_db, doc_key, pg) for pg in list(context) + list(own)}
+    cq = call_quarter(meta["known_at"])
+    year_ago, prev_q, fy = quarters_around(cq)
+    body = ""
+    for pg in context:
+        body += f"\n=== PAGE {pg} (CONTEXT ONLY: emit nothing from this page) ===\n" + norm_space(texts[pg])[:TEXT_LAYER_CHARS]
+    for pg in own:
+        body += f"\n=== PAGE {pg} ===\n" + norm_space(texts[pg])[:TEXT_LAYER_CHARS]
+    prompt = PROMPT_TRANSCRIPT_V3.format(
+        first=own[0], last=own[-1], name=_store_company_name(store_db, meta["symbol"]), symbol=meta["symbol"],
+        known_at=meta["known_at"][:10], call_quarter=cq, year_ago=year_ago, prev_quarter=prev_q, fy=fy,
+        context_rule=("A page marked CONTEXT ONLY is the end of the previous window: use it to know who is "
+                      "speaking, emit nothing from it." if context else ""),
+        dictionary=dictionary_text(measure_index()), text=body)
+    call = call_reader(prompt, None, doc_key, own[0])
+    common = {"symbol": meta["symbol"], "owner": owner, "error": "", "image_note": "", "doc_type": meta["doc_type"],
+              "ocr_text": "", "ocr_read": False, "window": f"{own[0]}-{own[-1]}"}
+    if call.get("quota"):
+        return [{**b, "quota": call["quota"]} for b in base]
+    if call.get("error"):
+        return [{**b, **common, "raw": "", "rows": [], "bad_lines": 0, "parsed": 0, "seconds": 0.0, "in_tok": 0,
+                 "out_tok": 0, "error": str(call.get("error") or "")} for b in base]
+    reply_rows, bad = parse_reply(str(call.get("output") or ""))
+    by_page: dict[int, list[dict[str, Any]]] = {pg: [] for pg in own}
+    seen: set[tuple[Any, ...]] = set()
+    unplaced = 0
+    for r in reply_rows:
+        try:
+            pg = int(str(r.get("page")).strip())
+        except (TypeError, ValueError):
+            pg = -1
+        if pg not in by_page:
+            unplaced += 1                       # a context page's row or no page at all: never guessed
+            continue
+        key = (pg, r.get("type"), norm_space(r.get("measure")), norm_space(r.get("value_text") or r.get("low")),
+               norm_space(r.get("text"))[:120])
+        if key in seen:
+            continue                            # the same object emitted twice in one window
+        seen.add(key)
+        by_page[pg].append(r)
+    out: list[dict[str, Any]] = []
+    for i, pg in enumerate(own):
+        rows_in = by_page[pg]
+        rows = build_observations(symbol=meta["symbol"], doc_key=doc_key, page=pg, known_at=meta["known_at"],
+                                  page_text=texts[pg], words=[], reply_rows=rows_in, doc_owner_symbol=owner,
+                                  companies=companies, transcript_v2=True)
+        apply_number_gates(rows, str(meta.get("doc_type") or ""))
+        out.append({**base[i], **common, "rows": rows, "parsed": len(rows_in), "bad_lines": bad if i == 0 else 0,
+                    "raw": "\n".join(json.dumps(r, ensure_ascii=False) for r in rows_in) if rows_in else "",
+                    "seconds": float(call.get("seconds") or 0.0) if i == 0 else 0.0,
+                    "in_tok": int(call.get("in_tok") or 0) if i == 0 else 0,
+                    "out_tok": int(call.get("out_tok") or 0) if i == 0 else 0,
+                    "unplaced": unplaced if i == 0 else 0})
+    return out
+
+
+def expand_transcript_windows(selected: list[dict[str, Any]], window: int) -> list[list[dict[str, Any]]]:
+    """T-242 v3: the work items for ``selected`` pages.  A transcript page brings in its whole block of ``window``
+    pages (blocks of one doc are pages 1-5, 6-10, ...), so every read sees its neighbours; the page before a block is
+    shown as context.  A non-transcript page stays a one-page item.  Returns a list of items; an item is a list of
+    page dicts (several for a transcript window) and carries "context" on its first element."""
+    items: list[list[dict[str, Any]]] = []
+    by_doc: dict[tuple[str, str], set[int]] = {}
+    for p in selected:
+        meta = page_meta(p["store"], p["doc_key"])
+        if not meta or "transcript" not in str(meta.get("doc_type") or ""):
+            items.append([p])
+            continue
+        by_doc.setdefault((str(p["store"]), str(p["doc_key"])), set()).add(int(p["page"]))
+    for (store, dk), wanted in sorted(by_doc.items()):
+        con = connect_ro(store, timeout_s=60)
+        try:
+            have = sorted(int(r[0]) for r in con.execute(
+                "SELECT page FROM doc_page WHERE doc_key=? AND length(trim(coalesce(text,'')))>0", (dk,)))
+        finally:
+            con.close()
+        blocks = sorted({(pg - 1) // window for pg in wanted})
+        for b in blocks:
+            own = [pg for pg in have if (pg - 1) // window == b]
+            if not own:
+                continue
+            context = [pg for pg in have if pg < own[0]][-1:]
+            item = [{"store": store, "doc_key": dk, "page": pg} for pg in own]
+            item[0]["context"] = context
+            items.append(item)
+    return items
+
+
 def process_page(store_db: str | Path, doc_key: str, page: int,
                  companies: dict[str, tuple[str, str]] | None = None,
                  text_only: bool = False) -> dict[str, Any]:
@@ -5173,7 +5338,7 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                                         deck_asof="" if transcript else deck_period(store_db, doc_key, check_text),
                                         deck_basis="" if transcript else deck_basis(str(store_db), str(doc_key)),
                                         ocr_text=result["ocr_text"], ocr_page=ocr_read,
-                                        transcript_v2=transcript and TRANSCRIPT_PROMPT == "v2",
+                                        transcript_v2=transcript and transcript_v2_mode(),
                                         deck_guards=meta.get("doc_type") == "deck")
     apply_number_gates(result["rows"], str(meta.get("doc_type") or ""))
     return result
@@ -5920,6 +6085,10 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
     # earlier audit checkpoint of this output DB must be graded pass (raises read_gate.GateError otherwise).
     # Scoped (--only) runs are gated too; the pilot allowance counts pages already in the output's ledger.
     from reality_engine.v2 import read_gate
+    items: list[list[dict[str, Any]]] | None = None
+    if TRANSCRIPT_PROMPT == "v3" and "transcript" in doc_types:
+        items = expand_transcript_windows(selected, TRANSCRIPT_WINDOW)     # T-242 v3: whole windows, counted whole
+        selected = [p for item in items for p in item]
     read_gate.check(list(doc_types), len(selected), out)
     if ar_sections and only is None:
         selected = triage_selection(selected, pool=(todo if resume else pages), limit=limit, seed=seed,
@@ -5944,6 +6113,17 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
         before = len(selected)
         selected = missing_pages(con, selected)
         already_done = before - len(selected)
+        if items is not None:                   # a window keeps only its pages still to read
+            keep = {(str(p["doc_key"]), int(p["page"])) for p in selected}
+            trimmed = []
+            for item in items:
+                left = [dict(p) for p in item if (str(p["doc_key"]), int(p["page"])) in keep]
+                if left:
+                    if "context" in item[0]:
+                        first = int(left[0]["page"])
+                        left[0]["context"] = item[0]["context"] if first == int(item[0]["page"]) else [first - 1]
+                    trimmed.append(left)
+            items = trimmed
     stats: dict[str, Any] = {"pages": len(selected), "already_done": already_done, "read": 0, "errors": 0,
                              "parse_failures": 0, "dropped_all": 0, "observations": 0, "quarantined": 0,
                              "skipped": 0, "quota_skipped": 0, "parent_rows": 0, "http_429": 0,
@@ -5954,17 +6134,32 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
     companies = company_index(store_dbs)
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
-        futures = {pool.submit(process_page, p["store"], p["doc_key"], p["page"], companies, text_only): p
-                   for p in selected}
+        if items is None:
+            futures = {pool.submit(process_page, p["store"], p["doc_key"], p["page"], companies, text_only): p
+                       for p in selected}
+        else:                                   # T-242 v3: one call per transcript window
+            futures = {(pool.submit(process_window, item[0]["store"], item[0]["doc_key"],
+                                    [int(p["page"]) for p in item], list(item[0]["context"]), companies)
+                        if "context" in item[0] else
+                        pool.submit(process_page, item[0]["store"], item[0]["doc_key"], item[0]["page"], companies,
+                                    text_only)): item[0] for item in items}
         done = 0
-        for future in as_completed(futures):
-            done += 1
-            try:
-                result = future.result()
-            except Exception as exc:
+
+        def _results():
+            for fut in as_completed(futures):
+                try:
+                    got = fut.result()
+                except Exception as exc:        # noqa: BLE001
+                    yield {"_exc": exc}
+                    continue
+                yield from (got if isinstance(got, list) else [got])
+
+        for result in _results():
+            if "_exc" in result:
                 stats["errors"] += 1
-                stats["failed_replies"].append({"error": f"{type(exc).__name__}: {exc}"})
+                stats["failed_replies"].append({"error": f"{type(result['_exc']).__name__}: {result['_exc']}"})
                 continue
+            done += 1
             stats["in_tok"] += int(result.get("in_tok") or 0)
             stats["out_tok"] += int(result.get("out_tok") or 0)
             if result.get("seconds"):
@@ -6103,7 +6298,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--reparse", action="store_true",
                         help="T-241: copy --baseline to --out and rebuild its transcript/annual-report rows "
                              "from page_reply (no model)")
-    parser.add_argument("--transcript-prompt", choices=("v1", "v2"), default="v1",
+    parser.add_argument("--transcript-window", type=int, default=TRANSCRIPT_WINDOW,
+                        help="T-242 v3: transcript pages per hy4 call (with --transcript-prompt v3)")
+    parser.add_argument("--transcript-prompt", choices=("v1", "v2", "v3"), default="v1",
                         help="T-241 transcript prompt: v1 (default) or v2 (fiscal periods, ranges, sign, speaker)")
     parser.add_argument("--text-only", action="store_true",
                         help="send the stored text layer only, no page image (T-234 text readers; transcript "
@@ -6114,6 +6311,7 @@ def main(argv: list[str] | None = None) -> int:
     except KeyError:
         parser.error(f"unknown --reader {args.reader!r}; known: {', '.join(sorted(rp.MODELS))}")
     apply_prompt_choice(args.transcript_prompt)
+    globals()["TRANSCRIPT_WINDOW"] = max(1, int(args.transcript_window))
 
     only = None
     if args.only:
