@@ -37,7 +37,14 @@ def _make_ar_store(store_dir: Path, pages: list[str], doc_type: str = "annual_re
     return store_db
 
 
-def test_pages_from_store_ar_sections_filters_only_when_enabled(tmp_path: Path):
+def test_pages_from_store_ar_sections_filters_only_when_enabled(tmp_path: Path, monkeypatch):
+    seen: list = []
+
+    def fake_triage(texts, workers=10, db=None):        # round 3: only safe-drop survivors reach hy4
+        seen.extend(sorted(texts))
+        return {key: "Capacity" not in text for key, text in texts.items()}
+
+    monkeypatch.setattr(ars, "triage", fake_triage)
     store_db = _make_ar_store(tmp_path, [
         "Management Discussion and Analysis\nRevenue grew 18% YoY",
         "Capacity rose from 20 mtpa to 30 mtpa across plants",
@@ -48,8 +55,24 @@ def test_pages_from_store_ar_sections_filters_only_when_enabled(tmp_path: Path):
     assert [p["page"] for p in all_pages] == [1, 2, 3, 4]
     dropped: dict[str, int] = {}
     kept_pages = obs.pages_from_store(store_db, doc_types=("annual_report",), ar_sections=True, dropped=dropped)
-    assert [p["page"] for p in kept_pages] == [1, 2]
-    assert dropped == {"ar_section": 2}
+    assert seen == [("ar.pdf", 1), ("ar.pdf", 2)]          # governance and auditor pages never reach the model
+    assert [p["page"] for p in kept_pages] == [1]
+    assert dropped == {"ar_section": 3}
+
+
+def test_triage_caches_and_reads_unsure_as_useful(tmp_path: Path, monkeypatch):
+    calls = []
+
+    def fake_call(prompt, image, doc_key="", page=0):
+        calls.append(page)
+        return {"output": '{"useful": false, "section": "notice"}' if page == 1 else "garbled"}
+
+    monkeypatch.setattr(obs, "call_reader", fake_call)
+    db = tmp_path / "t.db"
+    texts = {("a.pdf", 1): "x", ("a.pdf", 2): "y"}
+    assert ars.triage(texts, workers=2, db=db) == {("a.pdf", 1): False, ("a.pdf", 2): True}
+    assert ars.triage(texts, workers=2, db=db) == {("a.pdf", 1): False, ("a.pdf", 2): True}
+    assert sorted(calls) == [1, 2, 2]                       # the cached verdict is not asked again; unsure is
 
 
 TABLE = "\n".join(f"Line item {i} 1,{i}23.45 1,{i}10.20" for i in range(10))

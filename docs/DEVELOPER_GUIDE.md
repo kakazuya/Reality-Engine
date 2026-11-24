@@ -2846,3 +2846,12 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   a figure table (`numeric_table`: >= 8 lines with amounts); any other figure table is kept as `table`; prose is
   dropped. `needs_ocr` pages have empty text and are dropped unless they continue a kept MD&A/risks/highlights section.
   120 universe stores: 8,055 of 14,743 table pages kept (55%). Re-audit of precision and recall before the AR pilot.
+- **Annual-report selector round 3: safe drops + hy4 triage (T-242, 24 Nov 2026, Wolf).** The round-2 re-audit
+  (`D:/RealityEngine/t242/ar_audit2/ar_audit2.md`) found the figure-table fallback 15% precise. Both audits (160 pages,
+  `D:/RealityEngine/t242/ar_gold/gold.json`) now score any selector offline (`eval.py <module>`): round 1 39% precise /
+  44% recall, round 2 27% / 81%, hy4 text-only triage 67% / 100% (`hy4_classify.py`, 198k input tokens for 160 pages).
+  `--ar-sections` therefore drops only `SAFE_DROP` headings (notice, governance, audit, CSR/BRSR, remuneration, market
+  data, cover letters, policies; 30 of 160 gold pages, no useful one) and empty pages, then asks hy4 `TRIAGE_PROMPT`
+  per page; verdicts are cached in `C:/RealityEngine/t242/ar_triage.db`; an unparsed reply counts as useful and is
+  not cached. The gold set wrote the triage definition, so a fresh hand audit of triage verdicts gates the AR bulk.
+

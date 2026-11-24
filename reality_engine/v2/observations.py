@@ -4650,7 +4650,8 @@ def filter_statement_pages(pages: list[dict[str, Any]], texts: dict[tuple[str, i
 
 def filter_ar_section_pages(pages: list[dict[str, Any]], texts: dict[tuple[str, int], str],
                             dropped: dict[str, int] | None = None) -> list[dict[str, Any]]:
-    """T-242: keep only ``ar_sections.kept_pages`` for ``annual_report`` pages; count drops in ``ar_section``."""
+    """T-242: keep ``annual_report`` pages that pass ``ar_sections.safe_drop`` and hy4 ``triage``; count drops in
+    ``ar_section``."""
     by_doc: dict[str, list[tuple[int, str]]] = {}
     for p in pages:
         if p.get("doc_type") == "annual_report":
@@ -4659,9 +4660,10 @@ def filter_ar_section_pages(pages: list[dict[str, Any]], texts: dict[tuple[str, 
             by_doc.setdefault(dk, []).append((pg, texts.get((dk, pg), "")))
     if not by_doc:
         return pages
-    kept_ar: set[tuple[str, int]] = set()
-    for dk, doc_pages in by_doc.items():
-        kept_ar.update((dk, pg) for pg in _ar_sections.kept_pages(doc_pages))
+    candidates = {(dk, pg): text for dk, doc_pages in by_doc.items() for pg, text in doc_pages
+                  if not _ar_sections.safe_drop(text)}          # T-242 round 3: safe regex drops, then hy4 triage
+    verdict = _ar_sections.triage(candidates) if candidates else {}
+    kept_ar: set[tuple[str, int]] = {key for key, useful in verdict.items() if useful}
     kept: list[dict[str, Any]] = []
     for p in pages:
         if p.get("doc_type") != "annual_report" or (str(p["doc_key"]), int(p["page"])) in kept_ar:

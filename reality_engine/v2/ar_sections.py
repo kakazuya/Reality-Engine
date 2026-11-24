@@ -161,6 +161,89 @@ def kept_pages(pages: list[tuple[int, str]]) -> dict[int, str]:
     return out
 
 
+# ---- round 3 (24 Nov): safe regex drops, then hy4 triage ------------------------------------------------------------
+# Scored on 160 hand-labelled gold pages (D:/RealityEngine/t242/ar_gold/gold.json, two Sonnet audits): round-1 keep-list
+# precision 39% / recall 44%, round-2 drop-list 27% / 81%; hy4 triage alone 67% / 100% (32/32 useful pages kept);
+# SAFE_DROP before it removes 30 of 160 pages and loses none.  Script tools: hy4_classify.py and eval.py beside gold.
+SAFE_DROP = set(DROP) - {"xbrl_schedule", "primary_statement", "employee"}
+TRIAGE_DB = Path("C:/RealityEngine/t242/ar_triage.db")
+TRIAGE_CHARS = 6000
+TRIAGE_PROMPT = """You are triaging one page of an Indian listed company's annual report (its text layer below).
+Decide if a careful analyst should extract figures from this page. USEFUL means the page itself states company figures
+or facts an investor wants that are NOT just lines of the primary statements (balance sheet, P&L, cash flow) and NOT
+boilerplate. Useful examples: segment/geography/product tables, order book, capacity and utilisation, volumes, KPIs,
+multi-year summaries, MD&A with figures and reasons, key ratios with reasons, contingent liabilities with amounts,
+related-party transactions/balances with amounts, borrowing rates/terms/security, receivable or payable ageing,
+hedges and FX exposure amounts, subsidiary/associate figures (AOC-1), litigation or tax demand amounts, use of issue
+proceeds, acquisitions, events after the reporting date with amounts.
+NOT useful: AGM notice, e-voting, governance, board/committee meetings, director bios, remuneration disclosures,
+auditor's report and annexures, accounting policies, BRSR/ESG/CSR, HR narrative, ESOP terms, actuarial tables,
+primary statements, routine schedules (PPE, share capital, other equity, inventories, cash, other income/expenses, EPS,
+deferred tax), tables that are all NIL, contents pages.
+Answer with ONE line of JSON only: {"useful": true or false, "section": "<2-4 words>"}
+
+PAGE TEXT:
+"""
+
+
+def safe_drop(text: str) -> bool:
+    """True when the page is certainly not worth a read: empty, or a SAFE_DROP heading (no useful gold page has one)."""
+    if not str(text or "").strip():
+        return True
+    return section_of(text)[0] in SAFE_DROP
+
+
+def _triage_db(path: Path) -> sqlite3.Connection:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(str(path), timeout=60, check_same_thread=False)
+    con.execute("CREATE TABLE IF NOT EXISTS ar_triage (doc_key TEXT NOT NULL, page INTEGER NOT NULL, useful INTEGER, "
+                "section TEXT, raw TEXT, read_at TEXT, PRIMARY KEY (doc_key, page))")
+    return con
+
+
+def triage(texts: dict[tuple[str, int], str], workers: int = 10, db: Path | None = None) -> dict[tuple[str, int], bool]:
+    """{(doc_key, page): useful} from hy4 (text only, one line of JSON), cached in ``ar_triage``; a failed call is
+    not cached and counts as useful (unsure = read; the reader's row checks still apply)."""
+    import concurrent.futures as cf
+    import datetime as dt
+    import json
+
+    from reality_engine.v2 import observations as obs
+
+    con = _triage_db(db or TRIAGE_DB)
+    out: dict[tuple[str, int], bool] = {}
+    todo = []
+    for key in texts:
+        got = con.execute("SELECT useful FROM ar_triage WHERE doc_key=? AND page=?", key).fetchone()
+        if got is not None:
+            out[key] = bool(got[0])
+        else:
+            todo.append(key)
+
+    def one(key: tuple[str, int]) -> tuple[tuple[str, int], dict | None, str]:
+        text = re.sub(r"[ \t]+", " ", texts[key])[:TRIAGE_CHARS]
+        r = obs.call_reader(TRIAGE_PROMPT + text, None, key[0], key[1])
+        raw = r.get("output") or ""
+        m = re.search(r"\{.*\}", raw, re.S)
+        try:
+            return key, (json.loads(m.group(0)) if m else None), raw
+        except ValueError:
+            return key, None, raw
+
+    with cf.ThreadPoolExecutor(workers) as ex:
+        for key, j, raw in ex.map(one, todo):
+            if not isinstance(j, dict) or "useful" not in j:
+                out[key] = True
+                continue
+            out[key] = bool(j.get("useful"))
+            con.execute("INSERT OR REPLACE INTO ar_triage VALUES (?,?,?,?,?,?)",
+                        (key[0], key[1], int(out[key]), str(j.get("section") or "")[:80], raw[:500],
+                         dt.datetime.now().isoformat(timespec="seconds")))
+            con.commit()
+    con.close()
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="kept / dropped annual-report table pages per section")
     ap.add_argument("--stores-root", required=True)
