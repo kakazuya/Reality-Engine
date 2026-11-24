@@ -4236,6 +4236,13 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
         }
         if partial:
             item["match"] = "partial"
+        if g("check_status"):   # T-242: an independent model check of an unverified row, labelled, advisory
+            item["check"] = {"status": g("check_status"), "by": g("checker"), "evidence": g("check_evidence")}
+            if g("check_fields"):
+                try:
+                    item["check"]["corrected"] = json.loads(g("check_fields"))
+                except ValueError:
+                    pass
         _add_money(item, r["value"], r["unit"], r["scale"])
         out.append(item)
     return out

@@ -20,6 +20,46 @@ EVENTS_DB = "D:/RealityEngine/t231/events.db"
 
 DOC_TYPE = {"deck": "deck", "annual_report": "annual_report", "transcript": "transcript"}
 
+# T-242 (24 Nov): Sonnet verdicts on UNVERIFIED rows, keyed by the source db's observation_id (sonnet_settle.py).
+# confirm / fix-with-fields -> check_status 'model_checked' (graded 29R/1P/0W each on the deck pilot); reject ->
+# 'model_rejected' and unsure -> 'model_unsure' are advisory only: the row is still served, never deleted.
+# The hy4 row's own fields are never changed; a fix's corrected fields sit in check_fields (JSON).
+CHECKS: dict[str, list[str]] = {
+    "D:/RealityEngine/hy4_out/pilot_decks_entity.db": ["D:/RealityEngine/t242/sonnet_settle/pilot_decks/verdicts.jsonl"],
+    "D:/RealityEngine/hy4_out/obs_decks_fy27.db": ["D:/RealityEngine/t242/sonnet_settle/decks_fy27/verdicts.jsonl"],
+}
+CHECK_COLS = ("check_status", "check_fields", "check_evidence", "checker")
+FIX_FIELDS = ("period", "unit", "scale", "basis", "segment")
+
+
+def load_checks(db_path: str) -> dict[int, tuple]:
+    """observation_id -> (check_status, check_fields json, check_evidence, checker) for one source db."""
+    import json
+    out: dict[int, tuple] = {}
+    for vf in CHECKS.get(db_path, []):
+        path = Path(vf)
+        if not path.is_file():
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                v = json.loads(line)
+                rid = int(v["id"])
+            except (ValueError, KeyError, TypeError):
+                continue
+            verdict = str(v.get("verdict") or "")
+            fields = {k: v[k] for k in FIX_FIELDS if v.get(k) not in (None, "")}
+            if verdict in ("confirm", "fix"):
+                status = "model_checked"
+            elif verdict == "reject":
+                status = "model_rejected"
+            else:
+                status = "model_unsure"
+            evidence = " | ".join(x for x in (str(v.get("evidence") or ""), str(v.get("header") or ""),
+                                              str(v.get("why") or "")) if x)
+            out[rid] = (status, json.dumps(fields, ensure_ascii=False) if fields and verdict == "fix" else None,
+                        evidence[:500], str(v.get("checker") or "claude-sonnet medium"))
+    return out
+
 OBS_COLS = None  # resolved at runtime
 
 
@@ -40,6 +80,10 @@ def _create_tables(con, obs_cols):
         col_defs.append(f'"{c}"')
     col_defs += ['"source" TEXT', '"doc_type" TEXT']
     con.execute(f'CREATE TABLE IF NOT EXISTS obs_fact ({", ".join(col_defs)})')
+    have = {r[1] for r in con.execute("PRAGMA table_info(obs_fact)")}
+    for c in CHECK_COLS:
+        if c not in have:
+            con.execute(f'ALTER TABLE obs_fact ADD COLUMN "{c}" TEXT')
     con.execute("""CREATE TABLE IF NOT EXISTS obs_measure_new (
         new_id TEXT, definition TEXT, driver_node TEXT, observations INTEGER,
         pages INTEGER, examples TEXT, first_known_at TEXT, source TEXT)""")
@@ -70,8 +114,10 @@ def _load_store(store_path: Path, symbol: str | None = None) -> dict:
         con.execute("CREATE INDEX IF NOT EXISTS idx_obs_fact_sym_rtype_known ON obs_fact(symbol, record_type, known_at)")
 
         placeholders = ",".join(f'"{c}"' for c in obs_cols)
-        insert_sql = (f"INSERT INTO obs_fact ({placeholders}, source, doc_type) "
-                      f"VALUES ({','.join('?' * (len(obs_cols) + 2))})")
+        check_cols = ",".join(f'"{c}"' for c in CHECK_COLS)
+        insert_sql = (f"INSERT INTO obs_fact ({placeholders}, source, doc_type, {check_cols}) "
+                      f"VALUES ({','.join('?' * (len(obs_cols) + 2 + len(CHECK_COLS)))})")
+        id_pos = obs_cols.index("observation_id") if "observation_id" in obs_cols else None
 
         for source_key, db_path, source in OBS_SOURCES:
             t0 = time.perf_counter()
@@ -80,7 +126,10 @@ def _load_store(store_path: Path, symbol: str | None = None) -> dict:
             rows = src_con.execute(
                 f"SELECT {placeholders} FROM observation WHERE symbol=? AND status IN ('verified','unverified')",
                 (symbol,)).fetchall()
-            vals = [list(r) + [source, DOC_TYPE[source]] for r in rows]
+            checks = load_checks(db_path) if id_pos is not None else {}
+            none = (None,) * len(CHECK_COLS)
+            vals = [list(r) + [source, DOC_TYPE[source]]
+                    + list(checks.get(int(r[id_pos]), none) if r[id_pos] is not None else none) for r in rows]
             if vals:
                 con.executemany(insert_sql, vals)
             stats["obs"][source] = len(vals)

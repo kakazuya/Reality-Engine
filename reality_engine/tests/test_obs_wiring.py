@@ -164,7 +164,12 @@ class ObsWiringTests(unittest.TestCase):
         _insert_obs(con, symbol="TEST", measure="revenue", status="unverified", record_type="number",
                     value=150.0, period="Q1FY26", known_at="2026-01-03T00:00:00")
         con.commit()
+        rid = con.execute("SELECT observation_id FROM observation WHERE value=150.0").fetchone()[0]
         con.close()
+        verdicts = d / "verdicts.jsonl"
+        verdicts.write_text('{"id": %d, "verdict": "fix", "period": "Q1FY26", "basis": "standalone", '
+                            '"evidence": "Revenue 150", "header": "Q1 FY26"}\n' % rid, encoding="utf-8")
+        loader.CHECKS = {str(cls.ar_db): [str(verdicts)]}
 
         con = sqlite3.connect(cls.ev_db)
         _insert_event(con, symbol="TEST", kind="order_win", status="verified",
@@ -243,6 +248,15 @@ class ObsWiringTests(unittest.TestCase):
     def test_pilot3_obs_partial_labelled(self):
         out = p3.obs("TEST", measure="revenue")
         self.assertTrue(any(r.get("match") == "partial" for r in out["rows"]))
+
+    def test_model_check_is_served_labelled_and_keeps_the_row(self):
+        out = p3.obs("TEST", measure="revenue", status="unverified")
+        row = next(r for r in out["rows"] if r["value"] == 150.0)
+        self.assertEqual(row["status"], "unverified")
+        self.assertEqual(row["check"]["status"], "model_checked")
+        self.assertEqual(row["check"]["corrected"], {"period": "Q1FY26", "basis": "standalone"})
+        others = [r for r in out["rows"] if r["value"] != 150.0]
+        self.assertTrue(all("check" not in r for r in others))
 
     def test_pilot3_events_kind_filter(self):
         out = p3.events("TEST", kind="order_win")
