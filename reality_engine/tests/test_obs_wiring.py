@@ -185,6 +185,7 @@ class ObsWiringTests(unittest.TestCase):
             ("transcript", str(cls.tr_db), "transcript"),
         ]
         loader.EVENTS_DB = str(cls.ev_db)
+        loader.EVENTS_PRIORITY = []
         loader._load_store(cls.store, "TEST")
 
         os.environ["REALITY_PILOT3_DB"] = str(cls.store)
@@ -291,3 +292,51 @@ def test_exact_mode_drops_derived_names(tmp_path, monkeypatch):
     L.select_store(str(db)) if hasattr(L, "select_store") else None
     names = [r["measure"] for r in L._obs_rows("ABC", measure="revenue", record_type="number", measure_exact=True)]
     assert "revenue_growth_yoy" not in names
+
+
+class SourcePriorityTests(unittest.TestCase):
+    """T-242: dbs sharing a source are a priority list; the first db holding the symbol wins, else the next."""
+
+    def test_first_db_with_rows_wins_and_events_fall_back(self):
+        d = TMP / "priority"
+        if d.exists():
+            shutil.rmtree(d)
+        d.mkdir(parents=True)
+        store = _make_store(d)
+        new_tr, old_tr, deck = _make_obs_db(d, "new_tr.db"), _make_obs_db(d, "old_tr.db"), _make_obs_db(d, "deck.db")
+        for db, text in ((new_tr, "new read"), (old_tr, "old read")):
+            con = sqlite3.connect(db)
+            _insert_obs(con, symbol="TEST", measure="capex", status="verified", record_type="statement",
+                        statement=text, doc_key="t.pdf")
+            con.commit()
+            con.close()
+        con = sqlite3.connect(deck)                    # deck: only the OLD db has this symbol
+        _insert_obs(con, symbol="TEST", measure="revenue", status="verified", record_type="number", doc_key="o.pdf")
+        con.commit()
+        con.close()
+        empty_deck = _make_obs_db(d, "deck_new.db")
+        old_ev, new_ev = _make_events_db(d), d / "events_new.db"
+        con = sqlite3.connect(new_ev)
+        _clone_table(REAL_EVENTS, "event", con)
+        con.execute("ALTER TABLE event ADD COLUMN customer_desc TEXT")
+        _insert_event(con, symbol="TEST", kind="order_win", status="verified", quote="new event",
+                      customer_desc="a leading MNC", known_at="2026-01-01T00:00:00", filing_date="2026-01-01")
+        con.commit()
+        con.close()
+        saved = (loader.OBS_SOURCES, loader.EVENTS_DB, loader.EVENTS_PRIORITY)
+        try:
+            loader.OBS_SOURCES = [("deck_new", str(empty_deck), "deck"), ("deck", str(deck), "deck"),
+                                  ("tr_new", str(new_tr), "transcript"), ("tr_old", str(old_tr), "transcript")]
+            loader.EVENTS_DB, loader.EVENTS_PRIORITY = str(old_ev), [str(new_ev)]
+            stats = loader._load_store(store, "TEST")
+        finally:
+            loader.OBS_SOURCES, loader.EVENTS_DB, loader.EVENTS_PRIORITY = saved
+        con = sqlite3.connect(store)
+        texts = [r[0] for r in con.execute("SELECT statement FROM obs_fact WHERE source='transcript'")]
+        decks = con.execute("SELECT COUNT(*) FROM obs_fact WHERE source='deck'").fetchone()[0]
+        ev = con.execute("SELECT quote, customer_desc FROM filing_event").fetchall()
+        con.close()
+        self.assertEqual(texts, ["new read"])                 # the newer db replaced the older one
+        self.assertEqual(decks, 1)                            # an empty newer db falls back to the older
+        self.assertEqual(stats["obs_db"]["deck"], str(deck))
+        self.assertEqual(ev, [("new event", "a leading MNC")])  # the newer events db, with its new column
