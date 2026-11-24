@@ -8,6 +8,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
+00000. 24 Nov (T-242, Eagle merged dsh d8719f81): deck ranges fill value_high (11 pilot rows), date/quarter/FY values unverified (21 rows, 0 verified lost).
 00000. 24 Nov 19:50 (Eagle): T-242 v3 GATE PASSED (2fae7ddac53e), ckpt_0001 pass 46/13/1/0; hy4 on v3; speaker, cover-line, label fixes merged. NEXT: fy27_v3 reparse + ckpt re-grade; events r4 + city fix + loader repoint merged; AR re-grade after cb0efb86.
 0000000. 24 Nov (dsh, merged): AR row gates (unit/ageing-party label/narrative growth/page-head basis): graded W/P 9 of 11 handled, R lost 0/42; fresh re-grade by Eagle.
 00. 24 Nov 16:55 (Wolf): AR statement lines never verified (XBRL holds them); pilot verified 3,017->1,414 with Eagle's exemptions.

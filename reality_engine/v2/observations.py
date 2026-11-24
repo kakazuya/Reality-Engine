@@ -3295,8 +3295,9 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                        mgmt_speakers: Iterable[str] = ()) -> list[dict[str, Any]]:
     """Model reply objects -> checked observation rows (status and status_reason set here).
 
-    ``deck_guards`` (T-242, deck pages only): a growth/change row printed after a decrease word is negative, and a
-    page-1/2 filing cover letter gives no rows.
+    ``deck_guards`` (T-242, deck pages only): a growth/change row printed after a decrease word is negative, a
+    page-1/2 filing cover letter gives no rows, a printed range keeps its high end in ``value_high``, and a
+    date/quarter/FY stored as ``value_text`` is unverified (``date_value``), never a quantity.
     """
     measures = measures if measures is not None else measure_index()
     vocab = vocab if vocab is not None else vocab_index()
@@ -3472,6 +3473,10 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
               and (DECREASE_RE.search(label) or DECREASE_RE.search(_clause_before(page_text, value_text, 40)))):
             row["value"] = -row["value"]   # T-242 deck guard: "EBITDA decreased 79%", "negative growth 1.9%"
             row["direction"] = "down"
+        range_high = (deck_range_high(value_text, row["value"])
+                      if deck_guards and row["value_high"] is None else None)
+        if range_high is not None:
+            row["value_high"] = range_high   # T-242 deck guard: "22-25" serves both its printed ends
         if not row["unit"] and value_text.rstrip().endswith("%"):
             row["unit"] = "%"            # T-241: a printed "12%" keeps its percent unit
         if claim == "third_party" and row["entity_scope"] in ("", "company", "parent"):
@@ -3619,6 +3624,9 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         row["_scale_notes"] = scale_notes
         row["status"], reasons = evaluate_status(row, text, measures, page_text, ocr_text, ocr_page)
         row["status_reason"] = "; ".join(reasons)
+        if range_high is not None:              # the note never changes the status of a checked range row
+            note = "range: value is the printed low end; value_high is its printed high end"
+            row["status_reason"] = "; ".join(p for p in (row["status_reason"], note) if p)
         out.append(row)
     out = apply_map_orphans(out)
     split_panels(out)
@@ -3634,6 +3642,11 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
     apply_guidance_statements(prose)          # stage O: a guidance value also needs its statement row
     if deck_guards:                           # parts-sum and path-sum proofs must not re-verify someone else's figure
         for row in out:
+            if deck_date_value(str(row.get("value_text") or ""), str(row.get("unit") or "")):
+                if row.get("status") != "quarantined":     # a printed date is never a served quantity
+                    row["status"] = "unverified"
+                row["status_reason"] = "; ".join(
+                    p for p in (row.get("status_reason") or "", DECK_DATE_VALUE_REASON) if p)
             if row.get("status") == "verified" and (row.get("entity_scope") in NOT_COMPANY_SCOPES or (
                     row.get("entity_scope") == "subsidiary" and not row.get("segment"))):
                 row["status"] = "unverified"
@@ -4443,6 +4456,29 @@ RANGE_START_RE = re.compile(r"\d[\d,.]*\s*%?\s*(?:crores?|cr|lakhs?|bn|billion|m
                             r"(?:to|-|\u2013|\u2014)\s*(?:INR|Rs\.?|USD|US\$|\$|\u20b9)?\s*$", re.I)
 COST_OF_FUNDS_RE = re.compile(r"\bcost\s+of\s+(?:funds|borrowings?|deposits)\b|\bborrowing\s+(?:at|cost)\b|"
                               r"\bborrow(?:ed|s)?\s+at\b", re.I)
+# T-242 deck value guards (strict grades, 24 Nov): a printed range and a printed date are two number-row defects.
+# 'FY25-26', '2025-26' and 'Q1-Q2' are periods, never a range of values.
+DECK_PERIOD_TEXT_RE = re.compile(
+    r"^(?:FY\s*['\u2019]?\d{2,4}\s*[-/]\s*['\u2019]?\d{2,4}"
+    r"|(?:19|20)\d{2}\s*[-\u2013]\s*(?:['\u2019]?\d{2}|(?:19|20)\d{2})"
+    r"|Q[1-4]\s*[-\u2013\u2014]\s*Q[1-4](?:\s*FY\s*['\u2019]?\d{2,4})?"
+    r"|H[12]\s*[-\u2013\u2014]\s*H[12](?:\s*FY\s*['\u2019]?\d{2,4})?)$", re.I)
+# value_text that is itself a date/quarter/FY: 'Q1 FY28', 'H1FY27', 'April 2026', "22 Dec'25", '29 July 2026'.
+DECK_DATE_VALUE_RE = re.compile(
+    r"^(?:"
+    r"Q[1-4]\s*(?:FY\s*['\u2019]?\d{2,4})?"
+    r"|H[12]\s*(?:FY\s*['\u2019]?\d{2,4})?"
+    r"|9M\s*FY\s*['\u2019]?\d{2,4}"                       # a bare '9M' is nine million, not a period
+    r"|FY\s*['\u2019]?\d{2,4}(?:\s*[-/]\s*['\u2019]?\d{2,4})?"
+    r"|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*[-/]?\s*['\u2019]?\d{2,4}"
+    r"|\d{1,2}\s*(?:(?:and|&|,)\s*\d{1,2}\s*)*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+    r"[a-z]*\.?\s*,?\s*['\u2019]?\d{2,4}"
+    r"|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}"
+    r"|\d{4}[/-]\d{1,2}[/-]\d{1,2}"
+    r"|(?:19|20)\d{2}\s*[-\u2013]\s*['\u2019]?\d{2,4}"
+    r")\s*$", re.I)
+BARE_YEAR_RE = re.compile(r"^(?:19|20)\d{2}$")
+DECK_DATE_VALUE_REASON = "date_value: a date/quarter/FY is not a quantity"
 
 
 WORD_FRACTION_RE = re.compile(r"\band\s+(?:a\s+)?(half|quarter|three[\s-]quarters?)\b", re.I)
@@ -4499,6 +4535,35 @@ def inner_range(value_text: str) -> tuple[float, float] | None:
     if low is None or high is None or not (low < high <= max(abs(low), 1) * 20):
         return None
     return low, high
+
+
+def deck_range_high(value_text: str, value: float | None) -> float | None:
+    """T-242 deck: the printed upper end of the one range inside ``value_text``, when ``value`` is its low end.
+
+    'Rs 22-25 Crore', '22\u201325%' and '15-16 billion' were served as the low end only.  A period text
+    ('FY25-26', '2025-26', 'Q1-Q2') is never a range, and neither is a minus sign ('-25%'): the upper end is
+    filled only for exactly two numbers joined by '-', '\u2013', '\u2014' or 'to'.
+    """
+    text = norm_space(value_text)
+    if value is None or not text or DECK_PERIOD_TEXT_RE.match(text):
+        return None
+    if len(_numbers_in(text)) != 2:              # exactly one range, no other number in the value_text
+        return None
+    both = inner_range(text)
+    if not both or abs(both[0] - float(value)) > 1e-9 * max(1.0, abs(both[0])):
+        return None
+    return both[1]
+
+
+def deck_date_value(value_text: str, unit: str = "") -> bool:
+    """T-242 deck: True when ``value_text`` is a printed date/quarter/FY, i.e. not a quantity.
+
+    A bare four-digit year counts only when the row prints no unit: '1989' in 'INR Mn' is a money value.
+    """
+    text = norm_space(value_text)
+    if not text:
+        return False
+    return bool(DECK_DATE_VALUE_RE.match(text)) or (not norm_space(unit) and bool(BARE_YEAR_RE.match(text)))
 
 
 def is_cover_letter(page_text: str, page: int) -> bool:

@@ -213,3 +213,4 @@
 - Measured on the 60 graded rows of pilot_ar_reparsed2.db (read-only): 4 W gated + 1 W corrected (basis) + 4 P units corrected = 9 of 11 W/P; 0 of 42 R lost. Full 200-page sample: verified 1,414 -> 1,390 (24 gated), 294 unit/scale/basis corrections.
 - Tests: 6 new in test_ar_sections.py (with counters), 15 pass with the 2 tmp_path tests deselected; the 2 errors are the sandbox temp-dir ACL (os.scandir denied, not code). Typecheck: no new error in the changed file. read_gate annual_report fp 48d75aa69de7 (unchanged).
 - Docs: DEVELOPER_GUIDE (new entry + wiring sentence), tasks/STATE.md. NEXT: controller re-grades 60 fresh AR rows host-side.
+T-242 deck value guards: code+tests done (test_deck_guards 13 passed), pilot measured (11 range rows fill value_high; 21 date rows, 0 verified flips), docs+STATE updated, fp ea5e621d2826; full suite running.

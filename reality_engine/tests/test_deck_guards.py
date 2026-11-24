@@ -77,3 +77,53 @@ def test_parts_sum_does_not_reverify_a_market_figure_on_decks():
              for lab, v, tot in (("Rum", "10", False), ("Gin", "21", False), ("Total", "31", True))]
     rows = _rows(text, reply)
     assert rows and all(r["status"] != "verified" for r in rows)
+
+
+def test_printed_range_serves_both_ends():
+    text = "Group revenue run-rate to approximately ₹22–25 Crore in FY26"
+    reply = [{"type": "number", "measure": "NEW:group_revenue_run_rate",
+              "printed_label": "Group revenue run-rate", "value_text": "₹22–25 Crore", "unit": "Crore",
+              "period": "FY26"}]
+    row = _rows(text, reply)[0]
+    assert row["value"] == 22.0 and row["value_high"] == 25.0
+    assert "range" in row["status_reason"]
+
+
+def test_percent_range_fills_the_high_end():
+    text = "EBITDA margin expanded to 22–25% in FY26"
+    reply = [{"type": "number", "measure": "ebitda_margin", "printed_label": "EBITDA margin",
+              "value_text": "22–25%", "unit": "%", "period": "FY26"}]
+    row = _rows(text, reply)[0]
+    assert row["value"] == 22.0 and row["value_high"] == 25.0
+
+
+def test_minus_and_period_text_are_not_ranges():
+    for value_text in ("-25%", "FY25-26", "2025-26", "Q1-Q2"):
+        rows = _rows(f"Margin {value_text} FY26",
+                     [{"type": "number", "measure": "ebitda_margin", "printed_label": "Margin",
+                       "value_text": value_text, "unit": "%", "period": "FY26"}])
+        assert rows and rows[0]["value_high"] is None, value_text
+
+
+def test_date_value_is_never_a_verified_quantity():
+    text = "Start of Production (SOP): Q1 FY28"
+    rows = _rows(text, [{"type": "number", "measure": "NEW:start_of_production_quarter",
+                         "printed_label": "Start of Production (SOP)", "value_text": "Q1 FY28", "unit": "",
+                         "period": "FY26", "new_definition": "quarter production starts",
+                         "new_driver_node": "capacity"}])
+    assert rows and rows[0]["status"] != "verified"
+    assert "date_value:" in rows[0]["status_reason"]
+
+
+def test_plain_value_has_no_high_end():
+    text = "Revenue ₹22 Crore FY26"
+    row = _rows(text, [{"type": "number", "measure": "revenue.value", "printed_label": "Revenue",
+                        "value_text": "22", "unit": "Crore", "period": "FY26"}])[0]
+    assert row["value"] == 22.0 and row["value_high"] is None
+
+
+
+def test_nine_million_is_not_a_period():
+    from reality_engine.v2.observations import deck_date_value
+    assert not deck_date_value("9M", "customers") and not deck_date_value("9M", "")
+    assert deck_date_value("9M FY27", "") and deck_date_value("9MFY26", "")
