@@ -275,12 +275,20 @@ _RESULTS_RELEASE = re.compile(
     re.I)
 _ORDER_ROLLUP = re.compile(
     r"\b(?:orders?|contracts?)\s+(?:received|secured|won|bagged|awarded)\s+during\s+(?:the\s+)?"
-    r"(?:quarter|half[\s-]?year|first\s+half|nine\s+months|Q[1-4]|H[12]|FY\s?\d{2,4})\b"
+    r"(?:quarter|year|financial\s+year|half[\s-]?year|first\s+half|nine\s+months|Q[1-4]|H[12]|FY\s?\d{2,4})\b"
     r"|\b(?:during|in)\s+(?:Q[1-4](?:\s*FY\s?\d{2,4})?|H[12](?:\s*FY\s?\d{2,4})?|the\s+(?:quarter|first\s+half|second\s+half|half\s+year|nine\s+months))"
     r"[^.]{0,60}\b(?:secured|won|received|bagged)\s+(?:new\s+|multiple\s+|significant\s+|three\s+)?orders?\b"
+    r"|\b(?:awarded|received|secured|won|bagged)\s+(?:orders?|contracts?)\s+(?:worth|aggregating|valued\s+at"
+    r"|amounting\s+to)\b[^.]{0,60}?\b(?:in|during|for)\s+(?:FY\s?\d{2,4}|(?:the\s+|this\s+)?"
+    r"(?:year|quarter|half[\s-]?year|nine\s+months))\b"
     r"|\bconsolidated\s+order\s+wins?\s+for\s+(?:Q[1-4]|H[12]|FY)\b"
     r"|\beach\s+of\s+the\s+above\s+orders?\s+has\s+already\s+been\s+individually\s+intimated\b",
     re.I)
+# "order inflow for the year" is a genuine order-win release's background sentence (KEC/TRANSRAILL): it is a
+# period aggregate only when the announcement itself is about it, so this one is read on the title alone.
+_ORDER_INFLOW_TITLE = re.compile(
+    r"\border\s+(?:inflow|intake)\b[^.]{0,40}\bfor\s+(?:FY\s?\d{2,4}|(?:the\s+)?(?:year|quarter|half[\s-]?year"
+    r"|nine\s+months))\b", re.I)
 _FINANCIAL_METRIC = re.compile(
     r"\b(?:revenues?|ebitda|pat|net\s+profit|profit\s+after\s+tax|total\s+income|turnover)\b", re.I)
 _RESULTS_ACTION = re.compile(r"\b(?:approved|approves|awarded|sanctioned)\b", re.I)
@@ -414,7 +422,8 @@ COLUMNS = (
     "event_id", "store", "symbol", "isin", "doc_key", "kind", "method", "status", "entity_scope", "why",
     "title", "filing_date", "event_date", "known_at", "page", "seq", "amount_inr_cr", "amount_usd_mn", "value_text",
     "value_annual", "value_total", "share_pct",
-    "customer", "execution_months", "order_kind", "purpose", "completion", "capacity_value", "capacity_unit",
+    "customer", "customer_desc", "execution_months", "order_kind", "purpose", "completion", "capacity_value",
+    "capacity_unit",
     "plant", "price_per_share", "shares", "instrument", "raise_stage", "raise_id", "raise_primary",
     "quote", "amends", "detail",
 )
@@ -426,7 +435,7 @@ CREATE TABLE event (
   why TEXT, title TEXT, filing_date TEXT, event_date TEXT, known_at TEXT, page INTEGER, seq INTEGER NOT NULL DEFAULT 1,
   amount_inr_cr REAL, amount_usd_mn REAL, value_text TEXT,
   value_annual REAL, value_total REAL, share_pct REAL,
-  customer TEXT, execution_months REAL, order_kind TEXT,
+  customer TEXT, customer_desc TEXT, execution_months REAL, order_kind TEXT,
   purpose TEXT, completion TEXT, capacity_value REAL, capacity_unit TEXT, plant TEXT,
   price_per_share REAL, shares REAL, instrument TEXT,
   raise_stage TEXT, raise_id TEXT, raise_primary INTEGER,
@@ -715,7 +724,7 @@ def classify(title: str, head: str, filing_date: str | None = None) -> list[str]
     """The classes one announcement names, at most once each, from its title and first two pages."""
     body = _flat(f"{title} {head}")
     is_results = bool(_RESULTS_RELEASE.search(_flat(f"{title} {head[:1500]}")))
-    is_rollup = bool(_ORDER_ROLLUP.search(body))
+    is_rollup = bool(_ORDER_ROLLUP.search(body)) or bool(_ORDER_INFLOW_TITLE.search(title))
     found: list[str] = []
 
     amendment = _order_amendment_clause(title, head)
@@ -786,6 +795,11 @@ _CUSTOMER_CUTS = re.compile(
 _FOR_ENTITY_HEAD = re.compile(
     r"^(?:centre|center|institute|council|society|agency|authority|foundation|department|association|board"
     r"|(?:national\s+)?bank|corporation|commission|directorate|ministry|university)\b", re.I)
+# T-242: an awarder the filing describes instead of naming ("A hyperscale partner", "leading telecom
+# infrastructure company", "customers in the renewable energy sector") belongs in customer_desc, not customer.
+_CUSTOMER_DESCRIPTION = re.compile(
+    r"^(?:a|an|leading|key|domestic|customers?|clients?|one\s+of|various|several|major|large|prestigious"
+    r"|reputed|renowned|prominent|multinational)\b", re.I)
 # T-242: "from <Entity Name> (Limited|Ltd|Nigam|Corporation|Authority|...)" -- the awarder a press release names
 # in prose without a Reg 30 annexure row (fresh3 #30).  The printed suffix, never a bare "from the Company".
 _ENTITY_TAIL = (
@@ -796,11 +810,11 @@ _FROM_ENTITY = re.compile(
     r"(?:[Ff]rom|[Aa]warded\s+[Bb]y|[Nn]ame\s+of\s+(?:the\s+)?[Pp]arty\b[^A-Za-z0-9]{0,60}?)"
     r"\s+(?:M/s\.?\s+|Messrs\.?\s+)?"
     r"(?P<name>[A-Z][A-Za-z0-9&.'’()\-]*"
-    r"(?:\s+(?:[A-Z][A-Za-z0-9&.'’()\-]*|of|the|and|for)){0,8}\s+" + _ENTITY_TAIL
+    r"(?:\s+(?:\([A-Za-z0-9&.'’\-]{1,20}\)|[A-Z][A-Za-z0-9&.'’()\-]*|of|the|and|for)){0,8}\s+" + _ENTITY_TAIL
     + r"(?:\s*\([^)]{0,20}\))?)(?=[\s,.;:)•]|$)")
 _ANNEXURE_AWARDER = re.compile(
     r"\bname\s*(?:\(\s*s?\s*\))?\s*of\s+(?:the\s+)?(?:entity|entities|customer|client|party)"
-    r"[^:;]{0,140}?(?P<cust>.+?)"
+    r"[^:;]{0,140}?\s*(?P<cust>(?<!\w).+?)"
     r"(?=\s*(?:\b[b-k]\s*[.)]?\s*(?:significant|nature|whether|time|broad|details|date)"
     r"|\b[2-9]\s*[.)]?\s*(?:significant|nature|whether|time|broad|details|date)"
     r"|\bsignificant\s+terms|\bnature\s+of\s+(?:the\s+)?(?:o\S{0,2}der|contract)"
@@ -834,10 +848,32 @@ def _annexure_awarders(text: str) -> list[str]:
     return out
 
 
+def _is_customer_description(value: Any) -> bool:
+    """A printed category, not a named awarder: all lower case or a generic lead ("A hyperscale partner")."""
+    desc = _flat(value)
+    return bool(desc) and (desc.islower() or bool(_CUSTOMER_DESCRIPTION.match(desc)))
+
+
+def _split_customer(row: dict[str, Any]) -> None:
+    """Move a description out of ``customer`` into ``customer_desc`` so a category is never served as an awarder."""
+    customer = row.get("customer")
+    if customer and _is_customer_description(customer):
+        row["customer_desc"] = row.get("customer_desc") or _flat(customer)[:300]
+        row["customer"] = None
+
+
 def _clean_party(text: Any, *, from_annexure: bool = False) -> str | None:
     """A printed awarder name without OCR bullets, table junk, a date clause or generic descriptions."""
     value = re.sub(r"[\ue000-\uf8ff|]", " ", _flat(text))
     value = re.sub(r"^.+?\bdepartment\s+of\s+the\s+", "", value, flags=re.I)
+    # T-242: an annexure cell that runs into the letter's salutation or the city after the legal suffix.
+    value = re.sub(r"[\s,;:/&.\-]*\b(?:dear\s+|respected\s+)?(?:sirs?|madams?|ma['’]?ams?)"
+                   r"(?:\s*[/,&-]\s*(?:sirs?|madams?|ma['’]?ams?))?[\s,;:/&.\-]*$", "", value, flags=re.I)
+    entity = re.match(
+        r"^(?P<name>.+?\b(?:Limited|Ltd|LLP|Corporation|Corpn|Nigam|Authority|Railways?|Division))"
+        r"\s*(?:,\s*)?(?P<tail>[A-Z][A-Za-z.]{2,})$", value)
+    if entity and not re.search(_ENTITY_TAIL, entity.group("tail"), re.I):
+        value = entity.group("name")
     if from_annexure:
         non_for = re.search(
             r"(?:\s+amounting\b|\s+as\s+per\b|\s+worth\b|\s+signif\w*\b|\s+towards\b"
@@ -1008,7 +1044,10 @@ _FILING_TOTAL = re.compile(
     r"\b(?:total|aggregate)\s+(?:order\s+|contract\s+)?value\b(?:\s+of\s+order\s+is)?[^.;]{0,30}?"
     r"(?:Rs\.?|INR|₹)\s*(?P<v>[\d,]+(?:\.\d+)?)\s*(?P<u>crores?|cr\.?|lakhs?|lacs?|millions?|mn|billions?|bn)\b"
     r"|\b(?:aggregat\w*|totall?\w*)\s+(?:orders?\s+)?(?:worth|to|of)\s+(?:Rs\.?|INR|₹)\s*"
-    r"(?P<v2>[\d,]+(?:\.\d+)?)\s*(?P<u2>crores?|cr\.?|lakhs?|lacs?|millions?|mn|billions?|bn)\b",
+    r"(?P<v2>[\d,]+(?:\.\d+)?)\s*(?P<u2>crores?|cr\.?|lakhs?|lacs?|millions?|mn|billions?|bn)\b"
+    # the aggregate is printed in full rupees with no unit word ("is ₹ 2,14,27,36,930/-")
+    r"|\b(?:total|aggregate)\s+(?:order\s+|contract\s+)?value\b[^.;]{0,80}?"
+    r"(?:Rs\.?|INR|₹)\s*(?P<v3>\d[\d,]{6,})(?:\s*/-)?",
     re.I)
 
 
@@ -1018,7 +1057,10 @@ def _filing_total_cr(title: str, text: str) -> float | None:
         return None
     val = match.group("v") or match.group("v2")
     unit = match.group("u") or match.group("u2")
-    return _sane_cr(_to_cr(val, unit)) if val and unit else None
+    if val and unit:
+        return _sane_cr(_to_cr(val, unit))
+    full = match.group("v3")
+    return round(_digits(full) / 1e7, 4) if full else None
 
 
 def order_fields(title: str, text: str, symbol: str = "",
@@ -1081,8 +1123,8 @@ def order_fields(title: str, text: str, symbol: str = "",
     if not customers and allow_body_customer:
         named = re.search(
             r"(?:(?:work\s+order|order|contract|letter\s+of\s+award)"
-            r"[^.;]{0,140}?\bfrom|(?:sub-?\s*contract|contract\s+agreement)[^.;]{0,40}?\bwith)\s+"
-            r"(?:M/s\.?\s+)?([A-Z](?:[^.;,]|\.(?=[A-Za-z0-9])|(?<=\b[A-Z])\.(?=\s+(?:\(|towards|for|worth|amounting|dated|on))){2,100})",
+            r"[^.;|]{0,140}?\bfrom|(?:sub-?\s*contract|contract\s+agreement)[^.;|]{0,40}?\bwith)\s+"
+            r"(?:M/s\.?\s+)?([A-Z](?:[^.;,|]|\.(?=[A-Za-z0-9])|(?<=\b[A-Z])\.(?=\s+(?:\(|towards|for|worth|amounting|dated|on))){2,100})",
             _flat(text), re.I)
         if named:
             awarder = _clean_party(named.group(1), from_annexure=False)
@@ -1107,6 +1149,17 @@ def order_fields(title: str, text: str, symbol: str = "",
     share_pct: float | None = None
     detail = ""
     if amount is not None:
+        # T-242: the title prints the aggregate and the table prints one item of it ("secures 214.27 crore from
+        # TPSODL & TPWODL", table 115.0194 + 99.2543): the event is the printed aggregate, not one item.
+        aggregate = _sane_cr(records[0].get("title_value_cr")) if len(records) == 1 else None
+        if aggregate is not None and records[0].get("title_mismatch"):
+            printed_total = filing_total_cr if filing_total_cr is not None else _filing_total_cr(title, text)
+            if printed_total is not None and abs(aggregate - printed_total) <= 0.005 * max(1.0, printed_total) \
+                    and abs(amount - aggregate) > 0.005 * max(1.0, aggregate):
+                value_total, amount = aggregate, aggregate
+                match = _RS_AMOUNT.search(title or "")
+                value_text = match.group(0) if match else value_text
+                detail = "title aggregate; the table prints one item of it"
         share_pct, share_amount = _consortium_share(value_words, symbol)
         if share_amount is not None:
             value_total, amount = amount, share_amount
@@ -1132,10 +1185,13 @@ def order_fields(title: str, text: str, symbol: str = "",
             value_total = amount = round(amount * execution_months, 4)
             derived = 1
             detail = "monthly value x execution months (computed)"
+    described = [name for name in dict.fromkeys(customers) if _is_customer_description(name)]
+    customers = [name for name in dict.fromkeys(customers) if not _is_customer_description(name)]
     return {
         "amount_inr_cr": amount, "amount_usd_mn": usd_mn, "value_text": value_text,
         "value_annual": value_annual, "value_total": value_total, "share_pct": share_pct,
-        "customer": "; ".join(dict.fromkeys(customers))[:300] or None,
+        "customer": "; ".join(customers)[:300] or None,
+        "customer_desc": "; ".join(described)[:300] or None,
         "execution_months": execution_months,
         "order_kind": _order_kind(title, quote),
         "quote": quote[:MAX_QUOTE] or None,
@@ -1207,7 +1263,8 @@ def order_rows(title: str, text: str, symbol: str = "",
     """One row per order in the filing (C5); a repeated cover/annexure figure stays one row."""
     veto_text = _flat(f"{title} {head if head is not None else text}")
     if _ORDER_VETO.search(veto_text) or _RESULTS_RELEASE.search(_flat(f"{title} {(head or text)[:1500]}")) \
-            or _ORDER_ROLLUP.search(veto_text) or _is_buyer_side(title, head or text):
+            or _ORDER_ROLLUP.search(veto_text) or _ORDER_INFLOW_TITLE.search(title) \
+            or _is_buyer_side(title, head or text):
         return []
     records = order_wins.parse(_flat(title), _flat(text))
     prose = _prose_order_records(title, text)
@@ -1975,6 +2032,7 @@ def _assemble_row(doc: dict[str, Any], kind: str, fields: dict[str, Any],
     if "_base_value" in fields:
         row["_base_value"] = fields.pop("_base_value")
     row.update({k: v for k, v in fields.items() if k in COLUMNS})
+    _split_customer(row)
     if detail_hint:
         row["detail"] = detail_hint
     if row.get("value_text"):
@@ -2061,16 +2119,38 @@ def _customer_key(value: Any) -> str:
     return re.sub(r"[^a-z0-9 ]+", " ", _flat(value).lower()).strip()
 
 
+_CUSTOMER_STOP = frozenset({"and", "of", "the", "ltd", "limited", "private", "pvt"})
+
+
+def _initialism_of(token: str, words: list[str]) -> bool:
+    """Does a contiguous run of ``words`` spell ``token`` in initials ("TPSODL" of "TP Southern Odisha ...")?"""
+    parts = [word[:2] if len(word) == 2 else word[0] for word in words]
+    for start in range(len(parts)):
+        joined = ""
+        for part in parts[start:]:
+            joined += part
+            if joined == token:
+                return True
+            if len(joined) >= len(token) or not token.startswith(joined):
+                break
+    return False
+
+
 def _same_customer(first: dict[str, Any], second: dict[str, Any]) -> bool:
     """Equal, a prefix ("... Research" vs "... Research, Maharashtra"), or the same first three words
-    ("Airports Authority of India, Patna" vs "Airports Authority of India (AAI)")."""
+    ("Airports Authority of India, Patna" vs "Airports Authority of India (AAI)"); a name printed once in
+    full and once as its initialism ("TPSODL and TPWODL") is the same customer (T-242)."""
     left, right = _customer_key(first.get("customer")), _customer_key(second.get("customer"))
     if not left or not right:
         return False
     if left == right or left.startswith(right) or right.startswith(left):
         return True
     words_left, words_right = left.split(), right.split()
-    return len(words_left) >= 3 and len(words_right) >= 3 and words_left[:3] == words_right[:3]
+    if len(words_left) >= 3 and len(words_right) >= 3 and words_left[:3] == words_right[:3]:
+        return True
+    short, long = (words_left, words_right) if len(words_left) <= len(words_right) else (words_right, words_left)
+    keys = [word for word in short if len(word) >= 2 and word not in _CUSTOMER_STOP]
+    return bool(keys) and all(_initialism_of(word, long) for word in keys)
 
 
 def _customer_compatible(first: dict[str, Any], second: dict[str, Any]) -> bool:
@@ -2136,7 +2216,7 @@ def _fold_same_order(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -
         amends.append({
             "doc_key": row["doc_key"], "symbol": row["symbol"], "amends": match["doc_key"],
             "filing_date": row.get("filing_date"), "known_at": row.get("known_at"),
-            "why": "same order: value within 1% and same customer, within 7 days; earlier known_at kept",
+            "why": "same order: value within 0.5% and a compatible customer, within 7 days; earlier known_at kept",
         })
     return [row for row in rows if id(row) not in dropped]
 
@@ -2453,6 +2533,7 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str) -> list[dict[str
                 row[key] = None if value in (None, "") else float(value)
             except (TypeError, ValueError):
                 row[key] = None
+        _split_customer(row)
         if kind == "order_win" and not row.get("order_kind"):
             row["order_kind"] = "new_order"
         if kind == "order_win" and row.get("amount_inr_cr") is not None \
@@ -2592,6 +2673,14 @@ def write_db(path: Path, rows: list[dict[str, Any]], amends: list[dict[str, Any]
         con.close()
 
 
+def _ensure_event_columns(con: sqlite3.Connection) -> None:
+    """A baseline built before a new event column exists: add it before inserting (additive, no rewrite)."""
+    have = {row[1] for row in con.execute("PRAGMA table_info(event)")}
+    for column in COLUMNS:
+        if column not in have:
+            con.execute(f"ALTER TABLE event ADD COLUMN {column} TEXT")
+
+
 def merge_db(path: Path, baseline: Path, rows: list[dict[str, Any]], amends: list[dict[str, Any]],
              meta: dict[str, Any], doc_keys: Iterable[str]) -> None:
     """T-233: copy ``baseline`` to ``path`` and replace only the filings this scoped run re-read."""
@@ -2600,6 +2689,7 @@ def merge_db(path: Path, baseline: Path, rows: list[dict[str, Any]], amends: lis
     copy_db(baseline, path)
     con = sqlite3.connect(path)
     try:
+        _ensure_event_columns(con)
         keys = list(dict.fromkeys(str(key) for key in doc_keys))
         if keys:
             marks = ",".join("?" * len(keys))

@@ -41,7 +41,11 @@ RULE_TEXT = "order_text_v1"
 PAGES = 4
 
 # "order(s)/contract(s)" as printed, and as a scan prints it ("o\"der(s) / conh'act(s)")
-_OC = r"o\S{0,2}der(?:\s?\(?s\)?)?\s*(?:/|or|and|&)?\s*(?:con\S{2,5}act(?:\s?\(?s\)?)?\S?)?"
+# "order(s)/contract(s)" as printed, and as a scan prints it ("o\"der(s) / conh'act(s)").  The plural "s" is
+# attached to its word or bracketed: a loose "\s?\(?s\)?" let the label swallow the first letter of the value
+# that follows ("Order/Contract South Central Railway" -> "uth Central Railway", T-242 fresh4 #2/#6).
+_OC = (r"o\S{0,2}der(?:\s*\(\s*s\s*\)|s)?\s*(?:/|or|and|&)?\s*"
+       r"(?:con\S{2,5}act(?:\s*\(\s*s\s*\)|s)?[^\w\s]?)?")
 LABELS = (
     ("awarder", re.compile(rf"name\s+of\s+(?:the\s+)?(?:entity|entities|customer|client|party)\s+awarding\s+(?:the\s+)?{_OC}", re.I)),
     ("terms", re.compile(rf"significant\s+terms\s+and\s+conditions\s+of\s+(?:the\s+)?{_OC}(?:\s*awarded)?(?:\s+in\s+brief)?", re.I)),

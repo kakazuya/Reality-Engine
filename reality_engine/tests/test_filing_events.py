@@ -8,6 +8,7 @@ and a model amount must be printed with its unit.
 """
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -1659,3 +1660,124 @@ def test_t242_r3_fold_keeps_two_orders_whose_values_differ() -> None:
     rows = fe.event_rows(order_doc(1025.0, "2024-06-26", "2024-06-26T17:50:00", "a"))[0] \
         + fe.event_rows(order_doc(1017.0, "2024-07-02", "2024-07-02T17:58:00", "b"))[0]
     assert len(fe._fold_same_order(rows, [])) == 2
+
+
+# ---- T-242 round 4: customer clean-up, order roll-ups, aggregates, cross-filing duplicates -------------------
+
+def test_t242_r4_customer_starts_and_ends_where_the_entity_does() -> None:
+    doc = _doc(
+        "Attached Herewith the copy of Intimation of purchase order received from Provigil Surveillance Limited",
+        "We would like to inform you that the subsidiary has received a Purchase Order from South Central Railway, "
+        "Secunderabad Division for supply of systems. Annexure A: 1. Name of the entity awarding the "
+        "Order/Contract South Central Railway, Secunderabad Division 2. Significant terms and conditions of the "
+        "Order/Contract awarded in brief Supply of systems 7. Broad consideration or size of the Order/Contract "
+        "Rs. 4.10 crores",
+        symbol="MCLOUD",
+    )
+    assert _row(fe.event_rows(doc)[0], "order_win")["customer"] == (
+        "South Central Railway, Secunderabad Division")
+    assert fe._clean_party("Dakshin Gujarat Vij Company Limited (DGVCL) Dear Sir/Madam") == (
+        "Dakshin Gujarat Vij Company Limited (DGVCL)")
+    assert fe._clean_party("Twenty-Five Downtown Realty Limited Dear Sir/ Madam") == (
+        "Twenty-Five Downtown Realty Limited")
+    assert fe._clean_party("Signatureglobal (India) Limited Mumbai") == "Signatureglobal (India) Limited"
+
+
+def test_t242_r4_a_printed_description_is_customer_desc() -> None:
+    for text in ("A hyperscale partner", "Domestic Telecom Operator", "Leading telecom infrastructure company",
+                 "key customers in the renewable energy sector"):
+        assert fe._is_customer_description(text), text
+    for text in ("Hinduja Group Limited", "CIDCO", "South Central Railway, Secunderabad Division"):
+        assert not fe._is_customer_description(text), text
+    model = _doc(
+        "Intimation of receipt of order under Regulation 30 of SEBI LODR 2015",
+        "Name of the entity awarding the order(s)/contract(s) Domestic Telecom Operator "
+        "7. Broad consideration or size of the order(s)/contract(s) approx. INR 960 cr.",
+        symbol="STLTECH",
+    )
+    raw = json.dumps({"events": [{"kind": "order_win", "amount_inr_cr": 960,
+                                  "value_text": "approx. INR 960 cr.",
+                                  "customer": "Domestic Telecom Operator"}]})
+    row = fe.model_rows(model, ["order_win"], raw)[0]
+    assert row["customer"] is None and row["customer_desc"] == "Domestic Telecom Operator"
+    assert "customer_desc" in fe.COLUMNS and "customer_desc TEXT" in fe.SCHEMA
+    old = sqlite3.connect(":memory:")
+    old.execute("CREATE TABLE event (event_id INTEGER PRIMARY KEY, customer TEXT)")
+    fe._ensure_event_columns(old)
+    assert "customer_desc" in {r[1] for r in old.execute("PRAGMA table_info(event)")}
+
+
+def test_t242_r4_an_awarder_with_a_bracketed_place_is_named() -> None:
+    doc = _doc(
+        "Attached Herewith the copy of Intimation of purchase order received from Provigil Surveillance Limited",
+        "We wish to inform our shareholders that the wholly owned subsidiary has received a Purchase Order from "
+        "GAIL (India) Limited. The Purchase Order has been awarded through the Government e-Marketplace (GeM) "
+        "platform. The total value of the contract is ₹127.62 million.",
+        symbol="MCLOUD",
+    )
+    assert _row(fe.event_rows(doc)[0], "order_win")["customer"] == "GAIL (India) Limited"
+
+
+def test_t242_r4_a_period_rollup_is_not_an_order_win() -> None:
+    doc = _doc(
+        "The Company is pleased to announce that it has been awarded orders worth INR 900 crores in FY 24 to "
+        "provide integrated optical solutions to the leading service providers in the country.",
+        "The Company is pleased to announce that it has been awarded orders worth ~INR 900 crore in FY24 to "
+        "provide integrated optical solutions to the leading service providers in the country.",
+        symbol="STLTECH", filing_date="2024-04-02",
+    )
+    assert not [r for r in fe.event_rows(doc)[0] if r["kind"] == "order_win"]
+    assert fe._ORDER_ROLLUP.search("orders received during the year")
+    assert fe._ORDER_INFLOW_TITLE.search("Consolidated order inflow for FY27")
+    assert fe._ORDER_INFLOW_TITLE.search("Order intake for the quarter")
+    # a genuine order-win release quoting its own order inflow is not a period aggregate (KEC/TRANSRAILL)
+    assert not fe._ORDER_INFLOW_TITLE.search("KEC International wins New Orders of Rs. 1,034 crores")
+
+
+def test_t242_r4_the_title_aggregate_survives_a_split_table() -> None:
+    doc = _doc(
+        "Sugs LLoyd Limited secures Rs. 214.27 crore Orders from TPSODL & TPWODL.",
+        "Subject: Intimation of receipt of Letter of Intent (LOI) from TP Southern Odisha Distribution Limited "
+        "(TPSODL) and TP Western Odisha Distribution Limited (TPWODL). The aggregate order value (Including GST) "
+        "from TPSODL and TPWODL for the three-year contract period is ₹ 2,14,27,36,930/- (Rupees Two Hundred "
+        "Fourteen Crore Twenty-Seven Lakh Thirty-Six Thousand Nine Hundred and Thirty Only). "
+        "1. Name of the entity awarding the order(s)/contract(s) TP Southern Odisha Distribution Limited "
+        "TP Western Odisha Distribution Limited 2. Significant terms and conditions of the order(s)/contract(s) "
+        "awarded As per Contract 7. Broad consideration or size of the order(s)/contract(s) The aggregate order "
+        "value (Including GST) for the three- year contract period is ₹ 1,15,01,93,663 (Rupees One Hundred "
+        "Fifteen Crore One Lakh Ninety-Three Thousand Sixty-Three Only), comprising: Year 1 (01.10.2026 to "
+        "30.09.2027): ₹ 37,99,46,865",
+        symbol="SUGSLLOYD", filing_date="2026-09-01",
+    )
+    rows = [r for r in fe.event_rows(doc)[0] if r["kind"] == "order_win"]
+    assert len(rows) == 1
+    assert rows[0]["amount_inr_cr"] == pytest.approx(214.27)
+    assert rows[0]["value_total"] == pytest.approx(214.27)
+
+
+def test_t242_r4_the_next_day_press_release_is_the_same_order() -> None:
+    first = _doc(
+        "Sugs LLoyd Limited secures Rs. 214.27 crore Orders from TPSODL & TPWODL.",
+        "Subject: Intimation of receipt of Letter of Intent (LOI) from TP Southern Odisha Distribution Limited "
+        "(TPSODL) and TP Western Odisha Distribution Limited (TPWODL). The aggregate order value (Including GST) "
+        "from TPSODL and TPWODL for the three-year contract period is ₹ 2,14,27,36,930/-. "
+        "1. Name of the entity awarding the order(s)/contract(s) TP Southern Odisha Distribution Limited "
+        "TP Western Odisha Distribution Limited 2. Significant terms and conditions of the order(s)/contract(s) "
+        "awarded As per Contract 7. Broad consideration or size of the order(s)/contract(s) The aggregate order "
+        "value (Including GST) for the three- year contract period is ₹ 1,15,01,93,663 comprising: Year 1 "
+        "(01.10.2026 to 30.09.2027): ₹ 37,99,46,865",
+        symbol="SUGSLLOYD", doc_key="first", filing_date="2026-09-01", known_at="2026-09-01T18:00:00",
+    )
+    second = _doc(
+        "Sugs LLoyd Wins Rs. 214.27 Crore Orders from TPSODL and TPWODL for Three-Year Distribution Network "
+        "maintenance Contracts in Odisha.",
+        "Sub: Sugs Lloyd Wins ₹214.27 Crore Orders from TPSODL and TPWODL for Three-Year Distribution Network "
+        "Maintenance Contracts in Odisha. We are pleased to inform that the Company has received Letters of "
+        "Intent from TPSODL and TPWODL. The total order value is ₹214.27 Crore.",
+        symbol="SUGSLLOYD", doc_key="second", filing_date="2026-09-02", known_at="2026-09-02T10:00:00",
+    )
+    rows = fe.event_rows(first)[0] + fe.event_rows(second)[0]
+    amends: list[dict[str, Any]] = []
+    kept = [r for r in fe._fold_same_order(rows, amends) if r["kind"] == "order_win"]
+    assert len(kept) == 1 and kept[0]["doc_key"] == "first"
+    assert [a["amends"] for a in amends] == ["first"]
