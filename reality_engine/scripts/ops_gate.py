@@ -99,12 +99,16 @@ def quota_lines(rules: dict[str, Any], now: dt.datetime) -> list[str]:
         limits = st.get("rate_limits") or {}
         seven = (limits.get("seven_day") or {}).get("used_percentage")
         five = (limits.get("five_hour") or {}).get("used_percentage")
-        if seven is not None:
-            share = (now - start) / (end - start)
-            expected = acc["from_pct"] + (acc["target_pct"] - acc["from_pct"]) * share
-            if float(seven) < expected - q.get("slack_pct", 10):
-                out.append(f"RULE quota: {acc['name']} weekly at {seven}% but the pace to {acc['target_pct']}% by "
-                           f"{acc['by']} needs ~{expected:.0f}% now - start more work ({acc['source']})")
+        if seven is not None and five is not None:
+            from reality_engine.scripts import quota_pace
+            u = {"five": float(five), "weekly": float(seven), "saved_at": st.get("_saved_at", ""),
+                 "five_reset": int((limits.get("five_hour") or {}).get("resets_at") or 0)}
+            quota_pace.record(acc["name"], u)
+            k, _src = quota_pace.learned_k(acc["name"])
+            p = quota_pace.plan(u, float(acc["target_pct"]), end, now, k)
+            if float(five) < p["five_due_now"] - q.get("slack_pct", 10):
+                p.update(name=acc["name"], k_source=_src)
+                out.append("RULE quota: " + quota_pace.line(p) + f" - start more work ({acc['source']})")
         if five is not None and float(five) >= q.get("five_hour_handoff_pct", 90):
             out.append(f"RULE quota: {acc['name']} 5-hour window at {five}% - hand work to the other manager, "
                        "Hydrogen or DeepSeek")
