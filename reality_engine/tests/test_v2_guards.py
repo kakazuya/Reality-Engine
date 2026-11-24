@@ -108,3 +108,19 @@ def test_guards_6_to_9_inner_range_fraction_bare_label_cost_of_funds():
     assert ("ebitda_margin", 40.0, 45.0, "%") in got
     assert not [g for g in got if g[1] == 320.0]
     assert obs.inner_range("2024-25") is None and obs.inner_range("12%") is None
+
+
+def test_guards_10_11_word_fraction_range_negation_ratio_unit():
+    text = ("Margin it is about 14 and a half percent. We are expecting close to 25 to 30 bps reduction "
+            "in cost of funds. EBITDA margin was 7.1 this quarter.")
+    rows = _rows(text, [
+        {"type": "number", "measure": "ebitda_margin", "printed_label": "it is about",
+         "value_text": "14 and a half percent", "unit": "%"},
+        {"type": "number", "measure": "cost_of_funds", "printed_label": "expecting close to", "value_text": "25",
+         "unit": "bps", "sign": "-"},
+        {"type": "number", "measure": "ebitda_margin", "printed_label": "EBITDA margin was", "value_text": "7.1"}])
+    got = {r["value_text"]: r for r in rows}
+    assert got["14 and a half percent"]["value"] == 14.5
+    assert (got["25"]["value"], got["25"]["value_high"]) == (-30.0, -25.0)
+    assert got["7.1"]["status"] == "unverified" and "no_unit: a ratio" in got["7.1"]["status_reason"]
+    assert obs.word_fraction("12%") == 0.0

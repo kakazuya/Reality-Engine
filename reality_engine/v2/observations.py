@@ -3364,7 +3364,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 row["direction"] = "down"
         if (norm_space(raw.get("sign")) == "-" and row["value"] is not None and row["value"] > 0
                 and SIGNED_MEASURE.search(row["measure"] + " " + row["unit"])):
-            row["value"] = -row["value"]
+            low, high = row["value"], row["value_high"]      # T-242: a range flips as a whole
+            row["value"], row["value_high"] = (-high, -low) if high is not None and high > 0 else (-low, high)
             row["direction"] = "down"
         if raw.get("speaker"):
             row["speaker"] = norm_space(raw.get("speaker"))[:200]
@@ -3383,13 +3384,22 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             if row["measure"] == "nim" and (COST_OF_FUNDS_RE.search(label)
                                             or COST_OF_FUNDS_RE.search(_before(page_text, value_text, 60))):
                 row["measure"] = "cost_of_funds"     # T-242 guard 9: "borrowing at 6.3%" is a cost, not a margin
-            if (row["value"] is not None and row["value"] > 0 and not SIGNED_MEASURE.search(row["measure"])
-                    and "loss" not in row["measure"].lower() and negative_printed(label, page_text, value_text)):
-                row["value"] = -row["value"]   # T-241 guard 1: "stood at negative Rs27 crore" is -27
+            extra = word_fraction(value_text)
+            if extra and row["value"] is not None and float(row["value"]).is_integer():
+                row["value"] = row["value"] + extra     # T-242 guard 10: "14 and a half percent" is 14.5
             if row["value_high"] is not None and row["value"] is not None and row["value_high"] < row["value"]:
                 row["value_high"] = None       # T-241 guard 4: a high below the low is no range
-            if row["value_high"] is None and not high_text:
-                row["value_high"] = printed_range_high(page_text, value_text, row["value"])   # T-241 guard 5
+            if row["value_high"] is None and not high_text and row["value"] is not None:
+                high = printed_range_high(page_text, value_text, abs(row["value"]))   # T-241 guard 5
+                if high is not None and row["value"] < 0:
+                    row["value"], high = -high, row["value"]     # "-25 ... to 30 bps reduction" is -30..-25
+                row["value_high"] = high
+            if (row["value"] is not None and row["value"] > 0 and not SIGNED_MEASURE.search(row["measure"])
+                    and "loss" not in row["measure"].lower() and negative_printed(label, page_text, value_text)):
+                # T-241 guard 1: "stood at negative Rs27 crore" is -27; T-242: a range flips as a whole,
+                # so "25 to 30 bps reduction" is -30..-25, never -25..+30
+                low, high = row["value"], row["value_high"]
+                row["value"], row["value_high"] = (-high, -low) if high is not None else (-low, None)
         elif (deck_guards and row["value"] is not None and row["value"] > 0 and SIGNED_MEASURE.search(row["measure"])
               and (DECREASE_RE.search(label) or DECREASE_RE.search(_before(page_text, value_text, 40)))):
             row["value"] = -row["value"]   # T-242 deck guard: "EBITDA decreased 79%", "negative growth 1.9%"
@@ -3440,6 +3450,10 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             if inferred:
                 row["unit"], row["unit_family"], row["scale"] = inferred
         scale_notes = _apply_scale(row, raw, text, page_text, head, measure)
+        if ((claim or transcript_v2) and measure and measure["unit_family"] == "percent" and not row["unit"]
+                and not UNIT_IN_TEXT_RE.search(value_text)
+                and not UNIT_IN_TEXT_RE.search(page_text_after(page_text, value_text, 14))):
+            scale_notes.append("no_unit: a ratio printed without its %, bps or x")   # T-242 guard 11
         if row["period"] and comparative_period(
                 row["period"], page_text, " ".join([row["printed_label"], row["printed_axis"]])):
             row["period"] = ""         # stage L: a date inside "(31 March 2024 : NIL)" is not this row's period
@@ -4037,6 +4051,20 @@ COST_OF_FUNDS_RE = re.compile(r"\bcost\s+of\s+(?:funds|borrowings?|deposits)\b|\
                               r"\bborrow(?:ed|s)?\s+at\b", re.I)
 
 
+WORD_FRACTION_RE = re.compile(r"\band\s+(?:a\s+)?(half|quarter|three[\s-]quarters?)\b", re.I)
+WORD_FRACTION = {"half": 0.5, "quarter": 0.25}
+UNIT_IN_TEXT_RE = re.compile(r"%|percent|per\s*cent|bps|basis\s+points?|\btimes\b|\d\s*x\b", re.I)
+
+
+def word_fraction(value_text: str) -> float:
+    """'14 and a half percent' -> 0.5 (added to the 14 the number parser reads); 0 when none is printed."""
+    m = WORD_FRACTION_RE.search(value_text or "")
+    if not m:
+        return 0.0
+    word = m.group(1).lower()
+    return 0.75 if word.startswith("three") else WORD_FRACTION[word]
+
+
 def inner_range(value_text: str) -> tuple[float, float] | None:
     """'40%-45%', '40-45%', 'INR310 to INR320' printed inside one value_text -> (low, high), else None."""
     m = INNER_RANGE_RE.search(value_text or "")
@@ -4076,6 +4104,13 @@ def printed_range_high(page_text: str, value_text: str, value: float | None) -> 
     if high is None or high <= value or high > abs(value) * 20:
         return None
     return high
+
+
+def page_text_after(page_text: str, value_text: str, width: int) -> str:
+    """The ``width`` characters printed right after ``value_text`` on the page ('' when it is not found)."""
+    text = norm_space(page_text)
+    idx = text.find(value_text) if value_text else -1
+    return text[idx + len(value_text): idx + len(value_text) + width] if idx >= 0 else ""
 
 
 def _before(page_text: str, value_text: str, width: int) -> str:
