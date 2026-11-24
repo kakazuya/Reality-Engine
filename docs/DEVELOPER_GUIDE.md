@@ -2303,6 +2303,9 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   fake part, `ram_stop`, timeout, last-5-lines on failure, a `parts.csv` and a `pilot10_measure.csv` row, plus the
   T-232 part/doc-type filters and the deck manifest below).
 
+- **hy4 output DB locking (T-241, 24 Nov 2026).** `v2/observations.py` opens its `--out` database with a 120 s
+  sqlite timeout: a row count run against the live output DB once killed a run at commit ("database is locked").
+  Read a live output DB with short queries only; `--resume` re-reads any page whose rows were not committed.
 - **T-232: minimal deck stores for the non-91 Telegram companies (21 Nov 2026).** The deck-observation reader
   (`v2/observations.py`, T-230) reads `company`, `doc`, `doc_page` and `routes.csv` beside a store, and nothing
   else; a Telegram-list company the 91-store build does not cover gets exactly that from its investor
