@@ -196,3 +196,18 @@ def test_files_from_scopes_hash_upload_and_delete(tmp_path, fake):
     assert (top / "b.pdf").is_file()
     r.step_delete(con, really=True, roots=[str(raw_root)], files=[str(a)])
     assert not a.exists() and b.exists()
+
+
+def test_failed_or_empty_builds_keep_their_raw(tmp_path):
+    """T-241: a failed build (or one that read 0 pages from held files) is not moved, so its rebuild finds the raw."""
+    import json as _json
+
+    from reality_engine.scripts import universe_to_drive as utd
+    cases = {"c01": {"failed": "", "raw_ok_files": 5, "pages": 40},
+             "c02": {"failed": "make_profile(rc=1)", "raw_ok_files": 5, "pages": 0},
+             "c03": {"failed": "", "raw_ok_files": 5, "pages": 0},
+             "c04": {"failed": "", "raw_ok_files": 0, "pages": 0}}
+    for name, body in cases.items():
+        (tmp_path / name).mkdir()
+        (tmp_path / name / f"{name}_measure.json").write_text(_json.dumps(body), encoding="utf-8")
+    assert [n for n, _d in utd.pending(tmp_path, None, False)] == ["c01", "c04"]

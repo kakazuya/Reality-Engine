@@ -76,6 +76,20 @@ def recorded(state: sqlite3.Connection | None) -> dict[str, tuple[str | None, in
         return {}
 
 
+def build_ok(measure: Path) -> bool:
+    """A finished build whose raw files may leave the disk: no failed part, and pages read when files were held.
+
+    T-241 (24 Nov): failed builds (make_profile for symbols not in master_companies) were moved anyway, so their
+    rebuild found no local raw; a store with raw files but 0 pages means the raw files were not readable."""
+    try:
+        d = json.loads(measure.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    if str(d.get("failed") or "").strip():
+        return False
+    return not (float(d.get("raw_ok_files") or 0) > 0 and not d.get("pages"))
+
+
 def pending(root: Path, state: sqlite3.Connection | None, delete: bool) -> list[tuple[str, Path]]:
     """Finished companies (``cNN/cNN_measure.json``) not in the state db, or whose kept raw files still need deleting."""
     done = recorded(state)
@@ -87,6 +101,8 @@ def pending(root: Path, state: sqlite3.Connection | None, delete: bool) -> list[
         if not d.is_dir() or not name.startswith("c") or not name[1:].isdigit():
             continue
         if not (d / f"{name}_measure.json").is_file():
+            continue
+        if not build_ok(d / f"{name}_measure.json"):
             continue
         row = done.get(name)
         if row is None or (delete and row[1] and not row[0]):
