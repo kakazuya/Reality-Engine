@@ -124,3 +124,107 @@ def test_guards_10_11_word_fraction_range_negation_ratio_unit():
     assert (got["25"]["value"], got["25"]["value_high"]) == (-30.0, -25.0)
     assert got["7.1"]["status"] == "unverified" and "no_unit: a ratio" in got["7.1"]["status_reason"]
     assert obs.word_fraction("12%") == 0.0
+
+
+def test_guard12_forward_number_converted_to_guidance_and_past_actuals_kept():
+    # 1. ZENTEC full sentence: future range becomes guidance/unverified, past actual on same sentence stays number
+    zentec = _rows(
+        "we said the full year will be between Rs.1200 Crores to 1300 Crores we have done Rs.485 Crores in the first half",
+        [
+            {"type": "number", "measure": "revenue.value", "printed_label": "the full year will be between",
+             "value_text": "Rs.1200", "high_text": "1300", "unit": "Crores", "period": "FY27",
+             "claim_type": "company_actual", "entity_scope": "company"},
+            {"type": "number", "measure": "revenue.value", "printed_label": "we have done",
+             "value_text": "Rs.485", "unit": "Crores", "period": "H1 FY27", "claim_type": "company_actual",
+             "entity_scope": "company"},
+        ],
+    )
+    z_by = {r["value_text"]: r for r in zentec}
+    assert z_by["Rs.1200"]["record_type"] == "guidance"
+    assert z_by["Rs.1200"]["status"] == "unverified"
+    assert "forward_number:" in z_by["Rs.1200"]["status_reason"]
+    assert (z_by["Rs.1200"]["value"], z_by["Rs.1200"]["value_high"]) == (1200.0, 1300.0)
+    assert z_by["Rs.485"]["record_type"] == "number"
+    assert z_by["Rs.485"]["status"] == "verified"
+    assert (z_by["Rs.485"]["value"], z_by["Rs.485"]["value_high"]) == (485.0, None)
+
+    # 2. TARACHAND: cue in clause before value, not in printed_label
+    tarachand = _rows(
+        "we would try to push them also to match the specialized services range of about 18% to 20%",
+        [{"type": "number", "measure": "ebitda_margin", "printed_label": "specialized services range of about",
+          "value_text": "18%", "unit": "%", "period": "FY27", "claim_type": "company_actual",
+          "entity_scope": "company"}],
+    )
+    assert tarachand[0]["record_type"] == "guidance"
+    assert tarachand[0]["status"] == "unverified"
+    assert (tarachand[0]["value"], tarachand[0]["value_high"]) == (18.0, 20.0)
+
+    # 3. KPIGREEN: "it will be in that range..."
+    kpigreen = _rows(
+        "if we get into more utility scale, it will be in that range or a little bit lower from 18% to 20%",
+        [{"type": "number", "measure": "ebitda_margin",
+          "printed_label": "it will be in that range or a little bit lower from",
+          "value_text": "18%", "unit": "%", "period": "FY27", "claim_type": "company_actual",
+          "entity_scope": "company"}],
+    )
+    assert kpigreen[0]["record_type"] == "guidance"
+    assert kpigreen[0]["status"] == "unverified"
+    assert (kpigreen[0]["value"], kpigreen[0]["value_high"]) == (18.0, 20.0)
+
+    # 4. IDFCFIRSTB: "12% has to move to" -> 14%
+    idfc_roe = _rows(
+        "10% has to move to 12%, 12% has to move to 14%",
+        [{"type": "number", "measure": "roe", "printed_label": "12% has to move to",
+          "value_text": "14%", "unit": "%", "period": "FY27", "claim_type": "company_actual",
+          "entity_scope": "company"}],
+    )
+    assert idfc_roe[0]["record_type"] == "guidance"
+    assert idfc_roe[0]["status"] == "unverified"
+    assert (idfc_roe[0]["value"], idfc_roe[0]["value_high"]) == (14.0, None)
+
+    # 5. IDFCFIRSTB full sentence: "in due course ... this cost-income ratio will touch 50%"
+    idfc_cir = _rows(
+        "in due course ... this cost-income ratio will touch 50%",
+        [{"type": "number", "measure": "NEW:cost_income_ratio",
+          "printed_label": "this cost-income ratio will touch", "value_text": "50%", "unit": "%",
+          "period": "FY27", "new_definition": "cost to income ratio", "new_driver_node": "cost",
+          "claim_type": "company_actual", "entity_scope": "company"}],
+    )
+    assert idfc_cir[0]["record_type"] == "guidance"
+    assert idfc_cir[0]["status"] == "unverified"
+    assert (idfc_cir[0]["value"], idfc_cir[0]["value_high"]) == (50.0, None)
+
+    # third_party forward number stays record_type='number' and is marked unverified
+    tp = _rows(
+        "NHAI will reach Rs.40000 crores of awards in FY27",
+        [{"type": "number", "measure": "order.intake", "printed_label": "NHAI will reach",
+          "value_text": "Rs.40000", "unit": "crores", "period": "FY27", "claim_type": "third_party"}],
+    )
+    assert tp[0]["record_type"] == "number"
+    assert tp[0]["status"] == "unverified"
+    assert "forward_number:" in tp[0]["status_reason"]
+    assert (tp[0]["value"], tp[0]["value_high"]) == (40000.0, None)
+
+    # Counter-examples: past actuals and cues in an earlier sentence stay plain number rows
+    ce = _rows(
+        "revenue grew by 6% to INR286.8 crores. it was 16% last year. "
+        "We expect margins will expand. Revenue stood at Rs.500 crores in Q1 FY27.",
+        [
+            {"type": "number", "measure": "revenue_growth_yoy", "printed_label": "revenue grew by",
+             "value_text": "6%", "unit": "%", "period": "Q1 FY27", "claim_type": "company_actual",
+             "entity_scope": "company"},
+            {"type": "number", "measure": "ebitda_margin", "printed_label": "it was",
+             "value_text": "16%", "unit": "%", "period": "FY26", "claim_type": "company_actual",
+             "entity_scope": "company"},
+            {"type": "number", "measure": "revenue.value", "printed_label": "Revenue stood at",
+             "value_text": "Rs.500", "unit": "crores", "period": "Q1 FY27", "claim_type": "company_actual",
+             "entity_scope": "company"},
+        ],
+    )
+    ce_by = {r["value_text"]: r for r in ce}
+    assert ce_by["6%"]["record_type"] == "number" and ce_by["6%"]["status"] == "verified"
+    assert (ce_by["6%"]["value"], ce_by["6%"]["value_high"]) == (6.0, None)
+    assert ce_by["16%"]["record_type"] == "number" and ce_by["16%"]["status"] == "verified"
+    assert (ce_by["16%"]["value"], ce_by["16%"]["value_high"]) == (16.0, None)
+    assert ce_by["Rs.500"]["record_type"] == "number" and ce_by["Rs.500"]["status"] == "verified"
+    assert (ce_by["Rs.500"]["value"], ce_by["Rs.500"]["value_high"]) == (500.0, None)

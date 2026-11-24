@@ -3443,6 +3443,12 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 and not UNIT_IN_TEXT_RE.search(value_text)
                 and not UNIT_IN_TEXT_RE.search(page_text_after(page_text, value_text, 14))):
             scale_notes.append("no_unit: a ratio printed without its %, bps or x")   # T-242 guard 11
+        if (claim or transcript_v2) and forward_number_cue(label, page_text, value_text):
+            if claim not in ("third_party", "hypothetical"):
+                row["record_type"] = "guidance"
+                if row["period_kind"] in ("", "actual"):
+                    row["period_kind"] = "target"
+            scale_notes.append("forward_number: a stated future figure, served as guidance")  # T-242 guard 12
         if row["period"] and comparative_period(
                 row["period"], page_text, " ".join([row["printed_label"], row["printed_axis"]])):
             row["period"] = ""         # stage L: a date inside "(31 March 2024 : NIL)" is not this row's period
@@ -3479,6 +3485,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             row["period_kind"] = period_kind_for(raw.get("period_kind", ""), row["period"])
         row["period"] = growth_change_period(row["period"], row["measure"], page_text)  # stage N2: the later of a pair
         apply_instant_period(row)                  # stage L: "Closing as on <date>" is a point in time
+        if row["record_type"] == "guidance" and row["period_kind"] in ("", "actual"):
+            row["period_kind"] = "target"
         foot = footnote_basis(page_text, row["period"]) if row["period"] else ""
         if foot:
             row["basis"] = foot
@@ -3567,7 +3575,8 @@ def apply_parts_sum(rows: list[dict[str, Any]], stats: dict[str, Any] | None = N
                 if "no_unit:" in row["status_reason"] or "no_period:" in row["status_reason"] or \
                         "adjusted/hypothetical" in row["status_reason"] or "image_text" in row["status_reason"] or \
                         "geography_not_printed" in row["status_reason"] or "stacked_part" in row["status_reason"] or \
-                        "generic_label" in row["status_reason"] or "mix_without_segment" in row["status_reason"]:
+                        "generic_label" in row["status_reason"] or "mix_without_segment" in row["status_reason"] or \
+                        "forward_number:" in row["status_reason"]:
                     continue         # a parts sum never overrides a hard gate (stage L adds generic_label)
                 row["status"] = "verified"
                 row["status_reason"] = (row["status_reason"] + "; " if row["status_reason"] else "") + \
@@ -4041,6 +4050,17 @@ COST_OF_FUNDS_RE = re.compile(r"\bcost\s+of\s+(?:funds|borrowings?|deposits)\b|\
 WORD_FRACTION_RE = re.compile(r"\band\s+(?:a\s+)?(half|quarter|three[\s-]quarters?)\b", re.I)
 WORD_FRACTION = {"half": 0.5, "quarter": 0.25}
 UNIT_IN_TEXT_RE = re.compile(r"%|percent|per\s*cent|bps|basis\s+points?|\btimes\b|\d\s*x\b", re.I)
+FORWARD_CUE_RE = re.compile(
+    r"\b(?:will be|will touch|will reach|will go|would be|would try|has to move to|have to move to|"
+    r"going to be|we expect|expected to|targeting|target of|aim(?:ing)? to|should be|plan to|"
+    r"guided|guidance of|push (?:it|them) (?:up )?to|in due course)\b",
+    re.I,
+)
+PAST_ACTUAL_CUE_RE = re.compile(
+    r"\b(?:we have done|was|were|grew|stood at|reported|achieved|last year)\b",
+    re.I,
+)
+FORWARD_CLAUSE_BREAK_RE = re.compile(r"(?<!\brs)(?<!\d)\.(?!\d)|[?;]|(?:^|\s+)and\s+", re.I)
 
 
 def word_fraction(value_text: str) -> float:
@@ -4105,6 +4125,24 @@ def _before(page_text: str, value_text: str, width: int) -> str:
     text = norm_space(page_text)
     idx = text.find(value_text) if value_text else -1
     return text[max(0, idx - width):idx] if idx > 0 else ""
+
+
+def _has_forward_cue(text: str) -> bool:
+    matches = list(FORWARD_CUE_RE.finditer(text or ""))
+    if not matches:
+        return False
+    return PAST_ACTUAL_CUE_RE.search(text[matches[-1].end():]) is None
+
+
+def forward_number_cue(label: str, page_text: str, value_text: str) -> bool:
+    """T-242 guard 12: a transcript number row whose label or own preceding clause states a future figure."""
+    if _has_forward_cue(label):
+        return True
+    if PAST_ACTUAL_CUE_RE.search(label or ""):
+        return False
+    before = _before(page_text, value_text, 80)
+    clause = FORWARD_CLAUSE_BREAK_RE.split(before)[-1] if before else ""
+    return _has_forward_cue(clause)
 
 
 def negative_printed(label: str, page_text: str, value_text: str) -> bool:
