@@ -2323,6 +2323,11 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   hour outside the allowed and skipped folders; junctions such as `tg_build` -> C: are not followed). The Stop hook (`session_hooks.py stop`) blocks once
   on these lines after its job checks; `cached_check` reuses a result for 5 minutes (`.tmp/ops_gate_<account>.json`); a
   fresh check takes 1-7 s. Tests `reality_engine/tests/test_ops_gate.py`.
+- **hy4 raw replies kept (`page_reply`, T-241, 24 Nov 2026).** Every page `observations.run` reads stores the reader's raw
+  JSONL reply in `page_reply(doc_key, page, fingerprint, raw, read_at)` (`fingerprint` = `<doc_type>:<read_gate
+  fingerprint>` of the prompt that wrote it), so a parse or row-guard fix is re-applied offline by re-parsing, not by
+  paying for the page again. Outputs read before 24 Nov 14:00 have no replies (the first v2 checkpoint, fy27_v2
+  ckpt_0001, failed on number rows: 15/29 right, Wolf).
 - **hy4 read gate: maker-checker-verifier (T-241, Shivam 24 Nov 2026).** `observations.apply_prompt_choice` sets `--transcript-prompt` on both `__main__` and the imported module, since `python -m` makes two module objects and the gate reads the imported one. `reality_engine/v2/read_gate.py`, called by
   `observations.run` (scoped `--only` runs too). (1) A run that would take an output DB's `page_read` ledger past 200
   pages needs, for each doc type, an entry in
