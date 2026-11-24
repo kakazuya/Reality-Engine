@@ -21,11 +21,13 @@ import fnmatch
 import glob
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import job_watch  # noqa: E402
 
@@ -57,13 +59,26 @@ def _cmdlines() -> list[str]:
 
 
 def running_dsh() -> int:
+    """Active dsh code workers; ``start_job`` data jobs (kind ``data_job``) are not code workers."""
     now = dt.datetime.now(dt.timezone.utc)
     n = 0
     for job_dir in job_watch._recent_job_dirs(Path(job_watch.JOBS_DIR), now):
         record = job_watch._read_json(job_dir / "status.json")
-        if isinstance(record, dict) and str(record.get("phase") or "") in job_watch.ACTIVE_PHASES:
+        if (isinstance(record, dict) and str(record.get("phase") or "") in job_watch.ACTIVE_PHASES
+                and record.get("kind") != "data_job"):
             n += 1
     return n
+
+
+def hy4_outputs(rules: dict[str, Any], cmds: list[str]) -> set[str]:
+    """Output DBs of hy4 reads: the rules' globs plus every ``--out`` of a running ``v2.observations``."""
+    outs = {p for g in rules["hy4"]["out_globs"] for p in glob.glob(g)}
+    for c in cmds:
+        if "v2.observations" in c:
+            m = re.search(r"--out[= ](\S+)", c)
+            if m:
+                outs.add(m.group(1))
+    return {Path(o).as_posix() for o in outs}
 
 
 def running_agy() -> int:
@@ -96,27 +111,36 @@ def quota_lines(rules: dict[str, Any], now: dt.datetime) -> list[str]:
     return out
 
 
+def _is_junction(path: str) -> bool:
+    try:
+        return os.path.islink(path) or Path(path).is_junction()
+    except (OSError, AttributeError):
+        return False
+
+
 def ssd_lines(rules: dict[str, Any], now: dt.datetime) -> list[str]:
     cfg = rules["ssd_only"]
     root = Path(cfg["root"])
     allowed = set(cfg["allowed_dirs"])
     cutoff = now.timestamp() - 3600
     bad = []
-    try:
-        top = list(os.scandir(root))
-    except OSError:
-        return []
-    for entry in top:
-        try:
-            if entry.is_file() and fnmatch.fnmatch(entry.name, "*.db") and entry.stat().st_mtime > cutoff:
-                bad.append(entry.path)
-            if not entry.is_dir() or entry.name in allowed or entry.is_junction():
+    skip = set(cfg.get("skip_dirs", []))
+    for dirpath, dirnames, filenames in os.walk(root):
+        depth = len(Path(dirpath).relative_to(root).parts)
+        if depth == 0:
+            # a junction (tg_build -> C:/RealityEngine/tg_build) points at the SSD, so it is not an HDD write
+            dirnames[:] = [d for d in dirnames if d not in allowed and d not in skip
+                           and not _is_junction(os.path.join(dirpath, d))]
+        elif depth >= cfg.get("max_depth", 3):     # tg_build/<run>/cNN/cNN.db sits at depth 3; deeper is raw files
+            dirnames[:] = []
+        for name in filenames:
+            if not (fnmatch.fnmatch(name, "*.db") or fnmatch.fnmatch(name, "*.db-wal")):
                 continue
-            for sub in os.scandir(entry.path):
-                if sub.is_file() and fnmatch.fnmatch(sub.name, "*.db") and sub.stat().st_mtime > cutoff:
-                    bad.append(sub.path)
-        except OSError:
-            continue
+            try:
+                if os.stat(os.path.join(dirpath, name)).st_mtime > cutoff:   # a WAL DB moves its -wal file
+                    bad.append(os.path.join(dirpath, name))
+            except OSError:
+                continue
     return [f"RULE ssd_only: database written on the HDD in the last hour: {p} ({cfg['source']})" for p in bad[:5]]
 
 
@@ -125,19 +149,19 @@ def check(now: dt.datetime | None = None, rules: dict[str, Any] | None = None,
     now = now or dt.datetime.now()
     rules = rules or load_rules()
     lines: list[str] = []
-    if not job_watch.waiter_alive():
-        lines.append(f"RULE heartbeat: no live job_watch wait - arm `python reality_engine/scripts/job_watch.py wait "
+    if not job_watch.waiter_alive(owner=job_watch.waiter_owner()):
+        lines.append(f"RULE heartbeat: no live job_watch wait of this account ({job_watch.waiter_owner()}) - arm `python reality_engine/scripts/job_watch.py wait "
                      f"--timeout-seconds {rules['heartbeat']['max_timeout_s']}` in the background "
                      f"({rules['heartbeat']['source']})")
     cmds = cmdlines if cmdlines is not None else _cmdlines()
     hy4 = rules["hy4"]
     if not any(hy4["loop_pattern"] in c for c in cmds):
         lines.append(f"RULE hy4: the hy4 loop ({hy4['loop_pattern']}) is not running ({hy4['source']})")
-    for d in glob.glob(hy4["audit_glob"]):
-        for sample in sorted(Path(d).glob("ckpt_*.jsonl")):
-            if not sample.with_suffix(".grade.json").is_file():
-                lines.append(f"RULE hy4: audit checkpoint {sample} waits for a grade - the reading of that output "
-                             "is stopped until a manager who did not write its prompt grades it")
+    from reality_engine.v2 import read_gate  # noqa: PLC0415
+    for out in sorted(hy4_outputs(rules, cmds)):
+        for bad in read_gate.pending_checkpoints(out):
+            lines.append(f"RULE hy4: audit checkpoint of {out} needs a passing grade ({bad}) - its reading is "
+                         "stopped until a manager who did not write its prompt grades it")
     peak = in_peak(now, rules)
     dsh, agy = running_dsh(), running_agy()
     rep = rules["reportees"]
@@ -163,7 +187,7 @@ def safe_check() -> list[str]:
         return [f"RULE ops_gate: the check itself failed ({type(exc).__name__}: {exc})"]
 
 
-CACHE = Path(__file__).resolve().parents[2] / ".tmp" / "ops_gate.json"
+CACHE = Path(__file__).resolve().parents[2] / ".tmp" / f"ops_gate_{Path(job_watch.waiter_owner()).name.lstrip('.')}.json"   # one per account
 CACHE_SECONDS = 300
 
 

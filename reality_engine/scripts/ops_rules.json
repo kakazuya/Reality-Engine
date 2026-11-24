@@ -1,25 +1,84 @@
 {
  "_doc": "T-241 ops gate rules (Shivam, 24 Nov 2026). Read by reality_engine/scripts/ops_gate.py; every rule names its source. Edit only on Shivam's word.",
- "heartbeat": {"max_timeout_s": 1500, "source": "24 Nov 12:05: heartbeats every 25 min for Wolf and Eagle"},
- "hy4": {"loop_pattern": "hy4_always.sh", "audit_glob": "D:/RealityEngine/hy4_out/*.audit",
-         "source": "24 Nov 11:50: the build can stop, hy4 reading must not; 12:35 maker-checker-verifier"},
+ "heartbeat": {
+  "max_timeout_s": 1500,
+  "source": "24 Nov 12:05: heartbeats every 25 min for Wolf and Eagle"
+ },
+ "hy4": {
+  "loop_pattern": "hy4_always.sh",
+  "source": "24 Nov 11:50: the build can stop, hy4 reading must not; 12:35 maker-checker-verifier",
+  "out_globs": [
+   "D:/RealityEngine/hy4_out/*.db",
+   "D:/RealityEngine/t241/obs_*.db"
+  ]
+ },
  "reportees": {
-   "peak_ist": ["06:30-09:30", "11:30-15:30"], "peak_days": [0, 1, 2, 3, 4],
-   "deepseek": {"when": "offpeak", "source": "DeepSeek off-peak only; 24 Nov ~12:20: no reportee idle"},
-   "hydrogen": {"when": "peak", "source": "18 Nov: agy in DeepSeek peak hours; 24 Nov ~12:20: no reportee idle"},
-   "source": "24 Nov ~12:20: Wolf and Eagle are managers of hy4, DeepSeek and Hydrogen; nobody idle unless they must"
+  "peak_ist": [
+   "06:30-09:30",
+   "11:30-15:30"
+  ],
+  "peak_days": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "deepseek": {
+   "when": "offpeak",
+   "source": "DeepSeek off-peak only; 24 Nov ~12:20: no reportee idle"
+  },
+  "hydrogen": {
+   "when": "peak",
+   "source": "18 Nov: agy in DeepSeek peak hours; 24 Nov ~12:20: no reportee idle"
+  },
+  "source": "24 Nov ~12:20: Wolf and Eagle are managers of hy4, DeepSeek and Hydrogen; nobody idle unless they must"
  },
  "max_code_workers": 4,
  "quota": {
-   "five_hour_handoff_pct": 90,
-   "accounts": [
-     {"name": "Wolf", "config": "C:/Users/warri/.claude-neo", "from": "2026-11-24T11:50", "from_pct": 0,
-      "target_pct": 95, "by": "2026-11-25T23:59", "source": "24 Nov 11:50: use Wolf's weekly quota by 25 Nov 23:59 IST"},
-     {"name": "Eagle", "config": "C:/Users/warri/.claude", "from": "2026-11-24T11:50", "from_pct": 16,
-      "target_pct": 85, "by": "2026-11-26T23:59", "source": "24 Nov 11:55: Eagle weekly to >=85% by Thu EOD"}
-   ],
-   "slack_pct": 10
+  "five_hour_handoff_pct": 90,
+  "accounts": [
+   {
+    "name": "Wolf",
+    "config": "C:/Users/warri/.claude-neo",
+    "from": "2026-11-24T11:50",
+    "from_pct": 0,
+    "target_pct": 95,
+    "by": "2026-11-25T23:59",
+    "source": "24 Nov 11:50: use Wolf's weekly quota by 25 Nov 23:59 IST"
+   },
+   {
+    "name": "Eagle",
+    "config": "C:/Users/warri/.claude",
+    "from": "2026-11-24T11:50",
+    "from_pct": 16,
+    "target_pct": 85,
+    "by": "2026-11-26T23:59",
+    "source": "24 Nov 11:55: Eagle weekly to >=85% by Thu EOD"
+   }
+  ],
+  "slack_pct": 10
  },
- "ssd_only": {"root": "D:/RealityEngine", "allowed_dirs": ["hy4_out", "drive_index", "raw", "t241", "reports", "ledger"],
-              "source": "23 Nov: databases and builds on C: SSD; D: HDD holds raw docs only (hy4 output allowed on D: 24 Nov 02:15)"}
+ "ssd_only": {
+  "root": "D:/RealityEngine",
+  "allowed_dirs": [
+   "hy4_out",
+   "drive_index",
+   "raw",
+   "t241",
+   "reports",
+   "ledger"
+  ],
+  "source": "23 Nov: databases and builds on C: SSD; D: HDD holds raw docs only (hy4 output allowed on D: 24 Nov 02:15)",
+  "skip_dirs": [
+   "pdfs",
+   "raw_docs_from_stores",
+   "hf_cache",
+   "models",
+   "pylibs",
+   "backups",
+   "research"
+  ],
+  "max_depth": 3
+ }
 }

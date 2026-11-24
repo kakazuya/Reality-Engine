@@ -2306,15 +2306,16 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
 
 - **Ops gate: Shivam's operating rules as checks (T-241, 24 Nov 2026).** `reality_engine/scripts/ops_gate.py` reads
   `ops_rules.json` (each rule carries its source; edit only on Shivam's word) and prints one `RULE <name>: ...` line per
-  breach (exit 1) or `ops_gate: ok`: `heartbeat` (no live `job_watch wait`; 25-minute heartbeats), `hy4` (the
-  `hy4_always.sh` loop is not running, or a read-gate checkpoint under `D:/RealityEngine/hy4_out/*.audit` has no
-  `.grade.json`), `idle` (no running dsh job off-peak; no running agy job in DeepSeek peak, Mon-Fri 06:30-09:30 and
-  11:30-15:30 IST), `reportees` (agy job off-peak; more than 4 code workers), `quota` (an account's weekly use more than
+  breach (exit 1) or `ops_gate: ok`: `heartbeat` (no live `job_watch wait` of THIS account - waiter files record
+  `owner`, the account's config folder - 25-minute heartbeats), `hy4` (the `hy4_always.sh` loop is not running, or
+  `read_gate.pending_checkpoints` reports an ungraded or failed checkpoint for any output in `out_globs` or any `--out`
+  of a running `v2.observations`), `idle` (no running dsh job off-peak; no running agy job in DeepSeek peak, Mon-Fri 06:30-09:30 and
+  11:30-15:30 IST), `reportees` (agy job off-peak; more than 4 code workers - `data_job` runs do not count), `quota` (an account's weekly use more than
   10 points behind a straight-line pace to its target - Wolf 95% by 25 Nov 23:59, Eagle 85% by 26 Nov 23:59 - or a
-  5-hour reading at 90%: hand work over), `ssd_only` (a `.db` under `D:/RealityEngine` changed in the last hour outside
-  `hy4_out`, `drive_index`, `raw`, `t241`, `reports`, `ledger`). The Stop hook (`session_hooks.py stop`) blocks once
-  on these lines after its job checks; `cached_check` reuses a result for 5 minutes (`.tmp/ops_gate.json`), since a
-  fresh check takes ~7 s. Tests `reality_engine/tests/test_ops_gate.py`.
+  5-hour reading at 90%: hand work over), `ssd_only` (a `.db` or `.db-wal` under `D:/RealityEngine`, up to 3 folders deep, changed in the last
+  hour outside the allowed and skipped folders; junctions such as `tg_build` -> C: are not followed). The Stop hook (`session_hooks.py stop`) blocks once
+  on these lines after its job checks; `cached_check` reuses a result for 5 minutes (`.tmp/ops_gate_<account>.json`); a
+  fresh check takes 1-7 s. Tests `reality_engine/tests/test_ops_gate.py`.
 - **hy4 read gate: maker-checker-verifier (T-241, Shivam 24 Nov 2026).** `reality_engine/v2/read_gate.py`, called by
   `observations.run` (scoped `--only` runs too). (1) A run that would take an output DB's `page_read` ledger past 200
   pages needs, for each doc type, an entry in
