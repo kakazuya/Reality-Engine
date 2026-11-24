@@ -75,6 +75,27 @@ def test_ungraded_or_failed_checkpoint_is_a_breach(env):
     assert og.check(WED_NIGHT, rules, LOOP) == []
 
 
+def test_grading_note_covers_only_an_ungraded_checkpoint_for_three_hours(env):
+    import os
+    from reality_engine.v2 import read_gate
+    rules, tmp = env
+    (tmp / "obs.db").write_bytes(b"")
+    d = read_gate.audit_dir(tmp / "obs.db")
+    d.mkdir()
+    (d / "ckpt_0001.jsonl").write_text("{}\n", encoding="utf-8")
+    note = d / "ckpt_0001.grading.md"
+    note.write_text("grader job 20261124T131246Z-5edabb75, owner Wolf", encoding="utf-8")
+    fresh = WED_NIGHT.timestamp() - 3600
+    os.utime(note, (fresh, fresh))
+    assert og.check(WED_NIGHT, rules, LOOP) == []                                   # a named grader is on it
+    stale = WED_NIGHT.timestamp() - 4 * 3600
+    os.utime(note, (stale, stale))
+    assert any("not graded" in line for line in og.check(WED_NIGHT, rules, LOOP))   # stale after 3 h
+    os.utime(note, (fresh, fresh))
+    (d / "ckpt_0001.grade.json").write_text('{"verdict": "fail"}', encoding="utf-8")
+    assert any("fail" in line for line in og.check(WED_NIGHT, rules, LOOP))         # a fail needs a .fix.md
+
+
 def test_running_reader_out_is_watched_even_outside_the_globs(env, tmp_path):
     rules, _ = env
     other = tmp_path / "elsewhere" / "obs_394.db"
