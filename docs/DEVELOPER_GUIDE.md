@@ -2315,7 +2315,7 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   `ops_rules.json` (each rule carries its source; edit only on Shivam's word) and prints one `RULE <name>: ...` line per
   breach (exit 1) or `ops_gate: ok`: `heartbeat` (no live `job_watch wait` of THIS account - waiter files record
   `owner`, the account's config folder - 25-minute heartbeats), `hy4` (the `hy4_always.sh` loop is not running, or
-  `read_gate.pending_checkpoints` reports an ungraded checkpoint, or a failed one with no `ckpt_NNNN.fix.md` naming the fix and its owner for any output in `out_globs` or any `--out`
+  `read_gate.pending_checkpoints` reports an ungraded checkpoint, or a failed one with no `ckpt_NNNN.fix.md` (under 24 h old) naming the fix and its owner for any output in `out_globs` or any `--out`
   of a running `v2.observations`, or two running readers share one `--out`), `idle` (no running dsh job off-peak; no running agy job in DeepSeek peak, Mon-Fri 06:30-09:30 and
   11:30-15:30 IST), `reportees` (agy job off-peak; more than 4 code workers - `data_job` runs do not count), `quota` (an account's weekly use more than
   10 points behind a straight-line pace to its target - Wolf 95% by 25 Nov 23:59, Eagle 85% by 26 Nov 23:59 - or a

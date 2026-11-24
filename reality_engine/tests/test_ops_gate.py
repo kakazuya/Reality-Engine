@@ -64,7 +64,13 @@ def test_ungraded_or_failed_checkpoint_is_a_breach(env):
     (d / "ckpt_0001.grade.json").write_text('{"verdict": "fail"}', encoding="utf-8")
     assert any("fail" in line for line in og.check(WED_NIGHT, rules, LOOP))
     (d / "ckpt_0001.fix.md").write_text("Eagle: guards on Eagle-v2-guards", encoding="utf-8")
-    assert og.check(WED_NIGHT, rules, LOOP) == []          # a fail with a named fix is not a breach
+    import os
+    fresh = WED_NIGHT.timestamp() - 3600
+    os.utime(d / "ckpt_0001.fix.md", (fresh, fresh))
+    assert og.check(WED_NIGHT, rules, LOOP) == []          # a fail with a fresh named fix is not a breach
+    stale = WED_NIGHT.timestamp() - 90000
+    os.utime(d / "ckpt_0001.fix.md", (stale, stale))
+    assert any("fail" in line for line in og.check(WED_NIGHT, rules, LOOP))   # stale after 24 h
     (d / "ckpt_0001.grade.json").write_text('{"verdict": "pass"}', encoding="utf-8")
     assert og.check(WED_NIGHT, rules, LOOP) == []
 
