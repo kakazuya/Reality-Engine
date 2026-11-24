@@ -2888,4 +2888,11 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   data, cover letters, policies; 30 of 160 gold pages, no useful one) and empty pages, then asks hy4 `TRIAGE_PROMPT`
   per page; verdicts are cached in `C:/RealityEngine/t242/ar_triage.db`; an unparsed reply counts as useful and is
   not cached. Eagle's review: the triage runs in `run()` on the SAMPLED pages only (`triage_selection`: the seeded order, topped up until `--limit` useful pages, at most `TRIAGE_OVERSAMPLE`=3 x limit questions, after `read_gate.check` of `limit` reads), and `TRIAGE_PROMPT` is part of `read_gate.fingerprint('annual_report')`; `needs_ocr` AR pages have no text and are safe-dropped until their OCR words exist. The gold set wrote the triage definition, so a fresh hand audit of triage verdicts gates the AR bulk.
+- **Transcript statements gate (T-242, Shivam 24 Nov 2026).** Strict 60-row grades on `394_v2_reparsed4.db`: verified
+  call NUMBERS 35/15/7/3 (58% right, 17% wrong+junk; five guard rounds 52-68%), verbatim STATEMENTS 47/11/0/2 (78%, 3%):
+  `D:/RealityEngine/t242/grades/reparse4/` and `reparse4_statements/`. Shivam chose: transcripts gate on statements;
+  `apply_transcript_number_gate()` turns every verified transcript number/guidance row unverified
+  (`transcript_number:` reason) after `build_observations` in both the read path and `--reparse`. The guards still run
+  (their tests check the page check). A call number earns verified only from a filing we hold (results XBRL or a
+  verified deck row, same company, measure and period within 1%): Eagle's corroboration matcher, separate step.
 

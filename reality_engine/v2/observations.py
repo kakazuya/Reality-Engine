@@ -3561,6 +3561,23 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
     return out + prose
 
 
+TRANSCRIPT_NUMBER_REASON = "transcript_number: unverified until a filing corroborates it (Shivam 24 Nov)"
+
+
+def apply_transcript_number_gate(rows: list[dict[str, Any]]) -> None:
+    """Shivam 24 Nov (T-242): a number said on a call is never verified by the page check alone.
+
+    Strict grades of verified call numbers stayed at 52-68% right over five guard rounds (year-ago vs current,
+    "current year", one order as the order book), while verbatim statements passed (78% right, 3% wrong).  So call
+    numbers are kept, labelled unverified and linked to their statement; a number earns verified only when a filing
+    we hold (results XBRL or a verified deck row) carries the same company, measure and period within 1%.
+    """
+    for row in rows:
+        if row.get("record_type") in ("number", "guidance") and row.get("status") == "verified":
+            row["status"] = "unverified"
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", TRANSCRIPT_NUMBER_REASON) if p)
+
+
 def measure_root(measure_id: str) -> str:
     return norm_space(measure_id).split(".", 1)[0]
 
@@ -4644,6 +4661,8 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
                                   page_text=text, reply_rows=reply_rows, doc_owner_symbol=owner,
                                   companies=companies, transcript_v2=v2,
                                   analyst_speakers=analyst_list, mgmt_speakers=mgmt_list)
+        if v2:
+            apply_transcript_number_gate(rows)          # Shivam 24 Nov: call numbers need a filing to verify
         stats["rows_before"] += int(con.execute("SELECT COUNT(*) FROM observation WHERE doc_key=? AND page=?",
                                                 (doc_key, int(page))).fetchone()[0])
         con.execute("DELETE FROM observation WHERE doc_key=? AND page=?", (doc_key, int(page)))
@@ -4931,6 +4950,8 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                                         ocr_text=result["ocr_text"], ocr_page=ocr_read,
                                         transcript_v2=transcript and TRANSCRIPT_PROMPT == "v2",
                                         deck_guards=meta.get("doc_type") == "deck")
+    if transcript:
+        apply_transcript_number_gate(result["rows"])    # Shivam 24 Nov: call numbers need a filing to verify
     return result
 
 

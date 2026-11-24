@@ -351,3 +351,14 @@ def test_guard16_range_tail_with_unit_word():
     assert f("5 million to 6 million", "5", 5.0) == 6.0
     assert f("PAT rose by 11 percent to 34.5 crores", "11", 11.0) is None
     assert f("18 million to 20%", "18", 18.0) is None
+
+
+def test_transcript_numbers_never_verified_by_page_check_alone():
+    from reality_engine.v2 import observations as o
+    rows = [{"record_type": "number", "status": "verified", "status_reason": ""},
+            {"record_type": "guidance", "status": "verified", "status_reason": "x"},
+            {"record_type": "number", "status": "quarantined", "status_reason": "bad"},
+            {"record_type": "statement", "status": "verified", "status_reason": ""}]
+    o.apply_transcript_number_gate(rows)
+    assert [r["status"] for r in rows] == ["unverified", "unverified", "quarantined", "verified"]
+    assert "transcript_number" in rows[1]["status_reason"] and rows[1]["status_reason"].startswith("x; ")
