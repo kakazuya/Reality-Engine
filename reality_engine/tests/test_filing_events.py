@@ -710,7 +710,8 @@ def test_stage_c_vetoes(case: str, symbol: str, absent: str) -> None:
 def test_stage_c_ballot_is_not_an_allotment() -> None:
     rows = _stage_c_rows("krystal_396", "KRYSTAL")
     assert [row["kind"] for row in rows] == ["fund_raise"]
-    assert rows[0]["raise_stage"] == "approval"
+    # T-242 round 5: a postal-ballot notice asks for the approval, so the raise is proposed, never an allotment
+    assert rows[0]["raise_stage"] == "proposed"
 
 
 def test_stage_c_restated_background_is_dropped_but_first_disclosure_is_kept() -> None:
@@ -1788,3 +1789,219 @@ def test_t242_city_after_company_suffix_cut_but_public_body_name_kept():
     assert fe._clean_party("Signatureglobal (India) Limited Mumbai") == "Signatureglobal (India) Limited"
     assert fe._clean_party("Municipal Corporation Jodhpur") == "Municipal Corporation Jodhpur"
     assert fe._clean_party("Uttar Pradesh Jal Nigam, Lucknow") == "Uttar Pradesh Jal Nigam"
+
+
+# ---- T-242 round 5: this step's own amount, raise stage map, duplicates, vetoes -------------------------
+R5_AMOUNTS = {
+    # a QIP allotment whose total the OCR printed without its currency mark; the paid-up capital after the
+    # issue is a different number and never adds to it (fresh4 #10)
+    "qip_printed_total": (
+        "Outcome of the Fund Raising Committee Meeting held on 04th December, 2025 for approval of allotment of "
+        "12793102 equity shares of a face value of Rs. 10/- each at a price of Rs. 145/- per Equity Share. "
+        "we wish to inform you that the Fund Raising Committee of the Company at its meeting held today, i.e. "
+        "December 04, 2025, approved the issue and allotment of 1,27,93, 102 Equity Shares, to eligible QIBs at "
+        "the issue price of 145 per Equity Share, aggregating to 1,85,49,99,790 (Rupees One Hundred Eighty-Five "
+        "Crore Forty-Nine Lakh Ninety-Nine Thousand Seven Hundred Ninety Only), pursuant to the QIP. Pursuant "
+        "to the allotment of Equity Shares under the QIP, the paid-up equity share capital of the Company stands "
+        "increased from 53,04,93,890 consisting of 5,30,49,389 Equity Shares to 65,84,24,916 consisting of "
+        "6,58,42,491 Equity Shares.",
+        185.5),
+    # a conversion allotment: the 25% receipt at the earlier warrant allotment is not this step (fresh4 #12)
+    "conversion_25pct": (
+        "Allotment of equity shares pursuant to conversion of warrants. This is in furtherance to our earlier "
+        "intimation dated 11th September 2025, wherein it was informed that the Company had allotted 15,00,000 "
+        "fully convertible warrants of Rs. 10/- each for cash at an issue price of Rs. 124/- per warrant, on a "
+        "preferential basis. At the time of the allotment of warrants, the Company had received an amount of "
+        "Rs. 4,65,00,000/- being 25% of the total consideration (i.e, Rs. 31/- per warrant) from the allottee. "
+        "We hereby inform you that the Board of Directors of the Company has approved the allotment of 8,00,000 "
+        "Equity Shares of face value of Rs. 10/- each at an issue price of Rs. 124/- per Equity Share, fully "
+        "paid-up, aggregating to Rs. 9,92,00,000/- upon conversion of 8,00,000 warrants.",
+        9.92),
+    # a conversion of part of an earlier warrant issue: the earlier aggregate and the 75% balance are not this
+    # step, the shares x the issue price are (fresh4 #13)
+    "conversion_of_part": (
+        "Allotment of Equity Shares pursuant to conversion of Warrants exercised by a fund at an issue price of "
+        "₹425/-. This is in continuation to the disclosure dated 5th December, 2025 wherein the Company had "
+        "allotted 1,17,64,705 Convertible Warrants at an issue price of ₹425/- per Warrant, aggregating to "
+        "₹499,99,99,625/- through preferential allotment to Promoter and Non-Promoters. The warrant holder has "
+        "exercised its right to convert all the Warrants held by them and accordingly the Company has today "
+        "allotted, 3,52,941 Equity Shares of face value of ₹1/- each to the holder. The allotment has been made "
+        "upon the receipt of the balance payment of ₹11,24,99,943.75/- (i.e. 75% of ₹14,99,99,925/-).",
+        15.0),
+    # a warrant conversion: the 75% balance of the same step's exercise price is a component (fresh4 #20, #57)
+    "conversion_75pct": (
+        "Disclosure under Regulation 30 - Conversion of equity warrants into equity shares. We hereby inform you "
+        "that the Board of Directors of the Company through Circular Resolution on today i.e., Tuesday, 29th "
+        "April, 2025, inter alia, approved the allotment of 28,00,000 (Twenty-Eight Lakhs) Equity Shares having "
+        "Face value of Rs. 10/- each at an issue price of Rs. 25/- (Rupees Twenty-Five Only) (including a premium "
+        "of Rs. 15 per share) fully paid up upon exercising the option available with the Share Warrant Holder to "
+        "convert 28,00,000 (Twenty-Eight Lakhs) Convertible Warrants: “The allotment has been made for cash, "
+        "upon the receipt of the remaining exercise price of Rs. 15/- per warrant (being an equivalent amount to "
+        "75% of the Warrant exercise price of Rs. 25/- per warrant) aggregating to Rs. 5,25,00,000/- (Rupees Five "
+        "Crores Twenty Five Lakhs Only).” In this regard the details are enclosed herewith in Annexure I. "
+        "Post allotment of securities - Outcome of the subscription, issue price, number of allottees. Allotment "
+        "of 28,00,000 Equity shares of face value Rs. 10/- each fully paid up at a premium of Rs. 15/-, "
+        "aggregating to Rs. 7,00,00,000/- in the ratio of 1:1 - One Equity share for every warrant exercised. "
+        "Name of Allottees Category Number of Warrants converted into Equity Shares Total Consideration Received "
+        "(75%) (Amount in Rs.)",
+        7.0),
+    # a QIP whose aggregate is printed in millions; the pre-issue paid-up capital is not part of it (fresh4 #54)
+    "qip_millions": (
+        "Outcome of the Board Meeting held today i.e. August 16, 2024 for the purpose of allotment of equity "
+        "shares pursuant to QIP. approved the issue and allotment of 1,06,95,187 Equity Shares of face value of "
+        "₹ 5/- each, to eligible QIBs at the issue price of ₹ 935.00/- per Equity Share including a premium of "
+        "₹ 930.00/- per Equity Share, aggregating to ₹ 10,000.00 million (Rupees Ten Thousand Million Only), "
+        "pursuant to the QIP. Pursuant to the allotment of Equity Shares under the QIP, the paid-up equity share "
+        "capital of the Company stands increased from ₹ 602.83 million consisting of 12,05,65,216 Equity Shares "
+        "of face value of ₹ 5/- each to ₹ 656.30 million consisting of 13,12,60,403 Equity Shares of face value "
+        "of ₹ 5/- each.",
+        1000.0),
+    # a board approval: the past year's QIP is background, not this step's enabling resolution (fresh4 #32)
+    "enabling_resolution": (
+        "Outcome of Board Meeting. The Board of Directors of the Bank at its meeting held today has inter-alia "
+        "considered and approved the following: To seek shareholders’ approval in the ensuing Annual General "
+        "Meeting for an enabling resolution to raise capital through QIP route to the tune of Rs.500 crore "
+        "(including premium). Please note our Bank has been getting such approvals from the shareholders since "
+        "the FY 2009 and it is only in the FY 2014-15, the Bank exercised the approval obtained and raised "
+        "capital through QIP to the tune of Rs.350 crore.",
+        500.0),
+}
+
+
+@pytest.mark.parametrize("case", list(R5_AMOUNTS))
+def test_t242_r5_raise_step_amount_is_this_step_only(case: str) -> None:
+    text, expected = R5_AMOUNTS[case]
+    amount, how = fe.raise_step_amount(text)
+    assert amount == pytest.approx(expected), (case, amount, how)
+    assert how, case
+
+
+def test_t242_r5_a_bundled_board_approval_still_adds_its_two_instruments() -> None:
+    # two instruments, one board approval, two printed totals: the filing is one event worth both (round 4 #15)
+    amount, _how = fe.raise_step_amount(
+        "Outcome of the Board Meeting. The Board has approved the issue of equity shares for an amount of "
+        "Rs. 92,39,01,888 on a preferential basis. The Board has also approved the issue of up to 30,24,00,000 "
+        "warrants, each convertible into one equity share, for an amount of Rs. 30,24,00,000 on a preferential basis.")
+    assert amount == pytest.approx(92.390188 + 30.24, rel=1e-6)
+
+
+@pytest.mark.parametrize("title,text,expected", [
+    # a committee that allotted the NCDs completed the allotment whatever the subject line says (round 5 #1)
+    ("Allotment of Non Convertible Debentures",
+     "In continuation to our outcome dated June 11, 2024, we wish to inform that, the Finance Committee of the "
+     "Board of Directors in their meetings held today, allotted 300 senior, secured, unrated, unlisted, redeemable "
+     "Non-convertible debentures (NCDs) of a face value of Rs. 10,00,000 each, aggregating to Rs. 30,00,00,000.",
+     "allotment"),
+    # "considered and approved the allotment of N shares" is the completed allotment (round 5 #23, #49)
+    ("Please find enclosed file having details of allotment of securities",
+     "the Board through circular resolution passed on November 05, 2026, has inter-alia considered and approved "
+     "the allotment of 1,19,99,847 Equity Shares at an Issue price of INR 125 per Equity Share, aggregating to "
+     "INR 149,99,80,875, pursuant to the Issue.",
+     "allotment"),
+    # a board that approved only the draft postal ballot notice has not raised anything yet (round 5 #53)
+    ("Pursuant to Regulation 30 read with Part A of Schedule III, the Board of Directors at its meeting held today",
+     "Sub.: Outcome of the Board Meeting held on Tuesday, July 28, 2026. 5) Approved the draft Postal Ballot "
+     "Notice for seeking approval of the shareholders of the Company for the following matters: a. Approval for "
+     "raising capital by way of Qualified Institutions Placement(s) to eligible investors through issuance of "
+     "equity shares up to Rs. 600 crore.",
+     "proposed"),
+    # a board outcome that approved the issue and only convenes the EGM is an approval (round 5 #6, #33)
+    ("Outcome of Board Meeting for raising of Funds by way of Issuance of Equity Shares by way of QIP",
+     "This is with reference to our letter dated February 24, 2026, we wish to inform you that the Board of "
+     "Directors of the Company, at its meeting held today, has inter-alia considered and approved the following "
+     "matters: (i) Raising of funds by way of issuance of equity shares, for an aggregate amount not exceeding "
+     "₹ 300 Crores; (ii) The Notice of Extraordinary General Meeting to seek approval of the shareholders for the "
+     "aforesaid issuance and ancillary actions.",
+     "approval"),
+    # an exchange in-principle approval is an approval, not the listing (round 5 #7)
+    ("Intimation of Inprinciple approval from the Stock Exchanges for issue of 4606294 Equity Shares of Rs.10 "
+     "each on Preferential basis",
+     "We are happy to inform you that, we have been granted In-principle approval from BSE Limited for issue of "
+     "46,06,294 equity shares of Rs. 10 each at a price of Rs. 143/- per equity share on a preferential basis.",
+     "approval"),
+    # a listing approval is the step after the allotment
+    ("Listing approval for the equity shares issued under the qualified institutions placement",
+     "We wish to inform you that the Company has received the listing approval from the Stock Exchanges for the "
+     "equity shares issued under the qualified institutions placement of Rs. 100 Crore.",
+     "listing"),
+])
+def test_t242_r5_raise_stage_map(title: str, text: str, expected: str) -> None:
+    row = _row(fe.event_rows(_doc(title, text))[0], "fund_raise")
+    assert row["raise_stage"] == expected
+
+
+@pytest.mark.parametrize("title,text", [
+    # the subject is a subsidiary that allotted its own rights shares: the listed company issued nothing (#19)
+    ("As Enclosed",
+     "Pursuant to Regulation 30 of the Listing Regulations, this to inform you that a company Private Limited "
+     "(\u201cSHIPL\u201d), Subsidiary of the listed company (\u201cthe Company\u201d), has on 30th March, 2026, allotted "
+     "61,728 equity shares of face value of Rs. 100/- each at an issue price of Rs. 838.57/- per share "
+     "aggregating to a total consideration of Rs. 5,17,63,249/-, by way of rights issue to the existing "
+     "shareholder of SHIPL. Consequent to the said allotment, the Company's shareholding in SHIPL stands "
+     "diluted from 98.28% to 68.04% of the total paid-up share capital."),
+    # an exchange advisory on a warrant lock-in lapse is not an issuance (#21)
+    ("Disclosure under Regulation 30 of SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015",
+     "This is in relation to warrants issued by the Company up to 60,00,000, aggregating up to Rs. 127,23,00,000, "
+     "on a preferential basis. Subsequently, certain warrants issued to the warrant holders matured and could "
+     "not be kept under lock-in as per the prescribed time period. Basis the above, the Company has received an "
+     "advisory letter from National Stock Exchange of India Limited dated November 13, 2024, for the warrants "
+     "that could not be kept under lock-in and advised the Company to be careful in the future."),
+    # "fund raising through debt" names no security: nothing was issued (#43)
+    ("The Board of Directors at its meeting held on 15th January, 2025 has considered Capex Plan and Order intake",
+     "The Board has approved capex plan of Rs 326.6 Crore to increase the manufacturing capacity of the existing "
+     "plants. The Board also approved fund raising through debt upto Rs 236.6 Crore to fund the capex plan. The "
+     "order intake for the half year ended 30th September, 2024 stands at Rs. 2,248 Crore while the total order "
+     "book stood at Rs. 10,358 Crore."),
+])
+def test_t242_r5_not_an_issuance(title: str, text: str) -> None:
+    assert not [row for row in fe.event_rows(_doc(title, text))[0] if row["kind"] == "fund_raise"]
+
+
+def test_t242_r5_a_press_release_repeating_an_allotment_folds() -> None:
+    allotment = _doc(
+        "Outcome of the circular resolution passed by the Board of Directors on November 05, 2026",
+        "the Board through another circular resolution passed on November 05, 2026, has inter-alia considered and "
+        "approved the allotment of 1,19,99,847 Equity Shares at an Issue price of INR 125 per Equity Share, "
+        "aggregating to INR 149,99,80,875, pursuant to the Issue.",
+        symbol="AAA", doc_key="allotment", filing_date="2026-11-06", known_at="2026-11-06T09:00:00",
+    )
+    release = _doc(
+        "PLEASE FIND ENCLOSED PRESS RELEASE DATED 05.11.2026 FOR QIP",
+        "Sub: Press Release. enclosed is Press Release dated 5th November, 2026, titled \u201cSUCCESSFULLY RAISES "
+        "RS. 150 CRORE THROUGH QIP, ISSUE FULLY SUBSCRIBED\u201d. The company has successfully raised \u20b9150 crore "
+        "through a Qualified Institutional Placement (QIP), with the issue fully subscribed.",
+        symbol="AAA", doc_key="release", filing_date="2026-11-06", known_at="2026-11-06T10:00:00",
+    )
+    rows = fe.event_rows(allotment)[0] + fe.event_rows(release)[0]
+    amends: list[dict[str, Any]] = []
+    kept = [row for row in fe._fold_same_raise(rows, amends) if row["kind"] == "fund_raise"]
+    assert [row["doc_key"] for row in kept] == ["allotment"]
+    assert [(a["doc_key"], a["amends"]) for a in amends] == [("release", "allotment")]
+
+
+def test_t242_r5_a_notice_and_a_later_step_do_not_fold() -> None:
+    board = _doc(
+        "Outcome of Board Meeting",
+        "The Board of Directors transacted: Raising of funds by way of issuance of equity shares for an aggregate "
+        "amount not exceeding Rs. 400 Crores by way of qualified institutions placement (QIP).",
+        symbol="AAA", doc_key="board", filing_date="2026-09-19", known_at="2026-09-19T10:00:00",
+    )
+    notice = _doc(
+        "Notice of Postal Ballot",
+        "Please find enclosed a copy of the Postal Ballot Notice seeking approval of the members of the Company "
+        "for raising of funds by way of issuance of equity shares for an amount not exceeding Rs. 400 Crore "
+        "through a qualified institutions placement.",
+        symbol="AAA", doc_key="notice", filing_date="2026-09-26", known_at="2026-09-26T10:00:00",
+    )
+    allotment = _doc(
+        "Outcome of the Board Meeting",
+        "We wish to inform you that the Company has allotted 4,00,00,000 equity shares of face value of Rs. 10/- "
+        "each at an issue price of Rs. 100/- per share, aggregating to Rs. 400 crore, pursuant to the qualified "
+        "institutions placement.",
+        symbol="AAA", doc_key="allotment", filing_date="2026-09-24", known_at="2026-09-24T10:00:00",
+    )
+    rows = fe.event_rows(board)[0] + fe.event_rows(notice)[0] + fe.event_rows(allotment)[0]
+    amends: list[dict[str, Any]] = []
+    kept = [row for row in fe._fold_same_raise(rows, amends) if row["kind"] == "fund_raise"]
+    assert [row["doc_key"] for row in kept] == ["board", "notice", "allotment"]
+    assert amends == []
