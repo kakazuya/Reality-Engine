@@ -53,6 +53,17 @@
    "evidence": "C:/RealityEngine/t242/v3_grade/grades.csv",
    "note": "v3 5-page windows, 15-call pilot (pilot_v3.db): 60 verified statements 52/8/0/0 (86.7% R, 0% W+J); speaker 60/60 correct; numbers stay gated on filings",
    "at": "2026-11-24 18:20"
+  },
+  {
+   "doc_type": "deck",
+   "fingerprint": "ea5e621d2826",
+   "verdict": "pass",
+   "reviewer": "DeepSeek 20261124T132625Z-044e3020 (strict, read-only)",
+   "author": "Wolf",
+   "rows": 60,
+   "evidence": "D:/RealityEngine/t242/grades/deck_entity_044e3020.md",
+   "note": "55/4/0/1 = 91.7% R, 1.7% W+J; seed 6262; J = unnamed subsidiary (Dhamra) stored company",
+   "at": "2026-11-24 19:20"
   }
  ]
 }
