@@ -73,7 +73,7 @@ def allowed(doc_type: str, fp: str, entries: list[dict[str, Any]], out: str | Pa
             ok = e
         elif e.get("verdict") == "override" and str(e.get("by") or "").lower() == "shivam" and e.get("reason") \
                 and e.get("quote"):
-            if str(e.get("scope") or "") in Path(str(out)).as_posix():
+            if not e.get("scope") or str(e["scope"]) == Path(str(out)).stem:   # a scope names ONE output DB
                 ok = e
         elif e.get("verdict") == "fail":
             ok = None                       # a later fail withdraws an earlier pass

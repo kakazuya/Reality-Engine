@@ -2323,12 +2323,12 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   hour outside the allowed and skipped folders; junctions such as `tg_build` -> C: are not followed). The Stop hook (`session_hooks.py stop`) blocks once
   on these lines after its job checks; `cached_check` reuses a result for 5 minutes (`.tmp/ops_gate_<account>.json`); a
   fresh check takes 1-7 s. Tests `reality_engine/tests/test_ops_gate.py`.
-- **hy4 read gate: maker-checker-verifier (T-241, Shivam 24 Nov 2026).** `reality_engine/v2/read_gate.py`, called by
+- **hy4 read gate: maker-checker-verifier (T-241, Shivam 24 Nov 2026).** `observations.apply_prompt_choice` sets `--transcript-prompt` on both `__main__` and the imported module, since `python -m` makes two module objects and the gate reads the imported one. `reality_engine/v2/read_gate.py`, called by
   `observations.run` (scoped `--only` runs too). (1) A run that would take an output DB's `page_read` ledger past 200
   pages needs, for each doc type, an entry in
   `reality_engine/v2/read_gates.json` at the CURRENT reader fingerprint (sha256 of `observations.template_for(doc_type)` + reader id):
   a `pass` from a reviewer who is not the prompt's author with >= 60 hand-read rows (`read_gate record`), or a
-  `override` by Shivam with a reason, his quoted words (`--quote`) and optional `--scope` (a substring of the output DB path); a later `fail`
+  `override` by Shivam with a reason, his quoted words (`--quote`) and optional `--scope` (the exact output DB stem, e.g. `obs_transcripts_fy27`; `_v2` is a different output) (a substring of the output DB path); a later `fail`
   withdraws a pass, and any prompt edit changes the fingerprint so earlier passes stop counting. (2) Every 2,000
   pages in an output DB's `page_read` ledger write `<out>.audit/ckpt_NNNN.jsonl` (60 seeded rows) and STOP the running
   read (`stopped`); the next run on that DB refuses to start until each checkpoint has a `pass` grade (`read_gate grade --ckpt ... --verdict ...`).
