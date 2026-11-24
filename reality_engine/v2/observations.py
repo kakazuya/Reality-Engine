@@ -4808,10 +4808,12 @@ def triage_selection(selected: list[dict[str, Any]], pool: list[dict[str, Any]],
                                        for p in chunk})
         asked += len(chunk)
         for page in chunk:
-            if verdict.get((str(page["doc_key"]), int(page["page"]))) and len(kept) < limit:
+            useful = verdict.get((str(page["doc_key"]), int(page["page"])))
+            if useful and len(kept) < limit:
                 kept.append(page)
             elif dropped is not None:
-                dropped["ar_triage"] = dropped.get("ar_triage", 0) + 1
+                reason = "ar_over_limit" if useful else "ar_triage"    # Eagle: a useful page over limit is no drop
+                dropped[reason] = dropped.get(reason, 0) + 1
     print(f"ar triage: asked {asked}, kept {len(kept)} of limit {limit}", file=sys.stderr)
     return kept
 
