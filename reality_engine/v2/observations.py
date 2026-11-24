@@ -3181,6 +3181,68 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
     return status, reasons
 
 
+MIX_MEASURE_RE = re.compile(
+    r"^(?:revenue\.mix|mix\.share|volume\.mix)$|_(?:mix|(?<!per_)share)$",   # a total order book needs no part
+    re.I,
+)
+_MIX_PREFIX_RE = re.compile(
+    r"^(?:out\s+of\s+(?:which|that|the)|share\s+of|mix\s+of|portion\s+of|part\s+of|"
+    r"contribution\s+(?:of|from)|came\s+from|comes\s+from|coming\s+from|"
+    r"contributed\s+by|accounted\s+for\s+by|close\s+to|at\s+around|right\s+now|"
+    r"and|or|while|whereas|which|that|this|these|those|it|we|our|its|their|"
+    r"the|an?|of|for|from|in|at|to|by|on|with|only|around|about|nearly|"
+    r"approximately|approx\.?|roughly|almost|is|are|was|were|has|have|had|been|be|become|"
+    r"giving|give|kept|keep|currently|today)"
+    r"(?:$|\s+|[,;:]\s*)",
+    re.I,
+)
+_MIX_SUFFIX_RE = re.compile(
+    r"(?:^|\s+|[,;:]\s*)"
+    r"(?:contributed\s+to|contributed|contribute|contributes|contributing|"
+    r"accounts\s+for|accounted\s+for|account\s+for|"
+    r"stood\s+at|stands\s+at|stand\s+at|"
+    r"constitutes|constitute|constituted|"
+    r"comprises\s+of|comprises|comprise|comprised|"
+    r"has\s+become|became|become|"
+    r"(?:is|are|was|were)\s+at|which\s+(?:is|was)|that\s+(?:is|was)|close\s+to|right\s+now|"
+    r"is|are|was|were|will\s+be|would\s+be|be|has|have|had|"
+    r"to|of|at|by|for|from|in|around|about|nearly|approximately|approx\.?|"
+    r"roughly|almost|only|which|that|and|or|while|\d+(?:\.\d+)?%)$",
+    re.I,
+)
+_MIX_STOP_WORDS = frozenset({
+    "a", "an", "the", "and", "or", "but", "while", "whereas", "which", "that", "this", "these", "those",
+    "it", "its", "we", "our", "us", "they", "their", "them", "i", "you", "your",
+    "of", "at", "in", "on", "to", "for", "from", "by", "with", "out", "into", "as",
+    "is", "are", "was", "were", "be", "been", "being", "will", "would", "has", "have", "had", "become", "became",
+    "around", "about", "nearly", "approximately", "approx", "roughly", "almost", "only", "close",
+    "share", "mix", "part", "portion", "total", "contributed", "contribute", "contributes", "contributing",
+    "accounts", "accounted", "account", "stood", "stands", "stand", "constitutes", "constitute", "constituted",
+    "comprises", "comprise", "comprised", "came", "comes", "coming",
+    "giving", "give", "kept", "keep", "right", "now", "currently", "today",
+})
+
+
+def mix_part(label: str) -> str:
+    """Extract the named part (segment/product/geo/customer) from a mix printed_label, else ''."""
+    s = norm_space(label).strip(" ,;:-.()[]\"'")
+    while s:
+        nxt = _MIX_PREFIX_RE.sub("", s)
+        nxt = _MIX_SUFFIX_RE.sub("", nxt).strip(" ,;:-.()[]\"'")
+        if nxt == s:
+            break
+        s = nxt
+    if not s or not re.search(r"[a-zA-Z]", s):
+        return ""
+    words = s.split()
+    if len(words) > 6:
+        return ""
+    if all((not re.search(r"[a-z]", w.lower()) or re.sub(r"[^a-z0-9]", "", w.lower()) in _MIX_STOP_WORDS)
+           for w in words):
+        return ""
+    return s
+
+
 def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, page_text: str,
                        words: Iterable[tuple[float, float, float, float, str]] = (),
                        reply_rows: Iterable[dict[str, Any]] = (),
@@ -3405,6 +3467,14 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             [row["printed_label"], row["printed_axis"], row["series_title"]])) else 0
         if doc_owner_symbol and row["entity_scope"] in ("company", "subsidiary", ""):
             row["entity_scope"] = "parent"
+        # T-241: a share/mix/order-book row must name which part it covers (segment, product, geography or customer)
+        if MIX_MEASURE_RE.search(row["measure"]) and not any(
+                row[dim] for dim in ("segment", "product", "geography", "customer")):
+            part = mix_part(row["printed_label"])
+            if part:
+                row["segment"] = canonical_dim(vocab, "segment", part)
+            else:
+                scale_notes.append("mix_without_segment: a share row must name its part")
         row["_scale_notes"] = scale_notes
         row["status"], reasons = evaluate_status(row, text, measures, page_text, ocr_text, ocr_page)
         row["status_reason"] = "; ".join(reasons)
@@ -3469,7 +3539,7 @@ def apply_parts_sum(rows: list[dict[str, Any]], stats: dict[str, Any] | None = N
                 if "no_unit:" in row["status_reason"] or "no_period:" in row["status_reason"] or \
                         "adjusted/hypothetical" in row["status_reason"] or "image_text" in row["status_reason"] or \
                         "geography_not_printed" in row["status_reason"] or "stacked_part" in row["status_reason"] or \
-                        "generic_label" in row["status_reason"]:
+                        "generic_label" in row["status_reason"] or "mix_without_segment" in row["status_reason"]:
                     continue         # a parts sum never overrides a hard gate (stage L adds generic_label)
                 row["status"] = "verified"
                 row["status_reason"] = (row["status_reason"] + "; " if row["status_reason"] else "") + \
