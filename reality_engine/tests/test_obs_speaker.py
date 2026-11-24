@@ -476,3 +476,18 @@ def test_handover_to_another_person_unverifies_without_a_roster():
     rows = [nick]
     osp.attach_statement_speakers(rows, pages)
     assert rows[0]["status"] == "verified"                    # "Shashi" is a nickname of the stored speaker
+
+
+def test_call_logistics_passage_is_dropped():
+    from reality_engine.v2.obs_speaker import greeting_only
+    assert greeting_only("Thank you. I will come back into the queue.")
+    assert greeting_only("That is all from my side. All the best for the coming quarters.")
+    assert not greeting_only("Thank you. We will come back with capex guidance in the next quarter.")
+    assert not greeting_only("I will come back into the queue. What is the order book?")
+
+
+def test_thanks_before_an_answer_is_kept():
+    from reality_engine.v2.obs_speaker import greeting_only
+    assert not greeting_only("Thank you, Vaibhav, it is approximately INR5,400 crores for as an EPC cost of the project.")
+    assert not greeting_only("Thank you very much for the support, and we see that the future is good as far as the upcoming quarters are concerned.")
+    assert greeting_only("Thank you for your continued trust and support.")
