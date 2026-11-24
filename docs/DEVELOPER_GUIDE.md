@@ -2448,6 +2448,24 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   changed 11, newly broken 0**; `test_observations.py` **157 passed**; typecheck clean. The deck-copy recheck was
   stopped unfinished by the 23 Nov worker stop (`deck_n2.db` not produced; commands in the N2 report). Details:
   `docs/V2_SCHEMA_CONTRACT.md` section 17 stage N2.
+- **T-241: transcript speaker attribution post-pass (`v2/obs_speaker.py`, 24 Nov 2026).** Copies `--obs` to `--out`
+  via SQLite's backup API, adds `observation.speaker_role`, and for transcript rows (`doc_key` containing
+  `concall_transcript` or `transcript`) with empty `speaker`, locates `value_text` (prefixed by `printed_label`
+  when both exist, else `printed_label` or `statement[:40]`) in `doc_page.text` from the read-only `cNN/cNN.db`
+  stores (mapped 1-based from `--universe`), takes the nearest valid `Name:` turn before that offset (carrying
+  the previous page's last turn when none precedes the match, and skipping cover-letter/running headers), and
+  classifies `speaker_role` (`management` / `analyst` / `moderator` / `unknown`):
+  ```
+  python -m reality_engine.v2.obs_speaker --obs <obs.db> --stores-root <full394> --universe <universe394.csv> --out <copy.db>
+  ```
+  Measured 24 Nov on the 394-company snapshot (`267,614` rows, `2,097` transcripts across `268` stores, `147.02 s`
+  into `C:/RealityEngine/t241_speaker/obs394_speaker.db`): transcript `number` rows with a speaker `129,916 /
+  136,661` (**95.1%**; `89.2%` of all `145,586` `number` rows); transcript `number` role counts `management`
+  `106,991`, `analyst` `20,111`, `moderator` `602`, `unknown` `2,212`, `''` `6,745` (`212,075` / `24,593` / `742` /
+  `4,713` / `9,551` across all transcript rows). Hand-check of 30 random transcript `number` rows (seed `241`):
+  `28/30` attributed with correct speaker and role, `2/30` left empty (1 cover title before any turn, 1
+  timestamp-format transcript without `Name:` colons), `0` wrong speaker, `0` wrong role. Tests:
+  `reality_engine/tests/test_obs_speaker.py` (**5 passed**).
 
 ## Modular store repair (T-218, 16 Nov 2026)
 

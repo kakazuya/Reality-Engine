@@ -1,0 +1,290 @@
+"""Synthetic unit and CLI tests for reality_engine.v2.obs_speaker (T-241)."""
+from __future__ import annotations
+
+import csv
+import sqlite3
+from pathlib import Path
+
+from reality_engine.v2 import obs_speaker as ospeaker
+
+DK = "D:/RealityEngine/raw/pilot60_history/SYNTH/concall_transcript/call1.pdf"
+NON_TRANSCRIPT_DK = "D:/RealityEngine/raw/pilot60_history/SYNTH/investor_presentation/deck1.pdf"
+
+
+def _make_obs_db(path: Path, rows: list[dict[str, object]]) -> None:
+    con = sqlite3.connect(str(path))
+    con.execute(
+        """
+        CREATE TABLE observation (
+            observation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,
+            doc_key TEXT NOT NULL,
+            page INTEGER NOT NULL,
+            known_at TEXT NOT NULL DEFAULT '2026-11-01',
+            measure TEXT NOT NULL DEFAULT 'revenue',
+            printed_label TEXT NOT NULL DEFAULT '',
+            value REAL,
+            value_text TEXT NOT NULL DEFAULT '',
+            record_type TEXT NOT NULL DEFAULT 'number',
+            statement TEXT NOT NULL DEFAULT '',
+            speaker TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'verified'
+        )
+        """
+    )
+    for r in rows:
+        con.execute(
+            """
+            INSERT INTO observation
+                (symbol, doc_key, page, printed_label, value, value_text, record_type, statement, speaker)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                r.get("symbol", "SYNTH"),
+                r.get("doc_key", DK),
+                r["page"],
+                r.get("printed_label", ""),
+                r.get("value"),
+                r.get("value_text", ""),
+                r.get("record_type", "number"),
+                r.get("statement", ""),
+                r.get("speaker", ""),
+            ),
+        )
+    con.commit()
+    con.close()
+
+
+def _make_store_db(path: Path, pages: list[tuple[int, str]], doc_key: str = DK) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(str(path))
+    con.execute(
+        "CREATE TABLE doc_page (doc_key TEXT, page INTEGER, text TEXT, PRIMARY KEY (doc_key, page))"
+    )
+    for pg, txt in pages:
+        con.execute("INSERT INTO doc_page (doc_key, page, text) VALUES (?, ?, ?)", (doc_key, pg, txt))
+    con.commit()
+    con.close()
+
+
+def _make_universe(path: Path, symbols: list[str]) -> None:
+    with path.open("w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["isin", "symbol"])
+        for i, sym in enumerate(symbols, start=1):
+            w.writerow([f"INE0000000{i:02d}", sym])
+
+
+def test_same_page_carry_and_not_found(tmp_path: Path):
+    pages = [
+        (
+            1,
+            "Synth Corp Limited\n"
+            "MANAGEMENT: MR. RAMESH IYER - MANAGING DIRECTOR\n"
+            "MODERATOR: MS. ANITA RAO - ALPHA BROKING\n",
+        ),
+        (
+            2,
+            "Synth Corp Limited\nPage 2 of 6\n"
+            "Moderator: Ladies and gentlemen, welcome to Synth Corp Q2 call.\n"
+            "Ramesh Iyer: Revenue in Q2 grew to INR 500 crores.\n",
+        ),
+        (
+            3,
+            "Synth Corp Limited\nPage 3 of 6\n"
+            "Continuing from the previous point, EBITDA margin stood at 18.5%.\n"
+            "Moderator: Thank you. The next question is from the line of Pritesh Chheda from Lucky Investment.\n"
+            "Pritesh Chheda: Sir, for that INR 1,500 crores revenue, what capex is planned?\n"
+            "Ramesh Iyer: We plan INR 200 crores of capex.\n",
+        ),
+    ]
+    obs_db = tmp_path / "obs.db"
+    out_db = tmp_path / "out" / "obs_copy.db"
+    stores_root = tmp_path / "stores"
+    uni = tmp_path / "universe.csv"
+
+    _make_universe(uni, ["SYNTH"])
+    _make_store_db(stores_root / "c01" / "c01.db", pages)
+    _make_obs_db(
+        obs_db,
+        [
+            {"page": 2, "printed_label": "Revenue in Q2 grew to", "value": 500.0, "value_text": "INR 500 crores"},
+            {"page": 3, "printed_label": "EBITDA margin stood at", "value": 18.5, "value_text": "18.5%"},
+            {"page": 3, "printed_label": "for that", "value": 1500.0, "value_text": "INR 1,500 crores"},
+            {"page": 3, "printed_label": "We plan", "value": 200.0, "value_text": "INR 200 crores"},
+            {"page": 3, "printed_label": "nonexistent", "value": 999.0, "value_text": "INR 999 crores"},
+            {"page": 2, "printed_label": "welcome", "value": None, "value_text": "", "record_type": "statement", "statement": "Ladies and gentlemen, welcome to Synth Corp Q2 call."},
+        ],
+    )
+
+    stats = ospeaker.run(obs_db, stores_root, uni, out_db)
+    assert stats["transcript_number_total"] == 5
+    assert stats["transcript_number_with_speaker"] == 4
+
+    # Original obs_db must be untouched (no speaker_role column, speakers still empty)
+    orig = sqlite3.connect(str(obs_db))
+    orig_cols = {r[1] for r in orig.execute("PRAGMA table_info(observation)")}
+    assert "speaker_role" not in orig_cols
+    assert orig.execute("SELECT COUNT(*) FROM observation WHERE speaker != ''").fetchone()[0] == 0
+    orig.close()
+
+    con = sqlite3.connect(str(out_db))
+    got = con.execute(
+        "SELECT observation_id, value_text, speaker, speaker_role FROM observation ORDER BY observation_id"
+    ).fetchall()
+    con.close()
+
+    assert got[0][2:] == ("Ramesh Iyer", "management")
+    # Carried from page 2's last turn
+    assert got[1][2:] == ("Ramesh Iyer", "management")
+    # Introduced by moderator as analyst
+    assert got[2][2:] == ("Pritesh Chheda", "analyst")
+    # Same-page management answer
+    assert got[3][2:] == ("Ramesh Iyer", "management")
+    # Text not found -> left empty
+    assert got[4][2:] == ("", "")
+    # Moderator turn
+    assert got[5][2:] == ("Moderator", "moderator")
+
+
+def test_ignores_headers_greetings_and_sentence_end_turns(tmp_path: Path):
+    pages = [
+        (
+            1,
+            "Acme Industries Ltd.\nPage 1 of 4\n"
+            "Corporate Participants:\n"
+            "V. S. Rao - CFO\n",
+        ),
+        (
+            2,
+            "Acme Industries Ltd.\nPage 2 of 4\n"
+            "Moderator: Thank you. The next question is from Rohit Jain from Alpha Capital.\n"
+            "Rohit Jain: Sir, thank you for taking my question.\n"
+            "Thank you. Can you clarify the 2% margin drop? "
+            "V. S. Rao: Yes, raw material cost rose 2%.\n",
+        ),
+    ]
+    obs_db = tmp_path / "obs.db"
+    out_db = tmp_path / "obs_copy.db"
+    stores_root = tmp_path / "stores"
+    uni = tmp_path / "universe.csv"
+
+    _make_universe(uni, ["SYNTH"])
+    _make_store_db(stores_root / "c01" / "c01.db", pages)
+    _make_obs_db(
+        obs_db,
+        [
+            {"page": 2, "printed_label": "clarify the", "value": 2.0, "value_text": "2%"},
+            {"page": 2, "printed_label": "raw material cost rose", "value": 2.0, "value_text": "2%"},
+            # Non-transcript row should be ignored
+            {"doc_key": NON_TRANSCRIPT_DK, "page": 2, "printed_label": "margin", "value": 2.0, "value_text": "2%"},
+        ],
+    )
+
+    ospeaker.run(obs_db, stores_root, uni, out_db)
+    con = sqlite3.connect(str(out_db))
+    got = con.execute("SELECT observation_id, speaker, speaker_role FROM observation ORDER BY observation_id").fetchall()
+    con.close()
+
+    # Inline "V. S. Rao:" after sentence end splits Rohit Jain's 2% from V. S. Rao's 2%
+    assert got[0][1:] == ("Rohit Jain", "analyst")
+    assert got[1][1:] == ("V. S. Rao", "management")
+    assert got[2][1:] == ("", "")
+
+
+def test_role_fallback_question_vs_answer_without_participant_list():
+    pages = [
+        (1, "Cover letter without participant list."),
+        (
+            2,
+            "Kiran Mehta: What is your capacity utilization for FY26?\n"
+            "Suresh Nair: Capacity utilization is at 78%.\n"
+            "Unknown Person: Just joining the call.\n",
+        ),
+    ]
+    rows = [
+        (1, 2, "78%", "Capacity utilization is at", "", ""),
+        (2, 2, "FY26", "capacity utilization for", "", ""),
+        (3, 2, "joining", "", "Just joining the call.", ""),
+    ]
+    res = ospeaker.attribute_document(pages, rows)
+    assert res[1] == ("Suresh Nair", "management")
+    assert res[2] == ("Kiran Mehta", "analyst")
+    assert res[3] == ("Unknown Person", "unknown")
+
+
+def test_limit_and_existing_speaker_role_classification(tmp_path: Path):
+    pages = [
+        (1, "MANAGEMENT:\nDr. Neha Kulkarni - CEO\n"),
+        (
+            2,
+            "Neha Kulkarni: Revenue reached INR 100 crores and PAT was INR 20 crores.\n",
+        ),
+    ]
+    obs_db = tmp_path / "obs.db"
+    out_db = tmp_path / "obs_copy.db"
+    stores_root = tmp_path / "stores"
+    uni = tmp_path / "universe.csv"
+    _make_universe(uni, ["SYNTH"])
+    _make_store_db(stores_root / "c01" / "c01.db", pages)
+    _make_obs_db(
+        obs_db,
+        [
+            {"page": 2, "printed_label": "Revenue reached", "value": 100.0, "value_text": "INR 100 crores"},
+            {"page": 2, "printed_label": "PAT was", "value": 20.0, "value_text": "INR 20 crores"},
+            {"page": 2, "record_type": "statement", "statement": "Revenue reached INR 100 crores.", "speaker": "Neha Kulkarni"},
+        ],
+    )
+
+    ospeaker.run(obs_db, stores_root, uni, out_db, limit=1)
+    con = sqlite3.connect(str(out_db))
+    got = con.execute("SELECT observation_id, speaker, speaker_role FROM observation ORDER BY observation_id").fetchall()
+    con.close()
+
+    assert got[0][1:] == ("Neha Kulkarni", "management")
+    assert got[1][1:] == ("", "")
+    assert got[2][1:] == ("Neha Kulkarni", "management")
+
+
+def test_roster_edge_cases_and_non_speaker_labels():
+    pages = [
+        (
+            1,
+            "Dear Sir/Madam,\nScrip Code: 500001\nSymbol: SYNTH\nSeries:EQ\n"
+            "New Delhi - 110044. Tel.: +91-11-40617777\nE-mail : mail@synth.com\n",
+        ),
+        (
+            2,
+            "Synth Q2 FY 25-26 Conference Call\n"
+            "Management Team\n"
+            "Mr. Vijay Sanghvi - Managing Director\n"
+            "HOST: MR. AKHIL PAREKH - 360 ONE CAPITAL\n"
+            "ACTIVE Q&A PARTICIPENTS:\n"
+            "o Aman Sonthalia - A K Securities\n",
+        ),
+        (
+            3,
+            "Moderator:\n"
+            "Ladies and gentlemen, welcome. Meeting Audio: clear.\n"
+            "Vijay Sanghavi:\n"
+            "Agriculture: solar segment grew 30%.\n"
+            "Moderator: Thank you. We will take the next question from the line of Akhil Parekh from 360 ONE Capital.\n"
+            "Akhil Parekh: Margin guidance is 12%?\n"
+            "Aman Sonthalia: Capex is INR 50 crores?\n",
+        ),
+    ]
+    rows = [
+        (1, 3, "30%", "solar segment grew", "", ""),
+        (2, 3, "12%", "Margin guidance is", "", ""),
+        (3, 3, "INR 50 crores", "Capex is", "", ""),
+        (4, 2, "25-26", "FY", "", ""),
+    ]
+    res = ospeaker.attribute_document(pages, rows)
+    # Agriculture: ignored -> Vijay Sanghavi; spelled Sanghavi vs p2 Sanghvi still stays management (not moderator)
+    assert res[1] == ("Vijay Sanghavi", "management")
+    # Host on p2 who asks a question via Moderator intro -> analyst
+    assert res[2] == ("Akhil Parekh", "analyst")
+    # Active Q&A participant -> analyst (never management)
+    assert res[3] == ("Aman Sonthalia", "analyst")
+    # Cover-letter address on p1 must not carry onto p2 title
+    assert 4 not in res
