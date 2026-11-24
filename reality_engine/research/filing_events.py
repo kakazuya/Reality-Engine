@@ -37,10 +37,12 @@ only ``--out``.  CLI::
 from __future__ import annotations
 
 import argparse
+import calendar
 import json
 import random
 import re
 import sqlite3
+import sys
 import threading
 import time
 from collections import Counter, defaultdict
@@ -97,9 +99,24 @@ _COMPLETION = re.compile(
 
 # capacity commissioned: a line starts producing (past/complete -- never an EPC scope of "supply, erection,
 # testing and commissioning"), and the capacity it adds is printed beside it.
+_COMM_VERB = re.compile(
+    r"\b(?:commissioned|commissions|commissioning\s+of"
+    r"|commenced\s+(?:commercial\s+)?(?:operations?|production)"
+    r"|commencement\s+of\s+(?:commercial\s+)?(?:operations?|production)"
+    r"|commercial\s+(?:production|operations?)\s+(?:has\s+|have\s+)?commenc\w*"
+    r"|begins?\s+commercial\s+operations?"
+    r"|COD\b|started\s+(?:commercial\s+)?(?:production|operations?)"
+    r"|put\s+to\s+use|synchroni[sz](?:ed|ation))\b",
+    re.I,
+)
 _CAPACITY_CUE = re.compile(
-    r"\b(?:has\s+been\s+commissioned|successfully\s+commissioned|commissioned\s+(?:its|the|a|an)\b"
-    r"|commercial\s+production\s+(?:has\s+)?commenc\w*|commenced\s+(?:commercial\s+)?production"
+    r"\b(?:has\s+been\s+commissioned|successfully\s+commissioned|successful\s+commissioning\s+of"
+    r"|commissioning\s+of|commissioned|commissions"
+    r"|commercial\s+(?:production|operations?)\s+(?:has\s+|have\s+)?commenc\w*"
+    r"|commenced\s+(?:commercial\s+)?(?:operations?|production)"
+    r"|commencement\s+of\s+(?:commercial\s+)?(?:operations?|production)"
+    r"|begins?\s+commercial\s+operations?|COD\b"
+    r"|started\s+(?:commercial\s+)?(?:production|operations?)|put\s+to\s+use|synchroni[sz](?:ed|ation)"
     r"|capacity\s+(?:addition|added|enhancement)|capacity\s+(?:has\s+been\s+)?(?:enhanced|expanded|added)"
     r"|enhancement\s+of\s+capacity|new\s+(?:plant|line|unit|facility)[^.]{0,60}(?:operational|commissioned|inaugurated)"
     r"|inaugurated\s+(?:its|the|a)\b)", re.I)
@@ -107,24 +124,35 @@ _CAPACITY_CUE = re.compile(
 _CAPACITY_VETO = re.compile(
     r"erection[^.]{0,60}commissioning|commissioning\s+of\s+(?:each|the|a)\s+(?:transmission|line|project|package)"
     r"|scope\s+of\s+work|testing\s*(?:&|and)\s*commissioning", re.I)
+_CAPACITY_REJECT_CLAUSE = re.compile(
+    r"\bfoundation\s+stone\b|\bbhoomi\s+pujan\b|\bground[\s-]?breaking\b|\bacquisition\b|\bacquired\b", re.I)
 # "expected to be commissioned", "scheduled to become operational": a plan, not a completed commissioning.
 _CAPACITY_FORWARD = re.compile(
     r"\b(?:expected|estimated|scheduled|targeted|proposed|planned|plan\s+to|will\s+be|to\s+be)\b[^.;]{0,70}?"
     r"\b(?:commission\w*|operational|installed|complete\w*)|"
     r"\b(?:commission\w*|operational)\b[^.;]{0,40}?\b(?:expected|estimated|scheduled|targeted)\b", re.I)
+_CAP_UNIT_RX = (
+    r"MWp|kWp|MW|megawatts?|kW|kilowatts?|GW|gigawatts?|MMTPA|MTPA|TPA|TPD|MT"
+    r"|tonnes?\s+per\s+annum|tons?\s+per\s+annum|lakh\s+tonnes"
+    r"|million\s+(?:tonnes|tons|units|pieces)(?:\s+per\s+annum)?"
+    r"|tonnes?|tons?|KL|kilolitres?|units?|pieces(?:\s+per\s+annum)?"
+)
 _CAPACITY_VALUE = re.compile(
-    r"(?P<v>\d[\d,]*(?:\.\d+)?)\s*(?P<u>MW|megawatts?|GW|gigawatts?|MTPA|TPA|TPD|MT|"
-    r"tonnes?\s+per\s+annum|tons?\s+per\s+annum|lakh\s+tonnes|million\s+(?:tonnes|units)|"
-    r"tonnes?|tons?|KL|kilolitres?|units?)\b", re.I)
+    r"(?P<v>\d[\d,]*(?:\.\d+)?)\s*(?P<u>" + _CAP_UNIT_RX + r")\b", re.I)
 _CAPACITY_UNIT = {
-    "mw": "mw", "megawatt": "mw", "megawatts": "mw", "gw": "gw", "gigawatt": "gw", "gigawatts": "gw",
-    "mtpa": "mtpa", "tpa": "tpa", "tpd": "tpd", "mt": "mt", "tonnes per annum": "tpa",
-    "tons per annum": "tpa", "lakh tonnes": "lakh_tonnes", "million tonnes": "mt", "million units": "mn_units",
-    "tonne": "tpa", "tonnes": "tpa", "ton": "tpa", "tons": "tpa", "kl": "kl", "kilolitre": "kl",
-    "kilolitres": "kl", "unit": "units", "units": "units",
+    "mw": "mw", "mwp": "mwp", "megawatt": "mw", "megawatts": "mw",
+    "kw": "kw", "kwp": "kwp", "kilowatt": "kw", "kilowatts": "kw",
+    "gw": "gw", "gigawatt": "gw", "gigawatts": "gw",
+    "mmtpa": "mmtpa", "mtpa": "mtpa", "tpa": "tpa", "tpd": "tpd", "mt": "mt",
+    "tonnes per annum": "tpa", "tons per annum": "tpa",
+    "lakh tonnes": "lakh_tonnes",
+    "million tonnes": "mt", "million tons": "mtpa",
+    "million tonnes per annum": "mtpa", "million tons per annum": "mtpa",
+    "million units": "mn_units", "million pieces": "mn_pieces", "million pieces per annum": "mn_pieces",
+    "tonne": "tpa", "tonnes": "tpa", "ton": "tpa", "tons": "tpa",
+    "kl": "kl", "kilolitre": "kl", "kilolitres": "kl",
+    "unit": "units", "units": "units", "pieces": "pieces", "pieces per annum": "pieces",
 }
-_CAP_UNIT_RX = (r"MW|megawatts?|GW|gigawatts?|MTPA|TPA|TPD|MT|tonnes?\s+per\s+annum|tons?\s+per\s+annum"
-                r"|lakh\s+tonnes|million\s+(?:tonnes|units)|tonnes?|tons?|KL|kilolitres?|units?")
 _CAPACITY_TO_FROM = re.compile(
     r"(?P<new>\d[\d,]*(?:\.\d+)?)\s*(?P<u>" + _CAP_UNIT_RX + r")[^.;]{0,30}?\bfrom\s+"
     r"(?P<old>\d[\d,]*(?:\.\d+)?)", re.I)
@@ -132,12 +160,14 @@ _CAPACITY_FROM_TO = re.compile(
     r"\bfrom\s+(?P<old>\d[\d,]*(?:\.\d+)?)[^.;]{0,30}?\bto\s+(?P<new>\d[\d,]*(?:\.\d+)?)\s*"
     r"(?P<u>" + _CAP_UNIT_RX + r")", re.I)
 _PLANT = re.compile(
-    r"\b(?:at|in|from)\s+(?:its|the|our)?\s*(?P<name>[A-Z][A-Za-z0-9&.'’\-]*(?:\s+[A-Z][A-Za-z0-9&.'’\-]*){0,4})")
+    r"\b(?:at|in)\s+(?:its|the|our)?\s*(?P<name>[A-Z][A-Za-z0-9&.'’\-]*(?:\s+[A-Z][A-Za-z0-9&.'’\-]*){0,4})")
 
 # fund raise: a board approval or a completed allotment, never a "to consider" intimation.
 _RAISE_CUE = re.compile(
     r"\b(?:QIP|qualified\s+institutions?\s+placement|preferential\s+(?:issue|allotment|offer)|warrants?"
-    r"|rights\s+issue|non[-\s]?convertible\s+debentures?|\bNCDs?\b|fund\s*[- ]?rais\w+|raising\s+of\s+funds"
+    r"|rights\s+issue|non[-\s]?convertible(?:\s*,?\s*(?:non[-\s]?cumulative|cumulative|redeemable|secured|unsecured"
+    r"|listed|unlisted|rated|unrated|taxable|senior|subordinated))*[,\s]+debentures?|\bNCDs?\b"
+    r"|fund\s*[- ]?rais\w+|raising\s+of\s+funds"
     r"|issuance\s+of\s+(?:up\s+to\s+)?\d[\d,]{3,}|issuance\s+of\b[^.]{0,80}?(?:equity\s+)?shares"
     r"|issue\s+of\s+(?:[\d,]+\s+)?(?:equity\s+)?shares"
     r"|allotment\s+of\s+(?:[\d,]+\s+)?(?:equity\s+)?shares"
@@ -176,6 +206,18 @@ _RAISE_VETO = re.compile(
     r"|open\s+offer|pre[-\s]offer|manager\s+to\s+the\s+offer|takeover"
     r"|exploring|to\s+consider|proposal\s+to|enabling\s+resolution"
     r"|borrowing\s+limits?|limit\s+of\s+borrowings?|increase\s+in\s+(?:the\s+)?borrowing", re.I)
+_RAISE_OUTBOUND_VETO = re.compile(
+    r"\b(?:shall\s+)?subscrib(?:e|ed|ing)\s+to\b"
+    r"|\binvest(?:ing|ed|s)?\s+(?:~?\s*(?:Rs\.?|INR|₹)[^.]{0,40}\s+)?(?:in|into)\s+"
+    r"(?!such\s+issu|the\s+(?:issue|offer|qip|rights|securities|equity\s+shares))"
+    r"|\bfor\s+an\s+investment\s+of\b"
+    r"|\bacquir(?:e|ed|ing)\s+(?:stake|equity|shares)\s+in\b"
+    r"|\bacquisition\s+of\s+(?:equity\s+)?shares\s+in\b"
+    r"|\bshare\s+subscription\s+and\s+shareholders\s+agreement\b"
+    r"|\btarget\s+company\b",
+    re.I,
+)
+_MARKET_CAP_CUE = re.compile(r"\bmarket\s+capitali[sz]ation\b|\bmarket\s+cap\b", re.I)
 # A regulator's or a court's "order" is not a customer order.  The test is an order-shaped phrase, never the
 # bare words GST/customs/tax: "excluding GST" is printed on every genuine order value (it cost BLKASHYAP 910 cr
 # and JYOTISTRUC 105.57 cr their events in stage A).
@@ -290,7 +332,7 @@ _ORDER_VALUE_LABEL = re.compile(
     re.I)
 _ORDER_VALUE_ROW = re.compile(
     r"\b(?:value|order\s+value|contract\s+value|total\s+value|value\s+of\s+(?:the\s+)?(?:order|work|contract)"
-    r"|order\s+size|contract\s+price|estimated\s+value)\b[^.;]{0,30}?"
+    r"|order\s+size|contract\s+price|estimated\s+value|annual\s+revenue)\b[^.;]{0,30}?"
     r"(?:Rs\.?|INR|₹)\s*(?P<v>[\d,]+(?:\.\d+)?)\s*(?P<u>crores?|cr\.?|lakhs?|lacs?|million|mn|billions?|bn)\b",
     re.I)
 _PRICE = re.compile(
@@ -299,12 +341,17 @@ _PRICE = re.compile(
 _SHARES = re.compile(
     r"(?P<v>\d[\d,]*)\s*(?:\([^)]{0,140}\)\s*)?(?:fully\s+)?(?:convertible\s+)?(?:partly\s+)?"
     r"(?:paid[-\s]?up\s+)?(?:equity\s+)?(?:shares?|warrants?)\b", re.I)
+_NCD_RX = re.compile(
+    r"non[-\s]?convertible(?:\s*,?\s*(?:non[-\s]?cumulative|cumulative|redeemable|secured|unsecured"
+    r"|listed|unlisted|rated|unrated|taxable|senior|subordinated))*[,\s]+debentures?|\bNCDs?\b",
+    re.I,
+)
 _INSTRUMENTS = (
     ("qip", re.compile(r"\bQIP\b|qualified\s+institutions?\s+placement", re.I)),
+    ("ncd", _NCD_RX),
     ("preferential", re.compile(r"preferential\s+(?:issue|allotment|offer)", re.I)),
     ("warrant", re.compile(r"\bwarrants?\b", re.I)),
     ("rights", re.compile(r"\brights\s+(?:issue|basis)\b", re.I)),
-    ("ncd", re.compile(r"non[-\s]?convertible\s+debentures?|\bNCDs?\b", re.I)),
     ("borrowing", re.compile(r"\bborrowings?\b", re.I)),
     ("equity", re.compile(r"issue\s+of\s+(?:equity\s+)?shares|allotment\s+of\s+(?:equity\s+)?shares", re.I)),
 )
@@ -363,10 +410,82 @@ def _flat(text: Any) -> str:
     return norm_ws(text)
 
 
+_SEBI_AMEND_BOILERPLATE = re.compile(
+    r"(?:SEBI\s*\(?LODR\)?[^.]{0,80}|Regulations,?\s*2015)\s*,?\s*(?:and\s+)?amendments?\s+thereof"
+    r"|\b(?:as\s+amended|amended\s+from\s+time\s+to\s+time)\b",
+    re.I,
+)
+_FILING_SUBJECT_RE = re.compile(
+    r"\bSub(?:ject)?\s*[.:]\s*(.+?)(?=[•●▪✓✔]|\b(?:Dear\s+Sir|Sir\s*/?\s*Madam|Ref\s*[.:]|Pursuant\s+to|In\s+terms\s+of"
+    r"|With\s+reference|We\s+(?:hereby|wish)|Major\s+Highlights|Phone\s*:|CIN\s*:|E-?mail\s*:|Thanking\s+[Yy]ou)\b"
+    r"|(?<=Press\sRelease)\.\s+|$)",
+    re.I,
+)
+_HEADER_SKIP_RE = re.compile(
+    r"^(?:Ref\.?:|Date:|To\b|BSE\s+Limited|National\s+Stock\s+Exchange|Exchange\s+Plaza|Phiroze|Dalal\s+Street"
+    r"|Scrip\s+(?:Code|Symbol|ID)|Symbol:|Security\s+code|ISIN:|Dear\s+Sir|Sir\s*/?\s*Madam|Sub(?:ject)?\s*[.:]"
+    r"|Regd\.?\s*Office|Registered\s+Office|Corporate\s+Office|CIN\b|Tel\b|Phone\b|Fax\b|E-?mail\b|Web(?:site)?\b"
+    r"|Thanking\s+you|Yours\s+(?:faithfully|sincerely|truly)|Encl\b|Digitally\s+signed|Copy\s+to\b"
+    r"|We\s+(?:hereby\s+)?(?:furnish|enclose|forward|attach)\s+(?:herewith\s+)?(?:a\s+)?copy\s+of)",
+    re.I,
+)
+
+
+def _subject_and_first_sentences(title: str, head: str, count: int = 2) -> tuple[str, list[str]]:
+    """Return (subject_line, first `count` substantive event sentences after address/salutation boilerplate)."""
+    flat_head = _flat(head[:3500])
+    sub_m = _FILING_SUBJECT_RE.search(flat_head)
+    subject = _flat(sub_m.group(1)) if sub_m else ""
+    body_start = sub_m.end() if sub_m else 0
+    rest = flat_head[body_start:] if body_start and body_start < len(flat_head) else flat_head
+    rest = re.sub(r"^\bRef\.?:[^.]{0,120}?(?=\b(?:With\s+reference|Pursuant|In\s+terms|Dear\s+Sir)\b)", "", rest, flags=re.I)
+    dear_m = re.search(r"\b(?:Dear\s+Sir(?:\(s\)|\s*/?\s*Madam)?|Sir\s*/?\s*Madam)\b[,:\s]*", rest, re.I)
+    if dear_m and dear_m.start() < 1200:
+        rest = rest[dear_m.end():]
+    # Cover letters attach a Press Release on page 2 without a sentence stop before "PRESS RELEASE".
+    pr_m = re.search(r"\bPRESS\s+RELEASE\b", rest, re.I)
+    if pr_m and re.search(
+        r"\b(?:furnish|enclose|forward|attach)\b|\bPress\s+Release\b",
+        f"{title} {subject} {rest[:200]}",
+        re.I,
+    ):
+        rest = rest[pr_m.end():]
+    raw_clauses = _clauses(rest)
+    substantive: list[str] = []
+    for clause in raw_clauses:
+        cleaned = re.sub(
+            r"^(?:Dear\s+Sir(?:\s*/?\s*Madam)?\s*,?\s*)?"
+            r"(?:(?:Pursuant\s+to|In\s+(?:terms|compliance)\s+of|With\s+reference\s+to)\b[^,]{0,180}?,\s*)?"
+            r"(?:we\s+(?:wish\s+to\s+|hereby\s+)?inform(?:\s+you)?\s+(?:that|about)\s+)?",
+            "",
+            clause,
+            flags=re.I,
+        ).strip()
+        if not cleaned or _HEADER_SKIP_RE.match(cleaned) or len(cleaned) < 15:
+            continue
+        substantive.append(clause)
+        if len(substantive) >= count:
+            break
+    return subject, substantive
+
+
 def _clauses(text: str) -> list[str]:
     # PDF line wrapping is not a sentence end ("... from X crore to\nsupport the expansion"); a full stop ends a
     # clause only before a capital or a bracket, so "Rs. 650" and "Ltd. 650" stay whole.
-    return [c.strip() for c in re.split(r"(?<=[.!?])\s+(?=[A-Z(])", _flat(text)) if c.strip()]
+    # Bullet symbols mark separate highlights even without a trailing full stop.
+    flat_text = _flat(text)
+    out: list[str] = []
+    for block in re.split(r"\s*[•●▪✓✔]\s*", flat_text):
+        flat_block = _flat(block)
+        if not flat_block:
+            continue
+        for clause in re.split(
+            r"(?<!\bDistt\.)(?<!\bNo\.)(?<!\bSr\.)(?<!\bDr\.)(?<!\bMr\.)(?<!\bMs\.)(?<=[.!?])\s+(?=[A-Z(])",
+            flat_block,
+        ):
+            if clause.strip():
+                out.append(clause.strip())
+    return out
 
 
 def _around(text: str, match: re.Match[str], width: int = MAX_QUOTE) -> str:
@@ -432,12 +551,44 @@ def _canon_capacity_unit(unit: str) -> str:
     return re.sub(r"\s+", " ", key.rstrip("s"))
 
 
-def _plant(sentence: str) -> str | None:
-    match = _PLANT.search(sentence or "")
-    if not match:
+_PLANT_BAD = frozenset({
+    "india", "the", "company", "unit", "regulation", "regulations", "sebi", "bse", "nse",
+    "phone", "fax", "email", "cin", "website", "ref", "regd", "office",
+    "with", "total", "phase", "stage", "project", "plant", "facility", "january", "february",
+    "march", "april", "may", "june", "july", "august", "september", "october", "november", "december",
+})
+
+
+def _clean_plant_name(raw: str) -> str | None:
+    name = _flat(raw).strip(" .,-–'\"’”")
+    name = re.sub(r"\s+(?:Dear\s+Sir|Sir\s*/?\s*Madam)\b.*$", "", name, flags=re.I)
+    name = re.sub(r"\s+(?:in\s+)?India$", "", name, flags=re.I).strip(" .,-–'\"’”")
+    words = name.split()
+    if len(words) >= 2 and words[-1].lower() == words[-2].lower():
+        name = " ".join(words[:-1])
+    if not name or len(name) <= 1 or len(name) > 80 or name.lower() in _PLANT_BAD:
         return None
-    name = _flat(match.group("name")).strip(" .,-–")
-    return name if 1 < len(name) <= 80 else None
+    if re.fullmatch(r"(?:FY|Q[1-4]|CY)\s?\d{2,4}", name, re.I):
+        return None
+    return name
+
+
+def _plant(sentence: str) -> str | None:
+    for match in _PLANT.finditer(sentence or ""):
+        name = _clean_plant_name(match.group("name"))
+        if name:
+            return name
+    host = re.search(
+        r"\bat\s+(?:its|the|our)\s+\d[\d.,]*\s*(?:" + _CAP_UNIT_RX + r")\s+"
+        r"(?P<name>[A-Z][A-Za-z0-9&.'’\-]*(?:\s+[A-Z][A-Za-z0-9&.'’\-]*){0,4})",
+        sentence or "",
+        re.I,
+    )
+    if host:
+        name = _clean_plant_name(host.group("name"))
+        if name:
+            return name
+    return None
 
 
 # ------------------------------------------------------------------ classification + script parse
@@ -460,16 +611,22 @@ def _capex_clause(title: str, text: str) -> str | None:
 def _order_amendment_clause(title: str, head: str) -> str | None:
     """The clause that amends/variates/extends/cancels/reduces an existing order (never a fresh order).
 
-    The amendment word may live in the title or the opening ("extension of contract", "cancellation of work order"),
-    while the printed value sits in the annexure; either way the filing is one amendment event.
+    The amendment word must sit in the title, subject, or first two event sentences (never SEBI LODR
+    'amendments thereof' boilerplate), while the printed value may sit in the annexure.
     """
-    opening = _flat(f"{title} {head[:2000]}")
-    whole = _flat(f"{title} {head}")
-    if _AMEND_VETO.search(_flat(title)) or _ORDER_VETO.search(opening) or not _ORDER_WORD.search(whole):
+    clean_title = _SEBI_AMEND_BOILERPLATE.sub(" ", title or "")
+    clean_head = _SEBI_AMEND_BOILERPLATE.sub(" ", head or "")
+    opening = _flat(f"{clean_title} {clean_head[:2000]}")
+    whole = _flat(f"{clean_title} {clean_head}")
+    if _AMEND_VETO.search(_flat(clean_title)) or _ORDER_VETO.search(opening) or not _ORDER_WORD.search(whole):
         return None
-    if not (_AMEND_CUE.search(opening) or _CANCEL_REDUCE_CUE.search(opening)):
+    subject, first_sents = _subject_and_first_sentences(clean_title, clean_head, count=3)
+    gate_texts = [clean_title, subject, *first_sents]
+    if not any((_AMEND_CUE.search(t) or _CANCEL_REDUCE_CUE.search(t))
+               and not re.search(r"\bnot\s+applicable\b", t, re.I)
+               for t in gate_texts if t):
         return None
-    sentences = [title] + _clauses(head)
+    sentences = [clean_title] + _clauses(clean_head)
     cue_at = next(
         (index for index, sentence in enumerate(sentences)
          if (_AMEND_CUE.search(sentence) or _CANCEL_REDUCE_CUE.search(sentence))
@@ -485,6 +642,10 @@ def _order_amendment_clause(title: str, head: str) -> str | None:
                 or _AMEND_AGGREGATE_FULL.search(sentence) or _RS_AMOUNT.search(sentence) \
                 or _RS_FULL.search(sentence):
             return sentence
+    if any(_CANCEL_REDUCE_CUE.search(s) for s in sentences[cue_at:]):
+        for sentence in sentences[:cue_at]:
+            if _ORDER_WORD.search(sentence) and (_RS_AMOUNT.search(sentence) or _RS_FULL.search(sentence)):
+                return f"{sentence} {sentences[cue_at]}"
     return None
 
 
@@ -505,7 +666,7 @@ def _capex_candidate(title: str, head: str) -> bool:
                for sentence in _clauses(head))
 
 
-def classify(title: str, head: str) -> list[str]:
+def classify(title: str, head: str, filing_date: str | None = None) -> list[str]:
     """The classes one announcement names, at most once each, from its title and first two pages."""
     body = _flat(f"{title} {head}")
     is_results = bool(_RESULTS_RELEASE.search(_flat(f"{title} {head[:1500]}")))
@@ -533,7 +694,7 @@ def classify(title: str, head: str) -> list[str]:
             found.append("capex_approval")
 
     # capacity commissioned: a completed commissioning and the capacity it added, in one clause.
-    if capacity_fields(title, head, head):
+    if capacity_fields(title, head, head, filing_date=filing_date):
         found.append("capacity_commissioned")
 
     # fund raise: a decided raise (or an explicit raise title whose details are inside), not a rating or a
@@ -575,25 +736,28 @@ _BAD_CUSTOMER = re.compile(
     r"|\bcustomer\b|\bclient\s+firm\b|\btraders\s+to\b"
     r"|\bbased\s+(?:renow[ne]d|reputed|prominent|at\s+(?:ahmedabad|gujarat|maharashtra|india))\b", re.I)
 _CUSTOMER_CUTS = re.compile(
-    r"(?:,?\s+for\s+|\s+amounting\b|\s+as\s+per\b|\s+worth\b|\s+signif\w*\b"
-    r"|\s+(?:on\s+\d|dated\s|of\s+worth|having\s))", re.I)
+    r"(?:,?\s+for\s+|\s+amounting\b|\s+as\s+per\b|\s+worth\b|\s+signif\w*\b|\s+towards\b"
+    r"|\s+Ref\.?(?:\s*:|\s*$)|\s+(?:on\s+\d|dated\s|of\s+worth|having\s))", re.I)
 _FOR_ENTITY_HEAD = re.compile(
-    r"^(?:centre|center|institute|council|society|agency|authority|foundation|department|association|board)\b", re.I)
+    r"^(?:centre|center|institute|council|society|agency|authority|foundation|department|association|board"
+    r"|(?:national\s+)?bank|corporation|commission|directorate|ministry|university)\b", re.I)
 _ANNEXURE_AWARDER = re.compile(
     r"name\s+of\s+(?:the\s+)?(?:entity|entities|customer|client|party)"
     r"(?:\s*\([^)]{0,40}\))?"
     r"[:;\s]+(?P<cust>.+?)"
-    r"(?=\s*(?:\b[b-k]\)\s*(?:significant|nature|whether|time|broad|details|date)"
-    r"|\b[2-9]\s*[.)]\s*(?:significant|nature|whether|time|broad|details|date)"
-    r"|\bsignificant\s+terms|\bnature\s+of\s+(?:the\s+)?o\S{0,2}der"
-    r"|\bwhether\s+(?:the\s+)?(?:o\S{0,2}der|domestic|promoter)"
-    r"|\btime\s+period\s+by\s+which|\bbroad\s+consideration|$))",
+    r"(?=\s*(?:\b[b-k]\s*[.)]?\s*(?:significant|nature|whether|time|broad|details|date)"
+    r"|\b[2-9]\s*[.)]?\s*(?:significant|nature|whether|time|broad|details|date)"
+    r"|\bsignificant\s+terms|\bnature\s+of\s+(?:the\s+)?(?:o\S{0,2}der|contract)"
+    r"|\b(?:enhancement\s+in\s+)?size\s+of\s+(?:the\s+)?(?:o\S{0,2}der|contract)"
+    r"|\bwhether\s+(?:the\s+)?(?:o\S{0,2}der|contract|domestic|promoter)"
+    r"|\btime\s+period\s+by\s+which|\bbroad\s+(?:commercial\s+)?consideration|$))",
     re.I)
 _ANNEXURE_LABEL_STRIP = re.compile(
     r"\b(?:to\s+which|from\s+which)\b[^:;\n]{0,50}?\bawarded\b"
     r"|\bawarding\s+(?:the\s+)?"
     r"|\bo\S{0,2}der(?:\s?\(?s\)?)?(?:\s*(?:/|or|and|&)\s*)?con\S{1,6}a?ct(?:\s?\(?s\)?)?"
-    r"|\bo\S{0,2}der(?:\s?\(?s\)?)?",
+    r"|\bo\S{0,2}der(?:\s?\(?s\)?)?"
+    r"|(?:the\s+)?contract(?:\s?\(?s\)?)?\s*(?=[:;|]|$)",
     re.I)
 
 
@@ -603,7 +767,7 @@ def _annexure_awarders(text: str) -> list[str]:
     flat = _flat(text)
     for match in _ANNEXURE_AWARDER.finditer(flat):
         raw = _ANNEXURE_LABEL_STRIP.sub(" ", match.group("cust"))
-        raw = re.sub(r"\s+", " ", raw).strip(" ;:,.-")
+        raw = re.sub(r"\s+", " ", raw).strip(" ;:,.-|")
         if raw:
             out.append(raw)
     return out
@@ -611,11 +775,12 @@ def _annexure_awarders(text: str) -> list[str]:
 
 def _clean_party(text: Any, *, from_annexure: bool = False) -> str | None:
     """A printed awarder name without OCR bullets, table junk, a date clause or generic descriptions."""
-    value = re.sub(r"[\ue000-\uf8ff]", " ", _flat(text))
+    value = re.sub(r"[\ue000-\uf8ff|]", " ", _flat(text))
     value = re.sub(r"^.+?\bdepartment\s+of\s+the\s+", "", value, flags=re.I)
     if from_annexure:
         non_for = re.search(
-            r"(?:\s+amounting\b|\s+as\s+per\b|\s+worth\b|\s+signif\w*\b|\s+(?:on\s+\d|dated\s|of\s+worth|having\s))",
+            r"(?:\s+amounting\b|\s+as\s+per\b|\s+worth\b|\s+signif\w*\b|\s+towards\b"
+            r"|\s+Ref\.?(?:\s*:|\s*$)|\s+(?:on\s+\d|dated\s|of\s+worth|having\s))",
             value, re.I)
         if non_for and non_for.start() > 3:
             value = value[:non_for.start()]
@@ -626,7 +791,11 @@ def _clean_party(text: Any, *, from_annexure: bool = False) -> str | None:
         cut = _CUSTOMER_CUTS.search(value)
         if cut and cut.start() > 3:
             value = value[:cut.start()]
-    value = re.sub(r"^(?:the|m/s\.?|messrs\.?)\s+", "", re.sub(r"\s+", " ", value).strip(" ;:,.-"), flags=re.I)
+    value = re.sub(r"\s+", " ", value).strip(" ;:,.-—–")
+    value = re.sub(r"^(?:[—–\-•]+\s*)*(?:the|m/s\.?|messrs\.?)\s+", "", value, flags=re.I)
+    value = re.sub(r"\s+Ref\.?(?:\s*:.*)?$", "", value)
+    value = re.sub(r"\s+[1-9]$", "", value)
+    value = value.strip(" ;:,.-—–")
     if not value or len(value) < 3 or len(value) > 80 or _BAD_CUSTOMER.search(value):
         return None
     if not re.search(r"[A-Z]", value) or re.search(r"\bFY\s?\d{2}\b", value):
@@ -846,7 +1015,8 @@ def order_fields(title: str, text: str, symbol: str = "",
         named = re.search(
             r"(?:(?:work\s+order|order|contract|letter\s+of\s+award)"
             r"[^.;]{0,140}?\bfrom|(?:sub-?\s*contract|contract\s+agreement)[^.;]{0,40}?\bwith)\s+"
-            r"(?:M/s\.?\s+)?([A-Z][^.;,]{2,100})", _flat(text), re.I)
+            r"(?:M/s\.?\s+)?([A-Z](?:[^.;,]|\.(?=[A-Za-z0-9])|(?<=\b[A-Z])\.(?=\s+(?:\(|towards|for|worth|amounting|dated|on))){2,100})",
+            _flat(text), re.I)
         if named:
             awarder = _clean_party(named.group(1), from_annexure=False)
             if awarder:
@@ -1001,6 +1171,28 @@ def order_rows(title: str, text: str, symbol: str = "",
     return rows
 
 
+def _amendment_customer(title: str, head: str, text: str) -> str | None:
+    for raw in _annexure_awarders(text):
+        cleaned = _clean_party(raw, from_annexure=True)
+        if cleaned:
+            return cleaned
+    combined = _flat(f"{title} {head[:2500]}")
+    for rx in (
+        r"(?:work\s+order|purchase\s+order|order|contract|loa|loi)\s+(?:worth[^.;]{0,80}?\s+)?"
+        r"(?:received\s+)?(?:from|awarded\s+by|by)\s+(?:M/s\.?\s+)?"
+        r"([A-Z](?:[^.;,]|\.(?=[A-Za-z0-9])|(?<=\b[A-Z])\.(?=\s)){2,100})",
+        r"([A-Z][A-Za-z0-9&.'’\s()-]{2,80}?)\s+has\s+(?:further\s+)?decided\s+to\s+(?:reduce|cancel|withdraw|short[-\s]?close)",
+    ):
+        for match in re.finditer(rx, combined, re.I):
+            raw = re.sub(r"^.*?\b(?:inform(?:\s+you)?\s+that|that)\s+", "", match.group(1), flags=re.I)
+            raw = re.sub(r"\s+(?:Pursuant\s+to|Dear\s+Sir|Ref\s*[.:]|In\s+terms\s+of)\b.*$", "",
+                         raw, flags=re.I)
+            cleaned = _clean_party(raw, from_annexure=False)
+            if cleaned:
+                return cleaned
+    return None
+
+
 def order_amendment_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
     """An amendment/variation/extension/cancellation/reduction of an existing order: signed delta, never a new order."""
     base = _order_amendment_clause(title, head)
@@ -1057,7 +1249,7 @@ def order_amendment_fields(title: str, head: str, text: str) -> dict[str, Any] |
     return {
         "amount_inr_cr": amount, "amount_usd_mn": None, "value_text": value_text,
         "value_annual": value_annual, "value_total": value_total, "share_pct": share_pct,
-        "customer": None, "execution_months": order_wins.months(text),
+        "customer": _amendment_customer(title, head, text), "execution_months": order_wins.months(text),
         "order_kind": None, "quote": quote[:MAX_QUOTE] or None, "detail_hint": detail, "derived": derived,
         "_base_value": _to_cr(match.group("a"), match.group("au")) if match else None,
     }
@@ -1067,6 +1259,12 @@ _CAPEX_FROM_TO = re.compile(
     r"\bfrom\s+(?:Rs\.?|INR|₹)\s*(?P<a>[\d,]+(?:\.\d+)?)\s*(?P<au>crores?|cr\.?|lakhs?|million|mn)"
     r"[^.;]{0,40}?\bto\s+(?:Rs\.?|INR|₹)\s*(?P<b>[\d,]+(?:\.\d+)?)\s*(?P<bu>crores?|cr\.?|lakhs?|million|mn)\b",
     re.I)
+_CAPEX_REVISED_VIS = re.compile(
+    r"\brevis(?:ed|ion)\b[^.;]{0,120}?\bto\s+(?:Rs\.?|INR|₹)\s*(?P<b>[\d,]+(?:\.\d+)?)\s*(?P<bu>crores?|cr\.?|lakhs?|million|mn)"
+    r"[^.;]{0,90}?\b(?:vis(?:\s*-\s*|\s+)[àa](?:\s*-\s*|\s+)vis|against|over|from)\b[^.;]{0,70}?"
+    r"(?:Rs\.?|INR|₹)\s*(?P<a>[\d,]+(?:\.\d+)?)\s*(?P<au>crores?|cr\.?|lakhs?|million|mn)\b",
+    re.I,
+)
 
 
 def capex_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
@@ -1092,17 +1290,20 @@ def capex_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
                               and not re.search(r"capital\s+expenditure|capex|project\s+cost", s, re.I))), None)
         if base is None:
             return None
-    revised = _CAPEX_FROM_TO.search(base)
+    revised = _CAPEX_FROM_TO.search(base) or _CAPEX_REVISED_VIS.search(base)
     if revised:
         old = _to_cr(revised.group("a"), revised.group("au"))
         new = _to_cr(revised.group("b"), revised.group("bu"))
         if old is not None and new is not None and new != old:
             completion = _COMPLETION.search(text)
+            delta = round(new - old, 4)
             return {
                 "amount_inr_cr": new, "value_text": revised.group(0),
                 "purpose": _flat(base)[:300],
                 "completion": _flat(completion.group(0))[:100] if completion else None,
-                "quote": _flat(base)[:MAX_QUOTE], "derived": 0,
+                "quote": _flat(base)[:MAX_QUOTE],
+                "detail_hint": f"cost revision: prior Rs {old:g} cr -> Rs {new:g} cr (delta {delta:+g} cr)",
+                "derived": 0,
             }
     match = _RS_AMOUNT.search(base)
     winner = base
@@ -1169,7 +1370,72 @@ def _printed_event_date(text: str) -> str | None:
         return None
 
 
-def capacity_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
+def _is_stale_commissioning_clause(clause: str, filing_date: str | None) -> bool:
+    """True when the clause dates the commissioning >90 days before ``filing_date`` (restated history)."""
+    if not filing_date:
+        return False
+    try:
+        filed = date.fromisoformat(str(filing_date))
+    except ValueError:
+        return False
+    body = _flat(clause)
+    month_abbr = {
+        "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
+        "jul": 7, "aug": 8, "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dec": 12,
+        **{k: v for k, v in _MONTHS.items()},
+    }
+    ref_prefix = re.compile(r"(?:letter|intimation|approval|notice|circular|order)\s+dated\s*$", re.I)
+    for m in re.finditer(
+        r"(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9}),?\s+(\d{4})", body, re.I
+    ):
+        if ref_prefix.search(body[max(0, m.start() - 30):m.start()]):
+            continue
+        mon = month_abbr.get(m.group(2).lower().rstrip("."))
+        if not mon:
+            continue
+        try:
+            dt = date(int(m.group(3)), mon, int(m.group(1)))
+        except ValueError:
+            continue
+        if (filed - dt).days > 90:
+            return True
+    for m in re.finditer(
+        r"\b(?:in|since|from)\s+([A-Za-z]{3,9})[,']?\s+(\d{4})\b", body, re.I
+    ):
+        mon = month_abbr.get(m.group(1).lower().rstrip("."))
+        if not mon:
+            continue
+        year = int(m.group(2))
+        last_day = calendar.monthrange(year, mon)[1]
+        if (filed - date(year, mon, last_day)).days > 90:
+            return True
+    return False
+
+
+def _pick_capacity_match(sentence: str) -> re.Match[str] | None:
+    """Pick the commissioned unit's capacity in ``sentence``, skipping host-plant or project-name sizes."""
+    matches = list(_CAPACITY_VALUE.finditer(sentence or ""))
+    if not matches:
+        return None
+    kept: list[re.Match[str]] = []
+    for m in matches:
+        before = sentence[max(0, m.start() - 45):m.start()]
+        after = sentence[m.end():m.end() + 45]
+        if re.search(r"\bat\s+(?:its|the|our)\s+(?:existing\s+)?$", before, re.I) \
+                and re.match(r"^\s*(?:[A-Z][A-Za-z0-9&'-]*\s+){0,3}(?:Refinery|Plant|Complex|Facility|Factory)\b", after, re.I):
+            continue
+        if len(matches) > 1:
+            if re.search(r'["“][^"”]{0,30}$', before) and re.search(r'^\s*(?:Solar\s+Power\s+)?Project["”]', after, re.I):
+                continue
+            if re.search(r"\b(?:towards|target|overall|total\s+installed|designed\s+to\s+reach|future)\b[^.;]{0,30}$",
+                         before, re.I):
+                continue
+        kept.append(m)
+    return kept[0] if kept else None
+
+
+def capacity_fields(title: str, head: str, text: str,
+                    filing_date: str | None = None) -> dict[str, Any] | None:
     """The capacity a completed commissioning adds, with its unit and (when printed) the plant.
 
     "enhanced to 174 mtpa from 170 mtpa" adds 4 mtpa: the delta is what the factor needs, and it is a
@@ -1177,13 +1443,61 @@ def capacity_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
     """
     if _CAPACITY_VETO.search(_flat(f"{title} {head[:1500]}")):
         return None
+    subject, first_sents = _subject_and_first_sentences(title, head, count=2)
+    if _CAPACITY_REJECT_CLAUSE.search(title or "") and not _COMM_VERB.search(title or ""):
+        return None
+    if subject and _CAPACITY_REJECT_CLAUSE.search(subject) and not _COMM_VERB.search(subject):
+        return None
+    has_comm_gate = any(
+        _COMM_VERB.search(s) or re.search(r"\binaugurated\s+(?:its|the|a)\b", s, re.I)
+        for s in (title or "", subject, *first_sents) if s
+    )
+    if not has_comm_gate:
+        return None
     sentences = [title] + _clauses(head)
-    winner = next((s for s in sentences if _CAPACITY_CUE.search(s) and _CAPACITY_VALUE.search(s)
-                   and not _CAPACITY_FORWARD.search(s)
-                   and not re.search(r"\bplanned\b|\bplan\s+to\b", s, re.I)), None)
-    past = re.search(r"has\s+been\s+commissioned|successfully\s+commissioned|commissioned\s+on"
-                     r"|commenced\s+(?:commercial\s+)?production", winner or "", re.I)
-    if winner is None or (_CAPACITY_FORWARD.search(head) and not past):
+    winner = next(
+        (s for s in sentences
+         if _CAPACITY_CUE.search(s) and not _CAPACITY_REJECT_CLAUSE.search(s)
+         and not _CAPACITY_FORWARD.search(s)
+         and not re.search(r"\bplanned\b|\bplan\s+to\b", s, re.I)
+         and not _is_stale_commissioning_clause(s, filing_date)
+         and _pick_capacity_match(s) is not None),
+        None,
+    )
+    cap_source = winner
+    if winner is None:
+        # When the commissioning sentence does not print the unit's own capacity (e.g. host refinery size only,
+        # or Reg 30 table / following sentence states "installed capacity addition 120 KL"), accept an explicit
+        # installed-capacity sentence in the same commissioning filing.
+        comm_idx = next(
+            (i for i, s in enumerate(sentences)
+             if i > 0 and _COMM_VERB.search(s) and not _CAPACITY_REJECT_CLAUSE.search(s)
+             and not _CAPACITY_FORWARD.search(s)
+             and not _is_stale_commissioning_clause(s, filing_date)),
+            None,
+        )
+        if comm_idx is not None:
+            winner = sentences[comm_idx]
+            for j in range(comm_idx + 1, min(len(sentences), comm_idx + 6)):
+                cand = sentences[j]
+                if _CAPACITY_REJECT_CLAUSE.search(cand) or _CAPACITY_FORWARD.search(cand):
+                    continue
+                if re.search(r"\bexisting\s+capacity\b", cand, re.I) and not re.search(r"\baddition\b", cand, re.I):
+                    continue
+                if re.search(r"\b(?:with\s+a\s+capacity\s+of|installed\s+capacity(?:\s+addition)?|capacity\s+addition)\b",
+                             cand, re.I) and _pick_capacity_match(cand) is not None:
+                    cap_source = cand
+                    break
+            if cap_source is winner:
+                winner = None
+    past = re.search(
+        r"has\s+(?:successfully\s+)?been\s+commissioned|has\s+successfully\s+commissioned|successfully\s+commissioned"
+        r"|successful\s+commissioning\s+of|commissioning\s+of|commissioned\s+(?:on|the|its|a|an|\d)"
+        r"|commenced\s+(?:commercial\s+)?(?:operations?|production)|commencement\s+of\s+(?:commercial\s+)?(?:operations?|production)"
+        r"|started\s+(?:commercial\s+)?(?:production|operations?)|put\s+to\s+use|synchroni[sz]ed|\bCOD\b",
+        f"{title} {subject} {winner or ''}", re.I,
+    )
+    if winner is None or cap_source is None or (_CAPACITY_FORWARD.search(head) and not past):
         return None                   # a plan ("expected to be commissioned") is not a completed commissioning
     if _CAPACITY_APPROVED.search(winner) and not past:
         return None                   # "approved setting up" / "proposed capacity addition" is a plan
@@ -1191,7 +1505,7 @@ def capacity_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
     unit = ""
     value_text = ""
     derived = 0
-    span = _CAPACITY_TO_FROM.search(winner) or _CAPACITY_FROM_TO.search(winner)
+    span = _CAPACITY_TO_FROM.search(cap_source) or _CAPACITY_FROM_TO.search(cap_source)
     if span:
         try:
             new = float(span.group("new").replace(",", ""))
@@ -1202,7 +1516,7 @@ def capacity_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
             value, unit, derived = new - old, _canon_capacity_unit(span.group("u")), 1
             value_text = span.group(0)
     if value is None:
-        match = _CAPACITY_VALUE.search(winner)
+        match = _pick_capacity_match(cap_source)
         if match is None:
             return None
         try:
@@ -1210,12 +1524,13 @@ def capacity_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
         except ValueError:
             return None
         unit, value_text = _canon_capacity_unit(match.group("u")), match.group(0)
-    if re.search(r"MT\s*/\s*M\b|MT\s+per\s+month|tonnes?\s+per\s+month", winner, re.I):
+    if re.search(r"MT\s*/\s*M\b|MT\s+per\s+month|tonnes?\s+per\s+month", cap_source, re.I):
         unit = "mt_per_month"
+    plant = _plant(winner) or _plant(subject) or _plant(title)
     return {
         "capacity_value": value, "capacity_unit": unit, "value_text": value_text,
         "event_date": _printed_event_date(winner),
-        "plant": _plant(winner), "quote": _flat(winner)[:MAX_QUOTE], "derived": derived,
+        "plant": plant, "quote": _flat(winner)[:MAX_QUOTE], "derived": derived,
     }
 
 
@@ -1252,18 +1567,24 @@ def _shares_in(sentence: str) -> tuple[float | None, str | None]:
 
 def _raise_size(sentence: str, body: str) -> tuple[float | None, str | None, int]:
     """(size in crore, printed span, computed?) of one raise clause: aggregate, else shares x printed price."""
-    size_match = _SIZE_CUE.search(sentence)
-    if size_match:
+    for size_match in _SIZE_CUE.finditer(sentence):
+        prefix = sentence[max(0, size_match.start() - 60):size_match.start()]
+        if _MARKET_CAP_CUE.search(prefix):
+            continue
         value = _to_cr(size_match.group("v"), size_match.group("u"))
         if value is not None:
             return value, size_match.group(0), 0
-    full = re.search(r"(?:aggregat\w*|amount|issue\s+size|size)[^.;]{0,50}?(?:Rs\.?|INR|₹)\s*"
-                     r"(?P<v>\d[\d,]{6,})(?:\s*/-)?", sentence, re.I)
-    if full:
+    for full in re.finditer(r"(?:aggregat\w*|amount|issue\s+size|size)[^.;]{0,50}?(?:Rs\.?|INR|₹)\s*"
+                            r"(?P<v>\d[\d,]{6,})(?:\s*/-)?", sentence, re.I):
+        prefix = sentence[max(0, full.start() - 60):full.start()]
+        if _MARKET_CAP_CUE.search(prefix):
+            continue
         return round(_digits(full.group("v")) / 1e7, 4), full.group(0), 0
     amounts = []
     for value, span, start in _amounts_rs(sentence):
-        prefix = sentence[max(0, start - 50):start]
+        prefix = sentence[max(0, start - 60):start]
+        if _MARKET_CAP_CUE.search(prefix):
+            continue
         if re.search(r"issue\s+price|price\s+of|price\s+per|face\s+value|nominal\s+value|premium"
                      r"|at\s+(?:a\s+)?price", prefix, re.I):
             continue
@@ -1282,11 +1603,17 @@ def _raise_size(sentence: str, body: str) -> tuple[float | None, str | None, int
 
 
 _RAISE_STAGE_RANK = {"allotment": 5, "completion": 4, "approval": 3, "listing": 2, "proposed": 1, "intimation": 1}
+_SEBI_TEMPLATE_LINE = re.compile(
+    r"\bin\s+case\s+of\s+(?:preferential\s+issue|bonus\s+issue|issuance\s+of)[^.\n]{0,220}?(?:not\s+applicable|n\.?\s?a\.?)"
+    r"|\btype\s+of\s+issuance\s*\([^)]+\)"
+    r"|\bcompanies\s*\(\s*prospectus\s+and\s+allotment\s+of\s+securities\s*\)",
+    re.I,
+)
 
 
 def _raise_stage(title: str, head: str) -> str:
     title_low = _flat(title).lower()
-    heading = _flat(head).lower()
+    heading = _SEBI_TEMPLATE_LINE.sub(" ", _flat(head)).lower()
     combined = title_low + " " + heading[:2500]
     if re.search(r"\b(?:draft\s+letter\s+of\s+offer|\bdlof\b|addendum\s+to\s+(?:the\s+)?(?:dlof|draft\s+letter\s+of\s+offer|letter\s+of\s+offer))\b", combined):
         return "proposed"
@@ -1294,12 +1621,13 @@ def _raise_stage(title: str, head: str) -> str:
                  r"|\b(?:egm|agm)\s+to\s+be\s+held\b", combined) \
             and not re.search(r"\bsummary\s+of\s+proceedings|\boutcome\s+of\s+(?:the\s+)?(?:egm|agm)\b", combined):
         return "proposed"
-    if re.search(r"basis of allotment|allotment of|allotted|issue and allotment", title_low + " " + heading):
+    if re.search(r"basis of allotment|allotted|issue and allotment|\ballotment\s+of\b",
+                 title_low + " " + heading):
         return "allotment"
     if re.search(r"listing\s+approval|trading\s+approval|in[-\s]?principle\s+approval|admitted to dealings",
                  title_low):
         return "listing"
-    if re.search(r"postal ballot|approved|approval|shareholders.{0,30}approved|key terms", heading):
+    if re.search(r"\bnot\s+exceeding\b|postal ballot|approved|approval|shareholders.{0,30}approved|key terms", heading):
         return "approval"
     if re.search(r"issue (?:opened|closed)|completed the issue|proceeds of the (?:issue|rights)", heading):
         return "completion"
@@ -1317,7 +1645,14 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
     if _RAISE_VETO.search(_flat(f"{title} {head}")) or not _RAISE_CUE.search(_flat(f"{title} {head}")):
         return None                 # a note deep in a financial statement is not the company's raise
     opening = re.split(r"\bAnnexure\b", head, maxsplit=1, flags=re.I)[0][:1200]
-    if _RAISE_DEBT_VETO.search(_flat(f"{title} {opening}")):
+    flat_opening = _flat(f"{title} {opening}")
+    if _RAISE_DEBT_VETO.search(flat_opening):
+        return None
+    if _RAISE_OUTBOUND_VETO.search(flat_opening) and not re.search(
+        r"\braising\s+of\s+funds\b|\bfund\s*[- ]?rais|\bQIP\b|\brights\s+issue\b|\bpreferential\s+(?:issue|allotment)\b"
+        r"|\bnon[-\s]?convertible\b|\bNCDs?\b",
+        flat_opening, re.I,
+    ):
         return None
     is_results = bool(_RESULTS_RELEASE.search(_flat(f"{title} {head[:1500]}")))
     body = _flat(f"{title} {text}")
@@ -1326,7 +1661,7 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
     winners: list[str] = []
     continuation = False
     for sentence in sentences:
-        if _RAISE_DEBT_VETO.search(sentence):
+        if _RAISE_DEBT_VETO.search(sentence) or _RAISE_OUTBOUND_VETO.search(sentence):
             continuation = False
             continue
         if is_results and _FINANCIAL_METRIC.search(sentence):
@@ -1389,13 +1724,14 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
         implied = shares * price_per_share / 1e7
         if implied <= 0 or not (0.5 <= implied / amount <= 2):
             shares = None             # a post-issue total or a ratio, not the shares this raise issued
+    clean_body = _SEBI_TEMPLATE_LINE.sub(" ", body)
     instrument, best_count = None, 0
     for name, rx in _INSTRUMENTS:
-        count = sum(1 for _ in rx.finditer(body))
+        count = sum(1 for _ in rx.finditer(clean_body))
         if count > best_count:       # the words the filing repeats most name the instrument; tie keeps priority
             instrument, best_count = name, count
-    if re.search(r"\bany\s+instrument\s+or\s+security\b|\bor\s+(?:a|any)\s+combination\s+thereof\b", body, re.I) \
-            and sum(1 for _name, rx in _INSTRUMENTS[:5] if rx.search(body)) >= 3:
+    if re.search(r"\bany\s+instrument\s+or\s+security\b|\bor\s+(?:a|any)\s+combination\s+thereof\b", clean_body, re.I) \
+            and sum(1 for _name, rx in _INSTRUMENTS[:6] if rx.search(clean_body)) >= 3:
         instrument = "mixed"
     quote = " ".join(dict.fromkeys(winners))[:MAX_QUOTE]
     raw_counts = {float(m.group("v").replace(",", "")) for winner in winners for m in _SHARES.finditer(winner)}
@@ -1550,9 +1886,10 @@ def event_rows(doc: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
     """(script event rows, classes whose required number the script could not fill)."""
     title, text = doc.get("title") or "", doc.get("text") or ""
     head = doc.get("head") or text
+    filing_date = doc.get("filing_date")
     rows: list[dict[str, Any]] = []
     missing: list[str] = []
-    classes = classify(title, head)
+    classes = classify(title, head, filing_date=filing_date)
     amendment_fields = order_amendment_fields(title, head, text) or {} if "order_amendment" in classes else {}
     excluded = {round(float(amendment_fields["amount_inr_cr"]), 4)} \
         if amendment_fields.get("amount_inr_cr") is not None else None
@@ -1571,7 +1908,7 @@ def event_rows(doc: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
         elif kind == "capex_approval":
             fields = capex_fields(title, head, text) or {}
         elif kind == "capacity_commissioned":
-            fields = capacity_fields(title, head, text) or {}
+            fields = capacity_fields(title, head, text, filing_date=filing_date) or {}
         else:
             fields = raise_fields(title, head, text) or {}
         row, absent = _assemble_row(doc, kind, fields, 1)
@@ -1798,7 +2135,8 @@ def _drop_restated_capacity(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         earlier = [k for k in kept if k["symbol"] == row["symbol"] and k.get("capacity_unit") == unit
                    and k.get("capacity_value") is not None and value is not None
                    and abs(float(k["capacity_value"]) - float(value)) <= 0.01 * max(1.0, abs(float(value)))]
-        background = not _CAPACITY_CUE.search(str(row.get("title") or ""))
+        subject, first_sents = _subject_and_first_sentences(str(row.get("title") or ""), str(row.get("_text") or ""), count=1)
+        background = not any(_CAPACITY_CUE.search(s) for s in (str(row.get("title") or ""), subject, *first_sents) if s)
         if background and earlier:
             dropped.add(id(row))
             continue
@@ -1995,17 +2333,30 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str) -> list[dict[str
                 row[key] = None
         if kind == "order_win" and not row.get("order_kind"):
             row["order_kind"] = "new_order"
+        if kind == "order_win" and row.get("amount_inr_cr") is not None \
+                and _ANNUAL_CUE.search(row.get("value_text") or ""):
+            row["value_annual"] = row["amount_inr_cr"]
+            tenure = _tenure_years(doc.get("text") or "", row.get("execution_months"))
+            if tenure:
+                row["value_total"] = round(row["value_annual"] * tenure, 4)
+                row["amount_inr_cr"] = row["value_total"]
+            else:
+                row["amount_inr_cr"] = None
         check_doc = {**doc, "pages": {page: text for page, text in doc["pages"].items() if page <= 2}}
         if row.get("value_text"):
             row["page"] = _page_of(check_doc["pages"], row["value_text"])
         required = (row.get("capacity_value") if kind == "capacity_commissioned"
-                    else row.get("amount_inr_cr") or row.get("amount_usd_mn"))
+                    else row.get("amount_inr_cr") or row.get("amount_usd_mn") or row.get("value_annual"))
         if not required:
             row["status"] = "unverified"
             row["detail"] = "model filled no amount"
-        elif not _model_unit_printed(row):
+        elif not _model_unit_printed(row) and row.get("value_annual") is None:
             row["status"] = "unverified"
             row["detail"] = "amount unit not printed in the quoted text (model)"
+        elif row.get("value_annual") is not None:
+            row["status"] = "unverified"
+            row["detail"] = ("annual value x printed tenure (model)" if row.get("value_total") is not None
+                             else "annual value; tenure not printed, not a total (model)")
         elif _locate(row, check_doc):
             row["status"] = "quarantined"
             row["detail"] = "model value not printed on the first two pages"
@@ -2309,6 +2660,10 @@ def _report_lines(db: Path, seed: int = 7) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(errors="replace")
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     ap.add_argument("--stores", nargs="*", default=None, help="store names (default: every measured store)")
     ap.add_argument("--limit", type=int, default=None, help="stop after N announcements across the run")
