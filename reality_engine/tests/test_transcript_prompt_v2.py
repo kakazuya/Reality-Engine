@@ -104,3 +104,72 @@ def test_no_control_characters_in_the_reader_source():
     """T-241: a shell that eats one backslash turned three regex word boundaries into backspace characters."""
     source = Path(obs.__file__).read_text(encoding="utf-8")
     assert not [c for c in source if ord(c) < 32 and c not in "\n\r\t"]
+
+
+def test_mix_part_extracts_named_parts_and_rejects_empty_labels():
+    assert obs.mix_part("Road HAM contributed") == "Road HAM"
+    assert obs.mix_part("Power T&D accounts for") == "Power T&D"
+    assert obs.mix_part("exports were") == "exports"
+    assert obs.mix_part("share of domestic") == "domestic"
+    assert obs.mix_part("out of which domestic") == "domestic"
+    for empty_label in ("out of that", "and", "which is", "around", "contributed"):
+        assert obs.mix_part(empty_label) == "", empty_label
+
+
+def test_mix_guard_sets_segment_from_label_when_dims_empty():
+    page = "Road HAM contributed 11.8 crores in Q2 FY25."
+    base = obs.build_observations(
+        symbol="ASHOKA", doc_key=DOC, page=4, known_at="2024-10-29T10:00:00",
+        page_text=page,
+        reply_rows=[{"type": "number", "measure": "revenue.mix", "printed_label": "Road HAM contributed",
+                     "value_text": "11.8", "unit": "crores", "period": "Q2 FY25", "segment": "Road HAM",
+                     "entity_scope": "company", "claim_type": "company_actual"}],
+    )
+    rows = obs.build_observations(
+        symbol="ASHOKA", doc_key=DOC, page=4, known_at="2024-10-29T10:00:00",
+        page_text=page,
+        reply_rows=[{"type": "number", "measure": "revenue.mix", "printed_label": "Road HAM contributed",
+                     "value_text": "11.8", "unit": "crores", "period": "Q2 FY25",
+                     "entity_scope": "company", "claim_type": "company_actual"}],
+    )
+    assert len(rows) == 1
+    assert rows[0]["segment"] == "Road HAM"
+    assert rows[0]["status"] == base[0]["status"] == "verified"
+    assert rows[0]["status_reason"] == base[0]["status_reason"]
+
+
+def test_mix_guard_marks_mix_without_segment_unverified():
+    page = "out of that 50% in Q2 FY25."
+    rows = obs.build_observations(
+        symbol="KPGEL", doc_key=DOC, page=4, known_at="2024-10-29T10:00:00",
+        page_text=page,
+        reply_rows=[{"type": "number", "measure": "mix.share", "printed_label": "out of that",
+                     "value_text": "50%", "unit": "%", "period": "Q2 FY25",
+                     "entity_scope": "company", "claim_type": "company_actual"}],
+    )
+    assert len(rows) == 1
+    assert rows[0]["segment"] == ""
+    assert rows[0]["status"] == "unverified"
+    assert "mix_without_segment" in rows[0]["status_reason"]
+
+
+def test_mix_guard_leaves_row_with_customer_or_non_mix_measure_untouched():
+    page = "out of that 14 crores to merchant sales and PAT stood at 26.5 crores in Q2 FY25."
+    rows = obs.build_observations(
+        symbol="DEEPAKFERT", doc_key=DOC, page=4, known_at="2024-10-29T10:00:00",
+        page_text=page,
+        reply_rows=[
+            {"type": "number", "measure": "revenue.mix", "printed_label": "out of that",
+             "value_text": "14", "unit": "crores", "period": "Q2 FY25", "customer": "merchant sales",
+             "entity_scope": "company", "claim_type": "company_actual"},
+            {"type": "number", "measure": "pat", "printed_label": "out of that",
+             "value_text": "26.5", "unit": "crores", "period": "Q2 FY25",
+             "entity_scope": "company", "claim_type": "company_actual"},
+        ],
+    )
+    by = {r["measure"]: r for r in rows}
+    assert by["revenue.mix"]["customer"] == "merchant sales"
+    assert by["revenue.mix"]["segment"] == ""
+    assert by["revenue.mix"]["status"] == "verified"
+    assert by["pat"]["segment"] == ""
+    assert by["pat"]["status"] == "verified"
