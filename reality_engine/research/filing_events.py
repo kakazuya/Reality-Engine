@@ -142,6 +142,16 @@ _RAISE_CUE = re.compile(
     r"|issue\s+of\s+(?:[\d,]+\s+)?(?:equity\s+)?shares"
     r"|allotment\s+of\s+(?:[\d,]+\s+)?(?:equity\s+)?shares"
     r"|\bborrowings?\b)\b", re.I)
+_RAISE_ISSUANCE = re.compile(
+    r"\b(?:rais(?:e|ing|ed)|issu(?:e|ing|ed|ance)|allot(?:ted|ting|ment)?|QIP|qualified\s+institutions?\s+placement"
+    r"|preferential|rights\s+issue|rights\s+basis|private\s+placement\s+of\s+(?:NCDs?|non[-\s]?convertible\s+debentures?))\b",
+    re.I)
+_RAISE_DEBT_VETO = re.compile(
+    r"\b(?:(?:partial|early|full|final|premature)\s+)?redemption\b|\bredeemed\b|\bcall\s+option\b|\bput\s+option\b"
+    r"|\bcovenants?\b|\b(?:debenture|bond)\s+trust\s+deed\b"
+    r"|\b(?:amendment|modification)\s+(?:in|of|to)\s+(?:the\s+)?(?:clauses|terms|covenants)\b"
+    r"|\b(?:certificate\s+regarding\s+)?payment\s+of\s+interest\b|\binterest\s+payment\b"
+    r"|\brecord\s+date\s+for\s+(?:interest|redemption)\b", re.I)
 _RAISE_DONE = re.compile(
     r"\b(?:allotted|allotment|allotting|raised|subscribed|sanctioned|issued|issuing|issuance|opened|closed)\b", re.I)
 _SIZE_CUE = re.compile(
@@ -177,7 +187,36 @@ _ORDER_VETO = re.compile(
     r"|show[\s-]cause|\bsummons\b|arbitration|insolvency|\bwrit\b|hon.{0,3}ble"
     r"|pollution\s+control\s+board|rumou?r|news\s+item|media\s+report|clarification\s+on\s+news"
     r"|no\s+new\s+order|penalty\s+charged|GST\s+(?:department|authority)"
+    r"|\bDRC[-\s]?0?7\b|\bGoods\s+and\s+Services\s+Tax\s+Act\b|\b[CSI]?GST\s+Act\b"
+    r"|\bDepartment\s+of\s+(?:Commercial|State|Central)\s+Taxes\b|\bCommercial\s+Taxes\b"
+    r"|\bGST\s+(?:Audit\s+)?Authorit(?:y|ies)\b"
+    r"|\b(?:demand|assessment|penalty|show[\s-]?cause|adjudication|rectification)\s+(?:order|notice)\b"
+    r"|\b(?:tax|total)\s+demand\b|\braised\s+(?:a\s+)?(?:total\s+)?demand\b|\bdemand\s+of\s+(?:Rs\.?|INR|₹)"
+    r"|\b(?:imposing|imposed|levied)\s+(?:a\s+)?penalty\b|\bpenalty\s+(?:amount\s+)?of\s+(?:Rs\.?|INR|₹)"
+    r"|\border\b[^.]{0,60}\b(?:assessment|demand|penalty|show[\s-]?cause|adjudication|Section\s+73|Section\s+74|Section\s+129|DRC[-\s]?0?7)\b"
     r"|completion\s+of\s+(?:the\s+)?(?:project|order|work)\b", re.I)
+_RESULTS_RELEASE = re.compile(
+    r"\bresults?\s+(?:press|media)\s+release\b"
+    r"|\b(?:press|media|investor)\s+release\b[^.]{0,180}\b(?:financial\s+results|quarterly\s+results|"
+    r"Q[1-4]\s*(?:&|and)?\s*(?:9M|H[12])?\s*FY\s?\d{2}|(?:quarter|half\s+year|nine\s+months|year)\s+ended|"
+    r"revenue\s+growth|financial\s+highlights)\b"
+    r"|\b(?:Q[1-4]|H[12]|9M)\s*(?:&\s*(?:9M|H[12])\s*)?FY\s?\d{2}\s+"
+    r"(?:press\s*(?:&|and)\s*media\s+release|investor\s+release|financial\s+highlights)\b"
+    r"|\bannounced\s+its\s+(?:unaudited\s+|audited\s+|consolidated\s+|standalone\s+)?financial\s+results\b",
+    re.I)
+_ORDER_ROLLUP = re.compile(
+    r"\b(?:orders?|contracts?)\s+(?:received|secured|won|bagged|awarded)\s+during\s+(?:the\s+)?"
+    r"(?:quarter|half[\s-]?year|first\s+half|nine\s+months|Q[1-4]|H[12]|FY\s?\d{2,4})\b"
+    r"|\b(?:during|in)\s+(?:Q[1-4](?:\s*FY\s?\d{2,4})?|H[12](?:\s*FY\s?\d{2,4})?|the\s+(?:quarter|first\s+half|second\s+half|half\s+year|nine\s+months))"
+    r"[^.]{0,60}\b(?:secured|won|received|bagged)\s+(?:new\s+|multiple\s+|significant\s+|three\s+)?orders?\b"
+    r"|\bconsolidated\s+order\s+wins?\s+for\s+(?:Q[1-4]|H[12]|FY)\b"
+    r"|\beach\s+of\s+the\s+above\s+orders?\s+has\s+already\s+been\s+individually\s+intimated\b",
+    re.I)
+_FINANCIAL_METRIC = re.compile(
+    r"\b(?:revenues?|ebitda|pat|net\s+profit|profit\s+after\s+tax|total\s+income|turnover)\b", re.I)
+_RESULTS_ACTION = re.compile(r"\b(?:approved|approves|awarded|sanctioned)\b", re.I)
+_HAS_FIN_RESULTS = re.compile(
+    r"\b(?:un-?audited|audited)\s+(?:standalone\s+|consolidated\s+)?financial\s+results\b", re.I)
 # the company is the buyer: an EPC contract it signs with its contractor, or an order it places.
 _ORDER_BUYER = re.compile(
     r"\b(?:placed\s+an?\s+order\s+with"
@@ -195,16 +234,21 @@ _AMEND_CUE = re.compile(
     r"|\b(?:purchase\s+order|work\s+order|contract|order)\b[^.]{0,40}\b(?:amended|revised|varied)\b"
     r"|\bextension\s+of\s+(?:the\s+)?(?:contract|order)\b|\bextended\b[^.]{0,50}\b(?:contract|order)\b"
     r"|\benhanced\s+from\b|\bincrease[ds]?\s+(?:in\s+)?(?:the\s+)?(?:total\s+)?value\b", re.I)
+_CANCEL_REDUCE_CUE = re.compile(
+    r"\b(?:cancell?(?:ed|ation)|withdrawn|withdrawal|short[-\s]?clos(?:ed|ure|ing)|reduc(?:ed|tion)"
+    r"|reduce\s+(?:the\s+)?(?:awarded\s+)?(?:orders?|contracts?|value|scope|deliveries)"
+    r"|descop(?:ed|ing)?|foreclos(?:ed|ure))\b", re.I)
 # a periodic deviation/utilisation statement is not a capex approval.
 _CAPEX_VETO = re.compile(r"statement\s+of\s+deviation|utilisation|utilization|\bdeviation\b|post[-\s]issue"
                          r"|new\s+line\s+of\s+business|credit\s+rating|audited\s+financial\s+statements"
                          r"|financial\s+statements?\s+for\s+the\s+(?:year|quarter)"
+                         r"|\brefinanc\w*\b|\bexisting\s+debts?\b"
                          r"|exploring|to\s+consider|proposal\s+to|enabling\s+resolution", re.I)
 _CAPEX_STRONG = re.compile(
     r"\b(?:capital\s+expenditure|capex|project\s+cost|estimated\s+cost"
     r"|expansion\s+(?:project|programme|plan|at|of)\b|capacity\s+expansion|greenfield|brownfield"
     r"|setting\s+up\s+(?:of\s+)?(?:a|an|the|its)?\s*(?:new\s+)?(?:plant|unit|line|facility))\b", re.I)
-_AMEND_VETO = re.compile(r"credit\s+rating|rating\s+(?:action|revision|reaffirm)|termination|cancellation"
+_AMEND_VETO = re.compile(r"credit\s+rating|rating\s+(?:action|revision|reaffirm)"
                          r"|statement\s+of\s+deviation|utilisation|utilization", re.I)
 # an approved/proposed capacity is a plan until the sentence says it is commissioned.
 _CAPACITY_APPROVED = re.compile(r"\b(?:approved|approves|proposed|setting\s+up|to\s+be\s+set\s+up|will\s+set\s+up)\b",
@@ -218,7 +262,7 @@ _AMEND_FROM_TO = re.compile(
     + _CS_GAP + r"\bto\b" + _CS_GAP + r"(?:Rs\.?|INR|₹)\s*(?P<b>[\d,]+(?:\.\d+)?)\s*"
     r"(?P<bu>crores?|cr\.?|lakhs?|lacs?)", re.I)
 _AMEND_AGGREGATE = re.compile(
-    r"\b(?:aggregate|total)(?:\s+contract)?\s+value\b[^.;]{0,80}?(?:Rs\.?|INR|₹)\s*"
+    r"\b(?:aggregate|total)(?:\s+(?:contract|order))?\s+value\b[^.;]{0,80}?(?:Rs\.?|INR|₹)\s*"
     r"(?P<v>[\d,]+(?:\.\d+)?)\s*(?P<u>crores?|cr\.?|lakhs?|lacs?|million|mn|billions?|bn)\b", re.I)
 _AMEND_AGGREGATE_FULL = re.compile(
     r"\b(?:aggregate|total)(?:\s+contract)?\s+value\b[^.;]{0,80}?(?:Rs\.?|INR|₹)\s*"
@@ -259,7 +303,7 @@ _INSTRUMENTS = (
     ("qip", re.compile(r"\bQIP\b|qualified\s+institutions?\s+placement", re.I)),
     ("preferential", re.compile(r"preferential\s+(?:issue|allotment|offer)", re.I)),
     ("warrant", re.compile(r"\bwarrants?\b", re.I)),
-    ("rights", re.compile(r"\brights\s+issue\b", re.I)),
+    ("rights", re.compile(r"\brights\s+(?:issue|basis)\b", re.I)),
     ("ncd", re.compile(r"non[-\s]?convertible\s+debentures?|\bNCDs?\b", re.I)),
     ("borrowing", re.compile(r"\bborrowings?\b", re.I)),
     ("equity", re.compile(r"issue\s+of\s+(?:equity\s+)?shares|allotment\s+of\s+(?:equity\s+)?shares", re.I)),
@@ -402,6 +446,8 @@ def _capex_clause(title: str, text: str) -> str | None:
     for sentence in [title] + _clauses(text):
         if not (_CAPEX_STRONG.search(sentence) and _APPROVE.search(sentence)):
             continue
+        if _FINANCIAL_METRIC.search(sentence):
+            continue
         if _RAISE_CUE.search(sentence) and not re.search(r"capital\s+expenditure|capex|project\s+cost",
                                                          sentence, re.I):
             continue                  # "preferential issue ... to accelerate expansion" is a raise, not a capex
@@ -412,17 +458,24 @@ def _capex_clause(title: str, text: str) -> str | None:
 
 
 def _order_amendment_clause(title: str, head: str) -> str | None:
-    """The clause that amends/variates/extends an existing order (never a fresh order).
+    """The clause that amends/variates/extends/cancels/reduces an existing order (never a fresh order).
 
-    The amendment word may live in the title or the opening ("extension of contract"), while the printed value
-    sits in the annexure; either way the filing is one amendment event.
+    The amendment word may live in the title or the opening ("extension of contract", "cancellation of work order"),
+    while the printed value sits in the annexure; either way the filing is one amendment event.
     """
-    opening = _flat(f"{title} {head[:1500]}")
+    opening = _flat(f"{title} {head[:2000]}")
     whole = _flat(f"{title} {head}")
-    if _AMEND_VETO.search(_flat(title)) or not _AMEND_CUE.search(opening) or not _ORDER_WORD.search(whole):
+    if _AMEND_VETO.search(_flat(title)) or _ORDER_VETO.search(opening) or not _ORDER_WORD.search(whole):
+        return None
+    if not (_AMEND_CUE.search(opening) or _CANCEL_REDUCE_CUE.search(opening)):
         return None
     sentences = [title] + _clauses(head)
-    cue_at = next((index for index, sentence in enumerate(sentences) if _AMEND_CUE.search(sentence)), None)
+    cue_at = next(
+        (index for index, sentence in enumerate(sentences)
+         if (_AMEND_CUE.search(sentence) or _CANCEL_REDUCE_CUE.search(sentence))
+         and not re.search(r"\bnot\s+applicable\b", sentence, re.I)),
+        None,
+    )
     if cue_at is None:
         return None
     for sentence in sentences[cue_at:]:
@@ -436,13 +489,17 @@ def _order_amendment_clause(title: str, head: str) -> str | None:
 
 
 def _capex_candidate(title: str, head: str) -> bool:
-    if _CAPEX_VETO.search(_flat(f"{title} {head}")):
+    combined = _flat(f"{title} {head}")
+    if _CAPEX_VETO.search(combined):
         return False
     if _capex_clause(title, head):
         return True
+    if _RESULTS_RELEASE.search(_flat(f"{title} {head[:1500]}")) or _HAS_FIN_RESULTS.search(_flat(f"{title} {head[:1500]}")):
+        return False
     if not (_APPROVE.search(head[:1500]) or _DONE.search(head[:1500])):
         return False
     return any(_CAPEX_STRONG.search(sentence) and _RS_AMOUNT.search(sentence)
+               and not _FINANCIAL_METRIC.search(sentence)
                and not (_RAISE_CUE.search(sentence)
                         and not re.search(r"capital\s+expenditure|capex|project\s+cost", sentence, re.I))
                for sentence in _clauses(head))
@@ -451,16 +508,20 @@ def _capex_candidate(title: str, head: str) -> bool:
 def classify(title: str, head: str) -> list[str]:
     """The classes one announcement names, at most once each, from its title and first two pages."""
     body = _flat(f"{title} {head}")
+    is_results = bool(_RESULTS_RELEASE.search(_flat(f"{title} {head[:1500]}")))
+    is_rollup = bool(_ORDER_ROLLUP.search(body))
     found: list[str] = []
 
     amendment = _order_amendment_clause(title, head)
     if amendment:
         found.append("order_amendment")
         prose = _prose_order_records(title, head)
-        if len({round(float(record["value_cr"]), 4) for record in prose}) >= 2 \
-                and not re.search(r"variation|amendment|extension", title, re.I):
+        if not is_results and not is_rollup and len({round(float(record["value_cr"]), 4) for record in prose}) >= 2 \
+                and not re.search(r"variation|amendment|extension|cancel|reduc|withdraw|short[-\s]?clos|descop|foreclos",
+                                  title, re.I):
             found.append("order_win")            # one fresh LOA and one variation in the same letter (MICEL 463)
-    elif (order_wins.parse(_flat(title), _flat(head)) or _loose_order_record(title, head)) \
+    elif not is_results and not is_rollup \
+            and (order_wins.parse(_flat(title), _flat(head)) or _loose_order_record(title, head)) \
             and not _ORDER_VETO.search(body) and not _is_buyer_side(title, head):
         found.append("order_win")
 
@@ -485,6 +546,12 @@ def classify(title: str, head: str) -> list[str]:
 def _why(kind: str, title: str, text: str) -> str:
     rx = {"capex_approval": _CAPEX_CUE, "capacity_commissioned": _CAPACITY_CUE,
           "fund_raise": _RAISE_CUE, "order_amendment": _AMEND_CUE}.get(kind)
+    if kind == "order_amendment":
+        for source in (title, text):
+            match = _AMEND_CUE.search(source or "") or _CANCEL_REDUCE_CUE.search(source or "")
+            if match:
+                return _flat(source[max(0, match.start() - 30): match.end() + 60])[:200]
+        return kind
     if rx is None:
         win = order_wins.WIN.search(_flat(f"{title} {text[:1200]}"))
         if win:
@@ -499,31 +566,74 @@ def _why(kind: str, title: str, text: str) -> str:
 
 
 _BAD_CUSTOMER = re.compile(
-    r"contract\(?s?\)?|international\s+client|^i\s+|^name\b|^n/?a$|^none$|^details?"
+    r"contract\(?s?\)?|contact\(?s?\)?|international\s+client|^i\s+|^name\b|^n/?a$|^none$|^details?"
     r"|date\s+of\s+issue|letter\s+of\s+(?:acceptance|award)|work\s+order|order\(?s?\)"
-    r"|the\s+company|interest\s+in\s+the\s+entity|promoter|related\s+party|thereof", re.I)
+    r"|the\s+company|interest\s+in\s+the\s+entity|promoter|related\s+party|thereof"
+    r"|\b(?:rs\.?|inr|worth|crores?|lakhs?|lacs?)\b|₹"
+    r"|our\s+valued\s+customer|valued\s+customer|\ba\s+leading\b|\ba\s+renowned\b|\ba\s+renowed\b"
+    r"|\ba\s+reputed\b|\ba\s+prominent\b|\ba\s+listed\s+company\b|\bone\s+of\s+the\b"
+    r"|\bcustomer\b|\bclient\s+firm\b|\btraders\s+to\b"
+    r"|\bbased\s+(?:renow[ne]d|reputed|prominent|at\s+(?:ahmedabad|gujarat|maharashtra|india))\b", re.I)
 _CUSTOMER_CUTS = re.compile(
-    r"\s+(?:on\s+\d|dated\s|of\s+worth|for\s+the\s+(?:purpose|new)|for\s+providing|for\s+supply"
-    r"|for\s+provision|for\s+execution|having\s|for\s+an\s+amount)", re.I)
+    r"(?:,?\s+for\s+|\s+amounting\b|\s+as\s+per\b|\s+worth\b|\s+signif\w*\b"
+    r"|\s+(?:on\s+\d|dated\s|of\s+worth|having\s))", re.I)
+_FOR_ENTITY_HEAD = re.compile(
+    r"^(?:centre|center|institute|council|society|agency|authority|foundation|department|association|board)\b", re.I)
+_ANNEXURE_AWARDER = re.compile(
+    r"name\s+of\s+(?:the\s+)?(?:entity|entities|customer|client|party)"
+    r"(?:\s*\([^)]{0,40}\))?"
+    r"[:;\s]+(?P<cust>.+?)"
+    r"(?=\s*(?:\b[b-k]\)\s*(?:significant|nature|whether|time|broad|details|date)"
+    r"|\b[2-9]\s*[.)]\s*(?:significant|nature|whether|time|broad|details|date)"
+    r"|\bsignificant\s+terms|\bnature\s+of\s+(?:the\s+)?o\S{0,2}der"
+    r"|\bwhether\s+(?:the\s+)?(?:o\S{0,2}der|domestic|promoter)"
+    r"|\btime\s+period\s+by\s+which|\bbroad\s+consideration|$))",
+    re.I)
+_ANNEXURE_LABEL_STRIP = re.compile(
+    r"\b(?:to\s+which|from\s+which)\b[^:;\n]{0,50}?\bawarded\b"
+    r"|\bawarding\s+(?:the\s+)?"
+    r"|\bo\S{0,2}der(?:\s?\(?s\)?)?(?:\s*(?:/|or|and|&)\s*)?con\S{1,6}a?ct(?:\s?\(?s\)?)?"
+    r"|\bo\S{0,2}der(?:\s?\(?s\)?)?",
+    re.I)
 
 
-def _clean_party(text: Any) -> str | None:
-    """A printed awarder name without OCR bullets, table junk, a date clause or a trailing period."""
+def _annexure_awarders(text: str) -> list[str]:
+    """Extract customer names from Reg 30 annexure rows ('Name of the entity ... awarding ...')."""
+    out: list[str] = []
+    flat = _flat(text)
+    for match in _ANNEXURE_AWARDER.finditer(flat):
+        raw = _ANNEXURE_LABEL_STRIP.sub(" ", match.group("cust"))
+        raw = re.sub(r"\s+", " ", raw).strip(" ;:,.-")
+        if raw:
+            out.append(raw)
+    return out
+
+
+def _clean_party(text: Any, *, from_annexure: bool = False) -> str | None:
+    """A printed awarder name without OCR bullets, table junk, a date clause or generic descriptions."""
     value = re.sub(r"[\ue000-\uf8ff]", " ", _flat(text))
-    cut = _CUSTOMER_CUTS.search(value)
-    if cut and cut.start() > 3:
-        value = value[:cut.start()]
+    value = re.sub(r"^.+?\bdepartment\s+of\s+the\s+", "", value, flags=re.I)
+    if from_annexure:
+        non_for = re.search(
+            r"(?:\s+amounting\b|\s+as\s+per\b|\s+worth\b|\s+signif\w*\b|\s+(?:on\s+\d|dated\s|of\s+worth|having\s))",
+            value, re.I)
+        if non_for and non_for.start() > 3:
+            value = value[:non_for.start()]
+        head, sep, _tail = value.partition(" for ")
+        if sep and len(head) > 3 and not _FOR_ENTITY_HEAD.match(head.strip()):
+            value = head
+    else:
+        cut = _CUSTOMER_CUTS.search(value)
+        if cut and cut.start() > 3:
+            value = value[:cut.start()]
     value = re.sub(r"^(?:the|m/s\.?|messrs\.?)\s+", "", re.sub(r"\s+", " ", value).strip(" ;:,.-"), flags=re.I)
-    head, sep, _tail = value.partition(" for ")
-    if sep and len(head) <= 20:
-        value = head
-    if not value or len(value) < 3 or _BAD_CUSTOMER.search(value):
+    if not value or len(value) < 3 or len(value) > 80 or _BAD_CUSTOMER.search(value):
         return None
-    if not re.search(r"[A-Z]", value) or re.search(r"\bFY\s?\d{2}\b|\bRs\.?\s?\d", value):
+    if not re.search(r"[A-Z]", value) or re.search(r"\bFY\s?\d{2}\b", value):
         return None
     if len(value) > 18 and " " in value and value.islower():
         return None
-    return value[:200]
+    return value
 
 
 def _order_value_from_text(text: str) -> tuple[float, str] | None:
@@ -658,8 +768,27 @@ def _consortium_share(text: str, symbol: str) -> tuple[float | None, float | Non
     return None, None
 
 
+_FILING_TOTAL = re.compile(
+    r"\b(?:total|aggregate)\s+(?:order\s+|contract\s+)?value\b(?:\s+of\s+order\s+is)?[^.;]{0,30}?"
+    r"(?:Rs\.?|INR|₹)\s*(?P<v>[\d,]+(?:\.\d+)?)\s*(?P<u>crores?|cr\.?|lakhs?|lacs?|millions?|mn|billions?|bn)\b"
+    r"|\b(?:aggregat\w*|totall?\w*)\s+(?:orders?\s+)?(?:worth|to|of)\s+(?:Rs\.?|INR|₹)\s*"
+    r"(?P<v2>[\d,]+(?:\.\d+)?)\s*(?P<u2>crores?|cr\.?|lakhs?|lacs?|millions?|mn|billions?|bn)\b",
+    re.I)
+
+
+def _filing_total_cr(title: str, text: str) -> float | None:
+    match = _FILING_TOTAL.search(_flat(f"{title} {text[:2500]}"))
+    if not match:
+        return None
+    val = match.group("v") or match.group("v2")
+    unit = match.group("u") or match.group("u2")
+    return _sane_cr(_to_cr(val, unit)) if val and unit else None
+
+
 def order_fields(title: str, text: str, symbol: str = "",
-                 records_override: list[dict[str, Any]] | None = None) -> dict[str, Any] | None:
+                 records_override: list[dict[str, Any]] | None = None,
+                 allow_body_customer: bool = True,
+                 filing_total_cr: float | None = None) -> dict[str, Any] | None:
     """One order event: the size, customer and execution period, with annual/consortium handling."""
     if records_override is not None:
         records = records_override
@@ -705,14 +834,21 @@ def order_fields(title: str, text: str, symbol: str = "",
             quote = _around(_flat(text), match)
     customers = []
     for record in records:
-        awarder = _clean_party(record.get("awarder"))
+        awarder = _clean_party(record.get("awarder"), from_annexure=True)
         if awarder:
             customers.append(awarder)
-    if not customers:
-        named = re.search(r"(?:work\s+order|order|contract|letter\s+of\s+award)[^.;]{0,60}?\bfrom\s+"
-                          r"([A-Z][^.;,]{3,100})", _flat(text), re.I)
+    if not customers and allow_body_customer:
+        for raw in _annexure_awarders(text):
+            awarder = _clean_party(raw, from_annexure=True)
+            if awarder:
+                customers.append(awarder)
+    if not customers and allow_body_customer:
+        named = re.search(
+            r"(?:(?:work\s+order|order|contract|letter\s+of\s+award)"
+            r"[^.;]{0,140}?\bfrom|(?:sub-?\s*contract|contract\s+agreement)[^.;]{0,40}?\bwith)\s+"
+            r"(?:M/s\.?\s+)?([A-Z][^.;,]{2,100})", _flat(text), re.I)
         if named:
-            awarder = _clean_party(named.group(1))
+            awarder = _clean_party(named.group(1), from_annexure=False)
             if awarder:
                 customers.append(awarder)
     months = {r["duration_months"] for r in records if r.get("duration_months") is not None}
@@ -724,7 +860,7 @@ def order_fields(title: str, text: str, symbol: str = "",
             execution_months = float(period.group(1)) * (12.0 if period.group(2).lower().startswith("year") else 1.0)
     value_words = _flat(f"{value_text or ''} {quote} {text}")
     value_annual: float | None = None
-    value_total: float | None = None
+    value_total: float | None = filing_total_cr
     share_pct: float | None = None
     detail = ""
     if amount is not None:
@@ -768,6 +904,11 @@ def order_fields(title: str, text: str, symbol: str = "",
 _PROSE_AMOUNT = re.compile(
     r"\bfrom\s+(?P<customer>(?:the\s+)?[A-Z][^.]{3,400}?)\s+for\s+an\s+amount\s+of\s+(?:Rs\.?|INR|₹)\s*"
     r"(?P<v>\d[\d,]*(?:\.\d+)?)\s*(?P<u>crores?|cr\.?|lakhs?|lacs?)?", re.I)
+_ITEM_LOA_AMOUNT = re.compile(
+    r"(?:\bworth|\bfor(?:\s+an\s+amount\s+of)?)\s+(?:Rs\.?|INR|₹)\s*(?P<v>\d[\d,]*(?:\.\d+)?)\s*"
+    r"(?P<u>crores?|cr\.?|lakhs?|lacs?)?(?:\s*/-)?[^.;\n]{0,90}?"
+    r"\bvide\s+(?:LOA|LOI|PO(?:\s+No\.?)?|Purchase\s+Order|Work\s+Order)\b",
+    re.I)
 
 
 def _prose_order_records(title: str, text: str) -> list[dict[str, Any]]:
@@ -790,20 +931,46 @@ def _prose_order_records(title: str, text: str) -> list[dict[str, Any]]:
             "title_value_cr": None, "title_mismatch": 0, "quote": match.group(0)[-300:],
             "extractor_rule": "prose_orders_v1",
         })
+    if len({round(float(r["value_cr"]), 4) for r in records}) < 2:
+        item_records: list[dict[str, Any]] = []
+        annex_customers = [_clean_party(c, from_annexure=True) for c in _annexure_awarders(text)]
+        for idx, match in enumerate(_ITEM_LOA_AMOUNT.finditer(body)):
+            raw, unit = match.group("v"), match.group("u")
+            amount = _to_cr(raw, unit) if unit else (round(_digits(raw) / 1e7, 4)
+                                                     if len(re.sub(r"\D", "", raw)) >= 7 else None)
+            if amount is None:
+                continue
+            val_m = _RS_AMOUNT.search(match.group(0)) or _RS_FULL.search(match.group(0))
+            vtext = val_m.group(0) if val_m else match.group(0)[:80]
+            cust = annex_customers[idx] if idx < len(annex_customers) else None
+            if cust is None and len(annex_customers) == 1:
+                cust = annex_customers[0]
+            tail = body[match.end():match.end() + 180]
+            item_records.append({
+                "seq": len(item_records) + 1, "awarder": cust, "value_cr": amount, "value_usd_mn": None,
+                "value_text": vtext, "duration_months": order_wins.months(tail),
+                "title_value_cr": None, "title_mismatch": 0, "quote": match.group(0)[:300],
+                "extractor_rule": "item_loa_orders_v1",
+            })
+        if len({round(float(r["value_cr"]), 4) for r in item_records}) >= 2:
+            return item_records
     distinct = {round(float(record["value_cr"]), 4) for record in records}
     return records if len(distinct) >= 2 else []
 
 
 def order_rows(title: str, text: str, symbol: str = "",
-               exclude_amounts: set[float] | None = None) -> list[dict[str, Any]]:
+               exclude_amounts: set[float] | None = None,
+               head: str | None = None) -> list[dict[str, Any]]:
     """One row per order in the filing (C5); a repeated cover/annexure figure stays one row."""
-    if _ORDER_VETO.search(_flat(f"{title} {text}")) or _is_buyer_side(title, text):
+    veto_text = _flat(f"{title} {head if head is not None else text}")
+    if _ORDER_VETO.search(veto_text) or _RESULTS_RELEASE.search(_flat(f"{title} {(head or text)[:1500]}")) \
+            or _ORDER_ROLLUP.search(veto_text) or _is_buyer_side(title, head or text):
         return []
     records = order_wins.parse(_flat(title), _flat(text))
     prose = _prose_order_records(title, text)
     if len(prose) > len(records):
         records = prose
-    loose = _loose_order_record(title, text)
+    loose = _loose_order_record(title, head or text)
     if not records or (not any(r.get("value_cr") is not None or r.get("value_usd_mn") is not None
                                for r in records) and loose is not None):
         records = [loose] if loose else records
@@ -821,21 +988,27 @@ def order_rows(title: str, text: str, symbol: str = "",
     if len(records) == 1:
         fields = order_fields(title, text, symbol, records_override=records)
         return [fields] if fields else []
+    total_cr = _filing_total_cr(title, head or text)
+    annex_customers = _annexure_awarders(text)
     rows: list[dict[str, Any]] = []
-    for record in records:
-        fields = order_fields(title, text, symbol, records_override=[record])
+    for idx, record in enumerate(records):
+        if not record.get("awarder") and idx < len(annex_customers):
+            record = {**record, "awarder": annex_customers[idx]}
+        fields = order_fields(title, text, symbol, records_override=[record],
+                              allow_body_customer=False, filing_total_cr=total_cr)
         if fields:
             rows.append(fields)
     return rows
 
 
 def order_amendment_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
-    """An amendment/variation/extension of an existing order: the increment when printed, never a new order."""
+    """An amendment/variation/extension/cancellation/reduction of an existing order: signed delta, never a new order."""
     base = _order_amendment_clause(title, head)
     if base is None:
         return None
-    match = _AMEND_FROM_TO.search(base) or _AMEND_FROM_TO.search(text)
-    lenient = None if match else (_AMEND_FROM_TO_LENIENT.search(base) or _AMEND_FROM_TO_LENIENT.search(text))
+    is_cancel_reduce = bool(_CANCEL_REDUCE_CUE.search(base) or _CANCEL_REDUCE_CUE.search(title))
+    match = _AMEND_FROM_TO.search(base) if is_cancel_reduce else (_AMEND_FROM_TO.search(base) or _AMEND_FROM_TO.search(text))
+    lenient = None if (match or is_cancel_reduce) else (_AMEND_FROM_TO_LENIENT.search(base) or _AMEND_FROM_TO_LENIENT.search(text))
     value_annual = value_total = share_pct = None
     detail = ""
     chosen = match or lenient
@@ -853,17 +1026,17 @@ def order_amendment_fields(title: str, head: str, text: str) -> dict[str, Any] |
         value_total = new
         detail = "amendment increment = printed new total - printed old total (computed)"
     else:
-        aggregate = _AMEND_AGGREGATE.search(base) or _AMEND_AGGREGATE.search(text)
-        full_aggregate = None if aggregate else (_AMEND_AGGREGATE_FULL.search(base)
-                                                or _AMEND_AGGREGATE_FULL.search(text))
+        aggregate = _AMEND_AGGREGATE.search(base) or (None if is_cancel_reduce else _AMEND_AGGREGATE.search(text))
+        full_aggregate = None if (aggregate or is_cancel_reduce) else (
+            _AMEND_AGGREGATE_FULL.search(base) or _AMEND_AGGREGATE_FULL.search(text))
         if aggregate:
             amount = _to_cr(aggregate.group("v"), aggregate.group("u"))
             value_text, derived = aggregate.group(0), 0
-            value_total = amount
+            value_total = None if is_cancel_reduce else amount
         elif full_aggregate:
             amount = round(_digits(full_aggregate.group("v")) / 1e7, 4)
             value_text, derived = full_aggregate.group(0), 0
-            value_total = amount
+            value_total = None if is_cancel_reduce else amount
         else:
             amounts = [(value, span) for value, span, _start in _amounts_rs(base)]
             amounts += [(round(_digits(m.group("v")) / 1e7, 4), m.group(0))
@@ -874,8 +1047,12 @@ def order_amendment_fields(title: str, head: str, text: str) -> dict[str, Any] |
             amount = round(sum(distinct), 4) if len(distinct) > 1 else next(iter(distinct))
             value_text = "; ".join(dict.fromkeys(span for _v, span in amounts))
             derived = 1 if len(distinct) > 1 else 0
-            value_total = amount
+            value_total = None if is_cancel_reduce else amount
             detail = "variation increment" if len(distinct) == 1 else "sum of distinct printed variation increments"
+    if is_cancel_reduce and amount is not None and amount > 0:
+        amount = -amount
+        if not detail:
+            detail = "order cancelled/reduced (negative amount)"
     quote = _flat(base)
     return {
         "amount_inr_cr": amount, "amount_usd_mn": None, "value_text": value_text,
@@ -900,12 +1077,17 @@ def capex_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
     """
     if _CAPEX_VETO.search(_flat(f"{title} {head}")):
         return None
+    strict_results = bool(
+        _RESULTS_RELEASE.search(_flat(f"{title} {head[:1500]}"))
+        or _HAS_FIN_RESULTS.search(_flat(f"{title} {head[:1500]}"))
+    )
     sentences = [title] + _clauses(text)
     base = _capex_clause(title, head)
     if base is None:
-        if not _capex_candidate(title, head):
+        if strict_results or not _capex_candidate(title, head):
             return None
         base = next((s for s in sentences if _CAPEX_STRONG.search(s) and _RS_AMOUNT.search(s)
+                     and not _FINANCIAL_METRIC.search(s)
                      and not (_RAISE_CUE.search(s)
                               and not re.search(r"capital\s+expenditure|capex|project\s+cost", s, re.I))), None)
         if base is None:
@@ -924,23 +1106,25 @@ def capex_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
             }
     match = _RS_AMOUNT.search(base)
     winner = base
-    if match is None:
+    if match is None and not strict_results:
         index = next((i for i, sentence in enumerate(sentences) if sentence == base), 0)
         for sentence in sentences[index:index + 4]:
-            if _CAPEX_AMOUNT_CUE.search(sentence):
+            if _CAPEX_AMOUNT_CUE.search(sentence) and not _FINANCIAL_METRIC.search(sentence):
                 match = _RS_AMOUNT.search(sentence)
                 if match:
                     winner = sentence
                     break
-    if match is None:
+    if match is None and not strict_results:
         title_match = _RS_AMOUNT.search(title or "")
-        if title_match and _CAPEX_CUE.search(title or ""):
+        if title_match and _CAPEX_CUE.search(title or "") and not _FINANCIAL_METRIC.search(title or ""):
             match, winner = title_match, title
-    if match is None:
+    if match is None and not strict_results:
         # one distinct spend named in a clause that also speaks of capex/approval; a results bundle has many
         # amounts, so two or more distinct values means the script stays unsure and the row goes to the model.
         found: dict[float, str] = {}
         for sentence in sentences:
+            if _FINANCIAL_METRIC.search(sentence):
+                continue
             amount = _RS_AMOUNT.search(sentence)
             if amount and (_CAPEX_CUE.search(sentence) or _APPROVE.search(sentence)):
                 found.setdefault(round(_to_cr(amount.group("v"), amount.group("u")) or -1.0, 4), sentence)
@@ -1097,12 +1281,19 @@ def _raise_size(sentence: str, body: str) -> tuple[float | None, str | None, int
     return None, None, 0
 
 
-_RAISE_STAGE_RANK = {"allotment": 5, "completion": 4, "approval": 3, "listing": 2, "intimation": 1}
+_RAISE_STAGE_RANK = {"allotment": 5, "completion": 4, "approval": 3, "listing": 2, "proposed": 1, "intimation": 1}
 
 
 def _raise_stage(title: str, head: str) -> str:
     title_low = _flat(title).lower()
     heading = _flat(head).lower()
+    combined = title_low + " " + heading[:2500]
+    if re.search(r"\b(?:draft\s+letter\s+of\s+offer|\bdlof\b|addendum\s+to\s+(?:the\s+)?(?:dlof|draft\s+letter\s+of\s+offer|letter\s+of\s+offer))\b", combined):
+        return "proposed"
+    if re.search(r"\bnotice\s+of\s+(?:the\s+)?(?:extra[-\s]?ordinary\s+general\s+meeting|egm|annual\s+general\s+meeting|agm)\b"
+                 r"|\b(?:egm|agm)\s+to\s+be\s+held\b", combined) \
+            and not re.search(r"\bsummary\s+of\s+proceedings|\boutcome\s+of\s+(?:the\s+)?(?:egm|agm)\b", combined):
+        return "proposed"
     if re.search(r"basis of allotment|allotment of|allotted|issue and allotment", title_low + " " + heading):
         return "allotment"
     if re.search(r"listing\s+approval|trading\s+approval|in[-\s]?principle\s+approval|admitted to dealings",
@@ -1125,18 +1316,31 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
     """
     if _RAISE_VETO.search(_flat(f"{title} {head}")) or not _RAISE_CUE.search(_flat(f"{title} {head}")):
         return None                 # a note deep in a financial statement is not the company's raise
+    opening = re.split(r"\bAnnexure\b", head, maxsplit=1, flags=re.I)[0][:1200]
+    if _RAISE_DEBT_VETO.search(_flat(f"{title} {opening}")):
+        return None
+    is_results = bool(_RESULTS_RELEASE.search(_flat(f"{title} {head[:1500]}")))
     body = _flat(f"{title} {text}")
     sentences = [title] + _clauses(text)
     sizes: list[tuple[float, str | None, int]] = []
     winners: list[str] = []
     continuation = False
     for sentence in sentences:
-        has_cue = bool(_RAISE_CUE.search(sentence))
+        if _RAISE_DEBT_VETO.search(sentence):
+            continuation = False
+            continue
+        if is_results and _FINANCIAL_METRIC.search(sentence):
+            continuation = False
+            continue
+        has_cue = bool(_RAISE_CUE.search(sentence) and _RAISE_ISSUANCE.search(sentence))
         if not has_cue and not (continuation and (_SIZE_CUE.search(sentence) or _amounts_rs(sentence)
                                                   or _SHARES.search(sentence) or _PRICE.search(sentence))):
             continuation = False
             continue
         if _INTIMATION.search(sentence) and not _DONE.search(sentence):
+            continuation = False
+            continue
+        if is_results and not _RESULTS_ACTION.search(sentence):
             continuation = False
             continue
         decided = has_cue and (_DONE.search(sentence) or _RAISE_DONE.search(sentence) or _APPROVE.search(sentence)
@@ -1146,7 +1350,7 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
             continue
         value, span, computed = _raise_size(sentence, body)
         if value is None:
-            continuation = has_cue and decided
+            continuation = has_cue and decided and not is_results
             continue
         if computed and value < 0.01:
             continuation = False
@@ -1190,6 +1394,9 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
         count = sum(1 for _ in rx.finditer(body))
         if count > best_count:       # the words the filing repeats most name the instrument; tie keeps priority
             instrument, best_count = name, count
+    if re.search(r"\bany\s+instrument\s+or\s+security\b|\bor\s+(?:a|any)\s+combination\s+thereof\b", body, re.I) \
+            and sum(1 for _name, rx in _INSTRUMENTS[:5] if rx.search(body)) >= 3:
+        instrument = "mixed"
     quote = " ".join(dict.fromkeys(winners))[:MAX_QUOTE]
     raw_counts = {float(m.group("v").replace(",", "")) for winner in winners for m in _SHARES.finditer(winner)}
     if instrument in ("warrant", "equity", "preferential") and len(raw_counts) > 1 \
@@ -1268,29 +1475,30 @@ def _locate(row: dict[str, Any], doc: dict[str, Any]) -> str | None:
         target, unit = float(row["capacity_value"]), "count"
     else:
         return "no value to print-check"
+    check_target = abs(target) if row.get("kind") == "order_amendment" and target < 0 else target
     pages: dict[int, str] = doc["pages"]
     if row.get("value_text"):
         needle = _flat(row["value_text"])
         for page in sorted(pages):
-            if needle and needle in _flat(pages[page]) and matches_value(target, find_numbers(needle), unit):
+            if needle and needle in _flat(pages[page]) and matches_value(check_target, find_numbers(needle), unit):
                 row["page"] = page
                 return None
     for page in sorted(pages):
         for span, value in _printed_values(_flat(pages[page]), row["kind"]):
-            same = (abs(value - target) <= 1e-4 * max(1.0, abs(target)) if unit != "count"
-                    else abs(value - target) < 1e-9)
+            same = (abs(value - check_target) <= 1e-4 * max(1.0, abs(check_target)) if unit != "count"
+                    else abs(value - check_target) < 1e-9)
             if same:
                 row["value_text"], row["page"] = span, page
                 return None
     # the exchange headline is printed with the filing; an OCR-damaged page can leave the title as the only copy.
     title = _flat(doc.get("title"))
     if title and row.get("value_text") and _flat(row["value_text"]) in title \
-            and matches_value(target, find_numbers(row["value_text"]), unit):
+            and matches_value(check_target, find_numbers(row["value_text"]), unit):
         row["page"], row["detail"] = 0, "value in the exchange headline"
         return None
     for span, value in _printed_values(title, row["kind"]):
-        same = (abs(value - target) <= 1e-4 * max(1.0, abs(target)) if unit != "count"
-                else abs(value - target) < 1e-9)
+        same = (abs(value - check_target) <= 1e-4 * max(1.0, abs(check_target)) if unit != "count"
+                else abs(value - check_target) < 1e-9)
         if same:
             row["value_text"], row["page"], row["detail"] = span, 0, "value in the exchange headline"
             return None
@@ -1350,7 +1558,8 @@ def event_rows(doc: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
         if amendment_fields.get("amount_inr_cr") is not None else None
     for kind in classes:
         if kind == "order_win":
-            order_fields_list = order_rows(title, head, doc.get("symbol") or "", exclude_amounts=excluded)
+            order_fields_list = order_rows(title, text, doc.get("symbol") or "",
+                                           exclude_amounts=excluded, head=head)
             for seq, fields in enumerate(order_fields_list, 1):
                 row, absent = _assemble_row(doc, kind, fields, seq)
                 rows.append(row)
@@ -1443,7 +1652,8 @@ def _fold_same_order(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -
                       key=lambda r: (str(r.get("known_at") or ""), str(r.get("doc_key") or ""))):
         match = None
         for prior in kept:
-            if prior["symbol"] != row["symbol"] or not _customer_compatible(prior, row):
+            if prior["doc_key"] == row["doc_key"] or prior["symbol"] != row["symbol"] \
+                    or not _customer_compatible(prior, row):
                 continue
             try:
                 gap = abs((date.fromisoformat(str(row["filing_date"]))
@@ -1510,13 +1720,14 @@ def _row_size(row: dict[str, Any]) -> float | None:
 
 def _raise_family(instrument: Any) -> str:
     value = _flat(instrument).lower()
-    return "equity" if value in ("preferential", "warrant", "equity", "equity+warrant", "qip") else value
+    return "equity" if value in ("preferential", "warrant", "equity", "equity+warrant", "qip", "mixed") else value
 
 
 def _assign_raise_ids(rows: list[dict[str, Any]]) -> None:
     """C1: one raise across its stages -- same instrument, size within 5%, within 365 days -- one raise_id.
 
     Every stage stays as its own dated row; ``raise_primary=1`` marks the one row a factor may use.
+    Dedupe verified rows on (symbol, instrument, amount, stage) so only one row per stage stays verified.
     """
     clusters: dict[str, list[dict[str, Any]]] = {}
     raises = sorted((r for r in rows if r["kind"] == "fund_raise"),
@@ -1526,7 +1737,11 @@ def _assign_raise_ids(rows: list[dict[str, Any]]) -> None:
         gid = None
         for existing, members in clusters.items():
             anchor = members[0]
-            if anchor["symbol"] != row["symbol"] or _raise_family(anchor.get("instrument")) != family:
+            anchor_family = _raise_family(anchor.get("instrument"))
+            compatible = (anchor_family == family
+                          or (not family and anchor_family == "equity")
+                          or (not anchor_family and family == "equity"))
+            if anchor["symbol"] != row["symbol"] or not compatible:
                 continue
             anchor_size = _row_size(anchor)
             if size is None or anchor_size is None:
@@ -1550,6 +1765,19 @@ def _assign_raise_ids(rows: list[dict[str, Any]]) -> None:
             clusters[gid] = []
         clusters[gid].append(row)
         row["raise_id"], row["raise_primary"] = gid, 0
+    seen_stage: set[tuple[Any, ...]] = set()
+    for row in raises:
+        if row.get("status") != "verified":
+            continue
+        size = _row_size(row)
+        if size is None:
+            continue
+        key = (row.get("symbol"), _flat(row.get("instrument")).lower(), round(size, 2), row.get("raise_stage"))
+        if key in seen_stage:
+            row["status"] = "unverified"
+            row["detail"] = row.get("detail") or "duplicate raise stage (already filed)"
+        else:
+            seen_stage.add(key)
     for members in clusters.values():
         best_rank = max(_RAISE_STAGE_RANK.get(str(r.get("raise_stage")), 0) for r in members)
         top = [r for r in members if _RAISE_STAGE_RANK.get(str(r.get("raise_stage")), 0) == best_rank]
@@ -2015,7 +2243,7 @@ def build(stores: list[str] | None = None, limit: int | None = None, use_model: 
     for row in sorted(rows, key=lambda r: (str(r.get("known_at") or ""), str(r.get("doc_key") or ""))):
         value = (row.get("amount_inr_cr"), row.get("amount_usd_mn"), row.get("capacity_value"))
         if any(part is not None for part in value):
-            key = (row.get("symbol"), row.get("filing_date"), row.get("kind"),
+            key = (row.get("symbol"), row.get("filing_date"), row.get("kind"), int(row.get("seq") or 1),
                    *(round(float(part), 4) if part is not None else None for part in value))
             if key in seen:
                 continue

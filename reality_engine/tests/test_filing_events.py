@@ -795,3 +795,331 @@ def test_t242_load_docs_reads_press_releases_too(tmp_path, monkeypatch):
     import reality_engine.research.driver_claims as dc
     monkeypatch.setattr(dc, "ocr_page_texts", lambda store, kinds: {})
     assert sorted(d["doc_key"] for d in fe.load_docs("c01")) == ["a", "p"]
+
+
+# ---- T-242 fixes 1-6: real sentences from the 60 graded filings -------------------------------------------
+T242_CASES: dict[str, dict[str, Any]] = {
+    "E21": {
+        "symbol": "RAILTEL",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/RAILTEL/material_filing/52699e33-430b-498c-8308-32e4d286436c.pdf",
+        "title": "New Order Received",
+        "text": ("RailTel Corporation of India Ltd. has received the work order from Ircon International Limited "
+                 "for Works amounting to Rs. 1,62,58,96,785 (Including Tax). Annexure-A a) Name of the entity "
+                 "awarding the order(s)/contract(s); Ircon International Limited b) Significant terms and conditions "
+                 "order(s)/contract (s) awarded in brief; Integrated Tunnel Communication g) Broad consideration or "
+                 "size of order(s)/contract(s) (in INR); 1,62,58,96,785"),
+    },
+    "E27": {
+        "symbol": "RAILTEL",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/RAILTEL/material_filing/ff36168d-6ac5-44f2-b4df-cd4fe3e4877f.pdf",
+        "title": "New order received",
+        "text": ("RailTel Corporation of India Ltd. has received the work order from Madhya Pradesh State Electronics "
+                 "Development Corporation Ltd for Work Order amounting to Rs. 37,18,16,668 (Including Tax). "
+                 "Annexure-A a) Name of the entity awarding the order(s)/contract(s); Madhya Pradesh State Electronics "
+                 "Development Corporation Ltd b) Significant terms and conditions order(s)/contract (s) awarded in "
+                 "brief; Work Order as System Integrator g) Broad consideration or size of order(s)/contract(s) (in INR); "
+                 "37,18,16,668"),
+    },
+    "E30": {
+        "symbol": "RAILTEL",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/RAILTEL/material_filing/268f3a27-70bc-40db-b5ac-74a634d99120.pdf",
+        "title": "New order received",
+        "text": ("RailTel Corporation of India Ltd. has received the Letter of Acceptance (LoA) from Assam Health "
+                 "Infrastructure Development & Management Society (Ahidms). Annexure-A a) Name of the entity awarding "
+                 "the order(s)/contract(s); Assam Health Infrastructure Development & Management Society (Ahidms) "
+                 "b) Significant terms and conditions order(s)/contract (s) awarded in brief; HMIS "
+                 "g) Broad consideration or size of order(s)/contract(s) (in INR); The Estimated Size of Order as per "
+                 "LoA is Rs. 56,71,47,619/-"),
+    },
+    "E60": {
+        "symbol": "EIMCOELECO",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/EIMCOELECO/material_filing/0ba649f9-18ea-4acc-8793-b05a46805b21.pdf",
+        "title": "As per attached letter",
+        "text": ("Subject: Bagging / Receiving of orders/ contracts. In compliance with Regulation 30, we are pleased to "
+                 "inform that the Company has received an order of INR 33.11 Crores (excluding GST). "
+                 "a) Name of the entity awarding the The Singareni Collieries Company order(s) / contact(s) Limited "
+                 "b) Significant terms and conditions of order(s)/ contract(s) awarded in brief Supply of Coal Mining "
+                 "Equipment g) Broad consideration or size of the order(s)/ contract(s); INR 33.11 Crores (Excluding GST)"),
+    },
+    "E44": {
+        "symbol": "INDOSMC",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/INDOSMC/material_filing/a844c202-935d-47cc-ab23-f3ed373c1fac.pdf",
+        "title": "Intimation of Receipt of Purchase orders",
+        "text": ("Sub: Intimation Of receipts of Two Purchase Orders aggregate orders worth Rs. 3525.50 Lacs "
+                 "bifurcated into (1) Supply worth Rs.2423.50 Lacs vide PO No. Asiatic/0006, 22 Apr, 2026 ; & "
+                 "(2) Supply worth Rs.1102.00 Lacs vide PO No. RVFI/0722/KPC/72 dated 22 Apr, 2026. "
+                 "Further, this Purchase order received from our Valued Customer signifies our strong execution "
+                 "capabilities. 1. Name of the entity awarding the order (s)/Contract(s); A renowned Gujarat based "
+                 "Composite manufacturing Company. 2. Significant terms: Rs. 2423.50 Lacs. 7. Broad Consideration "
+                 "The order size worth Rs. 2423.50 Lacs. "
+                 "1. Name of the entity awarding the order (s)/Contract(s); One of the reputed wholesale trader unit "
+                 "based at Ahmedabad. 2. Significant terms: Rs. 1102 Lacs. 7. Broad Consideration The order size "
+                 "worth Rs. 1102 Lacs"),
+    },
+    "E41": {
+        "symbol": "SEPC",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/SEPC/material_filing/c763e387-0de5-47ab-a5a3-d76d1a858f75.pdf",
+        "title": "We hereby inform the exchange that the Company has received a Letter of Acceptance from Steel Authority of India Limited (SAIL).",
+        "text": ("Subject: Letter of Acceptance for 4.08Mtpa CS Expansion of SAIL-ISP Burnpur for a total value of "
+                 "order is ₹673.32 Crores. 1. Coke Oven BOP for Rs.296,77,12,664/- vide LOA dated 11/06/2026; and "
+                 "2. Sinter Plant BOP for Rs.376,55,75,841/- vide LOA dated 11/06/2026. "
+                 "Annexure-1: 1. Name of the entity awarding the order(s)/contract(s); Steel Authority of India Limited "
+                 "- IISCO Steel Plant (ISP), Burnpur 2. Significant terms Coke Oven BOP 7. Broad consideration Total "
+                 "value of Rs.296,77,12,664/-. "
+                 "Annexure-1: 1. Name of the entity awarding the order(s)/contract(s); Steel Authority of India Limited "
+                 "- IISCO Steel Plant (ISP), Burnpur 2. Significant terms Sinter Plant BOP 7. Broad consideration Total "
+                 "value of Rs.376,55,75,841 /-"),
+    },
+    "E43": {
+        "symbol": "SEPC",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/SEPC/material_filing/41269cc3-fc0a-41dc-8e77-503b41cae26a.pdf",
+        "title": "Update on earlier intimation made under Regulation 30 of SEBI (LODR) Regulations, 2015.",
+        "text": ("Subject: Intimation under Regulation 30 – Cancellation of Work Order by MOIL Limited. "
+                 "We wish to inform you that the Work Order earlier disclosed to the Stock Exchanges on December 29, "
+                 "2025, received from MOIL Limited (Government Undertaking) for designing, construction, furnishing and "
+                 "equipping, having a total order value of ₹230 Crores including taxes, has been cancelled by MOIL."),
+    },
+    "E38": {
+        "symbol": "EIMCOELECO",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/EIMCOELECO/material_filing/a2ef184b-8088-4b95-96df-2632d478b85a.pdf",
+        "title": "Update on Awarded/Bagged Orders/Contracts",
+        "text": ("We would like to inform you that the Company had received orders worth of INR 53.61 Crores "
+                 "(excluding GST) from JMS Mining Private Limited for Manufacturing and Supply of Coal Mining Equipment. "
+                 "In this connection, this to inform you that JMS Mining Private Limited has decided to reduce the "
+                 "awarded orders by INR 23.18 Crore (excluding GST) by reducing the deliveries pertaining to FY2025-26."),
+    },
+    "E58": {
+        "symbol": "EIMCOELECO",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/EIMCOELECO/material_filing/50f7e494-d726-4921-8cba-b1baeb2b4384.pdf",
+        "title": "As per attached letter",
+        "text": ("Subject: Update on Awarded / bagged orders/ contracts. This is further to our intimation letter dated "
+                 "31st July, 2024, this to inform you that JMS Mining Private Limited has further decided to reduce "
+                 "the awarded orders by INR 9.39 Crore (excluding GST) by reducing the deliveries pertaining to FY2025-26."),
+    },
+    "E53": {
+        "symbol": "SAGILITY",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/SAGILITY/material_filing/a4a025d4-ccfe-466a-8ffc-e330dd2e9f41.pdf",
+        "title": "Receipt of order from Department of Commercial Taxes, Karnataka, under section 73(9) of Karnataka Goods and Services Tax Act 2017 and Central Goods and Services Tax Act, 2017",
+        "text": ("We wish to inform you that the Company is in receipt of the order in Form GST DRC-07 dated June 3, "
+                 "2026 from Department of Commercial Taxes, Karnataka under Section 73(9) of Karnataka Goods and "
+                 "Services Tax Act, 2017 and Central Goods and Services Tax Act, 2017 with a total demand of "
+                 "Rs. 90,44,596 (including interest and penalty)."),
+    },
+    "E09": {
+        "symbol": "ABREL",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/ABREL/material_filing/cc05460d-7edc-481a-8019-660883aaf1bc.pdf",
+        "title": "Disclosure regarding amendment in clauses of Debenture Trust Deed dated 1st March, 2024",
+        "text": ("This is to inform you that the Company has received the in-principle approval from the BSE Limited "
+                 "for amendment in the clauses of Debenture Trust Deed in respect of 25,000 8.05% Unsecured, Listed, "
+                 "Rated, Senior, Redeemable, Non-Convertible Debentures aggregating to Rs. 250 crores issued under "
+                 "Private Placement basis."),
+    },
+    "E13": {
+        "symbol": "ABREL",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/ABREL/material_filing/a7ebdaca-542f-4955-b5f5-520f3b7a04c8.pdf",
+        "title": "Disclosure regarding modification in one of the Financial Covenants of Debenture Trust Deeds",
+        "text": ("Sub: Disclosure regarding modification in one of the financial covenants of Debenture Trust Deeds "
+                 "in respect of 8.55% Unsecured, Listed, Redeemable, Non-Convertible Debentures of Rs. 400 crores and "
+                 "Rs. 100 crores aggregating to Rs. 500 Crores issued by Aditya Birla Real Estate Limited."),
+    },
+    "E14": {
+        "symbol": "SAGILITY",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/SAGILITY/material_filing/2c961fb8-db80-465a-b466-f5c23cee6d7c.pdf",
+        "title": "Partial Redemption of Unsecured, Unlisted Redeemable Non-Convertible Debentures",
+        "text": ("We hereby inform that 1,495 unsecured, unlisted, redeemable Non-Convertible Debentures (NCDs) of face "
+                 "value ₹10,00,000 each, aggregating to ₹1,49,50,00,000 have been redeemed and paid to Sagility B.V. "
+                 "Further, the applicable interest of ₹2,88,09,576 has also been paid."),
+    },
+    "E15": {
+        "symbol": "ABREL",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/ABREL/material_filing/b058ea26-5110-485f-9efa-88fd751a43d8.pdf",
+        "title": "Intimation of exercise of Call Option, Record Date and Notice of exercise of Call Option for early redemption",
+        "text": ("This is to inform you that the Company has decided to exercise Call Option for early redemption in "
+                 "respect of 25,000 8.05% Unsecured, Listed, Rated, Senior, Redeemable, Non-Convertible Debentures of "
+                 "face value of Rs. 1,00,000/- each aggregating to Rs. 250 crores issued under Private Placement basis."),
+    },
+    "E18": {
+        "symbol": "SAGILITY",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/SAGILITY/material_filing/1e1d2b29-53cb-48c4-a6ba-c395083c3dd3.pdf",
+        "title": "Partial Redemption of Unsecured, Unlisted Redeemable Non-Convertible Debentures",
+        "text": ("We hereby inform that 1,105 unsecured, unlisted, redeemable Non-Convertible Debentures (NCDs) of face "
+                 "value ₹10,00,000 each, aggregating to ₹110,50,00,000 have been redeemed and paid to Sagility B.V. "
+                 "Further, the applicable interest of ₹2,12,94,034 has also been paid."),
+    },
+    "E04": {
+        "symbol": "GULFOILLUB",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/GULFOILLUB/results_press_release/99a28d2b-dd27-485e-b6e8-8745de566da1.pdf",
+        "title": "We enclose herewith a copy of the Press Release in respect of the Unaudited Financial Results of the Company for the quarter ended June 30, 2025.",
+        "text": ("Press Release Q1 FY26 Key Financial highlights for Q1 · Revenues at Rs. 996.36 Crores, up 12.57% YoY "
+                 "· EBITDA at Rs. 126.58 Crores, up 8.89% YoY · PAT at Rs. 96.66 Crores, up 9.81% YoY "
+                 "Board approves Rs. 55 Crores Capex plan to enhance Manufacturing Capacity by 70% to 240 million litres."),
+    },
+    "E45": {
+        "symbol": "ZENTEC",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/ZENTEC/material_filing/3db948a1-271e-4b5a-963f-9331beb15843.pdf",
+        "title": "Press Release",
+        "text": ("Please find attached press release on the Un-audited Financial Results of the Company for the quarter "
+                 "and nine months ended December 31, 2025. Q3 & 9MFY26 PRESS & MEDIA RELEASE: Zen Technologies "
+                 "announced its financial results for Q3 & 9MFY26. During Q3 FY26, we secured new orders aggregating "
+                 "₹586 crore. Subsequent to 31 December 2025, we received additional orders aggregating ₹345 crore."),
+    },
+    "E01": {
+        "symbol": "BEPL",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/BEPL/material_filing/a90f9d5b-139a-4725-8eef-87efb68c5d67.pdf",
+        "title": "Board at its meeting held today declared 1st Interim Dividend 2025-26",
+        "text": ("Sub: Outcome of Board Meeting - 13th August, 2025. 1. Approved the Un-audited Financial Results "
+                 "(Standalone and Consolidated) for the quarter year ended 30th June, 2025. "
+                 "5. Considered and approved the project for enhancement of production capacity of ABS from 75000 TPA "
+                 "to 100000 TPA at Company's existing plants at Abu Road (Rajasthan) and Satnoor (Madhya Pradesh) at "
+                 "an estimated cost of Rs.200 crores, to be completed by September, 2026."),
+    },
+    "E22": {
+        "symbol": "RAILTEL",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/RAILTEL/material_filing/1e0ba17d-f871-456c-91bd-69cb97ed20ad.pdf",
+        "title": "New order received",
+        "text": ("RailTel Corporation of India Ltd. has received the work order from Northern Railway for Service "
+                 "amounting to Rs. 10,00,00,000 (Including Tax). Annexure-A a) Name of the entity awarding the "
+                 "order(s)/contract(s); Northern Railway b) Significant terms and conditions order(s)/contract (s) "
+                 "awarded in brief; Cloud Service for Railway Board g) Broad consideration or size of order(s)/contract(s) "
+                 "(in INR); 10,00,00,000"),
+    },
+    "E33": {
+        "symbol": "SEPC",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/SEPC/material_filing/c9f91f14-1fb9-43f4-8214-8c8fc9437d35.pdf",
+        "title": "We hereby inform the exchange of the five work orders from M/s. Bajaj Energy Private Limited for a total value of Rs. 180000000/-",
+        "text": ("This is to inform you that we have been awarded Five (05) Orders from M/s. Bajaj Energy Private "
+                 "Limited for Operation & Maintenance Services for total order value of Rs.180000000/- (Rupees One "
+                 "Hundred and Eighty Millions only). Annexure-1 a Name of the entity awarding the order(s)/contract(s); "
+                 "M/s. Bajaj Energy Private Limited. g Broad consideration or size of the order / contract Total Value "
+                 "in Rs.180000000/-"),
+    },
+    "E42": {
+        "symbol": "SEPC",
+        "doc_key": "D:/RealityEngine/raw/pilot60_history/SEPC/material_filing/67aa4c0d-fa7f-4493-b7f5-1f06b664ed40.pdf",
+        "title": "Intimation under Reg.30 SEBI (LODR) Regulations, 2015 - Receipt of LOA from SAIL - ISP Burnpur for Total Value of Rs.854.57 Crores (Net of ITC)",
+        "text": ("We wish to inform you that the Company has received a Letter of Acceptance (LoA) from Steel Authority "
+                 "of India Limited (SAIL) – IISCO Steel Plant (ISP), Burnpur. Annexure-1 1. Name of the entity awarding "
+                 "the order(s)/contract(s); Steel Authority of India Limited - IISCO Steel Plant (ISP), Burnpur "
+                 "7. Broad consideration or size of the order / contract Total value of Rs.854,56,71,234/- (Net of "
+                 "Input Tax Credit)"),
+    },
+}
+
+
+def test_t242_fix1_customer_cleanup_and_annexure_preference() -> None:
+    for cid, expected in (
+        ("E21", "Ircon International Limited"),
+        ("E27", "Madhya Pradesh State Electronics Development Corporation Ltd"),
+        ("E30", "Assam Health Infrastructure Development & Management Society (Ahidms)"),
+        ("E60", "Singareni Collieries Company Limited"),
+    ):
+        fx = T242_CASES[cid]
+        row = _row(fe.event_rows(_doc(fx["title"], fx["text"], symbol=fx["symbol"], doc_key=fx["doc_key"]))[0],
+                   "order_win")
+        assert row["customer"] == expected, (cid, row["customer"])
+
+
+def test_t242_fix2_cancellations_reductions_and_gst_demands() -> None:
+    for cid, expected_amt in (("E43", -230.0), ("E38", -23.18), ("E58", -9.39)):
+        fx = T242_CASES[cid]
+        rows, _missing = fe.event_rows(_doc(fx["title"], fx["text"], symbol=fx["symbol"], doc_key=fx["doc_key"]))
+        row = _row(rows, "order_amendment")
+        assert row["amount_inr_cr"] == pytest.approx(expected_amt)
+        assert row["status"] == "verified"
+    gst = T242_CASES["E53"]
+    assert fe.event_rows(_doc(gst["title"], gst["text"], symbol=gst["symbol"], doc_key=gst["doc_key"]))[0] == []
+
+
+@pytest.mark.parametrize("cid", ["E09", "E13", "E14", "E15", "E18"])
+def test_t242_fix3_debt_servicing_is_not_fund_raise(cid: str) -> None:
+    fx = T242_CASES[cid]
+    rows, _missing = fe.event_rows(_doc(fx["title"], fx["text"], symbol=fx["symbol"], doc_key=fx["doc_key"]))
+    assert not [r for r in rows if r["kind"] == "fund_raise"], rows
+
+
+def test_t242_fix4_results_releases_and_rollups_dropped_while_e01_kept() -> None:
+    e04 = T242_CASES["E04"]
+    rows_04, _ = fe.event_rows(_doc(e04["title"], e04["text"], symbol=e04["symbol"], doc_key=e04["doc_key"]))
+    assert not [r for r in rows_04 if r["kind"] == "capex_approval"], rows_04
+
+    e45 = T242_CASES["E45"]
+    rows_45, _ = fe.event_rows(_doc(e45["title"], e45["text"], symbol=e45["symbol"], doc_key=e45["doc_key"]))
+    assert not [r for r in rows_45 if r["kind"] == "order_win"], rows_45
+
+    e01 = T242_CASES["E01"]
+    capex = _row(fe.event_rows(_doc(e01["title"], e01["text"], symbol=e01["symbol"], doc_key=e01["doc_key"]))[0],
+                 "capex_approval")
+    assert capex["amount_inr_cr"] == pytest.approx(200.0) and capex["status"] == "verified"
+
+
+def test_t242_fix5_multi_item_orders_emit_all_items_and_total() -> None:
+    e41 = T242_CASES["E41"]
+    rows_41, _ = fe.event_rows(_doc(e41["title"], e41["text"], symbol=e41["symbol"], doc_key=e41["doc_key"]))
+    orders_41 = sorted((r for r in rows_41 if r["kind"] == "order_win"), key=lambda r: r["seq"])
+    assert len(orders_41) == 2
+    assert orders_41[0]["amount_inr_cr"] == pytest.approx(296.7713, rel=1e-4)
+    assert orders_41[1]["amount_inr_cr"] == pytest.approx(376.5576, rel=1e-4)
+    assert all(r["value_total"] == pytest.approx(673.32) for r in orders_41)
+
+    e44 = T242_CASES["E44"]
+    rows_44, _ = fe.event_rows(_doc(e44["title"], e44["text"], symbol=e44["symbol"], doc_key=e44["doc_key"]))
+    orders_44 = sorted((r for r in rows_44 if r["kind"] == "order_win"), key=lambda r: r["seq"])
+    assert len(orders_44) == 2
+    assert [r["amount_inr_cr"] for r in orders_44] == pytest.approx([24.235, 11.02])
+    assert all(r["customer"] is None for r in orders_44)
+    assert all(r["value_total"] == pytest.approx(35.255) for r in orders_44)
+
+
+def test_t242_fix6_duplicate_raise_steps_stage_and_verify_once() -> None:
+    e11 = _doc(
+        "PFA the outcome of the RIC Meeting held today.",
+        "This is further to our intimation dated November 14, 2024 made in relation to the issuance of equity "
+        "shares on Rights Basis for an amount not exceeding Rs. 35,000 Lakhs so approved by the Board of Directors. "
+        "Draft Letter of Offer: listing the Rights Equity Shares to be allotted pursuant to this Issue.",
+        symbol="SEPC", doc_key="sepc-e11", filing_date="2024-12-23", known_at="2024-12-23T21:41:35",
+    )
+    e06 = _doc(
+        "We hereby inform the Exchange of the Outcome of the RIC Meeting held today.",
+        "This is further to our intimation dated December 23, 2024 regarding the Draft Letter of Offer filed in "
+        "relation to the proposed Rights issue of equity shares for an amount not exceeding Rs. 35,000 Lakhs. "
+        "the Rights Issue Committee has approved the addendum to the DLOF.",
+        symbol="SEPC", doc_key="sepc-e06", filing_date="2025-04-16", known_at="2025-04-16T18:52:38",
+    )
+    e20 = _doc(
+        "Extra-Ordinary General Meeting to be held on Thursday, July 30, 2026 at 11.00 A.M.",
+        "Intimation of Notice of the Extra-Ordinary General Meeting of APAR Industries Limited for seeking approval "
+        "from the members for: 1. To approve raising of funds through issuance of securities of the Company "
+        "aggregating up to ₹ 2,500.00 crores through a qualified institutions placement, rights issue, preferential "
+        "allotment, or a combination thereof.",
+        symbol="APARINDS", doc_key="apar-e20", filing_date="2026-07-06", known_at="2026-07-06T19:07:33",
+    )
+    e07 = _doc(
+        "Summary of Proceedings of the Extra-Ordinary General Meeting (EGM) of APAR Industries Limited held on Thursday, July 30, 2026",
+        "The following Agenda item of business as set out in the Notice of EGM was recommended for members' "
+        "consideration and approval: 1. To approve raising of funds through issuance of securities of the Company "
+        "upto Rs. 2,500 Crores.",
+        symbol="APARINDS", doc_key="apar-e07", filing_date="2026-07-30", known_at="2026-07-30T17:22:39",
+    )
+    rows = fe.event_rows(e11)[0] + fe.event_rows(e06)[0] + fe.event_rows(e20)[0] + fe.event_rows(e07)[0]
+    fe._assign_raise_ids(rows)
+    by_key = {r["doc_key"]: r for r in rows}
+    assert by_key["sepc-e11"]["raise_stage"] == "proposed" and by_key["sepc-e11"]["status"] == "verified"
+    assert by_key["sepc-e06"]["raise_stage"] == "proposed" and by_key["sepc-e06"]["status"] == "unverified"
+    assert by_key["sepc-e11"]["raise_id"] == by_key["sepc-e06"]["raise_id"]
+    assert by_key["apar-e20"]["raise_stage"] == "proposed"
+    assert by_key["apar-e07"]["raise_stage"] == "approval" and by_key["apar-e07"]["status"] == "verified"
+    assert by_key["apar-e20"]["raise_id"] == by_key["apar-e07"]["raise_id"]
+
+
+@pytest.mark.parametrize("cid,expected_amt,expected_customer", [
+    ("E22", 10.0, "Northern Railway"),
+    ("E33", 18.0, "Bajaj Energy Private Limited"),
+    ("E42", 854.5671, "Steel Authority of India Limited - IISCO Steel Plant (ISP), Burnpur"),
+])
+def test_t242_counter_genuine_orders_still_pass(cid: str, expected_amt: float, expected_customer: str) -> None:
+    fx = T242_CASES[cid]
+    row = _row(fe.event_rows(_doc(fx["title"], fx["text"], symbol=fx["symbol"], doc_key=fx["doc_key"]))[0],
+               "order_win")
+    assert row["amount_inr_cr"] == pytest.approx(expected_amt, rel=1e-4)
+    assert row["customer"] == expected_customer
+    assert row["status"] == "verified"
