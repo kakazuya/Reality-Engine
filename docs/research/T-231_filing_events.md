@@ -110,6 +110,8 @@ stores: 251 events, 0 quarantined, no non-order row verified.
 
 ## 3c. T-242 round 4 (24 Nov 2026): customers, roll-ups, aggregates, duplicates
 
+Eagle review of round 4: the city cut applies only after a company's legal suffix (Limited, Ltd, LLP); after a public body's word (Corporation, Nigam, Authority, Railway, Division) only a comma cuts, so "Municipal Corporation Jodhpur" keeps its name (test `test_t242_city_after_company_suffix_cut_but_public_body_name_kept`).
+
 Seven script fixes from the second fresh strict 60-row grade (25 unseen stores:
 `C:/RealityEngine/t242/events_grade_fresh4/grades.csv`, R/P/W/J = 46/11/2/1, 5.0% W+J at the bar). Each fix is
 asserted by a test in `test_filing_events.py`.

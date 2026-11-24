@@ -1781,3 +1781,10 @@ def test_t242_r4_the_next_day_press_release_is_the_same_order() -> None:
     kept = [r for r in fe._fold_same_order(rows, amends) if r["kind"] == "order_win"]
     assert len(kept) == 1 and kept[0]["doc_key"] == "first"
     assert [a["amends"] for a in amends] == ["first"]
+
+
+def test_t242_city_after_company_suffix_cut_but_public_body_name_kept():
+    from reality_engine.research import filing_events as fe
+    assert fe._clean_party("Signatureglobal (India) Limited Mumbai") == "Signatureglobal (India) Limited"
+    assert fe._clean_party("Municipal Corporation Jodhpur") == "Municipal Corporation Jodhpur"
+    assert fe._clean_party("Uttar Pradesh Jal Nigam, Lucknow") == "Uttar Pradesh Jal Nigam"
