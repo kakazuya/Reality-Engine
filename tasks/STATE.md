@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-24 22:46 IST (dsh)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-25 01:05 IST (dsh)
 History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -7,6 +7,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Checker T-225 merged 18 Nov: Dots right cells kept dev 384/426, FROZEN 464/773 (60.0%, baseline 47.7%), 0 wrong; Beam frozen 8 wrong (text layer). Target >=95% not met; T-225 open. Split `D:/RealityEngine/t225_split`; notes V2 contract "Round 1-5".
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
 - 24 Nov (deck, merged): per-period footnote basis (56 rows changed; deck fp unchanged).
+- 24 Nov T-242 (`observations.py`): empty page in a parsed window is `page_read` `no_rows`, not a failure; share = failures / attempted.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 24 Nov 23:55: T-242 transcripts v3: 394 ckpt_0002 PASS 54/5/0/1; fy27 ckpt_0003 FAIL 48/8/0/4 (boilerplate) -> greeting widening merged (10 of 15,517 drop). NEXT: recheck fy27_v3 + re-grade; live reparse; fund_raise r5 (dsh a7c04bff).

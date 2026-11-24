@@ -2029,6 +2029,13 @@ python -m reality_engine.v2.observations --stores-root D:/RealityEngine/tg_build
 `--stores` takes store names/dirs/`.db` paths, `--stores-root` + `--sample` + `--seed` + `--ensure` pick a
 reproducible sample, `--require doc_key-substring:page` forces evidence pages in, `--doc-types` defaults to `deck`,
 `--limit` caps pages, `--resume` skips pages already written to `--out`. A page that is rerun replaces its own rows.
+The resume reads the `page_read(doc_key, page, outcome, rows, read_at)` ledger: `rows`, `empty` (every reply row the
+script dropped), `skip` (nothing to read) and `no_rows` (T-242: a page of a transcript window whose call reply parsed
+but which named no row on this page -- a cover, disclaimer or signature page) are done and are not read again, while a
+whole reply that is empty or unparsable and a cut-off tail (the reply at the 16,000-token cap, on a page at or after
+the last page that gave rows) stay unrecorded and are retried. `reply_fail_share` divides those failures by the pages
+attempted (`read + no_rows + parse_failures + errors`), not by the selected count. Code
+`reality_engine/v2/observations.py`; tests `reality_engine/tests/test_transcript_window.py`.
 `--skip-statements` drops an annual report's financial-statement and notes pages from the stored text layer before
 any model call (stage F, below). The run stops (exit 2) when more than 20% of pages give an empty/non-JSON reply,
 more than 10% of observations are quarantined, or the reader hits a quota window (after writing what it already read).
