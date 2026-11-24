@@ -1,6 +1,8 @@
 """T-241: the v2 transcript prompt (fiscal periods, range upper end, sign, speaker) and its row fields."""
 from __future__ import annotations
 
+from pathlib import Path
+
 from reality_engine.v2 import observations as obs
 
 DOC = "D:/x/concall_transcript/abc.pdf"
@@ -76,3 +78,29 @@ def test_v2d_percent_unit_lakh_crore_scale_and_section_basis():
     rows = _rows([{"type": "number", "measure": "pat_growth_yoy", "printed_label": "that is a degrowth of",
                    "value_text": "5%", "unit": "", "period": "Q2 FY25", "claim_type": "company_actual"}])
     assert rows[0]["unit"] == "%"
+
+
+def test_v2e_basis_skips_a_comparison_and_bps_counts_as_a_movement():
+    text = ("Now coming on to the consolidated performance, our consolidated performance is much better than "
+            "standalone performance. So our revenue from operation was Rs.158 Crores")
+    assert obs.section_basis(text, "So our revenue from operation was", "Rs.158 Crores") == "consolidated"
+    assert obs.SIGNED_MEASURE.search("ebitda_margin bps") and not obs.SIGNED_MEASURE.search("inventory_days days")
+    assert "\x08" not in obs.COMPARED_BASIS_RE.pattern + obs.SIGNED_MEASURE.pattern + obs.LAKH_CRORE_RE.pattern
+
+
+def test_v2e_a_by_x_change_is_never_stored_as_the_level():
+    rows = obs.build_observations(
+        symbol="MUFTI", doc_key=DOC, page=3, known_at="2024-10-29",
+        page_text="Our inventory days have decreased by 8 days to 69 days.",
+        reply_rows=[{"type": "number", "measure": "inventory_days", "printed_label": "Our inventory days have "
+                     "decreased by", "value_text": "8", "unit": "days", "claim_type": "company_actual"},
+                    {"type": "number", "measure": "inventory_days", "printed_label": "8 days to",
+                     "value_text": "69", "unit": "days", "claim_type": "company_actual"}])
+    got = {r["measure"]: r["value"] for r in rows}
+    assert got == {"NEW:inventory_days_change": -8.0, "inventory_days": 69.0}
+
+
+def test_no_control_characters_in_the_reader_source():
+    """T-241: a shell that eats one backslash turned three regex word boundaries into backspace characters."""
+    source = Path(obs.__file__).read_text(encoding="utf-8")
+    assert not [c for c in source if ord(c) < 32 and c not in "\n\r\t"]

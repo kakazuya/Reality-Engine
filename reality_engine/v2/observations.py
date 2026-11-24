@@ -2230,6 +2230,7 @@ def generic_label_reason(row: dict[str, Any]) -> str:
     return ""
 
 
+COMPARED_BASIS_RE = re.compile(r"\b(?:than|versus|vs\.?|against|compared\s+(?:to|with))\s+(?:the\s+|our\s+)?$", re.I)
 SECTION_BASIS_RE = re.compile(r"\b(standalone|stand-alone|consolidated)\b", re.I)
 
 
@@ -2249,6 +2250,8 @@ def section_basis(page_text: str, label: str, value_text: str) -> str:
         return ""
     last = ""
     for m in SECTION_BASIS_RE.finditer(text, 0, pos):
+        if COMPARED_BASIS_RE.search(text[max(0, m.start() - 25):m.start()]):
+            continue                 # "better than standalone performance" compares, it does not switch the section
         last = m.group(1).lower()
     return "standalone" if last in ("standalone", "stand-alone") else last
 
@@ -3155,7 +3158,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                        doc_owner_symbol: str = "",
                        companies: dict[str, tuple[str, str]] | None = None,
                        deck_asof: str = "", deck_basis: str = "",
-                       ocr_text: str = "", ocr_page: bool = False) -> list[dict[str, Any]]:
+                       ocr_text: str = "", ocr_page: bool = False,
+                       transcript_v2: bool = False) -> list[dict[str, Any]]:
     """Model reply objects -> checked observation rows (status and status_reason set here)."""
     measures = measures if measures is not None else measure_index()
     vocab = vocab if vocab is not None else vocab_index()
@@ -3229,6 +3233,14 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         high_text = norm_space(raw.get("high_text"))
         if high_text:
             row["value_high"] = parse_number(high_text)
+        if (claim or transcript_v2) and BY_CHANGE_RE.search(label) and not SIGNED_MEASURE.search(row["measure"]):
+            # T-241 v2e: "inventory days have decreased by 8" is a change, never the level (Wolf v2d #40)
+            root = canonical_new_measure(row["measure"]).removeprefix(NEW_PREFIX)
+            row["measure"] = f"{NEW_PREFIX}{root}_change"
+            row["new_definition"] = row["new_definition"] or f"change in {root} over the period, as stated ('by X')"
+            if re.search(r"decreas|reduc|declin|fell|drop|down", label, re.I) and row["value"] is not None:
+                row["value"] = -abs(row["value"])
+                row["direction"] = "down"
         if (norm_space(raw.get("sign")) == "-" and row["value"] is not None and row["value"] > 0
                 and SIGNED_MEASURE.search(row["measure"] + " " + row["unit"])):
             row["value"] = -row["value"]
@@ -3260,7 +3272,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             row["basis"] = column_basis(word_list, row["region"])
         if not row["basis"]:                      # stage L: the page/section heading names the basis
             row["basis"] = page_basis(page_text)
-        if claim:                                 # T-241 v2 (transcript): the latest standalone/consolidated
+        if claim or transcript_v2:                # T-241 v2 (transcript): the latest standalone/consolidated
             row["basis"] = (section_basis(page_text, row["printed_label"], value_text)   # words before it
                             or (norm_space(raw.get("basis")).lower()
                                 if norm_space(raw.get("basis")).lower() in ("standalone", "consolidated") else ""))
@@ -3860,9 +3872,11 @@ Transcript page text (verbatim):
 # quarter and returns the range's upper end, the sign and the speaker. Chosen with --transcript-prompt v2.
 TRANSCRIPT_PROMPT = "v1"
 # a sign is kept only on a movement (growth / change / bps); a level (days, margin, amount) is never negated
+BY_CHANGE_RE = re.compile(r"\b(?:increas|decreas|reduc|improv|grew|grown|fell|declin|rose|risen|went\s+(?:up|down)|"
+                          r"expand|contract|dropp?)\w*\s+by$", re.I)
 # T-241 v2c (Wolf's grade, 7 of 7 wrongs): a number that is not the company's own actual or target
 NOT_A_COMPANY_FIGURE = frozenset({"hypothetical", "expectation", "ask"})
-SIGNED_MEASURE = re.compile(r"growth|change|_yoy|_qoq|delta|bps|basis points", re.I)
+SIGNED_MEASURE = re.compile(r"growth|change|_yoy|_qoq|delta|\bbps\b|basis points", re.I)
 
 PROMPT_TRANSCRIPT_V2 = """Read one page of an Indian company's earnings-call transcript (its text layer only, no image)
 and return every number management states, every management statement and every guidance target. Output ONE JSON
@@ -3876,7 +3890,8 @@ WITH its scale word (crore, lakh, million, billion, bps) and its noun (tonnes, M
 (rules below)", "period_printed": "the period words exactly as printed, empty when none",
 "period_kind": "actual|estimate|target", "basis": "standalone|consolidated|",
 "entity_scope": "company|subsidiary|industry|country|customer|peer", "segment": "", "product": "", "geography": "",
-"customer": "", "speaker": "the speaker name printed for the passage this number sits in",
+"customer": "", "speaker": "the name of the person who said the sentence holding this number (an analyst's name
+when an analyst said it and management confirmed it)",
 "claim_type": "company_actual|company_target|third_party|hypothetical|expectation|ask", "new_definition": "",
 "new_driver_node": ""}}
 Statement: {{"type": "statement", "measure": "one id from the dictionary below", "text": "one management speaker's
@@ -3909,7 +3924,21 @@ Rules:
   asks the government or a regulator for ("450 crore should be allotted to the sugar sector"). Guidance is only
   company_target. A duration ("11-12 months"), a share of the order book or a split of a pipeline is never capex,
   revenue or revenue.mix: name the quantity it is (NEW:<id> when the dictionary has none).
-- unit: a printed "%" is the unit "%" (growth, margin, share, ratio rows); never drop it.
+- unit: a printed "%" is the unit "%" (growth, margin, share, ratio rows); never drop it. "crore litres", "lakh
+  tonnes", "million units" keep their noun: a quantity is never rupees.
+- from / to / by: "decreased by 8 days to 69 days" is TWO rows: the level 69 (inventory_days, this period) and the
+  change 8 (a *_change measure, NEW:<id> if needed, sign "-"); never store the change under the level's measure.
+  "climbed from around 12% to 20.4%": 20.4% is this period's level, 12% is the EARLIER period's level (its period is
+  that earlier period: last year's same quarter, the earlier date printed), or skip it when that period is unclear.
+- measure kind: a growth or change % is a *_growth_yoy / *_growth_qoq / *_change measure, never a level or a mix;
+  a company-wide amount is its level measure (revenue_from_operations, ebitda, pat), never revenue.mix; revenue.mix
+  and mix.share only for ONE named segment, product, geography or customer (fill that field), never for the whole
+  company, never for an order-book or pipeline split.
+- Business metrics only. Never a value: counts of agendas, fronts, points, things, questions, steps or initiatives;
+  technical specifications of a product, a standard or a project (speeds "160 km/h", voltages "2x25kV",
+  dimensions, model numbers); vague durations ("more than 6 months", "for some time") unless the company states it
+  as its own lead time, payback, execution or breakeven period.
+- A forward target management gives is a guidance row, not a number row (then also its statement row).
 - basis: the LATEST "standalone" / "consolidated" words before the number on this page ("Coming to the consolidated
   results" switches every number after it); empty when the page names neither.
 - Never a value: page numbers, years or dates ("2024", "FY25" -> 25, "Q2" -> 2), list markers ("number one",
@@ -4321,7 +4350,8 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                                         companies=companies,
                                         deck_asof="" if transcript else deck_period(store_db, doc_key, check_text),
                                         deck_basis="" if transcript else deck_basis(str(store_db), str(doc_key)),
-                                        ocr_text=result["ocr_text"], ocr_page=ocr_read)
+                                        ocr_text=result["ocr_text"], ocr_page=ocr_read,
+                                        transcript_v2=transcript and TRANSCRIPT_PROMPT == "v2")
     return result
 
 
