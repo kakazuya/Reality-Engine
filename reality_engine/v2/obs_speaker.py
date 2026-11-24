@@ -870,6 +870,86 @@ _FILING_LINE_RE = re.compile(r"\bfor\s+your\s+(?:kind\s+)?information\s+and\s+(?
                              r"\bregulation\s+30\b|\bplease\s+find\s+(?:enclosed|attached)\b|\benclosed\s+herewith\b", re.I)
 
 
+_GREETING_SENTENCE_RE = re.compile(
+    r"^(?:thank\s+you|thanks|good\s+(?:morning|afternoon|evening)|hello|hi|welcome|over\s+to\s+you"
+    r"|i\s+(?:would\s+)?(?:now\s+)?(?:like\s+to\s+)?(?:hand|pass)\s+(?:it\s+)?over"
+    r"|(?:now\s+)?(?:i\s+would|i'd|let\s+me)\s+(?:like\s+to\s+)?(?:take|walk)\s+you\s+through"
+    r"|(?:i\s+)?(?:hope|trust)\s+(?:you|everyone)\s+(?:are|is)\s+(?:doing\s+)?well)\b", re.I)
+
+
+def greeting_only(statement: str) -> bool:
+    """T-242 (fy27_v3 ckpt_0002 J): a passage made only of greetings, thanks and hand-overs carries no statement."""
+    sentences = [x.strip() for x in re.split(r"(?<=[.!?])\s+", str(statement or "")) if x.strip()]
+    return bool(sentences) and all(_GREETING_SENTENCE_RE.match(x) for x in sentences)
+
+
+_HANDOVER_RE = re.compile(
+    r"(?i:over\s+to\s+you|hand(?:ing)?\s+(?:it\s+)?over\s+to|pass(?:ing)?\s+(?:it\s+)?(?:on\s+)?to|"
+    r"(?:i\s+)?(?:now\s+)?invite)\s*,?\s+(?:(?i:our|the)\s+[A-Za-z ,&-]{0,60}?,?\s+)?"
+    r"(?:(?i:mr|ms|mrs|dr|shri|sh)\.?\s+)?(?P<name>[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)")
+_NOT_A_NAME = {"Sir", "Madam", "Ma", "Mam", "All", "Everyone", "Him", "Her", "Them", "Management", "Moderator",
+               "The", "Our", "Q", "Questions", "Question", "Mr", "Ms", "Mrs", "Dr", "Shri", "Sh", "Chief",
+               "Financial", "Executive", "Managing", "Officer", "Director", "Chairman", "Head", "President", "Group",
+               "Joint", "Whole", "Time", "Company", "Investor", "Relations", "Mrs"}
+
+
+def handover_conflict(statement: str, speaker: str, page_list: list[tuple[int, str]], page: int) -> str:
+    """T-242 (fy27_v3 ckpt_0002, Wolf): the name a hand-over just before the passage passes the floor to, when it is
+    not the stored speaker ("Over to you, Alok" then the MD's remarks stored under the IR head); '' otherwise.
+    Needs no roster; "Thanks, X" is not used (a manager thanks the analyst who asked)."""
+    texts = dict(page_list)
+    here = texts.get(int(page), "")
+    head = " ".join(str(statement or "").split())[:60]
+    flat = " ".join(here.split())
+    pos = flat.find(head) if head else -1
+    if pos < 0:
+        return ""
+    before = (" ".join(texts.get(int(page) - 1, "").split()) + " " + flat[:pos])[-400:]
+    hits = list(_HANDOVER_RE.finditer(before))
+    if not hits:
+        return ""
+    name = hits[-1].group("name")
+    first = name.split()[0]
+    if first in _NOT_A_NAME:
+        return ""
+    spoken = _norm_name(speaker)
+    tokens = spoken.split()
+    squashed = spoken.replace(" ", "")
+    for part in name.lower().split():
+        # the same person: a token, a nickname prefix ("Srini" for Srinivas) or a name printed without spaces
+        if part in tokens or (len(part) >= 4 and any(t.startswith(part) for t in tokens)) or part in squashed:
+            return ""
+    return name
+
+
+_LABEL_LINE_RE = re.compile(
+    r"(?m)^[ \t]*(?P<name>(?:(?:Mr|Ms|Mrs|Dr|Shri|Sh)\.?[ \t]+)?[A-Z][A-Za-z.\'-]*(?:[ \t]+[A-Z][A-Za-z.\'-]*){1,4})"
+    r"[ \t]*:")
+
+
+def last_label_before(statement: str, page_list: list[tuple[int, str]], page: int, back: int = 2) -> str:
+    """T-242: the last printed two-word-or-longer speaker label before the passage, looking back up to ``back`` pages;
+    '' when the passage is not found or no such label precedes it.  One-word labels are skipped: they are mostly
+    section headings ("Aerospace:", "Defense:") or "Moderator"."""
+    texts = dict(page_list)
+    here = texts.get(int(page), "")
+    head = str(statement or "").strip()[:40]
+    pos = here.find(head) if head else -1
+    if pos < 0:
+        return ""
+    for pg in range(int(page), int(page) - back - 1, -1):
+        text = texts.get(pg, "")
+        if not text:
+            continue
+        upto = text[:pos] if pg == int(page) else text
+        names = [m.group("name") for m in _LABEL_LINE_RE.finditer(upto)
+                 if len(_norm_name(m.group("name")).split()) >= 2
+                 and not re.search(r"\b(?:code|scrip|symbol|isin|sub|ref|date|time|venue)\b", m.group("name"), re.I)]
+        if names:
+            return names[-1]
+    return ""
+
+
 def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int, str]],
                               symbol: str = "", company_names: Iterable[str] = ()) -> dict[str, int]:
     """T-242: carry a page-break speaker, resolve/flag a junk label and a referentless reply, in place.
@@ -886,9 +966,11 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
     page_list = [(int(p), str(t or "")) for p, t in pages]
     pool = management_pool(page_list)
     try:                                    # Eagle, v3 ckpt_0001 W (AMTECH p9): an analyst's name on an answer
-        analysts = [n for n in build_doc_context(page_list).analyst_names if not _name_matches_list(n, pool)]
+        doc_ctx = build_doc_context(page_list)
+        analysts = [n for n in doc_ctx.analyst_names if not _name_matches_list(n, pool)]
+        questioners = list(doc_ctx.analyst_names) + list(doc_ctx.moderator_names)
     except Exception:                       # noqa: BLE001 -- no roster: in-page cues only, as before
-        analysts = []
+        analysts, questioners = [], []
     company_keys = {_company_key(name) for name in company_names if name}
     if symbol:
         company_keys.add(_company_key(symbol))
@@ -900,7 +982,9 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
         speaker = " ".join(str(row.get("speaker") or "").split())
         if not speaker:
             retry.add(i)
-            need.append((i, int(row.get("page") or 0), "", "", str(row.get("statement") or ""), ""))
+        # every statement is checked against the printed labels (fy27_v3 ckpt_0002: two W were a speaker carried past
+        # an in-document handover, "Over to you, Alok" + "Alok Gupta:")
+        need.append((i, int(row.get("page") or 0), "", "", str(row.get("statement") or ""), ""))
     found = attribute_document(page_list, need) if need else {}
     for i in indexes:
         stats["statements"] += 1
@@ -914,6 +998,29 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
                     stats["carried"] += 1
                 speaker = carried
                 row["speaker"] = speaker
+        elif speaker:
+            labelled, role = found.get(i, ("", ""))
+            if labelled and not _name_matches_list(speaker, [_norm_name(labelled)]) \
+                    and not _name_matches_list(labelled, [_norm_name(speaker)]):
+                if _name_matches_list(labelled, pool) and len(_norm_name(speaker).split()) > 1 \
+                        and len(_norm_name(labelled).split()) > 1 and _company_key(labelled) not in company_keys \
+                        and _name_matches_list(speaker, pool):
+                    # only a switch between two named managers is corrected; a first name, a role word or an
+                    # analyst keeps the rules below (a page with shifted labels must not verify an analyst)
+                    stats["relabelled"] = stats.get("relabelled", 0) + 1
+                    row["speaker_model"] = speaker
+                    speaker = labelled
+                    row["speaker"] = speaker
+        if speaker and not row.get("speaker_model"):
+            handed = handover_conflict(str(row.get("statement") or ""), speaker, page_list, int(row.get("page") or 0))
+            if handed:
+                reasons.append(f"speaker_handover: the floor was just handed to {handed!r}, not {speaker!r}")
+            elif not pool:                         # no roster to relabel from (AXISCADES p6): flag, never relabel
+                label = last_label_before(str(row.get("statement") or ""), page_list, int(row.get("page") or 0))
+                if label and not _name_matches_list(label, questioners) \
+                        and not _name_matches_list(speaker, [_norm_name(label)]) \
+                        and not _name_matches_list(label, [_norm_name(speaker)]):
+                    reasons.append(f"speaker_label_conflict: the last printed label before this passage is {label!r}")
         if speaker:
             name, reason = resolve_speaker_name(speaker, pool, company_keys)
             if name != speaker:
@@ -941,7 +1048,8 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
     for i in indexes:                              # 394_v3 ckpt_0001 J (NLCINDIA p1): a filing letter's closing line
         row = rows[i]
         # only the letter's own wording, whoever signs it: a company secretary's real opening remarks stay (Wolf)
-        if int(row.get("page") or 0) <= 2 and _FILING_LINE_RE.search(str(row.get("statement") or "")):
+        if (int(row.get("page") or 0) <= 2 and _FILING_LINE_RE.search(str(row.get("statement") or ""))) \
+                or greeting_only(str(row.get("statement") or "")):
             row["_drop"] = True
             stats["filing_lines"] = stats.get("filing_lines", 0) + 1
     seen: set[tuple[Any, Any, str, str]] = set()        # Eagle v3 spot check: 19 statements stored twice on one page
