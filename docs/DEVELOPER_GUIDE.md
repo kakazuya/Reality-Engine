@@ -2951,4 +2951,11 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   segment/geography/product/customer/plant. Measured on the 200-page pilot rows: verified 3,017 -> 1,414 (was 1,124);
   graded W gated 9 of 10 (unchanged), graded R kept verified 21 of 42 (was 18); the 28 graded rows still verified
   are 21 R / 6 P / 1 W (75% right, 3.6% W+J).
+- **Deck "whose figure" prompt (T-242, 24 Nov 2026, Wolf).** The strict deck grade's 5 junk rows were all someone
+  else's figure (SIAM production, government capex, Ambuja's balance sheet in ACC's deck, a media market size, RBIC's
+  margin in Bosch's deck). `template_for('deck')` = `PROMPT + DECK_ENTITY_RULES`: the deck's company name and symbol
+  (from the store's `company` table) and a whose-figure rule (company / subsidiary named in segment / peer incl. a parent
+  or group company / industry / country; unclear = not written). With `deck_guards`, a `subsidiary` row with no
+  `segment` is `subsidiary_unnamed` (never verified). Deck fingerprint e6d289ddd672 -> ea5e621d2826 (annual_report and
+  results unchanged); needs a fresh pilot and a 60-row non-author grade.
 
