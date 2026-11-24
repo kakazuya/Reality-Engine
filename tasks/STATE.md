@@ -8,10 +8,11 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
+00000. 24 Nov (dsh, merged): statement speakers carried/resolved: verified empty-speaker statements 1,027->0, 46/47 graded R kept.
 00. 24 Nov 16:55 (Wolf): AR statement lines never verified (XBRL holds them; DEVELOPER_GUIDE); pilot verified 3,017->1,124, graded W 9/10 gone; Eagle's exemptions (off-statement notes, dimensioned rows) 17:05 -> 1,414 verified. NEXT: fresh 60-row AR grade.
 00000. 24 Nov 18:45 (Eagle): T-242 transcript prompt v3 (5-page windows + call header) merged and GATE PASSED (fp 2fae7ddac53e; 15-call pilot, 60 statements 52/8/0/0 by DeepSeek 4ec6ea39). NEXT: hy4 loop transcripts on --transcript-prompt v3; numbers stay gated on filings. hungerg-free overloaded, dropped (Shivam).
 0000. 24 Nov 15:15 (Eagle): T-242 merged v2 guards 10-16 (f1fac770) + filing_events fixes 1-6 (tuned on the graded 60: fresh-seed grade needed). NEXT: reparse fresh 394_v2 snapshot -> Wolf grades 60 verified; events on 20 new stores -> Wolf grades.
-000. 24 Nov 16:55 (Wolf): T-242 strict 60-row grades (bar >=70% R, <=5% W+J): call statements 78%/3% PASS -> statements gate (call numbers verified only by v2/corroborate.py: 352 of 10,543 match filings). Deck 80%/12% FAIL (entity; prompt change next). Events new20 55%/14% before round 2 (merged; 3rd fresh seed due). AR selector merged. dsh 635e3735 grading 394 ckpt_0002 + fy27 ckpt_0001 statements.
+000. 24 Nov 19:00 (Wolf): T-242: call statements gate (numbers only via v2/corroborate.py); deck whose-figure prompt pilot running (Wolf-deck-entity-prompt); AR row guards dsh cb0efb86; v3 fy27 ckpt_0001 grading (dsh 5edabb75).
 00. 20 Nov (Eagle): T-226 script_reader + T-227 script_cells on main (V2 contract s16); r32 rules; NEXT: write the 81 + rewrite the 10 with r32 (paused by T-242). T-225 round 10 (Eagle-t225-r10) unmerged, Shivam's call.
 0a. 18 Nov store repairs : `docs/state_history/STATE_2026-11-19_2005.md`. Then notes PP&E/CWIP, commitments, ratios; trial 2.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.

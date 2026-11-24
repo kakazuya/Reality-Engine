@@ -45,6 +45,30 @@ def test_guard3_a_cover_letter_page_gives_no_rows():
     assert _rows(text, reply, page=1, v2=False) != []          # v1 rows are unchanged
 
 
+def test_guard3b_bse_scrip_cover_letter_and_one_mark_title_page():
+    # UNOMINDA's 27 May 2025 transcript cover: "BSE Scrip: 532539" without the word "Code"
+    cover = ("Ref. No. Z-IV/R-39/D-2/NSE/207\nDate: May 27, 2025\nNSE Symbol: UNOMINDA\nBSE Scrip: 532539\n"
+             "Sub: - Transcript of the Earnings Call held on Wednesday, May 21, 2025\nDear Sirs,\n"
+             "Pursuant to Regulation 30 ..., please find enclosed the transcript of the Earnings Call.")
+    assert obs.is_cover_letter(cover, 1)
+    reply = [{"type": "statement", "measure": "NEW:filing", "text": "please find enclosed the "
+              "transcript of the Earnings Call.", "speaker": "Tarun Kumar Srivastava"}]
+    assert _rows(cover, reply, page=1) == []
+    # one mark alone ("Sub:" in a title page) never drops the page
+    title = "Title: Uno Minda Q4 Earnings Call\nSunil Bohra: Revenue grew 20%."
+    assert not obs.is_cover_letter(title, 1)
+    assert _rows(title, [{"type": "statement", "measure": "NEW:x", "text": "Revenue grew 20%.",
+                          "speaker": "Sunil Bohra"}], page=1)
+    # Kamat Hotels' 14 Aug 2026 cover: "Listing Department" + "Code:" + "Sub.:" + "Dear Sir / Madam"
+    kamat = ("To, Listing Department BSE Limited. Code: 526668 ISIN: INE967C01018. Symbol: KAMATHOTEL\n"
+             "Sub.: Submission of Transcript of Q1-FY27 Earnings Conference Call held on August 12, 2026\n"
+             "Dear Sir / Madam,\nIn accordance with the provisions of Regulation 30 of the SEBI Regulations.")
+    assert obs.is_cover_letter(kamat, 1)
+    assert _rows(kamat, [{"type": "statement", "measure": "NEW:filing",
+                          "text": "In accordance with the provisions of Regulation 30 of the SEBI Regulations.",
+                          "speaker": "Kamat Hotels (India) Limited"}], page=1) == []
+
+
 def test_guard4_and_5_ranges():
     text = "Margins should be 20% or 10% lower. We target $23 billion to $25 billion and 60% to 65% utilisation."
     rows = _rows(text, [

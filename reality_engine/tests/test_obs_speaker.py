@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 from reality_engine.v2 import obs_speaker as ospeaker
 
@@ -252,8 +253,7 @@ def test_roster_edge_cases_and_non_speaker_labels():
             1,
             "Dear Sir/Madam,\nScrip Code: 500001\nSymbol: SYNTH\nSeries:EQ\n"
             "New Delhi - 110044. Tel.: +91-11-40617777\nE-mail : mail@synth.com\n",
-        ),
-        (
+        ),        (
             2,
             "Synth Q2 FY 25-26 Conference Call\n"
             "Management Team\n"
@@ -288,3 +288,110 @@ def test_roster_edge_cases_and_non_speaker_labels():
     assert res[3] == ("Aman Sonthalia", "analyst")
     # Cover-letter address on p1 must not carry onto p2 title
     assert 4 not in res
+
+
+# --------------------------------------------------------------------------- T-242 statement speaker fixes
+
+
+def _statement(page: int, text: str, speaker: str = "", status: str = "verified") -> dict[str, Any]:
+    return {"record_type": "statement", "page": page, "statement": text, "speaker": speaker,
+            "status": status, "status_reason": ""}
+
+
+def test_statement_speaker_carries_across_a_page_break():
+    pages = [
+        (1, "Satin Creditcare Network Limited\nPage 1 of 6\n"
+            "MANAGEMENT: DR. HP SINGH - CHAIRMAN AND MANAGING DIRECTOR\n"
+            "HP Singh: Over the last six years our RoA stayed strong.\n"),
+        (2, "Satin Creditcare Network Limited\nPage 2 of 6\n"
+            "Our asset quality has seen a temporary transitory increase in delinquency.\n"     # opens mid-answer
+            "HP Singh: We carry provisions of INR273 crores.\n"),
+    ]
+    rows = [_statement(2, "Our asset quality has seen a temporary transitory increase in delinquency."),
+            _statement(2, "We carry provisions of INR273 crores.")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SATIN", ["Satin Creditcare Network Limited"])
+    assert rows[0]["speaker"] == "HP Singh" and rows[0]["status"] == "verified"
+    assert rows[1]["speaker"] == "HP Singh" and rows[1]["status"] == "verified"
+    assert stats["carried"] == 2 and stats["unverified"] == 0
+
+
+def test_statement_company_name_is_kept_and_marked_unresolved():
+    pages = [
+        (1, "Ashoka Buildcon Limited\nPage 1 of 3\n"
+            "MANAGEMENT: MR. PARESH MEHTA - CHIEF FINANCIAL OFFICER\n"
+            "Paresh Mehta: PAT stood at INR620 crores, growth of 269%.\n"),
+        (2, "Ashoka Buildcon Limited\nPage 2 of 3\nPAT stood at INR620 crores, growth of 269%.\n"),
+    ]
+    rows = [_statement(1, "PAT stood at INR620 crores, growth of 269%.", speaker="Ashoka Buildcon Limited"),
+            _statement(2, "PAT stood at INR620 crores, growth of 269%.", speaker="ASHOKA")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "ASHOKA", ["Ashoka Buildcon Limited"])
+    # a company name is not a person: never re-attributed to a nearby label, the row loses verified status
+    assert rows[0]["speaker"] == "Ashoka Buildcon Limited" and rows[0]["status"] == "unverified"
+    assert rows[1]["speaker"] == "ASHOKA" and rows[1]["status"] == "unverified"
+    assert all(r["status_reason"].startswith("speaker_unresolved:") for r in rows)
+    assert stats["carried"] == 0
+
+
+def test_statement_company_name_without_any_label_is_marked_unresolved():
+    pages = [(1, "Ashoka Buildcon Limited\nPage 1 of 2\nPAT stood at INR620 crores, growth of 269%.\n")]
+    rows = [_statement(1, "PAT stood at INR620 crores, growth of 269%.", speaker="Ashoka Buildcon Limited")]
+    ospeaker.attach_statement_speakers(rows, pages, "ASHOKA", ["Ashoka Buildcon Limited"])
+    assert rows[0]["speaker"] == "Ashoka Buildcon Limited" and rows[0]["status"] == "unverified"
+    assert rows[0]["status_reason"].startswith("speaker_unresolved:")
+
+
+def test_statement_first_name_and_initials_resolve_to_one_management_name():
+    pages = [
+        (1, "Synth Corp Limited\nMANAGEMENT:\n"
+            "Mr. Gopal Agrawal - Chief Financial Officer\n"
+            "Mr. Amit Kumar - Managing Director\n"
+            "Mr. Amit Shah - Director\n"),
+        (2, "Synth Corp Limited\nGopal Agrawal: Revenue grew.\nAmit Kumar: Margin held.\n"),
+    ]
+    rows = [_statement(2, "Revenue grew.", speaker="Gopal"),
+            _statement(2, "Margin held.", speaker="AK"),
+            _statement(2, "Margin held.", speaker="Amit"),
+            _statement(2, "Margin held.", speaker="Management")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["speaker"] == "Gopal Agrawal" and rows[0]["status"] == "verified"
+    assert rows[1]["speaker"] == "Amit Kumar" and rows[1]["status"] == "verified"
+    # two management names share the first name: keep it, never guess
+    assert rows[2]["speaker"] == "Amit" and rows[2]["status"] == "unverified"
+    assert rows[2]["status_reason"].startswith("speaker_unresolved:")
+    # a role word is a usable speaker
+    assert rows[3]["speaker"] == "Management" and rows[3]["status"] == "verified"
+    assert stats["resolved"] == 2
+
+
+def test_statement_short_yes_no_reply_needs_its_question():
+    pages = [(2, "Ravi Viswanathan: Yes, the model is similar.")]
+    rows = [_statement(2, "Yes, the model is similar.", speaker="Ravi Viswanathan"),
+            _statement(2, "Yes, the model is similar and we will keep it so across the year.",
+                       speaker="Ravi Viswanathan")]
+    ospeaker.attach_statement_speakers(rows, pages, "TVSSCS", ["TVS Supply Chain Solutions Limited"])
+    assert rows[0]["status"] == "unverified"
+    assert rows[0]["status_reason"].startswith("no_referent:")
+    assert rows[1]["status"] == "verified"
+
+
+def test_statement_without_any_label_is_marked_unverified():
+    pages = [(1, "Hindustan Zinc Limited\nPage 1 of 2\nSensitivity: Public (C4)\n"),
+             (2, "Hindustan Zinc Limited\nPage 2 of 2\n"
+                 "Profitability was strengthened by a lower cost of production.\n")]
+    rows = [_statement(2, "Profitability was strengthened by a lower cost of production.")]
+    ospeaker.attach_statement_speakers(rows, pages, "HINDZINC", ["Hindustan Zinc Limited"])
+    assert rows[0]["speaker"] == "" and rows[0]["status"] == "unverified"
+    assert rows[0]["status_reason"].startswith("speaker_unresolved: no speaker label")
+
+
+def test_statement_carried_analyst_label_is_refused():
+    pages = [
+        (1, "Synth Corp Limited\nMANAGEMENT: MR. RAMESH IYER - MANAGING DIRECTOR\n"
+            "Moderator: Thank you. The next question is from the line of Pritesh Chheda from Lucky Investment.\n"
+            "Pritesh Chheda: Sir, for that INR1,500 crores revenue, what capex is planned?\n"),
+        (2, "Synth Corp Limited\nPage 2 of 2\nThe capex stays at INR200 crores for the year.\n"),
+    ]
+    rows = [_statement(2, "The capex stays at INR200 crores for the year.")]
+    ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["speaker"] == "" and rows[0]["status"] == "unverified"
+

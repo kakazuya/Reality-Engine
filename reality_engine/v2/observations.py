@@ -4247,9 +4247,10 @@ NOT_COMPANY_SCOPES = frozenset({"industry", "country", "peer", "customer"})   # 
 DECREASE_RE = re.compile(r"\b(?:decreas\w*|declin\w*|de-?growth|negative\s+growth|fell|fall(?:en|ing)?|dropped|"
                          r"lower\s+by|down\s+by|contract(?:ed|ion))\b", re.I)
 NEGATIVE_WORD_RE = re.compile(r"\bnegative\b|\bloss\s+of\b|\bminus\b|\bnet\s+loss\b", re.I)
-COVER_LETTER_RES = (re.compile(r"\b(?:scrip|security)\s+code\b", re.I),
-                    re.compile(r"\bsub(?:ject)?\s*[:\-]", re.I),
-                    re.compile(r"\bdear\s+(?:sir|sirs|madam)\b", re.I))
+COVER_LETTER_RES = (re.compile(r"\b(?:scrip|security)\s*(?:code\b|:)|\b(?:bse|nse)\s+(?:scrip|code)\b|"
+                               r"\btrading\s+symbol\b|\blisting\s+department\b|\bregulation\s+30\b", re.I),
+                    re.compile(r"\bsub(?:ject)?\.?\s*[:\-]", re.I),
+                    re.compile(r"\bdear\s+(?:sirs?|madam|sir\s*/\s*madam)\b", re.I))
 CURRENCY_RE = re.compile(r"INR|Rs\.?|USD|US\$|\$|\u20b9|rupees", re.I)
 _RANGE_UNIT_PAT = (
     r"(?:crores?|crs?|cr\.?|lakhs?|lacs?|millions?|mn|billions?|bn|thousands?|"
@@ -4330,9 +4331,13 @@ def inner_range(value_text: str) -> tuple[float, float] | None:
 
 
 def is_cover_letter(page_text: str, page: int) -> bool:
-    """A filing cover letter (Scrip Code + Sub: + Dear Sir on page 1-2) carries no investor figure."""
+    """A filing cover letter (Scrip Code / Sub: / Dear Sir on pages 1-2) carries no investor figure.
+
+    T-242: two of the three marks are enough -- a BSE filing prints "BSE Scrip:" without the word "Code" and a
+    transcript cover letter may omit the scrip line; one mark alone also occurs on an ordinary call title page.
+    """
     text = str(page_text or "")
-    return int(page) <= 2 and all(rx.search(text) for rx in COVER_LETTER_RES)
+    return int(page) <= 2 and sum(1 for rx in COVER_LETTER_RES if rx.search(text)) >= 2
 
 
 def printed_range_high(page_text: str, value_text: str, value: float | None) -> float | None:
@@ -4862,8 +4867,17 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
         except sqlite3.Error:
             continue
     stats: dict[str, Any] = {"pages": 0, "no_store": 0, "not_transcript": 0, "unselected": 0,
-                             "rows_before": 0, "rows_after": 0, "v2_pages": 0, "ar_pages": 0}
+                             "rows_before": 0, "rows_after": 0, "v2_pages": 0, "ar_pages": 0,
+                             "speaker_carried": 0, "speaker_resolved": 0, "speaker_empty": 0,
+                             "speaker_unverified": 0}
     doc_speaker_ctx: dict[tuple[str, str], tuple[list[str], list[str]]] = {}
+    company_names: dict[str, list[str]] = {}
+    for sym, full in companies.values():
+        company_names.setdefault(sym, [])
+        if full not in company_names[sym]:
+            company_names[sym].append(full)
+    doc_key_now = ""
+    doc_pages: list[tuple[int, str]] = []
     replies = con.execute("SELECT doc_key, page, fingerprint, raw FROM page_reply ORDER BY doc_key, page").fetchall()
     for doc_key, page, fingerprint, raw in replies:
         store_db = doc_store.get(str(doc_key))
@@ -4908,16 +4922,15 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
             stats["ar_pages"] += 1
         else:
             ctx_key = (store_db, str(doc_key))
+            if str(doc_key) != doc_key_now:
+                doc_key_now = str(doc_key)
+                try:
+                    doc_pages = obs_speaker.load_pages(store_db, doc_key)
+                except sqlite3.Error:
+                    doc_pages = []
             if ctx_key not in doc_speaker_ctx:
                 try:
-                    s_con = connect_ro(store_db, timeout_s=60)
-                    try:
-                        doc_pages = s_con.execute(
-                            "SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page", (doc_key,)
-                        ).fetchall()
-                    finally:
-                        s_con.close()
-                    dctx = obs_speaker.build_doc_context([(int(p), str(t or "")) for p, t in doc_pages])
+                    dctx = obs_speaker.build_doc_context(doc_pages)
                     doc_speaker_ctx[ctx_key] = (
                         list(dict.fromkeys(dctx.analyst_names + dctx.moderator_names)),
                         list(dctx.mgmt_names),
@@ -4930,6 +4943,15 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
                                       doc_owner_symbol=owner, companies=companies, transcript_v2=v2,
                                       analyst_speakers=analyst_list, mgmt_speakers=mgmt_list)
             apply_number_gates(rows, doc_type, transcript_v2=v2)   # Shivam 24 Nov: a call number needs a filing
+            if doc_pages and any(str(r.get("record_type") or "") == "statement" for r in rows):
+                # T-242: carry the speaker across a page break, resolve a company/first-name/initials label,
+                # and mark a referentless short reply; script-level, no prompt change
+                fixed = obs_speaker.attach_statement_speakers(
+                    rows, doc_pages, symbol=meta["symbol"], company_names=company_names.get(meta["symbol"], []))
+                stats["speaker_carried"] += fixed["carried"]
+                stats["speaker_resolved"] += fixed["resolved"]
+                stats["speaker_empty"] += fixed["empty"]
+                stats["speaker_unverified"] += fixed["unverified"]
         stats["rows_before"] += int(con.execute("SELECT COUNT(*) FROM observation WHERE doc_key=? AND page=?",
                                                 (doc_key, int(page))).fetchone()[0])
         con.execute("DELETE FROM observation WHERE doc_key=? AND page=?", (doc_key, int(page)))
@@ -5358,6 +5380,16 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                                         transcript_v2=transcript and transcript_v2_mode(),
                                         deck_guards=meta.get("doc_type") == "deck")
     apply_number_gates(result["rows"], str(meta.get("doc_type") or ""))
+    if transcript and any(str(r.get("record_type") or "") == "statement" for r in result["rows"]):
+        # T-242: the same statement-speaker carry/resolve as --reparse, from the doc's stored pages
+        try:
+            pages = obs_speaker.load_pages(store_db, doc_key)
+        except sqlite3.Error:
+            pages = []
+        if pages:
+            obs_speaker.attach_statement_speakers(
+                result["rows"], pages, symbol=meta["symbol"],
+                company_names=[full for sym, full in (companies or {}).values() if sym == meta["symbol"]])
     return result
 
 

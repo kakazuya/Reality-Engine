@@ -40,6 +40,12 @@ Every transcript observation with a non-empty ``speaker`` is classified into:
   ``Participant``/``Analyst`` hint or external-participant listing, or the
   turn itself is a question.
 - ``'unknown'``: otherwise (empty when ``speaker`` itself is empty).
+
+T-242 statement pass (used by the observations read path and ``--reparse``, not by ``run``)
+-------------------------------------------------------------------------------------------
+``attach_statement_speakers`` carries a statement's speaker across a page break, resolves a
+company-name / first-name / initials label to one full management name, and marks the row
+unverified (``speaker_unresolved:``) or a referentless short reply (``no_referent:``).
 """
 from __future__ import annotations
 
@@ -49,9 +55,11 @@ import re
 import sqlite3
 import time
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from pathlib import Path
+from typing import Any
 
 from reality_engine.db.readonly import connect_ro
 
@@ -100,6 +108,9 @@ _NON_SPEAKER_WORDS = {
     "quarter", "fiscal", "annual", "total", "net", "gross", "revenue", "margin", "margins",
     "ebitda", "pat", "order", "book", "capex", "debt", "cash", "growth", "segment", "business",
     "performance", "demand", "numbers", "finportal", "dn", "e&oe", "cc",
+    # T-242: section headings and discourse markers read as "Name:" labels on a prepared-remarks page
+    "asset", "quality", "deposits", "mobility", "geographical", "diversification", "initiative", "agency",
+    "supply", "government", "internally", "first", "second", "third", "firstly", "finally",
 }
 
 _PAGE_HEADER_LINE = re.compile(r"^\s*Page\s+\d+\s+of\s+\d+\s*$", re.I)
@@ -129,6 +140,13 @@ _STANDALONE_LINE_RE = re.compile(
 
 _PARTICIPANT_HEADER_AFTER = re.compile(
     r"^\s*(?:[•−\-*]\s*)?(?:MR|MRS|MS|DR|SHRI|SMT|PROF)\.?\s+[A-Z]",
+)
+
+_COVER_LETTER_RE = re.compile(
+    r"\b(?:dear\s+(?:sirs?|madam|sir\s*/\s*madam)|s(?:crip|ecurity)\s+code|listing\s+(?:dept|department)|"
+    r"compliance\s+(?:officer|department)|regulation\s+30|trading\s+symbol|bse\s+code|"
+    r"sub(?:ject)?\.?\s*[:\-])",
+    re.I,
 )
 
 _MGMT_SECTION_HEAD = re.compile(
@@ -389,6 +407,8 @@ def build_doc_context(pages: list[tuple[int, str]]) -> DocContext:
 
     transcript_started = False
     for pg, txt in sorted(pages, key=lambda x: x[0]):
+        if pg == 1 and _COVER_LETTER_RE.search(txt or ""):
+            continue            # T-242: a filing cover letter's "Reference:" line reads as a speaker and stops the roster
         if pg <= 3 and not transcript_started:
             lines = [ln.strip() for ln in (txt or "").splitlines()]
             section = ""
@@ -611,13 +631,6 @@ def classify_speaker_role(
     return "unknown"
 
 
-_COVER_LETTER_RE = re.compile(
-    r"\b(?:dear\s+sir|scrip\s+code|listing\s+department|compliance\s+department|"
-    r"regulation\s+30|sub(?:ject)?\s*:)\b",
-    re.I,
-)
-
-
 def attribute_document(
     pages: list[tuple[int, str]],
     rows: list[tuple[int, int, str, str, str, str]],
@@ -763,6 +776,154 @@ def attribute_document(
         results[oid] = (turn.name, role)
 
     return results
+
+
+_COMPANY_SUFFIX = frozenset({"limited", "ltd", "corporation", "corp", "company", "co", "private", "pvt", "inc",
+                             "llp", "and"})
+
+
+def _company_key(name: str) -> str:
+    """A name without its legal-form words, so "Ashoka Buildcon Limited" and "ASHOKA" share one key."""
+    return " ".join(t for t in _norm_name(name).split() if t not in _COMPANY_SUFFIX)
+
+
+def _initials(norm: str) -> str:
+    return "".join(t[0] for t in norm.split())
+
+
+def _display_name(norm: str) -> str:
+    return " ".join(t.upper() if len(t) <= 2 else t.capitalize() for t in norm.split())
+
+
+def management_pool(pages: list[tuple[int, str]]) -> list[str]:
+    """Normalised full management names for one transcript: the roster plus turns carrying a management title."""
+    ctx = build_doc_context(pages)
+    known = set(ctx.mgmt_names) | set(ctx.analyst_names) | set(ctx.moderator_names)
+    names = list(ctx.mgmt_names)
+    for pg, txt in sorted(pages, key=lambda x: x[0]):
+        for turn in extract_turns(txt or "", pg, known_names=known, allow_standalone=ctx.allow_standalone):
+            norm = _norm_name(turn.name)
+            if norm and norm not in names and turn.role_hint and _MGMT_ROLE_RE.search(turn.role_hint):
+                names.append(norm)
+    return names
+
+
+def resolve_speaker_name(speaker: str, pool: list[str],
+                         company_keys: Iterable[str] = ()) -> tuple[str, str]:
+    """T-242: resolve a company/first-name/initials label to one full management name; else keep it and say why.
+
+    Returns ``(name, reason)``; ``reason`` is '' when the label (or its replacement) is a usable speaker.
+    A full person name the roster does not list is kept as printed.
+    """
+    raw = " ".join((speaker or "").split()).strip()
+    norm = _norm_name(raw)
+    if not norm:
+        return raw, ""
+    keys = set(company_keys)
+    if norm in _ROLE_WORDS or norm in _MODERATOR_NAMES:
+        return raw, ""
+    if _company_key(raw) in keys:
+        return raw, f"speaker_unresolved: {raw!r} is the company, not a person"
+    if len(norm.split()) > 1 and _name_matches_list(raw, pool):
+        return raw, ""                 # already a full management name as printed
+    tokens = norm.split()
+    if len(tokens) == 1:
+        tok = tokens[0]
+        first = [cand for cand in pool if tok in cand.split()]
+        initials = [cand for cand in pool if _initials(cand) == tok] if tok.isalpha() and len(tok) <= 3 else []
+        cands = initials if len(initials) == 1 else first
+    elif all(len(t) == 1 for t in tokens):
+        wanted = "".join(tokens)
+        cands = [cand for cand in pool if _initials(cand) == wanted]
+    else:
+        return raw, ""                 # a printed multi-word person name the roster does not list: keep it
+    cands = list(dict.fromkeys(c for c in cands if c))
+    if len(cands) == 1:
+        return _display_name(cands[0]), ""
+    why = f"matches {len(cands)} management names" if cands else "is not a full management name"
+    return raw, f"speaker_unresolved: {raw!r} {why}"
+
+
+_NO_REFERENT_START_RE = re.compile(r"^(?:yes|no|right|correct|sure)\b[\s,.!:;\u2013-]", re.I)
+
+
+def no_referent_reason(statement: str) -> str:
+    """T-242: a reply shorter than 8 words that opens with yes/no/right/correct/sure needs its question."""
+    text = " ".join((statement or "").split())
+    if not text or len(text.split()) >= 8 or not _NO_REFERENT_START_RE.match(text):
+        return ""
+    return "no_referent: a short reply whose question is not stored with it"
+
+
+def load_pages(store_db: str | Path, doc_key: str) -> list[tuple[int, str]]:
+    con = connect_ro(store_db, timeout_s=60)
+    try:
+        cur = con.execute("SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page", (doc_key,))
+        rows: list[Any] = [] if cur is None else list(cur.fetchall() or [])
+    finally:
+        con.close()
+    return [(int(p), str(t or "")) for p, t in rows]
+
+
+def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int, str]],
+                              symbol: str = "", company_names: Iterable[str] = ()) -> dict[str, int]:
+    """T-242: carry a page-break speaker, resolve/flag a junk label and a referentless reply, in place.
+
+    A statement with no speaker is re-attributed from this doc's pages (last label before it on the page, else the
+    last label of an earlier page); a carried analyst or moderator label is refused.  What remains is resolved to
+    one full management name or marked unverified ``speaker_unresolved`` -- a company name is not a person and is
+    never re-attributed to a nearby label -- and a short yes/no reply is marked unverified ``no_referent``.
+    """
+    stats = {"statements": 0, "carried": 0, "resolved": 0, "empty": 0, "unverified": 0}
+    indexes = [i for i, row in enumerate(rows) if str(row.get("record_type") or "") == "statement"]
+    if not indexes:
+        return stats
+    page_list = [(int(p), str(t or "")) for p, t in pages]
+    pool = management_pool(page_list)
+    company_keys = {_company_key(name) for name in company_names if name}
+    if symbol:
+        company_keys.add(_company_key(symbol))
+    company_keys.discard("")
+    need: list[tuple[int, int, str, str, str, str]] = []
+    retry: set[int] = set()
+    for i in indexes:
+        row = rows[i]
+        speaker = " ".join(str(row.get("speaker") or "").split())
+        if not speaker:
+            retry.add(i)
+            need.append((i, int(row.get("page") or 0), "", "", str(row.get("statement") or ""), ""))
+    found = attribute_document(page_list, need) if need else {}
+    for i in indexes:
+        stats["statements"] += 1
+        row = rows[i]
+        speaker = " ".join(str(row.get("speaker") or "").split())
+        reasons: list[str] = []
+        if i in retry:
+            carried, role = found.get(i, ("", ""))
+            if carried and role not in ("analyst", "moderator"):
+                if carried != speaker:
+                    stats["carried"] += 1
+                speaker = carried
+                row["speaker"] = speaker
+        if speaker:
+            name, reason = resolve_speaker_name(speaker, pool, company_keys)
+            if name != speaker:
+                stats["resolved"] += 1
+                row["speaker"] = name
+            if reason:
+                reasons.append(reason)
+        else:
+            stats["empty"] += 1
+            reasons.append("speaker_unresolved: no speaker label on this page or an earlier one")
+        no_ref = no_referent_reason(str(row.get("statement") or ""))
+        if no_ref:
+            reasons.append(no_ref)
+        if reasons:
+            row["status_reason"] = "; ".join(p for p in (str(row.get("status_reason") or ""), *reasons) if p)
+            if row.get("status") == "verified":
+                row["status"] = "unverified"
+                stats["unverified"] += 1
+    return stats
 
 
 def load_universe_map(universe_csv: Path) -> dict[str, str]:
