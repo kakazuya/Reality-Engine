@@ -96,6 +96,7 @@ OBS_READER = "hy4-flash-free@obs"      # same model, more room for a page of JSO
 TEXT_LAYER_CHARS = 6000
 PARSE_STOP = 0.20                      # brief: stop when >20% of pilot pages give empty / non-JSON
 QUARANTINE_STOP = 0.10                 # brief: stop when >10% of observations are quarantined
+OUT_TOK_CAP = 15_900                   # T-242: reader_entry sets max_tokens 16,000; a reply this close was cut
 
 # T-238 stage M: the output contract.  A fact's measure is a dictionary id or, when nothing in the dictionary means
 # the same thing, a DECLARED new one: "NEW:<snake_case id>" plus its definition and driver node.  A bare id that is
@@ -5548,6 +5549,9 @@ def process_window(store_db: str | Path, doc_key: str, own: list[int], context: 
     Returns one result per owned page in process_page's shape, so run() writes them unchanged: each page keeps the
     reply objects that name it ("page") as its own JSONL ``raw`` (so --reparse rebuilds a page alone), and the call's
     tokens and seconds sit on the first page only.  Rows naming no owned page are dropped and counted.
+    Every page also carries ``reply_ok`` (the CALL's reply parsed to at least one object), ``win_out_tok`` (the
+    window's output tokens, on every page of it) and ``last_row_page`` (the last owned page that got rows), so run()
+    can tell a cover page inside a good reply from a failed one (T-242).
     """
     base = [{"store": str(store_db), "doc_key": doc_key, "page": pg} for pg in own]
     stop = quota_seconds()
@@ -5602,6 +5606,9 @@ def process_window(store_db: str | Path, doc_key: str, own: list[int], context: 
             continue                            # the same object emitted twice in one window
         seen.add(key)
         by_page[pg].append(r)
+    common["reply_ok"] = bool(reply_rows)      # the CALL parsed, even if it named no row on this page
+    common["win_out_tok"] = int(call.get("out_tok") or 0)
+    common["last_row_page"] = max((pg for pg in own if by_page[pg]), default=0)
     out: list[dict[str, Any]] = []
     analysts, managers = doc_speakers(store_db, doc_key)     # guard 14 sees the call's roster (Wolf review)
     try:                                                     # T-242: the speaker carry/resolve pass, as --reparse
@@ -6075,8 +6082,10 @@ def missing_pages(con: sqlite3.Connection, pages: list[dict[str, Any]]) -> list[
     done = {(str(row[0]), int(row[1])) for row in con.execute("SELECT DISTINCT doc_key, page FROM observation")}
     # T-241: a page read whose rows were all dropped (cover, disclaimer) or that has nothing to read is in the
     # page_read ledger and is not read again; errors and parse failures are not recorded, so they are retried.
+    # T-242: 'no_rows' is a page inside a call whose reply parsed but which yielded no row of its own (a transcript
+    # cover page in a 5-page window); it is a finished read too.
     done |= {(str(row[0]), int(row[1])) for row in con.execute(
-        "SELECT doc_key, page FROM page_read WHERE outcome IN ('rows','empty','skip')")}
+        "SELECT doc_key, page FROM page_read WHERE outcome IN ('rows','empty','skip','no_rows')")}
     return [p for p in pages if (str(p["doc_key"]), int(p["page"])) not in done]
 
 
@@ -6559,7 +6568,8 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                     trimmed.append(left)
             items = trimmed
     stats: dict[str, Any] = {"pages": len(selected), "already_done": already_done, "read": 0, "errors": 0,
-                             "parse_failures": 0, "dropped_all": 0, "observations": 0, "quarantined": 0,
+                             "parse_failures": 0, "dropped_all": 0, "no_rows": 0, "observations": 0,
+                             "quarantined": 0,
                              "skipped": 0, "quota_skipped": 0, "parent_rows": 0, "http_429": 0,
                              "ocr_pages": 0, "ocr_rows": 0, "ocr_read_pages": 0, "image_text_rows": 0,
                              "numbers": 0, "statements": 0, "guidance_rows": 0, "undeclared_new": 0,
@@ -6579,7 +6589,7 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                                     text_only)): item[0] for item in items}
         done = 0
 
-        def _results():
+        def _results() -> Any:          # a page dict, or {"_exc": exception} for a call that raised
             for fut in as_completed(futures):
                 try:
                     got = fut.result()
@@ -6619,7 +6629,6 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                                                 "page": result["page"], "error": result["error"]})
                 continue
             rows = result["rows"]
-            stats["read"] += 1
             if result.get("raw"):
                 # T-241 (24 Nov): keep the reader's raw reply, so a script fix to parsing or row guards is re-applied
                 # offline (re-parse) instead of paying for the page again; the checkpoint of 2,000 pages proved
@@ -6629,16 +6638,27 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
             if result.get("ocr_read"):
                 stats["ocr_read_pages"] += 1
             if not rows:
-                if not result["raw"].strip() or result["parsed"] == 0:
+                # T-242: a page inside a call whose reply parsed but which gave no row of its own (a 5-page window's
+                # cover, disclaimer, registered office, signature page) is 'no_rows', not a failure: --resume must
+                # not buy the call again for it.  Only a whole reply that is empty or unparsable is a parse failure
+                # -- plus a cut-off tail: the 16,000-token cap was hit and the page is at or after the last page that
+                # gave rows (ACCORD p10), which IS truncated and is retried.
+                reply_ok = bool(result["reply_ok"]) if "reply_ok" in result else bool(result.get("parsed"))
+                out_tok = int(result.get("win_out_tok") or result.get("out_tok") or 0)
+                truncated = out_tok >= OUT_TOK_CAP and int(result["page"]) >= int(result.get("last_row_page") or 0)
+                if not reply_ok or truncated:
                     stats["parse_failures"] += 1
                     if len(stats["failed_replies"]) < 5:
                         stats["failed_replies"].append({"store": result["store"], "doc_key": result["doc_key"],
                                                         "page": result["page"], "raw": result["raw"][:2000]})
                 else:
-                    stats["dropped_all"] += 1      # a letterhead / cover page whose every row the script dropped
+                    stats["no_rows"] += 1
+                    if result.get("parsed"):
+                        stats["dropped_all"] += 1      # a letterhead / cover page whose every row the script dropped
                     con.execute("INSERT OR REPLACE INTO page_read VALUES (?,?,?,?,?)",
-                                (result["doc_key"], int(result["page"]), "empty", 0, ist_now()))
+                                (result["doc_key"], int(result["page"]), "no_rows", 0, ist_now()))
             else:
+                stats["read"] += 1
                 con.execute("INSERT OR REPLACE INTO page_read VALUES (?,?,?,?,?)",
                             (result["doc_key"], int(result["page"]), "rows", len(rows), ist_now()))
             write_rows(con, rows)
@@ -6685,8 +6705,10 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
     if latencies:
         stats["median_seconds"] = round(statistics.median(latencies), 2)
         stats["p90_seconds"] = round(latencies[int(round(0.9 * (len(latencies) - 1)))], 2)
-    done_pages = max(1, stats["pages"] - stats["quota_skipped"])
-    reply_fail_share = (stats["parse_failures"] + stats["errors"]) / done_pages
+    # T-242: the share is over pages ATTEMPTED (a page with a reply, a no_rows page, a failed page), not over
+    # len(selected): a run stopped by an audit checkpoint or a quota window must not dilute its own failure rate.
+    attempted = stats["read"] + stats["no_rows"] + stats["parse_failures"] + stats["errors"]
+    reply_fail_share = (stats["parse_failures"] + stats["errors"]) / max(1, attempted)
     quarantine_share = stats["quarantined"] / max(1, stats["observations"])
     stats["reply_fail_share"] = round(reply_fail_share, 3)
     stats["quarantine_share"] = round(quarantine_share, 3)

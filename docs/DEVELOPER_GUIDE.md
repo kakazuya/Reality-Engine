@@ -2348,6 +2348,15 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   read: `rows`, `empty` (every row dropped: cover, disclaimer) or `skip` (nothing to read); those are not read
   again, while errors and parse failures stay unrecorded and are retried. Coverage = rows in `page_read`
   over the doc pages. Tests `test_ledger_pages_are_not_reread_but_errors_are`, `test_resume_samples_from_unread_pages_only`.
+  T-242 (24 Nov, `reality_engine/v2/observations.py`): a transcript v3 window is ONE call over 5 pages, so a page
+  with no row of its own (cover, disclaimer, registered office, signature) is `no_rows`, not a reply failure --
+  `process_window` returns `reply_ok` (the CALL's reply parsed), `win_out_tok` and `last_row_page` per page, and
+  `missing_pages` treats `no_rows` as done. Only a whole reply that is empty or unparsable, or a cut-off tail
+  (`win_out_tok` >= 15,900 and the page at or after the last page that gave rows: ACCORD p10, a 65,606-char reply),
+  counts as a parse failure and is retried. `reply_fail_share` = (parse_failures + errors) / pages ATTEMPTED
+  (`read + no_rows + parse_failures + errors`), not / selected: the fy27_v3 run of 23:07-23:21 printed 0.145
+  (392 of 2,701), and 390 of those 392 were pages inside a reply that parsed, 353 of them transcript pages 1-2.
+  Tests `reality_engine/tests/test_transcript_window.py` (8).
 - **hy4 output DB locking (T-241, 24 Nov 2026).** `v2/observations.py` opens its `--out` database with a 120 s
   sqlite timeout: a row count run against the live output DB once killed a run at commit ("database is locked").
   Read a live output DB with short queries only; `--resume` re-reads any page whose rows were not committed.

@@ -85,6 +85,8 @@ def test_process_window_splits_rows_by_page(tmp_path, monkeypatch):
     assert "year-ago quarter is\nQ1 FY26" in seen["prompt"]
     assert out[0]["parsed"] == 1 and out[1]["parsed"] == 1 and out[0]["unplaced"] == 2
     assert out[0]["in_tok"] == 900 and out[1]["in_tok"] == 0          # the call's cost sits on the first page
+    assert out[0]["reply_ok"] is True and out[1]["reply_ok"] is True   # the CALL parsed (T-242)
+    assert out[0]["win_out_tok"] == 300 and out[1]["win_out_tok"] == 300
     assert json.loads(out[0]["raw"])["page"] == 6 and json.loads(out[1]["raw"])["page"] == 7
     assert all(r["page"] == 6 for r in out[0]["rows"]) and all(r["page"] == 7 for r in out[1]["rows"])
 
@@ -96,6 +98,88 @@ def test_process_window_error_marks_every_page(tmp_path, monkeypatch):
     monkeypatch.setattr(obs, "call_reader", lambda *a: {"output": "", "error": "HTTP 500"})
     out = obs.process_window(store, DK, [1, 2], [])
     assert [r["error"] for r in out] == ["HTTP 500", "HTTP 500"] and all(r["rows"] == [] for r in out)
+
+
+def _run_window(monkeypatch, tmp_path, store, *, text_pages, reply: str, out_tok: int, boom: bool = False):
+    """One obs.run over a transcript window; returns (stats, reader calls, out path)."""
+    out = tmp_path / "obs.db"
+    calls: list[int] = []
+    monkeypatch.setattr(obs, "TRANSCRIPT_PROMPT", "v3")
+    monkeypatch.setattr(obs, "TRANSCRIPT_WINDOW", 5)
+    monkeypatch.setattr(obs, "pages_from_store", lambda *a, **k: [{"store": store, "doc_key": DK, "page": pg}
+                                                                for pg in text_pages])
+    monkeypatch.setattr(obs, "company_index", lambda dbs: {})
+    monkeypatch.setattr(obs, "quota_seconds", lambda: 0)
+
+    def fake(*_args):
+        calls.append(1)
+        if boom:
+            raise RuntimeError("reader fell over")
+        return {"output": reply, "seconds": 1.0, "in_tok": 100, "out_tok": out_tok}
+    monkeypatch.setattr(obs, "call_reader", fake)
+    monkeypatch.setattr(obs, "propose_measures", lambda *a, **k: {})
+    monkeypatch.setattr(obs, "index_new_measures", lambda con: 0)
+    monkeypatch.setattr(obs, "write_new_merges", lambda con, path: 0)
+    return obs.run([store], limit=10, workers=1, out=out, doc_types=("transcript",)), calls, out
+
+
+def _ledger(out):
+    con = sqlite3.connect(str(out))
+    try:
+        return con.execute("SELECT page, outcome FROM page_read ORDER BY page").fetchall()
+    finally:
+        con.close()
+
+
+def test_a_cover_page_in_a_parsed_window_is_no_rows_and_not_reread(tmp_path, monkeypatch):
+    """T-242: pages 1-2 are the cover and disclaimer; the window's reply parses and names only page 3, so the call
+    was fine and the two empty pages are 'no_rows' -- a --resume run must not buy that call again."""
+    pages = {1: "BSE Scrip: 500001\nSecurity Code: 500001", 2: "Sub.: Disclosure\nDear Sir or Madam",
+             3: "Anita Rao: we expect capex of INR 500 crores in FY27."}
+    store = _store(tmp_path, pages)
+    reply = json.dumps({"type": "statement", "page": 3, "measure": "capex",
+                        "text": "we expect capex of INR 500 crores in FY27.", "speaker": "Anita Rao"})
+    stats, calls, out = _run_window(monkeypatch, tmp_path, store, text_pages=(1, 2, 3), reply=reply, out_tok=400)
+    assert _ledger(out) == [(1, "no_rows"), (2, "no_rows"), (3, "rows")]
+    assert stats["no_rows"] == 2 and stats["parse_failures"] == 0 and stats["read"] == 1
+    assert stats["reply_fail_share"] == 0.0
+    assert len(calls) == 1
+    again = obs.run([store], limit=10, workers=1, out=out, doc_types=("transcript",), resume=True)
+    assert again["pages"] == 0 and len(calls) == 1        # every page of the window is done
+
+
+def test_a_truncated_tail_page_at_the_output_cap_is_retried(tmp_path, monkeypatch):
+    """T-242: the window's reply hit the 16,000-token cap after page 1's row, so page 2 was cut off (ACCORD p10);
+    it stays a parse failure with no page_read row, so the next --resume run reads it again."""
+    store = _store(tmp_path, {1: "Ravi Kumar: margins were 18% in the quarter.", 2: "Thank you.\nFor ACCORD"})
+    reply = json.dumps({"type": "number", "page": 1, "measure": "ebitda_margin", "printed_label": "margins were",
+                        "value_text": "18%", "unit": "%", "speaker": "Ravi Kumar"})
+    stats, _calls, out = _run_window(monkeypatch, tmp_path, store, text_pages=(1, 2), reply=reply, out_tok=16_000)
+    assert _ledger(out) == [(1, "rows")]
+    assert stats["parse_failures"] == 1 and stats["no_rows"] == 0
+    assert stats["reply_fail_share"] == 0.5
+    con = sqlite3.connect(str(out))
+    try:
+        left = obs.missing_pages(con, [{"store": store, "doc_key": DK, "page": pg} for pg in (1, 2)])
+    finally:
+        con.close()
+    assert [p["page"] for p in left] == [2]
+
+
+def test_an_empty_whole_reply_is_still_a_parse_failure(tmp_path, monkeypatch):
+    store = _store(tmp_path, {1: "Ravi Kumar: margins were 18%.", 2: "Anita Rao: capex in FY27."})
+    stats, _calls, out = _run_window(monkeypatch, tmp_path, store, text_pages=(1, 2), reply="", out_tok=0)
+    assert _ledger(out) == []
+    assert stats["parse_failures"] == 2 and stats["no_rows"] == 0 and stats["reply_fail_share"] == 1.0
+
+
+def test_reply_fail_share_divides_by_calls_attempted(tmp_path, monkeypatch):
+    """T-242: a window whose call raised is one failed attempt over one attempted call, not over len(selected)."""
+    store = _store(tmp_path, {1: "a", 2: "b"})
+    stats, _calls, _out = _run_window(monkeypatch, tmp_path, store, text_pages=(1, 2), reply="", out_tok=0,
+                                      boom=True)
+    assert stats["errors"] == 1 and stats["pages"] == 2
+    assert stats["reply_fail_share"] == 1.0
 
 
 if __name__ == "__main__":
