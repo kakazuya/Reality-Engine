@@ -417,3 +417,17 @@ def test_duplicate_statements_on_one_page_are_dropped():
     rows = [dict(row), dict(row, statement="We  added two plants."), {"record_type": "number", "page": 1}]
     stats = osp.attach_statement_speakers(rows, pages)
     assert len(rows) == 2 and stats["duplicates"] == 1 and rows[1]["record_type"] == "number"
+
+
+def test_statement_by_an_analyst_on_the_roster_is_unverified():
+    from reality_engine.v2 import obs_speaker as osp
+    pages = [(1, "Synth Corp Limited\nMANAGEMENT:\nMr. Gopal Agrawal - Chief Financial Officer\n"),
+             (2, "Moderator: The next question is from Keshav Garg from Alpha PMS.\n"
+                 "Keshav Garg: Will the plant scale up?\nGopal Agrawal: Yes, it will scale up next year.\n")]
+    rows = [{"record_type": "statement", "doc_key": "d", "page": 2, "speaker": "Keshav Garg", "status": "verified",
+             "statement": "Yes, it will scale up next year."},
+            {"record_type": "statement", "doc_key": "d", "page": 2, "speaker": "Gopal Agrawal", "status": "verified",
+             "statement": "Yes, it will scale up next year, we said."}]
+    osp.attach_statement_speakers(rows, pages)
+    assert rows[0]["status"] == "unverified" and "speaker_is_analyst" in rows[0]["status_reason"]
+    assert rows[1]["status"] == "verified"
