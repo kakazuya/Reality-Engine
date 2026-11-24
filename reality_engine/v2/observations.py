@@ -3250,6 +3250,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             continue
         if (claim or transcript_v2) and PERIOD_VALUE_RE.match(value_text):
             continue                 # T-241 guard 2: a period label ("Q2", "FY27", "H1FY28") is not a value
+        if (claim or transcript_v2) and label.strip().lower().rstrip(".:") in BARE_LABEL:
+            continue                 # T-242 guard 7: a row labelled "to" / "Rs." repeats the end of a range row
         row: dict[str, Any] = {key: norm_space(raw.get(key)) for key in ROW_TEXT_KEYS}
         if junk_measure(row["measure"]):
             continue                 # page number, phone, address, PIN, CIN/DIN, signature date: not a quantity
@@ -3300,6 +3302,17 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         if printed and printed != row["period"]:
             row["period_source"] = printed[:120]
         if claim or transcript_v2:
+            if row["value_high"] is None and not high_text:
+                both = inner_range(value_text)          # T-242 guard 6: "40%-45%" is one printed range
+                if both:
+                    row["value"], row["value_high"] = both
+            frac = FRACTION_RE.match(value_text)
+            if frac and int(frac.group(2)) > int(frac.group(1)) > 0:
+                row["value"] = round(100.0 * int(frac.group(1)) / int(frac.group(2)), 2)   # T-242 guard 8: 1/3
+                row["unit"], row["scale"] = "%", 1.0
+            if row["measure"] == "nim" and (COST_OF_FUNDS_RE.search(label)
+                                            or COST_OF_FUNDS_RE.search(_before(page_text, value_text, 60))):
+                row["measure"] = "cost_of_funds"     # T-242 guard 9: "borrowing at 6.3%" is a cost, not a margin
             if (row["value"] is not None and row["value"] > 0 and not SIGNED_MEASURE.search(row["measure"])
                     and "loss" not in row["measure"].lower() and negative_printed(label, page_text, value_text)):
                 row["value"] = -row["value"]   # T-241 guard 1: "stood at negative Rs27 crore" is -27
@@ -3930,6 +3943,25 @@ CURRENCY_RE = re.compile(r"INR|Rs\.?|USD|US\$|\$|\u20b9|rupees", re.I)
 RANGE_TAIL_RE = re.compile(r"\s*(?:to|-|\u2013|\u2014)\s*(?:INR|Rs\.?|USD|US\$|\$|\u20b9)?\s*(\d[\d,]*(?:\.\d+)?)", re.I)
 
 
+INNER_RANGE_RE = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*%?\s*(?:-|\u2013|\u2014|to)\s*(?:INR|Rs\.?|USD|US\$|\$|\u20b9)?\s*"
+                            r"(\d[\d,]*(?:\.\d+)?)", re.I)
+FRACTION_RE = re.compile(r"^\s*(\d{1,2})\s*/\s*(\d{1,2})\s*(?:rd|th|ds)?\s*$", re.I)
+BARE_LABEL = frozenset({"to", "rs", "rs.", "inr", "and", "or", "-", "upto", "up to", "of", "around", "about"})
+COST_OF_FUNDS_RE = re.compile(r"\bcost\s+of\s+(?:funds|borrowings?|deposits)\b|\bborrowing\s+(?:at|cost)\b|"
+                              r"\bborrow(?:ed|s)?\s+at\b", re.I)
+
+
+def inner_range(value_text: str) -> tuple[float, float] | None:
+    """'40%-45%', '40-45%', 'INR310 to INR320' printed inside one value_text -> (low, high), else None."""
+    m = INNER_RANGE_RE.search(value_text or "")
+    if not m:
+        return None
+    low, high = parse_number(m.group(1)), parse_number(m.group(2))
+    if low is None or high is None or not (low < high <= max(abs(low), 1) * 20):
+        return None
+    return low, high
+
+
 def is_cover_letter(page_text: str, page: int) -> bool:
     """A filing cover letter (Scrip Code + Sub: + Dear Sir on page 1-2) carries no investor figure."""
     text = str(page_text or "")
@@ -3958,6 +3990,13 @@ def printed_range_high(page_text: str, value_text: str, value: float | None) -> 
     if high is None or high <= value or high > abs(value) * 20:
         return None
     return high
+
+
+def _before(page_text: str, value_text: str, width: int) -> str:
+    """The ``width`` characters printed before ``value_text`` on the page ('' when it is not found)."""
+    text = norm_space(page_text)
+    idx = text.find(value_text) if value_text else -1
+    return text[max(0, idx - width):idx] if idx > 0 else ""
 
 
 def negative_printed(label: str, page_text: str, value_text: str) -> bool:
