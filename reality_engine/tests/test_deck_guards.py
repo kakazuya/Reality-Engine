@@ -68,3 +68,12 @@ def test_group_scope_on_a_deck_is_a_peer_never_verified():
                  "printed_label": "Share capital", "value_text": "494", "unit": "Rs crore", "period": "FY26",
                  "entity_scope": "group"}])
     assert rows and rows[0]["entity_scope"] == "peer" and rows[0]["status"] != "verified"
+
+
+def test_parts_sum_does_not_reverify_a_market_figure_on_decks():
+    text = "Premium Liquor Market in India (USD Bn) Rum 10 Gin 21 Total 31"
+    reply = [{"type": "number", "series_id": "s1", "measure": "market.value", "printed_label": lab, "value_text": v,
+              "unit": "USD Bn", "period": "FY26", "entity_scope": "country", "is_total": tot}
+             for lab, v, tot in (("Rum", "10", False), ("Gin", "21", False), ("Total", "31", True))]
+    rows = _rows(text, reply)
+    assert rows and all(r["status"] != "verified" for r in rows)

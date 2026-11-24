@@ -3632,6 +3632,13 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
     if v2_mode:
         out = apply_measure_conflicts(out, page_text)   # T-242 guard 15: dedup per measure / flag multi-measure value
     apply_guidance_statements(prose)          # stage O: a guidance value also needs its statement row
+    if deck_guards:                           # parts-sum and path-sum proofs must not re-verify someone else's figure
+        for row in out:
+            if row.get("status") == "verified" and (row.get("entity_scope") in NOT_COMPANY_SCOPES or (
+                    row.get("entity_scope") == "subsidiary" and not row.get("segment"))):
+                row["status"] = "unverified"
+                row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "",
+                                                              "not_company: final deck pass") if p)
     return out + prose
 
 
