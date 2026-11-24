@@ -3913,6 +3913,8 @@ def _is_own_entity(name: str, company: str) -> bool:
         return False
     if own == printed:
         return True
+    if printed.startswith(own):         # the parent's name plus more words is a subsidiary ("Tata Motors Finance")
+        return False
     head = min(len(own), len(printed), 12)
     return head >= 3 and own[:head] == printed[:head]
 

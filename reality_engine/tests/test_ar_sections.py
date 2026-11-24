@@ -319,3 +319,10 @@ def test_ar_row_gate_reads_a_bound_subsidiarys_running_header():
     obs.apply_ar_row_gates([own], "BLUE DART EXPRESS LIMITED | FINANCIALS | ANNUAL REPORT 2025-2026\n"
                                   "Return on Invested Capital (ROIC) 0.64%", company="Blue Dart Express Limited")
     assert (own["entity_scope"], own["status"]) == ("company", "verified")
+
+
+def test_parent_name_plus_words_is_another_entity():
+    from reality_engine.v2.observations import _is_own_entity
+    assert not _is_own_entity("Tata Motors Finance Limited", "Tata Motors Limited")
+    assert _is_own_entity("The Bombay Dyeing and Manufacturing Company Limited", "Bombay Dyeing & Mfg Company Limited")
+    assert _is_own_entity("A. K. Capital Services Limited", "AK Capital Services Limited")
