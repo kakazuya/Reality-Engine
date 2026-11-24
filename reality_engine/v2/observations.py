@@ -4839,8 +4839,11 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                 continue
             if result.get("skip"):
                 stats["skipped"] += 1
-                con.execute("INSERT OR REPLACE INTO page_read VALUES (?,?,?,?,?)",
-                            (result["doc_key"], int(result["page"]), "skip", 0, ist_now()))
+                # A skip is permanent only when nothing failed: an image fetch that raised (busy raw store, Drive
+                # fetch) on a page with no text layer is retried like an error (Eagle review, T-241).
+                if not result.get("image_note"):
+                    con.execute("INSERT OR REPLACE INTO page_read VALUES (?,?,?,?,?)",
+                                (result["doc_key"], int(result["page"]), "skip", 0, ist_now()))
                 continue
             if result.get("error"):
                 stats["errors"] += 1
