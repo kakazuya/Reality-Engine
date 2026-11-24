@@ -5247,6 +5247,11 @@ def process_window(store_db: str | Path, doc_key: str, own: list[int], context: 
         by_page[pg].append(r)
     out: list[dict[str, Any]] = []
     analysts, managers = doc_speakers(store_db, doc_key)     # guard 14 sees the call's roster (Wolf review)
+    try:                                                     # T-242: the speaker carry/resolve pass, as --reparse
+        doc_pages = obs_speaker.load_pages(store_db, doc_key)
+    except sqlite3.Error:
+        doc_pages = []
+    own_names = [full for sym, full in (companies or {}).values() if sym == meta["symbol"]]
     for i, pg in enumerate(own):
         rows_in = by_page[pg]
         rows = build_observations(symbol=meta["symbol"], doc_key=doc_key, page=pg, known_at=meta["known_at"],
@@ -5254,6 +5259,8 @@ def process_window(store_db: str | Path, doc_key: str, own: list[int], context: 
                                   companies=companies, transcript_v2=True,
                                   analyst_speakers=analysts, mgmt_speakers=managers)
         apply_number_gates(rows, str(meta.get("doc_type") or ""))
+        if doc_pages and any(str(r.get("record_type") or "") == "statement" for r in rows):
+            obs_speaker.attach_statement_speakers(rows, doc_pages, symbol=meta["symbol"], company_names=own_names)
         out.append({**base[i], **common, "rows": rows, "parsed": len(rows_in), "bad_lines": bad if i == 0 else 0,
                     "raw": "\n".join(json.dumps(r, ensure_ascii=False) for r in rows_in) if rows_in else "",
                     "seconds": float(call.get("seconds") or 0.0) if i == 0 else 0.0,

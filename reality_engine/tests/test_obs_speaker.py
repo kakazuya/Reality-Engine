@@ -395,3 +395,25 @@ def test_statement_carried_analyst_label_is_refused():
     ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
     assert rows[0]["speaker"] == "" and rows[0]["status"] == "unverified"
 
+
+
+def test_question_ending_statement_is_unverified_and_rhetorical_kept():
+    from reality_engine.v2 import obs_speaker as osp
+    pages = [(1, "Ravi Kumar: Why? Because demand was strong. Is margin 20%?")]
+    rows = [{"record_type": "statement", "doc_key": "d", "page": 1, "speaker": "Ravi Kumar", "status": "verified",
+             "statement": "Why? Because demand was strong."},
+            {"record_type": "statement", "doc_key": "d", "page": 1, "speaker": "Ravi Kumar", "status": "verified",
+             "statement": "So is the margin going to be 20%, right?"}]
+    osp.attach_statement_speakers(rows, pages)
+    assert "question_end" not in (rows[0].get("status_reason") or "")
+    assert rows[1]["status"] == "unverified" and "question_end" in rows[1]["status_reason"]
+
+
+def test_duplicate_statements_on_one_page_are_dropped():
+    from reality_engine.v2 import obs_speaker as osp
+    pages = [(1, "Ravi Kumar: We added two plants.")]
+    row = {"record_type": "statement", "doc_key": "d", "page": 1, "speaker": "Ravi Kumar", "status": "verified",
+           "statement": "We added two plants."}
+    rows = [dict(row), dict(row, statement="We  added two plants."), {"record_type": "number", "page": 1}]
+    stats = osp.attach_statement_speakers(rows, pages)
+    assert len(rows) == 2 and stats["duplicates"] == 1 and rows[1]["record_type"] == "number"
