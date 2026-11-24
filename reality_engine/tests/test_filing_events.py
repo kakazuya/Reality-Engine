@@ -68,20 +68,20 @@ REAL: dict[str, list[dict[str, Any]]] = {
          "text": "In this background, the Board of Directors, in their meeting held today, has approved speedy revival, "
                  "refurbishment and expeditious recommencement of the operations of Unit-Ill, at the earliest and "
                  "has accordingly approved a Capital expenditure of Rs.100.0 crores as Phase- I, towards this purpose.",
-         "expect": {"amount_inr_cr": 100.0, "status": "verified"}},
+         "expect": {"amount_inr_cr": 100.0, "status": "unverified"}},
         {"doc_key": "D:/RealityEngine/raw/pilot60_history/SPMLINFRA/material_filing/73807300-d232-4447-9dbe-39f233944370.pdf",
          "title": "Outcome of Board Meeting",
          "text": "The Board has approved an increase in capital expenditure from ₹176.44 crore to ₹238.43 crore to "
                  "support the expansion of BESS capacity from 2.5 GWh to 5 GWh. This includes the development of "
                  "allied facilities such as container manufacturing capacity of 600 units per annum.",
-         "expect": {"amount_inr_cr": 238.43, "status": "verified"}},
+         "expect": {"amount_inr_cr": 238.43, "status": "unverified"}},
         {"doc_key": "D:/RealityEngine/raw/pilot60_history/RAJRILTD/material_filing/a3a0af34-ccba-4445-b67e-36e24fa9b833.pdf",
          "title": "Raj Rayon Industries Limited announces Rs 650 Crore Phase -II Expansion",
          "text": "Press Release - Raj Rayon Industries Limited -Announces Rs. 650 Crore Phase II Expansion. Board "
                  "approves up to Rs. 650 crore Phase II expansion at the Company's existing Silvassa facility, adding "
                  "300 TPD polyester yarn and 50 TPD recycled polyester yarn capacity; Full Capacity Commissioning in "
                  "CY2028.",
-         "expect": {"amount_inr_cr": 650.0, "status": "verified"}},
+         "expect": {"amount_inr_cr": 650.0, "status": "unverified"}},
     ],
     "capacity_commissioned": [
         {"doc_key": "D:/RealityEngine/raw/pilot60_history/WEBELSOLAR/material_filing/2a4c5c86-2b95-46c1-8db8-48eb2b0ba730.pdf",
@@ -89,21 +89,21 @@ REAL: dict[str, list[dict[str, Any]]] = {
          "text": "Business Highlights: Commenced production of additional 600 MW Mono PERC solar cell line (Phase II) "
                  "at Falta, West Bengal, taking overall cell capacity to 1,200 MW. Planned total capacity addition of "
                  "4 GW Topcon solar cell line: Phase III of 2 GW by June 2027 and Phase IV of 2 GW by June 2028.",
-         "expect": {"capacity_value": 600.0, "capacity_unit": "mw", "status": "verified"}},
+         "expect": {"capacity_value": 600.0, "capacity_unit": "mw", "status": "unverified"}},
         {"doc_key": "D:/RealityEngine/raw/pilot60_history/GREENPOWER/material_filing/d431890a-a559-49a4-ae51-e1ad0b16313b.pdf",
          "title": "Intimation under Regulation 30 of the SEBI [Listing Obligations and Disclosure Requirements] Regulations, 2015.",
          "text": "The Company has successfully commissioned a 7 MW AC / 9.8 MW DC solar power project at Krishnapuram "
                  "and Veeraganallur Villages, Thiruvallur District, Tamil Nadu. Further, the Company has entered into "
                  "an EPC Contract to develop a 17.6 MW AC (24.64 MW DC) solar power project, and the same is under "
                  "progress.",
-         "expect": {"capacity_value": 7.0, "capacity_unit": "mw", "status": "verified"}},
+         "expect": {"capacity_value": 7.0, "capacity_unit": "mw", "status": "unverified"}},
         {"doc_key": "D:/RealityEngine/raw/pilot60_history/ADVAIT/material_filing/7d639f28-988a-4ad6-8385-d830ada502a0.pdf",
          "title": "Inauguration of new manufacturing facility of Advait Greenergy Private Limited, material subsidiary.",
          "text": "Advait Greenergy Private Limited, material subsidiary of Advait Energy Transitions Limited, has "
                  "officially inaugurated its Phase I - 30 MW Alkaline Electrolyser Assembly Facility on March 13, "
                  "2026. Advait Greenergy Private Limited has commissioned its Phase I - 30 MW Alkaline Electrolyser "
                  "Assembly Facility, a strategic step towards a 300 MW integrated manufacturing capacity.",
-         "expect": {"capacity_value": 30.0, "capacity_unit": "mw", "status": "verified"}},
+         "expect": {"capacity_value": 30.0, "capacity_unit": "mw", "status": "unverified"}},
     ],
     "fund_raise": [
         {"doc_key": "D:/RealityEngine/raw/pilot60_history/SALSTEEL/material_filing/ca587c2e-dc4b-4eba-85b3-89ee1022ea40.pdf",
@@ -112,14 +112,14 @@ REAL: dict[str, list[dict[str, Any]]] = {
          "text": "at a price of ₹ 25/- per Warrant including Premium of ₹ 15/- each, being the issue price determined "
                  "in accordance with the provisions of the Companies Act, 2013, aggregating up to ₹ 12.00 Crores to "
                  "the Promoter Allottee, on a preferential and private placement basis.",
-         "expect": {"amount_inr_cr": 12.0, "instrument": "warrant", "status": "verified"}},
+         "expect": {"amount_inr_cr": 12.0, "instrument": "warrant", "status": "unverified"}},
         {"doc_key": "D:/RealityEngine/raw/pilot60_history/JYOTISTRUC/material_filing/99a1a419-5563-4437-89d4-7445ccd76e4d.pdf",
          "title": "Approval of fund raise by way of Equity Shares for an aggregate amount of up to Rs. 500 crores "
                   "by way of rights issue",
          "text": "The Board of Directors of the Company, at their meeting held today, i.e., November 22, 2024 has "
                  "inter alia considered and approved the following: Approval of fund raise by way of Equity Shares "
                  "for an aggregate amount of up to Rs. 500 crores by way of rights issue.",
-         "expect": {"amount_inr_cr": 500.0, "instrument": "rights", "status": "verified"}},
+         "expect": {"amount_inr_cr": 500.0, "instrument": "rights", "status": "unverified"}},
         {"doc_key": "D:/RealityEngine/raw/pilot60_history/SUDARSHAN/material_filing/2ea66984-6120-4dd2-9641-5c55f9893ef4.pdf",
          "title": "Raising of funds by way of creating, issuing and allotting up to 4,30,00,000 Fully Convertible "
                   "Warrants Convertible into equivalent number of fully paid-up equity shares",
@@ -127,7 +127,7 @@ REAL: dict[str, list[dict[str, Any]]] = {
                  "of creating, issuing and allotting up to 4,30,00,000 (Four Crores Thirty Lakhs Only) Fully "
                  "Convertible Warrants Convertible into equivalent number of fully paid-up equity shares, on "
                  "preferential basis, for aggregating amount of up to Rs.188.34 Crores.",
-         "expect": {"amount_inr_cr": 188.34, "instrument": "warrant", "status": "verified"}},
+         "expect": {"amount_inr_cr": 188.34, "instrument": "warrant", "status": "unverified"}},
     ],
 }
 
@@ -151,7 +151,7 @@ def test_printed_aggregate_beats_a_shares_times_price_computation() -> None:
             "consequent to the Conversion of 4,38,000 Convertible Warrants, at a price of Rs. 47.625 per warrant, "
             "aggregating to Rs. 2,08,59,750/-.")
     row = _row(fe.event_rows(_doc("Outcome of Board Meeting", text))[0], "fund_raise")
-    assert row["amount_inr_cr"] == pytest.approx(2.086) and row["status"] == "verified"
+    assert row["amount_inr_cr"] == pytest.approx(2.086) and row["status"] == "unverified"
     assert row["instrument"] == "warrant"
 
 
@@ -423,7 +423,7 @@ STAGE_B_SYMBOL = {
     ("cncrd_274", {"amount_inr_cr": 47.0, "status": "verified", "flag": "B1 doubled cover+annexure figure"}),
     ("premex_163", {"amount_inr_cr": 11.67, "status": "unverified", "value_total": 18.29,
                     "flag": "B3 amendment increment"}),
-    ("micel_227", {"amount_inr_cr": 1.1564, "status": "verified", "flag": "B3 variation aggregate"}),
+    ("micel_227", {"amount_inr_cr": 1.1564, "status": "unverified", "flag": "B3 variation aggregate"}),
     ("krystal_132", {"value_annual": 4.4815, "status": "unverified", "flag": "B4 per-annum x printed tenure"}),
     ("krystal_394", {"amount_inr_cr": 296.0252, "value_total": 740.063, "share_pct": 40.0,
                      "status": "verified", "flag": "B5 consortium share printed"}),
@@ -441,7 +441,7 @@ def test_stage_b_fixes(case: str, expected: dict[str, Any]) -> None:
     if case == "shreepushk_231":
         capex = _row(rows, "capex_approval")
         raise_row = _row(rows, "fund_raise")
-        assert capex["amount_inr_cr"] == 350.0 and capex["status"] == "verified"
+        assert capex["amount_inr_cr"] == 350.0 and capex["status"] == "unverified"
         assert raise_row["amount_inr_cr"] == 30.0 and raise_row["status"] == "unverified"
         return
     flag = expected.pop("flag")
@@ -775,13 +775,17 @@ def test_build_writes_one_row_per_filing_and_keeps_doc_known_at(monkeypatch: pyt
         out.unlink(missing_ok=True)
 
 
-def test_t242_load_docs_reads_press_releases_too(tmp_path, monkeypatch):
+def test_t242_load_docs_reads_press_releases_too(monkeypatch):
     """T-242: a press release that announces an order is read like an announcement; other doc types are not."""
     import sqlite3
 
-    db = tmp_path / "c01" / "c01.db"
-    db.parent.mkdir()
+    work = Path(".tmp/t242_load_docs")
+    work.mkdir(parents=True, exist_ok=True)
+    db = work / "c01" / "c01.db"
+    db.parent.mkdir(exist_ok=True)
     con = sqlite3.connect(db)
+    con.execute("DROP TABLE IF EXISTS doc")
+    con.execute("DROP TABLE IF EXISTS doc_page")
     con.execute("CREATE TABLE doc (doc_key TEXT, symbol TEXT, isin TEXT, title TEXT, filing_date TEXT, "
                 "known_at TEXT, pages INTEGER, doc_type TEXT)")
     con.execute("CREATE TABLE doc_page (doc_key TEXT, page INTEGER, text TEXT)")
@@ -1025,7 +1029,7 @@ def test_t242_fix2_cancellations_reductions_and_gst_demands() -> None:
         rows, _missing = fe.event_rows(_doc(fx["title"], fx["text"], symbol=fx["symbol"], doc_key=fx["doc_key"]))
         row = _row(rows, "order_amendment")
         assert row["amount_inr_cr"] == pytest.approx(expected_amt)
-        assert row["status"] == "verified"
+        assert row["status"] == "unverified"
     gst = T242_CASES["E53"]
     assert fe.event_rows(_doc(gst["title"], gst["text"], symbol=gst["symbol"], doc_key=gst["doc_key"]))[0] == []
 
@@ -1049,7 +1053,7 @@ def test_t242_fix4_results_releases_and_rollups_dropped_while_e01_kept() -> None
     e01 = T242_CASES["E01"]
     capex = _row(fe.event_rows(_doc(e01["title"], e01["text"], symbol=e01["symbol"], doc_key=e01["doc_key"]))[0],
                  "capex_approval")
-    assert capex["amount_inr_cr"] == pytest.approx(200.0) and capex["status"] == "verified"
+    assert capex["amount_inr_cr"] == pytest.approx(200.0) and capex["status"] == "unverified"
 
 
 def test_t242_fix5_multi_item_orders_emit_all_items_and_total() -> None:
@@ -1103,11 +1107,11 @@ def test_t242_fix6_duplicate_raise_steps_stage_and_verify_once() -> None:
     rows = fe.event_rows(e11)[0] + fe.event_rows(e06)[0] + fe.event_rows(e20)[0] + fe.event_rows(e07)[0]
     fe._assign_raise_ids(rows)
     by_key = {r["doc_key"]: r for r in rows}
-    assert by_key["sepc-e11"]["raise_stage"] == "proposed" and by_key["sepc-e11"]["status"] == "verified"
+    assert by_key["sepc-e11"]["raise_stage"] == "proposed" and by_key["sepc-e11"]["status"] == "unverified"
     assert by_key["sepc-e06"]["raise_stage"] == "proposed" and by_key["sepc-e06"]["status"] == "unverified"
     assert by_key["sepc-e11"]["raise_id"] == by_key["sepc-e06"]["raise_id"]
     assert by_key["apar-e20"]["raise_stage"] == "proposed"
-    assert by_key["apar-e07"]["raise_stage"] == "approval" and by_key["apar-e07"]["status"] == "verified"
+    assert by_key["apar-e07"]["raise_stage"] == "approval" and by_key["apar-e07"]["status"] == "unverified"
     assert by_key["apar-e20"]["raise_id"] == by_key["apar-e07"]["raise_id"]
 
 
@@ -1201,7 +1205,7 @@ def test_t242_r2_fix1_missed_commissioning_filings_and_r_counter_tests() -> None
     assert r_chhara["capacity_value"] == pytest.approx(5.0)
     assert r_chhara["capacity_unit"] == "mmtpa"
     assert r_chhara["plant"] == "Chhara"
-    assert r_chhara["status"] == "verified"
+    assert r_chhara["status"] == "unverified"
 
     visakh = _doc(
         "Commissioning of Residue Upgradation Facility with World's first LC-Max Unit at HPCL Visakh Refinery",
@@ -1215,7 +1219,7 @@ def test_t242_r2_fix1_missed_commissioning_filings_and_r_counter_tests() -> None
     assert r_visakh["capacity_value"] == pytest.approx(3.55)
     assert r_visakh["capacity_unit"] == "mmtpa"
     assert r_visakh["plant"] == "HPCL Visakh Refinery"
-    assert r_visakh["status"] == "verified"
+    assert r_visakh["status"] == "unverified"
 
     sk_solar = _doc(
         "Commissioning of Solar Power Plant",
@@ -1228,7 +1232,7 @@ def test_t242_r2_fix1_missed_commissioning_filings_and_r_counter_tests() -> None
     r_solar = _row(fe.event_rows(sk_solar)[0], "capacity_commissioned")
     assert r_solar["capacity_value"] == pytest.approx(4.0)
     assert r_solar["capacity_unit"] == "mwp"
-    assert r_solar["status"] == "verified"
+    assert r_solar["status"] == "unverified"
 
     sk_foundry = _doc(
         "Commissioning of Cast Iron foundry",
@@ -1243,7 +1247,7 @@ def test_t242_r2_fix1_missed_commissioning_filings_and_r_counter_tests() -> None
     assert r_foundry["capacity_value"] == pytest.approx(2.2)
     assert r_foundry["capacity_unit"] == "mn_pieces"
     assert r_foundry["plant"] == "Harohalli"
-    assert r_foundry["status"] == "verified"
+    assert r_foundry["status"] == "unverified"
 
     # Counter-tests for graded R rows: pilot E05 (BLUEJET) & new20 id=175 (GAIL GMPL)
     bluejet_e05 = _doc(
@@ -1255,7 +1259,7 @@ def test_t242_r2_fix1_missed_commissioning_filings_and_r_counter_tests() -> None
         symbol="BLUEJET", filing_date="2024-06-30",
     )
     r_e05 = _row(fe.event_rows(bluejet_e05)[0], "capacity_commissioned")
-    assert r_e05["capacity_value"] == pytest.approx(120.0) and r_e05["status"] == "verified"
+    assert r_e05["capacity_value"] == pytest.approx(120.0) and r_e05["status"] == "unverified"
 
     gail_175 = _doc(
         "Successfully Commissions 1.25 million tons per annum PTA Manufacturing Plant at Mangalore",
@@ -1266,7 +1270,7 @@ def test_t242_r2_fix1_missed_commissioning_filings_and_r_counter_tests() -> None
     )
     r_175 = _row(fe.event_rows(gail_175)[0], "capacity_commissioned")
     assert r_175["capacity_value"] == pytest.approx(1.25) and r_175["capacity_unit"] == "mtpa"
-    assert r_175["status"] == "verified"
+    assert r_175["status"] == "unverified"
 
 
 def test_t242_r2_fix2_fund_raise_rules_and_r_counter_tests() -> None:
@@ -1333,7 +1337,7 @@ def test_t242_r2_fix2_fund_raise_rules_and_r_counter_tests() -> None:
     assert r17["amount_inr_cr"] == pytest.approx(1000.0)
     assert r17["instrument"] == "qip"
     assert r17["raise_stage"] == "approval"
-    assert r17["status"] == "verified"
+    assert r17["status"] == "unverified"
 
     yasho_32 = _doc(
         "Please find attached outcome",
@@ -1346,7 +1350,7 @@ def test_t242_r2_fix2_fund_raise_rules_and_r_counter_tests() -> None:
     assert r32["amount_inr_cr"] == pytest.approx(125.0001)
     assert r32["instrument"] == "preferential"
     assert r32["raise_stage"] == "approval"
-    assert r32["status"] == "verified"
+    assert r32["status"] == "unverified"
 
 
 def test_t242_r2_fix3_customer_cleanup_dotted_and_contract_label() -> None:
@@ -1440,7 +1444,7 @@ def test_t242_r2_fix5_capex_revisions_and_annual_revenue() -> None:
     r56 = _row(fe.event_rows(e56)[0], "capex_approval")
     assert r56["amount_inr_cr"] == pytest.approx(1982.79)
     assert "cost revision" in r56["detail"] and "1950" in r56["detail"] and "+32.79" in r56["detail"]
-    assert r56["status"] == "verified"
+    assert r56["status"] == "unverified"
 
     # e78: model reply with 'annual revenue' goes to value_annual (and computes value_total over 15y tenure)
     e78 = _doc(
@@ -1487,3 +1491,171 @@ def test_t242_r2_fix6_main_prints_rupee_safely_on_cp1252(monkeypatch: pytest.Mon
         assert "T-231 filing events" in buf.getvalue().decode("cp1252")
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+# ---- T-242 round 3: per-kind gate, fund-raise vetoes, raise stage, amendment, capacity, capex, customers -------
+def test_t242_r3_fix1_only_a_graded_kind_is_verified() -> None:
+    assert fe.VERIFIED_KINDS == frozenset({"order_win"})
+    fund = _doc(
+        "Outcome of Board Meeting - Issue of listed, rated, secured, redeemable non-convertible debentures",
+        "The Board of Directors of the Company at its meeting held today has approved the issuance of 2,50,000 "
+        "listed, rated, secured, redeemable non-convertible debentures aggregating up to INR 250,00,00,000.",
+    )
+    row = _row(fe.event_rows(fund)[0], "fund_raise")
+    assert row["status"] == "unverified" and row["detail"].startswith("kind_not_gated: fund_raise")
+    order = _doc("New orders worth Rs. 816 Crores",
+                 "The Company has secured new orders of Rs. 816 crores across its various businesses.")
+    assert _row(fe.event_rows(order)[0], "order_win")["status"] == "verified"
+
+
+@pytest.mark.parametrize("title,text", [
+    ("GNG Electronics Limited has informed the Exchange regarding execution of Supplemental and Amendatory Agreement "
+     "with ICICI Bank Limited",
+     "The Company has entered into a Supplemental and Amendatory Agreement to the Facility Agreement with ICICI Bank "
+     "Limited. The Overall limits stand enhanced from INR 400 million to INR 720 million."),
+    ("Pursuant to Regulation 30 and 33 of SEBI (LODR) Regulations 2015",
+     "The Board further took note that due to non-receipt of balance 75% amount with respect to 560000 warrants "
+     "within a period of 18 months, which was allotted on 22.02.2023, an amount of 25% received against allotment of "
+     "said warrants amounting to Rs. 2,35,20,000/- has been forfeited."),
+    ("Revision of Credit Facilty availed with Kotak Mahindra Bank Limited.",
+     "The Company has revised its existing credit facility arrangement with Kotak Mahindra Bank Limited. Initially, "
+     "the total sanctioned credit facility was INR 5000 lakhs comprising an overdraft facility of INR 1000 lakhs. The "
+     "Company has surrendered the overdraft facility of INR 1000 lakhs, thereby reducing the total sanctioned limit "
+     "to INR 4000 lakhs."),
+    ("Information under Reg 30 of SEBI",
+     "Investment in Wholly-Owned Subsidiary Company. The Company has invested 1,50,00,000 equity Shares of Spark "
+     "Minda Green Mobility Systems Private Limited, the wholly owned subsidiary, for an amount of INR 15 crores by "
+     "way of subscription to rights issue of Rs. 10 each."),
+])
+def test_t242_r3_fix2_agreement_updates_are_not_a_fund_raise(title: str, text: str) -> None:
+    rows, _missing = fe.event_rows(_doc(title, text))
+    assert not [r for r in rows if r["kind"] == "fund_raise"], rows
+
+
+def test_t242_r3_fix2_own_issue_with_facility_boilerplate_still_raises() -> None:
+    doc = _doc(
+        "Intimation of allotment of equity shares under Qualified Institutions Placement",
+        "The Fund Raising Committee approved the issue and allotment of 91,11,630 Equity Shares to the eligible "
+        "qualified institutional buyers at the issue price of ₹ 955 per Equity Share aggregating to ₹ 870.16 crores. "
+        "The proceeds are held in escrow as per the working capital facility sanction letter.",
+    )
+    row = _row(fe.event_rows(doc)[0], "fund_raise")
+    assert row["amount_inr_cr"] == pytest.approx(870.16) and row["raise_stage"] == "allotment"
+
+
+def test_t242_r3_fix3_board_approval_is_not_an_allotment() -> None:
+    board = _doc(
+        "Outcome of Board Meeting - Issue of listed, rated, secured, redeemable non-convertible debentures",
+        "The Board of Directors of the Company at its meeting held today has approved the issuance of 2,50,000 "
+        "listed, rated, secured, redeemable non-convertible debentures, having a face value of up to INR 10,000 each "
+        "aggregating up to INR 250,00,00,000. tenure of the instrument - date of allotment and date of maturity: "
+        "Shall be provided at the time of Allotment of respective NCDs.",
+    )
+    assert _row(fe.event_rows(board)[0], "fund_raise")["raise_stage"] == "approval"
+    done = _doc("Allotment of 900000 equity shares pursuant to warrants conversion.",
+                "The Company has allotted 9,00,000 Equity Shares pursuant to exercise of Convertible Warrants at an "
+                "issue price of INR 115.50 per share.")
+    assert _row(fe.event_rows(done)[0], "fund_raise")["raise_stage"] == "allotment"
+
+
+def test_t242_r3_fix4_l1_and_loss_reduction_are_awards() -> None:
+    l1 = _doc(
+        "EMS Limited has informed the exchange regarding Intimation of Lowest Bidder (L-1) in tender at UPCL VCVGS "
+        "Urja Bhawan, Dehradun",
+        "EMS Limited is the lowest bidder (L-1) in the tender for Supply, Installation, Testing & Commissioning of "
+        "Infrastructure Works_Loss Reduction on turnkey basis. The estimated order value is approximately "
+        "Rs.14810.69 Lacs (Rupee Fourteen Thousand Eight Hundred Ten lacs and Sixty-Nine Thousand Only). The details "
+        "of the works are as under: S. No. Particulars Details 1. Name(s) of the entity awarding the order [s) "
+        "/Contract(s) SE, Corporate, C and P-I, UPCL VCVGS Urja Bhawan, Dehradun 3. Whether order(s) /contract(s) "
+        "have been awarded by domestic /international entity Domestic Entity (L – 1 Status) 7. Broad consideration "
+        "or size of the order(s) contract(s) Estimated order value is approximately Rs.14810.69 lacs (Rupee Fourteen "
+        "Thousand Eight Hundred Ten Lacs and Sixty-Nine Thousand Only).",
+    )
+    rows, _missing = fe.event_rows(l1)
+    assert not [r for r in rows if r["kind"] == "order_amendment"], rows
+    assert _row(rows, "order_win")["amount_inr_cr"] == pytest.approx(148.1069)
+
+    loa = _doc(
+        "EMS Limited has informed the exchange regarding Intimation of Receipt of letter of award for Development of "
+        "Distribution Infrastructure-loss reduction works at EDC Dehradun rural circle",
+        "EMS Limited has received a letter of award for Development of Distribution Infrastructure-loss reduction "
+        "works at EDC Dehradun rural Circle. The order value is approximately Rs.14,112.14 Lacs (Rupee Fourteen "
+        "Thousand One Hundred Twelve lacs and Fourteen Thousand Only). The details of the works are as under: "
+        "S. No. Particulars Details 1. Name(s) of the entity awarding the order [s) /Contract(s) Uttarakhand Power "
+        "Corporation Ltd 3. Whether order(s) /contract(s) have been awarded by domestic /international entity "
+        "Domestic Entity (Letter of award) 7. Broad consideration or size of the order(s) contract(s) Order value of "
+        "Rs. 14,112.14 Lacs (Rupee Fourteen Thousand One Hundred Twelve lacs and Fourteen Thousand Only).",
+    )
+    rows, _missing = fe.event_rows(loa)
+    assert not [r for r in rows if r["kind"] == "order_amendment" and (r["amount_inr_cr"] or 0) < 0], rows
+    assert _row(rows, "order_win")["amount_inr_cr"] == pytest.approx(141.1214)
+
+
+def test_t242_r3_fix5_stale_numeric_commissioning_date_is_vetoed() -> None:
+    old = _doc(
+        "Updates on Poly Aluminium Chloride Plant at Vadodara. For more details, kindly refer attached file.",
+        "The Company had successfully commissioned 32,000 TPA of Poly Aluminium Chloride Plant (18% PAC) at Coelho "
+        "Complex, Vadodara, which had informed to the stock exchanges vide our letter dated 01.08.2018. In the "
+        "existing facility of PAC plant, the Company has now installed further Spray dryer to convert a part of "
+        "liquid PAC to PAC powder.",
+        filing_date="2025-02-04",
+    )
+    assert not [r for r in fe.event_rows(old)[0] if r["kind"] == "capacity_commissioned"]
+    fresh = _doc(
+        "Commencement of commercial production of Instant Coffee at its Instant Coffee Subsidiary unit by adding "
+        "2000 MTPA",
+        "The Company has commenced commercial production of Instant Coffee at its Instant Coffee Subsidiary unit by "
+        "adding 2000 MTPA w.e.f. 01.04.2026.",
+        filing_date="2026-04-02",
+    )
+    assert _row(fe.event_rows(fresh)[0], "capacity_commissioned")["capacity_value"] == pytest.approx(2000.0)
+
+
+def test_t242_r3_fix6_a_stake_purchase_is_not_capex() -> None:
+    doc = _doc(
+        "Transrail to enter renewable power generation through proposed 49% investment in 990 MW solar portfolio in "
+        "Maharashtra",
+        "Transrail Lighting Limited today announced that its Board of Directors has approved the proposed acquisition "
+        "of a 49% equity stake in NOPL Pace Green Energy Private Limited, at a cash consideration of Rs. 20 cr. The "
+        "indicative total project cost is approximately ₹3,900 crore, and debt financing has been sanctioned by "
+        "reputed financial institution.",
+        symbol="TRANSRAILL", filing_date="2026-10-19",
+    )
+    assert not [r for r in fe.event_rows(doc)[0] if r["kind"] == "capex_approval"]
+
+
+def test_t242_r3_fix7_customer_forms_fill_the_awarder() -> None:
+    forms = [
+        ("Name(s) of the entity awarding the order [s) /Contract(s) Jaypee Infratech Limited 2. Significant terms "
+         "and conditions", "Jaypee Infratech Limited"),
+        ("Name(s) of the entity awarding the order [s) /Contract(s) UP Jal Nigam (Urban) 2. Significant terms and "
+         "conditions", "UP Jal Nigam (Urban)"),
+        ("Name of the entity awarding the contract Mahamana Pandit Madan Mohan Malaviya Cancer Centre & Homi Bhabha "
+         "Cancer Hospital (MPMMCC), Banaras Hindu University (BHU), Varanasi Nature of contract Extension",
+         "Mahamana Pandit Madan Mohan Malaviya Cancer Centre & Homi Bhabha Cancer Hospital (MPMMCC)"),
+        ("Name of the entity awarding the order(s)/contract(s) Details Autonomous Scientific Society under the "
+         "administrative control of Ministry of Electronics & Information Technology, Government of India (b) "
+         "Significant terms", "Autonomous Scientific Society"),
+    ]
+    for text, expected in forms:
+        raw = fe._annexure_awarders(text)
+        assert raw and fe._clean_party(raw[0], from_annexure=True) == expected, (text, raw)
+    doc = _doc("New orders worth Rs. 1,025 Crores",
+               "KEC International has secured new orders of Rs. 1,025 crores: 765 kV GIS Substation in India, "
+               "from Power Grid Corporation of India Limited (PGCIL) for T&D projects.")
+    assert _row(fe.event_rows(doc)[0], "order_win")["customer"] == "Power Grid Corporation of India Limited (PGCIL)"
+
+
+def test_t242_r3_fold_keeps_two_orders_whose_values_differ() -> None:
+    def order_doc(amount_cr: float, filing_date: str, known_at: str, key: str) -> dict[str, Any]:
+        return _doc(
+            f"We are pleased to enclose a copy of the press release with respect to new orders of Rs. "
+            f"{amount_cr:,.0f} Crores secured by the Company.",
+            f"KEC International Ltd. has secured new orders of Rs. {amount_cr:,.0f} crores across its businesses. "
+            "765 kV GIS Substation in India, from Power Grid Corporation of India Limited (PGCIL).",
+            symbol="KEC", doc_key=key, filing_date=filing_date, known_at=known_at,
+        )
+
+    rows = fe.event_rows(order_doc(1025.0, "2024-06-26", "2024-06-26T17:50:00", "a"))[0] \
+        + fe.event_rows(order_doc(1017.0, "2024-07-02", "2024-07-02T17:58:00", "b"))[0]
+    assert len(fe._fold_same_order(rows, [])) == 2

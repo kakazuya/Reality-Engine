@@ -217,6 +217,33 @@ _RAISE_OUTBOUND_VETO = re.compile(
     r"|\btarget\s+company\b",
     re.I,
 )
+# T-242: a kind enters VERIFIED_KINDS only after its own fresh strict 60-row grade.  ``order_win`` passed it
+# (25 R / 5 P / 0 W / 0 J on the 24 Nov 2026 fresh3 grade); every other kind is stored ``unverified`` until its
+# own 60-row pass, so a non-order row is never presented as verified evidence.
+VERIFIED_KINDS = frozenset({"order_win"})
+# a title naming the company's own QIP/NCD/preferential/rights issue is never vetoed by the agreement words below
+# (the annexure of a genuine issuance also prints "sanction letter" / "facility" boilerplate).
+_OWN_ISSUE_TITLE = re.compile(
+    r"\bQIP\b|qualified\s+institutions?\s+placement|preferential\s+(?:issue|allotment|offer)"
+    r"|rights\s+issue|non[-\s]?convertible\s+debentures?|\bNCDs?\b|\bfund\s*[- ]?rais\w*"
+    r"|\braising\s+of\s+funds\b"
+    r"|\b(?:issue|issuance|allotment)\s+of\s+(?:[\d,]{2,}\s+)?(?:equity\s+)?(?:shares?|warrants?|debentures?)\b",
+    re.I)
+# an agreement update is not a fund raise: a credit facility revised or surrendered, a warrant lapse or forfeiture,
+# a stake bought in a subsidiary (fresh3 #16, #19, #21, #43, #45).
+_RAISE_AGREEMENT_VETO = re.compile(
+    r"\bcredit\s+facilit(?:y|ies)\b|\bfacilit(?:y|ies)\s+agreement\b"
+    r"|\b(?:working\s+capital|term\s+loan|overdraft)\s+(?:facility|loan|limit)s?\b"
+    r"|\b(?:sanction(?:ed|ing)?|sanction\s+letter)\b[^.]{0,40}\b(?:credit|facility|limit|loan|borrowing)\b"
+    r"|\b(?:supplemental|amendatory|addendum)\b[^.]{0,80}\b(?:agreement|facility|loan)\b"
+    r"|\blimits?\s+(?:stand\s+|stands\s+)?(?:enhanced|reduced|increased|revised|surrendered)\b"
+    r"|\b(?:enhanc\w*|reduc\w*|reduction|revis\w*|surrender\w*)\b[^.]{0,30}"
+    r"\b(?:credit\s+)?(?:facility|limit|sanction)s?\b"
+    r"|\bforfeit\w*\b|\bnon[-\s]receipt\b|\bwarrants?\b[^.]{0,120}\blapse[ds]?\b"
+    r"|\binvest\w*\b[^.]{0,60}\b(?:in|into)\b[^.]{0,40}"
+    r"\b(?:wholly[-\s]owned|subsidiary|joint\s+venture|associate)s?\b"
+    r"|\bsubscri(?:be|bed|ption)\b[^.]{0,60}\b(?:shares|equity)\b[^.]{0,20}\b(?:of|in)\b",
+    re.I)
 _MARKET_CAP_CUE = re.compile(r"\bmarket\s+capitali[sz]ation\b|\bmarket\s+cap\b", re.I)
 # A regulator's or a court's "order" is not a customer order.  The test is an order-shaped phrase, never the
 # bare words GST/customs/tax: "excluding GST" is printed on every genuine order value (it cost BLKASHYAP 910 cr
@@ -285,13 +312,23 @@ _CAPEX_VETO = re.compile(r"statement\s+of\s+deviation|utilisation|utilization|\b
                          r"|new\s+line\s+of\s+business|credit\s+rating|audited\s+financial\s+statements"
                          r"|financial\s+statements?\s+for\s+the\s+(?:year|quarter)"
                          r"|\brefinanc\w*\b|\bexisting\s+debts?\b"
-                         r"|exploring|to\s+consider|proposal\s+to|enabling\s+resolution", re.I)
+                         r"|exploring|to\s+consider|proposal\s+to|enabling\s+resolution"
+                         # T-242: a stake bought is not the company's capex, and the target's project cost is
+                         # never its spend (fresh3 #51).
+                         r"|\b(?:acquir\w*|acquisition)\b[^.]{0,80}?\b\d{1,3}(?:\.\d+)?\s*(?:%|per\s*cent)"
+                         r"\s*(?:equity\s+)?(?:stake|shareholding|interest|shares?)\b"
+                         r"|\b\d{1,3}(?:\.\d+)?\s*(?:%|per\s*cent)\s*(?:equity\s+)?(?:stake|shareholding)\b"
+                         r"|\bshare\s+purchase\s+agreement\b"
+                         r"|\binvestment\s+in\b[^.]{0,50}\b(?:subsidiary|joint\s+venture|associate)\b", re.I)
 _CAPEX_STRONG = re.compile(
     r"\b(?:capital\s+expenditure|capex|project\s+cost|estimated\s+cost"
     r"|expansion\s+(?:project|programme|plan|at|of)\b|capacity\s+expansion|greenfield|brownfield"
     r"|setting\s+up\s+(?:of\s+)?(?:a|an|the|its)?\s*(?:new\s+)?(?:plant|unit|line|facility))\b", re.I)
 _AMEND_VETO = re.compile(r"credit\s+rating|rating\s+(?:action|revision|reaffirm)"
                          r"|statement\s+of\s+deviation|utilisation|utilization", re.I)
+# an L-1/lowest-bidder intimation is an award, never a variation of an existing order (fresh3 #52).
+_LOWEST_BIDDER = re.compile(r"\bL\s*[-\u2013]\s*1\b|\blowest\s+(?:bidder|tenderer)\b|\bL1\s+(?:status|bidder)\b",
+                            re.I)
 # an approved/proposed capacity is a plan until the sentence says it is commissioned.
 _CAPACITY_APPROVED = re.compile(r"\b(?:approved|approves|proposed|setting\s+up|to\s+be\s+set\s+up|will\s+set\s+up)\b",
                                 re.I)
@@ -618,13 +655,21 @@ def _order_amendment_clause(title: str, head: str) -> str | None:
     clean_head = _SEBI_AMEND_BOILERPLATE.sub(" ", head or "")
     opening = _flat(f"{clean_title} {clean_head[:2000]}")
     whole = _flat(f"{clean_title} {clean_head}")
-    if _AMEND_VETO.search(_flat(clean_title)) or _ORDER_VETO.search(opening) or not _ORDER_WORD.search(whole):
+    if _AMEND_VETO.search(_flat(clean_title)) or _LOWEST_BIDDER.search(opening) \
+            or _ORDER_VETO.search(opening) or not _ORDER_WORD.search(whole):
         return None
     subject, first_sents = _subject_and_first_sentences(clean_title, clean_head, count=3)
     gate_texts = [clean_title, subject, *first_sents]
-    if not any((_AMEND_CUE.search(t) or _CANCEL_REDUCE_CUE.search(t))
-               and not re.search(r"\bnot\s+applicable\b", t, re.I)
-               for t in gate_texts if t):
+    not_applicable = re.compile(r"\bnot\s+applicable\b", re.I)
+    gate_amends = [t for t in gate_texts if t and _AMEND_CUE.search(t) and not not_applicable.search(t)]
+    gate_reduces = [t for t in gate_texts if t and _CANCEL_REDUCE_CUE.search(t) and not not_applicable.search(t)]
+    if not (gate_amends or gate_reduces):
+        return None
+    if not gate_amends and not any(re.search(r"\bextension\b|\bextended\b", t, re.I)
+                                   for t in gate_texts if t) \
+            and re.search(r"\bletter\s+of\s+award\b|\bnew\s+orders?\b", opening, re.I):
+        # a fresh letter of award whose project name says "loss reduction" is a win, never a negative variation
+        # (fresh3 #58); an extension stays an amendment.
         return None
     sentences = [clean_title] + _clauses(clean_head)
     cue_at = next(
@@ -741,10 +786,21 @@ _CUSTOMER_CUTS = re.compile(
 _FOR_ENTITY_HEAD = re.compile(
     r"^(?:centre|center|institute|council|society|agency|authority|foundation|department|association|board"
     r"|(?:national\s+)?bank|corporation|commission|directorate|ministry|university)\b", re.I)
+# T-242: "from <Entity Name> (Limited|Ltd|Nigam|Corporation|Authority|...)" -- the awarder a press release names
+# in prose without a Reg 30 annexure row (fresh3 #30).  The printed suffix, never a bare "from the Company".
+_ENTITY_TAIL = (
+    r"(?:Limited|Ltd|LLC|Inc|Corporation|Corpn|Authority|Nigam|Board|Commission|Ministry|Department"
+    r"|Government|University|Institute|Society|Bank|Company|Corporates?|Enterprises?|Industries"
+    r"|Services?|Technologies?|Infrastructure|Ports?|Railways?|Metro|Council|Foundation)")
+_FROM_ENTITY = re.compile(
+    r"(?:[Ff]rom|[Aa]warded\s+[Bb]y|[Nn]ame\s+of\s+(?:the\s+)?[Pp]arty\b[^A-Za-z0-9]{0,60}?)"
+    r"\s+(?:M/s\.?\s+|Messrs\.?\s+)?"
+    r"(?P<name>[A-Z][A-Za-z0-9&.'’()\-]*"
+    r"(?:\s+(?:[A-Z][A-Za-z0-9&.'’()\-]*|of|the|and|for)){0,8}\s+" + _ENTITY_TAIL
+    + r"(?:\s*\([^)]{0,20}\))?)(?=[\s,.;:)•]|$)")
 _ANNEXURE_AWARDER = re.compile(
-    r"name\s+of\s+(?:the\s+)?(?:entity|entities|customer|client|party)"
-    r"(?:\s*\([^)]{0,40}\))?"
-    r"[:;\s]+(?P<cust>.+?)"
+    r"\bname\s*(?:\(\s*s?\s*\))?\s*of\s+(?:the\s+)?(?:entity|entities|customer|client|party)"
+    r"[^:;]{0,140}?(?P<cust>.+?)"
     r"(?=\s*(?:\b[b-k]\s*[.)]?\s*(?:significant|nature|whether|time|broad|details|date)"
     r"|\b[2-9]\s*[.)]?\s*(?:significant|nature|whether|time|broad|details|date)"
     r"|\bsignificant\s+terms|\bnature\s+of\s+(?:the\s+)?(?:o\S{0,2}der|contract)"
@@ -755,10 +811,13 @@ _ANNEXURE_AWARDER = re.compile(
 _ANNEXURE_LABEL_STRIP = re.compile(
     r"\b(?:to\s+which|from\s+which)\b[^:;\n]{0,50}?\bawarded\b"
     r"|\bawarding\s+(?:the\s+)?"
-    r"|\bo\S{0,2}der(?:\s?\(?s\)?)?(?:\s*(?:/|or|and|&)\s*)?con\S{1,6}a?ct(?:\s?\(?s\)?)?"
-    r"|\bo\S{0,2}der(?:\s?\(?s\)?)?"
-    r"|(?:the\s+)?contract(?:\s?\(?s\)?)?\s*(?=[:;|]|$)",
+    r"|\bo\S{0,2}der\s*(?:[\[\(]\s*s?\s*[\)\]]\s*)?(?:\s*(?:/|or|and|&)\s*)?con\S{1,8}?ct"
+    r"\s*(?:[\[\(]\s*s?\s*[\)\]]\s*)?"
+    r"|\/\s*con\S{1,8}?ct\s*(?:[\[\(]\s*s?\s*[\)\]]\s*)?"
+    r"|\bo\S{0,2}der\s*(?:[\[\(]\s*s?\s*[\)\]]\s*)?"
+    r"|(?:the\s+)?contract(?:\s?\(?s?\)?)?\s*(?=[:;|]|$)",
     re.I)
+
 
 
 def _annexure_awarders(text: str) -> list[str]:
@@ -768,6 +827,8 @@ def _annexure_awarders(text: str) -> list[str]:
     for match in _ANNEXURE_AWARDER.finditer(flat):
         raw = _ANNEXURE_LABEL_STRIP.sub(" ", match.group("cust"))
         raw = re.sub(r"\s+", " ", raw).strip(" ;:,.-|")
+        raw = re.sub(r"^(?:details?|particulars|contract|order|entity|party|name)\b[\s:;-]*",
+                     "", raw, flags=re.I)
         if raw:
             out.append(raw)
     return out
@@ -787,6 +848,11 @@ def _clean_party(text: Any, *, from_annexure: bool = False) -> str | None:
         head, sep, _tail = value.partition(" for ")
         if sep and len(head) > 3 and not _FOR_ENTITY_HEAD.match(head.strip()):
             value = head
+        value = re.split(r",\s*\d+\s*[/-]", value)[0]      # a printed street address after the entity
+        value = re.sub(r"\s+under\s+(?:the\s+)?(?:administrative\s+)?control\s+of\b.*$", "", value,
+                       flags=re.I)                        # "Society under the administrative control of ..."
+        value = re.sub(r"\),\s*(?:[A-Z][A-Za-z.&'-]*\s+){1,6}(?:University|College|Vidyalaya)\b.*$",
+                       ")", value)                        # "Institute (MPMMCC), Banaras Hindu University, Varanasi"
     else:
         cut = _CUSTOMER_CUTS.search(value)
         if cut and cut.start() > 3:
@@ -796,7 +862,8 @@ def _clean_party(text: Any, *, from_annexure: bool = False) -> str | None:
     value = re.sub(r"\s+Ref\.?(?:\s*:.*)?$", "", value)
     value = re.sub(r"\s+[1-9]$", "", value)
     value = value.strip(" ;:,.-—–")
-    if not value or len(value) < 3 or len(value) > 80 or _BAD_CUSTOMER.search(value):
+    if not value or len(value) < 3 or len(value) > (120 if from_annexure else 80) \
+            or _BAD_CUSTOMER.search(value):
         return None
     if not re.search(r"[A-Z]", value) or re.search(r"\bFY\s?\d{2}\b", value):
         return None
@@ -1021,6 +1088,12 @@ def order_fields(title: str, text: str, symbol: str = "",
             awarder = _clean_party(named.group(1), from_annexure=False)
             if awarder:
                 customers.append(awarder)
+    if not customers and allow_body_customer:
+        for match in _FROM_ENTITY.finditer(_flat(text)):
+            awarder = _clean_party(match.group("name"), from_annexure=False)
+            if awarder:
+                customers.append(awarder)
+                break
     months = {r["duration_months"] for r in records if r.get("duration_months") is not None}
     execution_months = months.pop() if len(months) == 1 else None
     if execution_months is None:
@@ -1371,7 +1444,11 @@ def _printed_event_date(text: str) -> str | None:
 
 
 def _is_stale_commissioning_clause(clause: str, filing_date: str | None) -> bool:
-    """True when the clause dates the commissioning >90 days before ``filing_date`` (restated history)."""
+    """True when the clause dates the commissioning >90 days before ``filing_date`` (restated history).
+
+    T-242: a numeric date the clause prints for the capacity ("vide our letter dated 01.08.2018") is the
+    commissioning date; more than 12 months before the filing it is restated history (#6).
+    """
     if not filing_date:
         return False
     try:
@@ -1379,6 +1456,16 @@ def _is_stale_commissioning_clause(clause: str, filing_date: str | None) -> bool
     except ValueError:
         return False
     body = _flat(clause)
+    for pattern in (r"\b(\d{1,2})[./-](\d{1,2})[./-](\d{4})\b", r"\b(\d{4})-(\d{1,2})-(\d{1,2})\b"):
+        for m in re.finditer(pattern, body):
+            parts = [int(m.group(i)) for i in range(1, 4)]
+            try:
+                dt = date(parts[2], parts[1], parts[0]) if pattern.startswith(r"\b(\d{1,2})") \
+                    else date(parts[0], parts[1], parts[2])
+            except ValueError:
+                continue
+            if (filed - dt).days > 365:
+                return True
     month_abbr = {
         "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
         "jul": 7, "aug": 8, "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dec": 12,
@@ -1603,6 +1690,21 @@ def _raise_size(sentence: str, body: str) -> tuple[float | None, str | None, int
 
 
 _RAISE_STAGE_RANK = {"allotment": 5, "completion": 4, "approval": 3, "listing": 2, "proposed": 1, "intimation": 1}
+# T-242: only a completed allotment is ``allotment``; a board meeting that approves an issue is ``approval``
+# even when the annexure prints "allotment" in a future sense ("allotment of up to", "date of allotment") (#29,
+# #46, #60).  "allotted" alone is not enough: "to be allotted"/"assumed to be allotted" state a plan.
+_ALLOTMENT_DONE = re.compile(
+    r"\b(?:issue|issuance)\s+and\s+allotment\b"
+    r"|\b(?:has|have|had)\s+(?:been\s+)?allotted\b"
+    r"|\b(?:shares?|warrants?|debentures?|securities)\s+(?:have|has|were|was)\s+been\s+allotted\b"
+    r"|\ballotment\s+of\s+[\d,]{3,}\s+(?:equity\s+)?(?:shares?|warrants?|debentures?)\b"
+    r"|\ballotted\s+(?:on|today|pursuant)\b"
+    r"|\bbasis\s+of\s+allotment\b", re.I)
+_APPROVAL_ONLY = re.compile(
+    r"\bapproved\s+(?:the\s+)?(?:issuance|issue)\b"
+    r"|\bconsidered\s+and\s+approved\b"
+    r"|\bsubject\s+to\s+(?:the\s+)?(?:approval|consent)\s+of\s+(?:the\s+)?(?:shareholders?|members?)\b"
+    r"|\benabling\s+resolution\b", re.I)
 _SEBI_TEMPLATE_LINE = re.compile(
     r"\bin\s+case\s+of\s+(?:preferential\s+issue|bonus\s+issue|issuance\s+of)[^.\n]{0,220}?(?:not\s+applicable|n\.?\s?a\.?)"
     r"|\btype\s+of\s+issuance\s*\([^)]+\)"
@@ -1621,12 +1723,16 @@ def _raise_stage(title: str, head: str) -> str:
                  r"|\b(?:egm|agm)\s+to\s+be\s+held\b", combined) \
             and not re.search(r"\bsummary\s+of\s+proceedings|\boutcome\s+of\s+(?:the\s+)?(?:egm|agm)\b", combined):
         return "proposed"
-    if re.search(r"basis of allotment|allotted|issue and allotment|\ballotment\s+of\b",
-                 title_low + " " + heading):
+    stage_text = title_low + " " + heading
+    if _ALLOTMENT_DONE.search(stage_text):
         return "allotment"
+    if re.search(r"\bpost[-\s]?allotment\b", stage_text) and not _APPROVAL_ONLY.search(stage_text):
+        return "allotment"              # an outcome-of-subscription table prints the completed allotment
     if re.search(r"listing\s+approval|trading\s+approval|in[-\s]?principle\s+approval|admitted to dealings",
                  title_low):
         return "listing"
+    if _APPROVAL_ONLY.search(stage_text):
+        return "approval"
     if re.search(r"\bnot\s+exceeding\b|postal ballot|approved|approval|shareholders.{0,30}approved|key terms", heading):
         return "approval"
     if re.search(r"issue (?:opened|closed)|completed the issue|proceeds of the (?:issue|rights)", heading):
@@ -1646,6 +1752,9 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
         return None                 # a note deep in a financial statement is not the company's raise
     opening = re.split(r"\bAnnexure\b", head, maxsplit=1, flags=re.I)[0][:1200]
     flat_opening = _flat(f"{title} {opening}")
+    if _RAISE_AGREEMENT_VETO.search(_flat(f"{title} {head}")) \
+            and not _OWN_ISSUE_TITLE.search(_flat(title)):
+        return None                 # a facility/loan revision, warrant lapse or stake purchase is not an issuance
     if _RAISE_DEBT_VETO.search(flat_opening):
         return None
     if _RAISE_OUTBOUND_VETO.search(flat_opening) and not re.search(
@@ -1841,6 +1950,19 @@ def _locate(row: dict[str, Any], doc: dict[str, Any]) -> str | None:
     return "value not printed on the page"
 
 
+def _gate_status(row: dict[str, Any]) -> None:
+    """Only a kind that passed its own fresh strict 60-row grade is stored ``verified`` (T-242).
+
+    The quarantine and parent-scope branches keep their own status; this is the last gate before ``verified``.
+    """
+    if row["kind"] in VERIFIED_KINDS:
+        row["status"] = "verified"
+        return
+    row["status"] = "unverified"
+    note = f"kind_not_gated: {row['kind']} awaits its own 60-row grade"
+    row["detail"] = f"{row['detail']}; {note}" if row.get("detail") else note
+
+
 def _assemble_row(doc: dict[str, Any], kind: str, fields: dict[str, Any],
                   seq: int = 1) -> tuple[dict[str, Any], bool]:
     title, text = doc.get("title") or "", doc.get("text") or ""
@@ -1878,7 +2000,7 @@ def _assemble_row(doc: dict[str, Any], kind: str, fields: dict[str, Any],
         row["status"] = "unverified"
         row["detail"] = "parent-company release"
     else:
-        row["status"] = "verified"
+        _gate_status(row)
     return row, False
 
 
@@ -1997,7 +2119,7 @@ def _fold_same_order(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -
                            - date.fromisoformat(str(prior["filing_date"]))).days)
             except (TypeError, ValueError):
                 continue
-            if gap <= 7 and _same_value(prior, row):
+            if gap <= 7 and _same_value(prior, row, tolerance=0.005):
                 match = prior
                 break
             if 7 < gap <= 120:
@@ -2364,7 +2486,7 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str) -> list[dict[str
             row["status"] = "unverified"
             row["detail"] = "parent-company release"
         else:
-            row["status"] = "verified"
+            _gate_status(row)
         row["quote"] = row.get("quote") or _flat(doc.get("text"))[:MAX_QUOTE]
         rows.append(row)
     # one row per (filing, class): the best-filled of the model's own repeats

@@ -74,8 +74,13 @@ source in stage A).
   (`quote`). `_locate` matches the number against the page's own money/capacity spans, accepting the printed
   full-rupee form and a "crore"-suffixed full figure (`Rs. 7,40,06,30,000 Crore` -> 740.063 cr).
 
-Status: `verified` = every field printed and scope company; `unverified` = a computed figure, an amount the script
-could not fill, or a parent-scope row; `quarantined` = the value is not on the page. Final run: 0 quarantined.
+Status (T-242 round 3, 24 Nov 2026): `verified` = every field printed, scope company **and the row's kind is in
+`VERIFIED_KINDS`** (`frozenset({"order_win"})`; `_gate_status`); `unverified` = a computed figure, an amount the
+script could not fill, a parent-scope row, or a kind that has not passed its own fresh strict 60-row grade (detail
+`kind_not_gated: <kind> awaits its own 60-row grade`); `quarantined` = the value is not on the page. A kind joins
+`VERIFIED_KINDS` only after its own fresh 60-row grade, so `fund_raise`, `capex_approval`,
+`capacity_commissioned` and `order_amendment` rows are never verified until then. Run 24 Nov 2026 on the 20 fresh3
+stores: 251 events, 0 quarantined, no non-order row verified.
 
 ## 3b. Stage C rules
 
@@ -168,7 +173,7 @@ Recall (30 random order/contract/allot titled filings, seed 9, pool 914): 10 sho
 ## 7. Checks
 
 ```bash
-python -m pytest -q reality_engine/tests/test_filing_events.py   # 46 passed
+python -m pytest -q reality_engine/tests/test_filing_events.py   # 79 passed (T-242 round 3)
 python plugins/code-tools/ct.py typecheck reality_engine/research/filing_events.py \
   reality_engine/tests/test_filing_events.py                     # 0 errors
 ```
