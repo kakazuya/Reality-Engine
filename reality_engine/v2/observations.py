@@ -217,6 +217,15 @@ CREATE TABLE IF NOT EXISTS measure_alias (
     canonical TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS page_reply (
+    doc_key TEXT NOT NULL,
+    page INTEGER NOT NULL,
+    fingerprint TEXT NOT NULL,
+    raw TEXT NOT NULL,
+    read_at TEXT NOT NULL,
+    PRIMARY KEY (doc_key, page)
+);
+
 CREATE TABLE IF NOT EXISTS page_read (
     doc_key TEXT NOT NULL,
     page INTEGER NOT NULL,
@@ -5039,6 +5048,7 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
     # Scoped (--only) runs are gated too; the pilot allowance counts pages already in the output's ledger.
     from reality_engine.v2 import read_gate
     read_gate.check(list(doc_types), len(selected), out)
+    reply_fp = ",".join(f"{d}:{read_gate.fingerprint(d)}" for d in doc_types)   # which prompt wrote page_reply.raw
     statement_filter = {"kept": len(pages), "dropped": sum(dropped_by_reason.values()),
                         "by_reason": dict(sorted(dropped_by_reason.items(), key=lambda kv: -kv[1]))}
     if skip_statements:
@@ -5105,6 +5115,12 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                 continue
             rows = result["rows"]
             stats["read"] += 1
+            if result.get("raw"):
+                # T-241 (24 Nov): keep the reader's raw reply, so a script fix to parsing or row guards is re-applied
+                # offline (re-parse) instead of paying for the page again; the checkpoint of 2,000 pages proved
+                # the parse-side fixes keep coming.
+                con.execute("INSERT OR REPLACE INTO page_reply VALUES (?,?,?,?,?)",
+                            (result["doc_key"], int(result["page"]), reply_fp, result["raw"], ist_now()))
             if result.get("ocr_read"):
                 stats["ocr_read_pages"] += 1
             if not rows:

@@ -132,6 +132,8 @@ def test_checkpoint_stops_the_running_read(gates, tmp_path, monkeypatch):
     import sqlite3 as _sq
     con = _sq.connect(out)
     assert con.execute("SELECT COUNT(*) FROM page_read").fetchone()[0] == 2   # nothing recorded after the stop
+    replies = con.execute("SELECT raw, fingerprint FROM page_reply").fetchall()
+    assert len(replies) == 2 and replies[0][0] == "x" and replies[0][1].startswith("deck:")   # raw kept for re-parse
     con.close()
     with pytest.raises(rg.GateError, match="not graded"):
         rg.check(["deck"], 1, out)
