@@ -1123,3 +1123,367 @@ def test_t242_counter_genuine_orders_still_pass(cid: str, expected_amt: float, e
     assert row["amount_inr_cr"] == pytest.approx(expected_amt, rel=1e-4)
     assert row["customer"] == expected_customer
     assert row["status"] == "verified"
+
+
+# ---- T-242 round 2 fixes (new20 + pilot counter-tests) ----------------------------------------------------
+def test_t242_r2_fix1_capacity_rejections_and_new_rules() -> None:
+    # e113: acquisition of 49% of LBPL (plant commissioned Dec 2021) -> rejected
+    e113 = _doc(
+        "This is in continuation of our letter dated 05.02.2026. Please find enclosed disclosure under Regulation 30",
+        "Acquisition of equity shares in Leafiniti Bioenergy Private Limited. 1 Name of the Target Company: "
+        "LBPL owns and operates CBG Plant with the capacity of 10.2 TPD. 10 Brief background: In December 2021, "
+        "LBPL commissioned its first press mud based CBG plant with a capacity to produce 10.2 TPD of CBG.",
+        symbol="GAIL", filing_date="2026-03-18",
+    )
+    assert not [r for r in fe.event_rows(e113)[0] if r["kind"] == "capacity_commissioned"]
+
+    # e84: results press release with 600 MW Khavda foundation stone + Q2 52.83 MW bullet -> rejected
+    e84 = _doc(
+        "Please refer the attachment.",
+        "Sub: Press Release. Press Release NLCIL REGISTERS HIGHEST EVER REVENUE FROM OPERATIONS. "
+        "Major Highlights during the Q2 2025-26 "
+        "• Hon'ble Prime Minister of India laid the foundation stone for NLCIL's 600 MW solar project at Khavda. "
+        "• The first phase (52.83 MW) of the 300 MW Solar Power Project at Barsingsar, Rajasthan was successfully commissioned.",
+        symbol="NLCINDIA", filing_date="2025-10-29",
+    )
+    assert not [r for r in fe.event_rows(e84)[0] if r["kind"] == "capacity_commissioned"]
+
+    # e44: MoU press release restating Apr 2024 10 MW unit -> rejected
+    e44 = _doc(
+        "Please find enclosed a copy of Press Release on 'GAIL and Cummins sign MoU for collaboration on clean energy at IEW 2025'.",
+        "GAIL and Accelera by Cummins have signed a Memorandum of Understanding (MoU) to collaborate in green energy. "
+        "GAIL which always has been promoting clean energy, commissioned a 10 MW Green Hydrogen unit at its plant at "
+        "Vijaipur, Guna Distt. M.P in April 2024.",
+        symbol="GAIL", filing_date="2025-02-14",
+    )
+    assert not [r for r in fe.event_rows(e44)[0] if r["kind"] == "capacity_commissioned"]
+
+    # e77: 52.83 MW commissioned phase 1, not 300 MW project name
+    e77 = _doc(
+        "Please refer the attachment.",
+        "Sub: Disclosure under Regulation 30 – Commencement of Commercial Operation of Solar Power Project. "
+        "In terms of Regulation 30, we write to inform that the first phase of the “300 MW Solar Power Project” of the "
+        "Company, with a capacity of 52.83 MW has been successfully commissioned and declared commercially operational "
+        "at Barsingsar, Distt. Bikaner, Rajasthan.",
+        symbol="NLCINDIA", filing_date="2025-08-26",
+    )
+    r77 = _row(fe.event_rows(e77)[0], "capacity_commissioned")
+    assert r77["capacity_value"] == pytest.approx(52.83)
+    assert r77["capacity_unit"] == "mw"
+    assert r77["plant"] == "Barsingsar"
+
+    # e29: 660 MW Ghatampur COD; plant never 'India'
+    e29 = _doc(
+        "Press release dated 12.12.2024",
+        "Sub: Intimation under SEBI (LODR) Regulations, 2015 – Press Release. "
+        "We hereby furnish herewith a copy of the Press Release dated 12.12.2024. PRESS RELEASE "
+        "NLC INDIA LIMITED'S FIRST SUPERCRITICAL POWER PLANT BEGINS COMMERCIAL OPERATION "
+        "NLC India Limited (NLCIL) proudly announces the commencement of commercial operations of the first unit of "
+        "its 3 x 660 MW Ghatampur Thermal Power Plant (GTPP) in Uttar Pradesh. Notably, this 660 MW capacity addition "
+        "marks the first fossil fuel-based Thermal Power Plant commissioned in India in this financial year.",
+        symbol="NLCINDIA", filing_date="2024-12-12",
+    )
+    r29 = _row(fe.event_rows(e29)[0], "capacity_commissioned")
+    assert r29["capacity_value"] == pytest.approx(660.0)
+    assert r29["plant"] != "India"
+
+
+def test_t242_r2_fix1_missed_commissioning_filings_and_r_counter_tests() -> None:
+    chhara = _doc(
+        "We wish to inform about the successful commissioning of LNG Regasification terminal of 5 MMTPA capacity at Chhara, Gujarat.",
+        "Sub.: Commissioning of LNG Regasification Terminal set up by wholly owned subsidiary HPCL LNG Limited. "
+        "Dear Sir / Madam, we wish to inform about the successful commissioning of LNG Regasification Terminal of "
+        "5 MMTPA capacity at Chhara, Gujarat set up by M/s HPCL LNG Ltd. The Terminal has been set up at an approx. "
+        "investment of Rs. 4750 Crores.",
+        symbol="HINDPETRO", filing_date="2025-01-13",
+    )
+    r_chhara = _row(fe.event_rows(chhara)[0], "capacity_commissioned")
+    assert r_chhara["capacity_value"] == pytest.approx(5.0)
+    assert r_chhara["capacity_unit"] == "mmtpa"
+    assert r_chhara["plant"] == "Chhara"
+    assert r_chhara["status"] == "verified"
+
+    visakh = _doc(
+        "Commissioning of Residue Upgradation Facility with World's first LC-Max Unit at HPCL Visakh Refinery",
+        "Sub: Commissioning of Residue Upgradation Facility with World's first LC-Max Unit at HPCL Visakh Refinery. "
+        "Dear Sir(s), Pursuant to Regulation 30, we wish to inform that HPCL has successfully commissioned the Residue "
+        "Upgradation Facility (RUF) at its 15 MMTPA Visakh Refinery. With a capacity of 3.55 MMTPA, RUF employs "
+        "advanced LC-Max based residue hydrocracking technology.",
+        symbol="HINDPETRO", filing_date="2026-01-03",
+    )
+    r_visakh = _row(fe.event_rows(visakh)[0], "capacity_commissioned")
+    assert r_visakh["capacity_value"] == pytest.approx(3.55)
+    assert r_visakh["capacity_unit"] == "mmtpa"
+    assert r_visakh["plant"] == "HPCL Visakh Refinery"
+    assert r_visakh["status"] == "verified"
+
+    sk_solar = _doc(
+        "Commissioning of Solar Power Plant",
+        "Sub: Intimation under Regulation 30(6) - Reappointment of Mr. Rajendra Gandhi as Managing Director and "
+        "Commissioning of Solar Power Plant. "
+        "2. Commissioning of Solar Power Plant: The Company commissioned 4 MWp of Solar Power Plant on roof top of "
+        "newly built Unit 3 at a cost of Rs. 13.88 cr.",
+        symbol="STOVEKRAFT", filing_date="2024-08-10",
+    )
+    r_solar = _row(fe.event_rows(sk_solar)[0], "capacity_commissioned")
+    assert r_solar["capacity_value"] == pytest.approx(4.0)
+    assert r_solar["capacity_unit"] == "mwp"
+    assert r_solar["status"] == "verified"
+
+    sk_foundry = _doc(
+        "Commissioning of Cast Iron foundry",
+        "Sub: Commissioning of Cast Iron foundry "
+        "Pursuant to the Regulation 30, we wish to inform that today, i.e., 25 November 2024, the Company commissioned "
+        "the newly constructed Cast Iron Foundry at Harohalli factory. The said foundry is built at a cost of Rs. 40 "
+        "Crores. The Foundry's current installed capacity of 2.2 million pieces per annum and has been designed to "
+        "reach 4.4 million pieces per annual in future.",
+        symbol="STOVEKRAFT", filing_date="2024-11-25",
+    )
+    r_foundry = _row(fe.event_rows(sk_foundry)[0], "capacity_commissioned")
+    assert r_foundry["capacity_value"] == pytest.approx(2.2)
+    assert r_foundry["capacity_unit"] == "mn_pieces"
+    assert r_foundry["plant"] == "Harohalli"
+    assert r_foundry["status"] == "verified"
+
+    # Counter-tests for graded R rows: pilot E05 (BLUEJET) & new20 id=175 (GAIL GMPL)
+    bluejet_e05 = _doc(
+        "The Company at its existing facility at Ambernath has successfully commissioned multi-product production block",
+        "Sub: Disclosure under Regulation 30 – Commissioning of multi- product Production block at Ambernath [Unit II]. "
+        "Blue Jet Healthcare Limited at the Company's existing Unit 2 facility situated at Ambernath, Maharashtra, "
+        "has successfully completed commissioned multi-product Production block and commenced manufacturing of Validation "
+        "Batches w.e.f 29th June 2024. 1. Existing capacity 1020.90 KL. 3. Installed capacity addition 120 KL.",
+        symbol="BLUEJET", filing_date="2024-06-30",
+    )
+    r_e05 = _row(fe.event_rows(bluejet_e05)[0], "capacity_commissioned")
+    assert r_e05["capacity_value"] == pytest.approx(120.0) and r_e05["status"] == "verified"
+
+    gail_175 = _doc(
+        "Successfully Commissions 1.25 million tons per annum PTA Manufacturing Plant at Mangalore",
+        "GAIL Mangalore Petrochemicals Limited (GMPL), a wholly owned subsidiary of GAIL (India) Limited (GAIL) has "
+        "successfully commissioned its 1.25 MTPA Purified Terephthalic Acid (PTA) manufacturing plant located in the "
+        "Mangalore Special Economic Zone (MSEZ), Karnataka. In the year 2023, GAIL acquired JBPL through the CIRP.",
+        symbol="GAIL", filing_date="2026-11-05",
+    )
+    r_175 = _row(fe.event_rows(gail_175)[0], "capacity_commissioned")
+    assert r_175["capacity_value"] == pytest.approx(1.25) and r_175["capacity_unit"] == "mtpa"
+    assert r_175["status"] == "verified"
+
+
+def test_t242_r2_fix2_fund_raise_rules_and_r_counter_tests() -> None:
+    # e127: Market Capitalisation Rs.46,660 Cr must not produce fund_raise
+    e127 = _doc(
+        "Please refer the attachment",
+        "Press Release: NLCIL Records Historic Financial Performance. "
+        "Listing of NIRL through fresh issue of equity shares approved. "
+        "NLCIL's shares traded at an All Time Highest Ever Market Price of Rs.336.50 per share with Market "
+        "Capitalisation reached more than Rs.46,660 Cr.",
+        symbol="NLCINDIA", filing_date="2026-05-13",
+    )
+    assert not [r for r in fe.event_rows(e127)[0] if r["kind"] == "fund_raise"]
+
+    # e122: company investing in another firm (Nimble Vision) must not produce fund_raise
+    e122 = _doc(
+        "Intimation for execution of Shareholders Agreement",
+        "A Share Subscription and Shareholders Agreement has been executed amongst WABAG and Nimble Vision Private "
+        "Limited. WABAG shall subscribe to 955 Equity Shares of Nimble Vision, for an investment of ~ INR 3.00 Crores. "
+        "First right to share subscription in case of issuance of shares.",
+        symbol="WABAG", filing_date="2026-04-17",
+    )
+    assert not [r for r in fe.event_rows(e122)[0] if r["kind"] == "fund_raise"]
+
+    # e52: NCD allotment with SEBI template 'In case of preferential issue ... Not Applicable' -> instrument='ncd'
+    e52 = _doc(
+        "Issue of Unsecured, Redeemable, Non-Convertible, Non-Cumulative, Taxable Debentures on Private Placement Basis",
+        "Sub.: Issue of Unsecured, Redeemable, Non-Convertible, Non-Cumulative, Taxable Debentures on Private Placement "
+        "Basis. The Company had issued Unsecured, Redeemable, Non-Convertible, Non-Cumulative, Taxable Debentures of "
+        "Rs.1,00,000/- each aggregating to Rs. 2500 Crores on private placement basis. "
+        "ii. post allotment of securities - outcome of the subscription. "
+        "4. In case of preferential issue the listed entity shall disclose the following additional details: Not Applicable",
+        symbol="HINDPETRO", filing_date="2025-04-29",
+    )
+    r52 = _row(fe.event_rows(e52)[0], "fund_raise")
+    assert r52["amount_inr_cr"] == pytest.approx(2500.0)
+    assert r52["instrument"] == "ncd"
+    assert r52["raise_stage"] == "allotment"
+
+    # e35: QIP board approval 'not exceeding ₹ 350 Crores' -> raise_stage='approval'
+    e35 = _doc(
+        "Outcome of the Board meeting held today",
+        "Sub: Outcome of the Board meeting held today. The Board of Directors transacted: "
+        "2. Raising of funds by way of issuance of equity shares for an aggregate amount not exceeding ₹ 350 Crores "
+        "by way of qualified institutions placement ('QIP'). Type of issuance (further public offering, rights issue, "
+        "qualified institutions placement, preferential allotment etc.): Qualified institutional placements (QIP) "
+        "under Companies (Prospectus and Allotment of Securities) Rules, 2014.",
+        symbol="DEEPINDS", filing_date="2024-12-28",
+    )
+    r35 = _row(fe.event_rows(e35)[0], "fund_raise")
+    assert r35["amount_inr_cr"] == pytest.approx(350.0)
+    assert r35["instrument"] == "qip"
+    assert r35["raise_stage"] == "approval"
+
+    # Counter-test: Pilot R E17 (SANDUMA QIP with 'permitted to invest in such issuance') & new20 id=32 (YASHO)
+    e17 = _doc(
+        "Outcome of the Board meeting",
+        "Sub: Outcome of Board Meeting. The Board considered and approved raising of funds by way of issuance of "
+        "Equity Shares for an aggregate amount not exceeding ₹1,000 crore by way of Qualified Institutions Placement "
+        "(QIP) to such investors that may be permitted to invest in such issuance of Equity Shares.",
+        symbol="SANDUMA", filing_date="2024-09-16",
+    )
+    r17 = _row(fe.event_rows(e17)[0], "fund_raise")
+    assert r17["amount_inr_cr"] == pytest.approx(1000.0)
+    assert r17["instrument"] == "qip"
+    assert r17["raise_stage"] == "approval"
+    assert r17["status"] == "verified"
+
+    yasho_32 = _doc(
+        "Please find attached outcome",
+        "Sub: Outcome of Board Meeting. The Board has approved the issuance of upto 6,57,895 fully paid-up equity "
+        "shares on a preferential basis at a price of ₹1,900/- per equity share aggregating to a total consideration "
+        "of ₹1,25,00,00,500/-. The preferential allotment is proposed to be made to Malabar India Fund Limited.",
+        symbol="YASHO", filing_date="2024-12-18",
+    )
+    r32 = _row(fe.event_rows(yasho_32)[0], "fund_raise")
+    assert r32["amount_inr_cr"] == pytest.approx(125.0001)
+    assert r32["instrument"] == "preferential"
+    assert r32["raise_stage"] == "approval"
+    assert r32["status"] == "verified"
+
+
+def test_t242_r2_fix3_customer_cleanup_dotted_and_contract_label() -> None:
+    lic = _doc(
+        "Intimation for securing Digital workplace solutions contract from LIC worth Rs. 138.44 crores",
+        "1 Name of the entity awarding — the | Life Insurance Corporation (LIC) order(s)/contract(s) "
+        "2 significant terms and conditions of order(s)/contract(s) awarded in brief; Supply of Desktops "
+        "7 broad consideration or size of the order(s)/contract(s); Rs. 138.44 crores",
+        symbol="DSSL",
+    )
+    assert _row(fe.event_rows(lic)[0], "order_win")["customer"] == "Life Insurance Corporation (LIC)"
+
+    nabard = _doc(
+        "Dynacons secures Prestigious Contract worth Rs. 233 crores from NABARD",
+        "1 name of the entity awarding the | National Bank for Agriculture and Rural order(s)/contract(s) "
+        "Development (NABARD) 2 significant terms and conditions of order(s)/contract(s) awarded in brief; CBS "
+        "7 broad consideration or size of the order(s)/contract(s); Rs. 233 crores",
+        symbol="DSSL",
+    )
+    assert _row(fe.event_rows(nabard)[0], "order_win")["customer"] == (
+        "National Bank for Agriculture and Rural Development (NABARD)"
+    )
+
+    cpcl = _doc(
+        "WABAG secures order worth INR 145 Crores from Chennai Petroleum Corporation Limited",
+        "Sub.: WABAG secures order worth INR 145 Crores from Chennai Petroleum Corporation Limited "
+        "Ref.: Intimation under Regulation 30 of the SEBI Regulations. Please find enclosed intimation about "
+        "securing order worth INR 145 Crores from Chennai Petroleum Corporation Limited ('CPCL').",
+        symbol="WABAG",
+    )
+    assert _row(fe.event_rows(cpcl)[0], "order_win")["customer"] == "Chennai Petroleum Corporation Limited"
+
+    bapco = _doc(
+        "WABAG secures 7 years Operation Contract order worth around USD 14 Million (INR 121 Crores approx.)",
+        "WABAG continues to expand its presence securing an order worth ~USD 14 Million (~INR 121 Crores) from "
+        "BAPCO Refining B.S.C (BAPCO) towards operation (O&M) of Industrial Wastewater Treatment Plant for 7 years.",
+        symbol="WABAG",
+    )
+    assert _row(fe.event_rows(bapco)[0], "order_win")["customer"] == "BAPCO Refining B.S.C (BAPCO)"
+
+    gpt_rvnl = _doc(
+        "Press Release dated June 04, 2024 for the order bagged valued Rs. 547 Crores.",
+        "GPTINFRA Bags Order Valued at Rs. 547 Crore. "
+        "Name of the entity awarding the contract : Rail Vikas Nigam Limited "
+        "Nature of contract : Construction of Viaduct Portion "
+        "Size of contract : Rs. 547 Crore",
+        symbol="GPTINFRA",
+    )
+    assert _row(fe.event_rows(gpt_rvnl)[0], "order_win")["customer"] == "Rail Vikas Nigam Limited"
+
+
+def test_t242_r2_fix4_amendment_subject_gate_and_cancellation_customer() -> None:
+    # e55: SEBI LODR boilerplate 'and amendments thereof' must not classify a new order as order_amendment
+    e55 = _doc(
+        "Please find enclosed intimation for securing order worth Rs. 18.84 crores for CTS Scanner from Bank of Baroda",
+        "Sub: Intimation Under Regulation 30 of the SEBI Regulations, 2015. Dear Sir/Madam, "
+        "Pursuant to Regulation 30 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015, "
+        "and amendments thereof, please find enclosed intimation for securing order worth Rs. 18.84 Crores for "
+        "CTS Scanners from Bank of Baroda. "
+        "1 Name of the entity awarding the order(s)/contract(s) Bank of Baroda "
+        "7 broad consideration or size of the order(s)/contract(s); Rs. 18.84 Crores",
+        symbol="DSSL",
+    )
+    r55 = _row(fe.event_rows(e55)[0], "order_win")
+    assert r55["amount_inr_cr"] == pytest.approx(18.84)
+    assert r55["customer"] == "Bank of Baroda"
+
+    # e31: cancellation keeps customer Saudi Water Authority
+    e31 = _doc(
+        "Update on our earlier intimation dated September 06, 2024",
+        "Sub.: Update on our earlier intimation dated September 06, 2024 titled 'WABAG wins an order from "
+        "Saudi Water Authority worth USD 317 Million (~SAR 1,190 Million / ~INR 2,700 Crores) towards a 300 MLD Plant' "
+        "Ref.: Intimation under Regulation 30. With reference to our above intimation relating to 300 MLD Plant Order, "
+        "we hereby inform that the Customer has notified all tender participants that the said tender stands cancelled.",
+        symbol="WABAG", filing_date="2024-12-17",
+    )
+    r31 = _row(fe.event_rows(e31)[0], "order_amendment")
+    assert r31["amount_inr_cr"] == pytest.approx(-2700.0)
+    assert r31["customer"] == "Saudi Water Authority"
+
+
+def test_t242_r2_fix5_capex_revisions_and_annual_revenue() -> None:
+    # e56: revised to X vis-a-vis Y keeps prior cost and delta in detail
+    e56 = _doc(
+        "Intimation under Regulation 30 of the SEBI (LODR) Regulations, 2015",
+        "Pursuant to completion of the TEV study, the estimated cost of the aforementioned project has been revised "
+        "to ₹1,982.79 Crores vis-à- vis preliminary project cost of approximately ₹1,950 Crores, as approved by the "
+        "Board at its meeting held on 9th August, 2023.",
+        symbol="DEEPAKFERT", filing_date="2025-06-10",
+    )
+    r56 = _row(fe.event_rows(e56)[0], "capex_approval")
+    assert r56["amount_inr_cr"] == pytest.approx(1982.79)
+    assert "cost revision" in r56["detail"] and "1950" in r56["detail"] and "+32.79" in r56["detail"]
+    assert r56["status"] == "verified"
+
+    # e78: model reply with 'annual revenue' goes to value_annual (and computes value_total over 15y tenure)
+    e78 = _doc(
+        "Intimation for entering into a long term agreement with a leading MNC",
+        "Yasho Industries Limited has entered into a long-term supply agreement for a period of 15 Years. "
+        "4 Time period; 15 years 5 Broad commercial consideration; Approximately Rs 150 Cr annual revenue "
+        "starting from end of FY 27.",
+        symbol="YASHO", filing_date="2025-09-04",
+    )
+    (r78,) = fe.model_rows(
+        e78, ["order_win"],
+        _model_reply(
+            amount_inr_cr=150.0,
+            value_text="Approximately Rs 150 Cr annual revenue starting from end of FY 27",
+            customer="A global multinational corporation",
+            execution_months=180.0,
+        ),
+    )
+    assert r78["value_annual"] == pytest.approx(150.0)
+    assert r78["value_total"] == pytest.approx(2250.0)
+    assert r78["status"] == "unverified"
+
+
+def test_t242_r2_fix6_main_prints_rupee_safely_on_cp1252(monkeypatch: pytest.MonkeyPatch) -> None:
+    import io
+    import shutil
+    import sys
+
+    work = Path(".tmp/t242_cp1252")
+    shutil.rmtree(work, ignore_errors=True)
+    work.mkdir(parents=True, exist_ok=True)
+    try:
+        db_path = work / "events.db"
+        rep_path = work / "report.md"
+        doc = _doc("New Order", "The Company received an order of ₹ 100 Crores from Acme Limited.")
+        row, _ = fe.event_rows(doc)
+        fe.write_db(db_path, row, [], {"stores": 1, "docs": 1, "classified_filings": 1, "by_class": {"order_win": 1}})
+        buf = io.BytesIO()
+        cp1252_out = io.TextIOWrapper(buf, encoding="cp1252", errors="strict")
+        monkeypatch.setattr(sys, "stdout", cp1252_out)
+        rc = fe.main(["--report", str(db_path), "--report-file", str(rep_path)])
+        cp1252_out.flush()
+        assert rc == 0
+        assert "T-231 filing events" in buf.getvalue().decode("cp1252")
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
