@@ -153,7 +153,7 @@ def ingest_dsh(con: sqlite3.Connection) -> int:
         model = st.get("model") or (re.search(r"model[\"']?\s*[:=]\s*[\"']?([\w./:-]+)", brief) or [None, None])[1]
         prog = st.get("progress") or {}
         goal = (re.search(r"^Goal:.*$", brief, re.M) or re.search(r".*", brief))
-        kind = "grader" if re.search(r"grad(e|er|ing)|review", goal.group(0) if goal else "", re.I) else "worker"
+        kind = "grader" if re.search(r"\bgrad(e|er|ing)\b|review", goal.group(0) if goal else "", re.I) else "worker"
         _store_run(con, {
             "run_id": st.get("job_id") or job.name, "kind": f"dsh_{kind}", "ticket": ticket.group(0) if ticket else None,
             "title": (st.get("title") or brief[:160]).replace("\n", " ")[:300], "model": model, "host": st.get("host"),
