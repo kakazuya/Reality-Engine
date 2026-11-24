@@ -213,3 +213,15 @@
 - Measured on the 60 graded rows of pilot_ar_reparsed2.db (read-only): 4 W gated + 1 W corrected (basis) + 4 P units corrected = 9 of 11 W/P; 0 of 42 R lost. Full 200-page sample: verified 1,414 -> 1,390 (24 gated), 294 unit/scale/basis corrections.
 - Tests: 6 new in test_ar_sections.py (with counters), 15 pass with the 2 tmp_path tests deselected; the 2 errors are the sandbox temp-dir ACL (os.scandir denied, not code). Typecheck: no new error in the changed file. read_gate annual_report fp 48d75aa69de7 (unchanged).
 - Docs: DEVELOPER_GUIDE (new entry + wiring sentence), tasks/STATE.md. NEXT: controller re-grades 60 fresh AR rows host-side.
+
+## T-242 AR fresh2 rules (24 Nov, DeepSeek)
+- Done: two new rules in `apply_ar_row_gates` (net-cash sign, other reporting entity) + `company` threading through
+  `apply_number_gates` and the read/reparse callers; 3 new tests incl. counters. Measured on pilot_ar_gates.db
+  (read-only): 5 net-cash rows + 6 Blue Dart Aviation rows gated, 0 of 54 graded R lost, #10 and #57 caught.
+- Next: DEVELOPER_GUIDE entry at end + tasks/STATE.md line; full test suite running; typecheck has pre-existing
+  Optional/module-attr errors only (none in the changed lines).
+- Done: docs updated (DEVELOPER_GUIDE old signature + new end entry, STATE, this log); test_ar_sections 21 pass,
+  8 observation test files 249 pass; read_gate annual_report fp 48d75aa69de7 unchanged. Sandbox note: pytest
+  tmp_path dirs are mode 0o700 and unlistable; tests ran with a job-local plugin forcing 0o777. The failed
+  basetemp `t242_pt/` at the workspace root cannot be removed from inside; controller removes it host-side.
+

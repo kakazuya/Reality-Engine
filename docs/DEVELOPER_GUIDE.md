@@ -3009,9 +3009,10 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   earlier guard flagged, on AR and transcripts too) is open: count first, then a structural rule.
 - **Annual-report row gates (T-242, 24 Nov 2026, `v2/observations.py`).** The fresh strict grade after the statement
   gate was 49 right / 4 partial / 7 wrong (11.7% wrong, bar <= 5%); four wrong kinds were script-catchable from the
-  row and its page. `apply_ar_row_gates(rows, page_text)` runs for `annual_report` inside
-  `apply_number_gates(rows, doc_type, page_text=...)` (the read path and `--reparse` pass the page text; `--recheck`
-  calls it with the page's text too), after `apply_ar_statement_gate`, and changes none of the existing checks:
+  row and its page. `apply_ar_row_gates(rows, page_text, company)` runs for `annual_report` inside
+  `apply_number_gates(rows, doc_type, page_text=..., company=...)` (the read path and `--reparse` pass the page text
+  and the store company name; `--recheck` calls the gates directly with the page text and the store company), after
+  `apply_ar_statement_gate`, and changes none of the existing checks:
   (1) unit -- a unit with no alphabetic unit word (a lone `` ` ``) is gated `ar_unit_unknown`; a blank unit takes the
   page's ONE printed scale note (`(Rs. in lacs)`, `(₹ in million)`, `(Amount in Lakh)`, `(times)`) when the note's
   family fits the measure (a money note never lands on `count.shares`; a `(times)` note needs a ratio measure or a
@@ -3037,3 +3038,23 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   `read_gate` annual_report fingerprint stays `48d75aa69de7` (no prompt or template touched).
 - **Loader sources: T-242 reads served first (24 Nov 2026, Eagle).** `load_observations.OBS_SOURCES` entries that share a source are an ordered priority list: for each symbol the first db holding rows for it is loaded and the older dbs are skipped, so the gated T-242 reads (decks `hy4_out/obs_decks_fy27.db`, transcripts v3 `obs_transcripts_fy27_v3.db` then `obs_transcripts_394_v3.db`) replace the T-230/T-238 reads company by company, and a company hy4 has not reached keeps its older rows (annual reports stay on `t230/obs_ar_91_m.db` until an AR bulk passes). Events: `EVENTS_PRIORITY` (filing_events round 4 on the fresh3/fresh4 stores) then `EVENTS_DB` (t231), same rule; `filing_event` gets the union of the events dbs' columns (ALTER on old stores, e.g. `customer_desc`). Stats name the db used (`obs_db`, `events_db`). Not run yet: store builds are paused (T-242); a universe filing_events run with round 4 is still needed. Test `SourcePriorityTests` in `test_obs_wiring.py`.
 - **Sonnet settles unverified hy4 rows (T-242, Wolf, 24 Nov, Shivam: spare Wolf quota).** `python -m reality_engine.scripts.sonnet_settle --db <hy4 obs db> --stores-root <build root> --out D:/RealityEngine/t242/sonnet_settle/<set> [--max-pages N]` sends one headless `claude -p --model sonnet --effort medium` run per 6 pages (no tools) with each page's text and its UNVERIFIED company number rows; Sonnet answers confirm / fix (period, unit, scale, basis, segment) / reject / unsure with an evidence snippet and header. Verdicts go to `<out>/verdicts.jsonl` keyed by observation_id; the hy4 DB is never written, so a bad fix rolls back by dropping the verdict. One run at a time on Wolf's config, paused while Wolf's 5-hour use is >= 75% or its usage reading is older than 30 min. Deck pilot (1,265 rows): 511 confirm, 379 fix, 98 reject, 277 unsure; strict DeepSeek grade (seed 7171) confirm 29R/1P/0W, fix 29R/1P/0W, reject 9 agree / 1 disagree, so confirm/fix may be served labelled `model_checked` and reject is advisory only (never deletes a row). Not for transcript call numbers (filing match only, ruling 24 Nov). Served (24 Nov): `load_observations.CHECKS` maps a source obs db to its verdicts files; the loader adds `check_status` (`model_checked` for confirm/fix, `model_rejected`, `model_unsure`), `check_fields` (a fix's corrections, JSON), `check_evidence` and `checker` to `obs_fact` (ALTER on old stores), and `_obs_rows` returns them as `check` {status, by, evidence, corrected}; the row's own status and fields never change (test `test_model_check_is_served_labelled_and_keeps_the_row`). Open: a fix with no changed field is a confirm; ranges never fill `value_high`; date-shaped values stored as numbers.
+- **Annual-report fresh2 rules: net-cash sign and another reporting entity (T-242, 24 Nov 2026, `v2/observations.py`).**
+  Two more script-catchable wrong rows from the fresh2 strict grade (57 right / 0 partial / 3 wrong, exactly at the
+  70%-right bar). (1) net cash sign: a verified AR number row whose `printed_label` or `series_title` says "net cash"
+  (not a "net cash flow"/"net cash from"/"net cash used in" line) under a `net_debt*` measure is the opposite of net
+  debt and goes unverified `ar_net_cash_sign:`; e.g. ANTHEM's "Net cash / EBITDA" chart bars were stored
+  `net_debt_to_ebitda`. (2) other reporting entity: when the page head (first 300 characters, the basis rule's
+  window) names a company followed by "financial statements" / "Notes to" / "Balance Sheet" / "Statement of
+  Profit", or the page's printed running header reads `<COMPANY> | FINANCIALS` / `| ANNUAL REPORT`, and the name is
+  not the store's own company, the rows are that entity's statements: `entity_scope='subsidiary'`,
+  `segment=<that company name>` and unverified `ar_other_entity:`. The own-company comparison strips a leading
+  "The", reduces names to letters and digits ("A. K." == "AK") and reads a shared 12-character head as own (an
+  abbreviated store name, "Bombay Dyeing & Mfg" vs "The Bombay Dyeing and Manufacturing", is the company's own
+  page); a row already labelled that subsidiary keeps verified. The caller passes the store company name; without
+  it rule 2 does not run. Measured in-process on `C:/RealityEngine/t242/pilot_ar_gates.db` (read-only, 200 pages /
+  5,607 rows; page text from `C:/RealityEngine/tg_build/universe_fy27/cNN/cNN.db`): 5 ANTHEM net-cash rows and 6
+  Blue Dart Aviation ratio rows (page 279, the W #57 ROIC among them) gated; 0 of the 57 graded R rows lose
+  verified; W #10 and W #57 are caught (W #21, an undated protest payment, is outside these rules and stays
+  verified). Tests: 3 new in `reality_engine/tests/test_ar_sections.py` with their counters ("Net cash flow from
+  operating activities" stays verified; a page headed with the company's own name stays `company`). The
+  `read_gate` annual_report fingerprint is unchanged (`48d75aa69de7`): no prompt or template touched.

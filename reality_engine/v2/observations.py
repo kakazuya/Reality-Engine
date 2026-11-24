@@ -3740,6 +3740,15 @@ AR_CHANGE_WORD_RE = re.compile(
     r"\b(?:increase|increased|increasing|grow|grew|growth|rose|risen|rise|up|down|decrease|decreased|"
     r"decline|declined|fell|fall|higher|lower)\b", re.I)
 AR_HEADING_BASIS_RE = re.compile(r"\b(standalone|consolidated)\b[^.\n]{0,40}?\bfinancial statements?\b", re.I)
+AR_NET_CASH_LABEL_RE = re.compile(
+    r"\bnet\s+cash\b(?!\s*(?:flow|generated|provided|from|used|in\b|out\b))", re.I)
+AR_OTHER_ENTITY_HEAD_RE = re.compile(
+    r"(?:^|\n)\s*([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Limited|Ltd\.?))"
+    r"\s*(?:and\s+its\s+subsidiaries\s+)?(?:standalone\s+|consolidated\s+|audited\s+|unaudited\s+)*"
+    r"(?:financial\s+statements?|notes?\s+to|balance\s+sheet|statement\s+of\s+(?:profit|financial))", re.I)
+AR_OTHER_ENTITY_RUNNING_RE = re.compile(
+    r"(?:^|\n)\s*([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Limited|Ltd\.?))"
+    r"\s*\|\s*(?:FINANCIALS?|ANNUAL\s+REPORT)", re.I)
 AR_NEW_NODE_FAMILY = {"revenue": "money", "cost": "money", "capex": "money", "debt": "money",
                       "equity": "money", "working_capital": "money", "capacity": "capacity",
                       "margin": "percent"}
@@ -3775,7 +3784,7 @@ def ar_measure_family(row: dict[str, Any]) -> str:
     return AR_NEW_NODE_FAMILY.get(node, "")
 
 
-def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> None:
+def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company: str = "") -> None:
     """T-242: the annual-report number errors a script can catch from the row and its page.
 
     A fresh strict grade after the AR statement gate was 49 right / 4 partial / 7 wrong: a >3-year ageing bucket
@@ -3789,7 +3798,14 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> None:
     2. qualifier label: an ageing/overdue bucket or a party-with-transaction label under a headline measure is a
        slice, not the measure (a party-only label stays: it is the row's dimension);
     3. narrative growth: a percent row whose whole label is change words ("an increase of") names no measure;
-    4. basis: the page heading's standalone/consolidated statement overrides a disagreeing basis.
+    4. basis: the page heading's standalone/consolidated statement overrides a disagreeing basis;
+    5. net cash sign: a verified row whose printed label or series title says "net cash" (a "Net cash / EBITDA"
+       chart) under a ``net_debt*`` measure prints the opposite of net debt -> ``ar_net_cash_sign``;
+    6. other reporting entity: a page whose head (or running header) names another company followed by
+       "financial statements" / "Notes to" / "Balance Sheet" / "Statement of Profit" carries that entity's
+       statements, not the store company's (a subsidiary's statements bound in the parent's AR) -> the row is
+       served labelled ``entity_scope='subsidiary'``, ``segment=<that company>`` and unverified
+       ``ar_other_entity``.  ``company`` is the store's own full name; without it the rule does not run.
 
     The row stays served; only its status/label changes.  Not the existing guards: this runs after
     :func:`apply_ar_statement_gate`.
@@ -3800,6 +3816,15 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> None:
     # directors' report must not flip a row; a running head or a note title sits in the first 300 characters
     heading = {match.group(1).lower() for match in AR_HEADING_BASIS_RE.finditer(text[:300])}
     basis = next(iter(heading)) if len(heading) == 1 else ""
+    # a bound subsidiary section names its entity in the page head, or (its field pages) only in the printed
+    # running header/footer; either one is another reporting entity, never the store company
+    other_entity = ""
+    if company:
+        entity_match = AR_OTHER_ENTITY_HEAD_RE.search(page_text[:300])
+        if entity_match is None:
+            entity_match = AR_OTHER_ENTITY_RUNNING_RE.search(page_text)
+        if entity_match and not _is_own_entity(entity_match.group(1), company):
+            other_entity = norm_space(entity_match.group(1)).strip(" .,;|")
     for row in rows:
         if norm_space(row.get("record_type") or "number") != "number":
             continue
@@ -3847,6 +3872,16 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> None:
         if not reason and (unit_family == "percent" or "%" in unit) \
                 and _narrative_change_label(label):
             reason = f"ar_narrative_growth: {label!r} is a change phrase with no measure"
+        if not reason:
+            cash_label = " ".join(p for p in (label, norm_space(row.get("series_title"))) if p)
+            cash_measure = measure[len(NEW_PREFIX):] if measure.startswith(NEW_PREFIX) else measure
+            if cash_measure.startswith("net_debt") and AR_NET_CASH_LABEL_RE.search(cash_label):
+                reason = f"ar_net_cash_sign: {cash_label!r} is net cash, the opposite of {measure}"
+        if not reason and other_entity and not (
+                str(row.get("entity_scope") or "") == "subsidiary"
+                and normalize_name(str(row.get("segment") or "")) == normalize_name(other_entity)):
+            row["entity_scope"], row["segment"] = "subsidiary", other_entity
+            reason = f"ar_other_entity: {other_entity!r} statements, not {company}"
         if reason:
             row["status"] = "unverified"
             row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", reason) if p)
@@ -3858,6 +3893,30 @@ def _measure_names_qualifier(measure: str, label: str) -> bool:
     return bool(flat_label) and flat_label in flat_measure
 
 
+def _entity_key(name: str) -> str:
+    """Letters-and-digits key of a company name, without a leading "The" ("A. K." == "AK")."""
+    normalized = re.sub(r"^the\s+", "", normalize_name(name).strip())
+    return re.sub(r"[^a-z0-9]+", "", normalized)
+
+
+def _is_own_entity(name: str, company: str) -> bool:
+    """True when a printed entity name is the store's own company.
+
+    The store's name is abbreviated ("Bombay Dyeing & Mfg Company Limited") while the AR prints the legal name
+    ("The Bombay Dyeing and Manufacturing Company Limited"), and initials are spaced ("A. K." vs "AK"), so the
+    comparison drops a leading "The" and compares a letters-and-digits key and its first 12 characters.
+    A shared 12-character head is deliberately read as own: failing to gate a subsidiary is cheaper than gating
+    the company's own rows.
+    """
+    own, printed = _entity_key(company), _entity_key(name)
+    if not own or not printed:
+        return False
+    if own == printed:
+        return True
+    head = min(len(own), len(printed), 12)
+    return head >= 3 and own[:head] == printed[:head]
+
+
 def _narrative_change_label(label: str) -> bool:
     words = [word for word in re.split(r"[^a-z0-9-]+", label.lower()) if word and not word.isdigit()]
     return bool(words) and bool(AR_CHANGE_WORD_RE.search(label)) \
@@ -3865,13 +3924,13 @@ def _narrative_change_label(label: str) -> bool:
 
 
 def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2: bool = True,
-                       page_text: str = "") -> None:
+                       page_text: str = "", company: str = "") -> None:
     """T-242: the number gates that depend on the document type (a call number, an AR statement line, an AR row)."""
     if doc_type == "transcript" and transcript_v2:
         apply_transcript_number_gate(rows)       # Shivam 24 Nov: call numbers need a filing to verify
     elif doc_type == "annual_report":
         apply_ar_statement_gate(rows)
-        apply_ar_row_gates(rows, page_text)
+        apply_ar_row_gates(rows, page_text, company)
 
 
 def apply_parts_sum(rows: list[dict[str, Any]], stats: dict[str, Any] | None = None) -> None:
@@ -5089,7 +5148,8 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
                                       deck_asof=deck_period(store_db, doc_key, check_text),
                                       deck_basis=deck_basis(str(store_db), str(doc_key)),
                                       ocr_text=str(ocr_row[0] or "") if ocr_row else "", ocr_page=ocr_page)
-            apply_number_gates(rows, doc_type, page_text=check_text)   # T-242: AR statement line + row gates
+            apply_number_gates(rows, doc_type, page_text=check_text,       # T-242: AR statement line + row gates
+                               company=(company_names.get(str(meta["symbol"])) or [""])[0])
             stats["ar_pages"] += 1
         else:
             ctx_key = (store_db, str(doc_key))
@@ -5579,7 +5639,11 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                                         ocr_text=result["ocr_text"], ocr_page=ocr_read,
                                         transcript_v2=transcript and transcript_v2_mode(),
                                         deck_guards=meta.get("doc_type") == "deck")
-    apply_number_gates(result["rows"], str(meta.get("doc_type") or ""), page_text=check_text)
+    own_name = next((full for sym, full in (companies or {}).values() if sym == meta["symbol"]), "")
+    if not own_name and meta.get("doc_type") == "annual_report":
+        own_name = _store_company_name(store_db, meta["symbol"])
+    apply_number_gates(result["rows"], str(meta.get("doc_type") or ""), page_text=check_text,
+                       company=own_name)
     if transcript and any(str(r.get("record_type") or "") == "statement" for r in result["rows"]):
         # T-242: the same statement-speaker carry/resolve as --reparse, from the doc's stored pages
         try:
@@ -5940,6 +6004,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
     """
     store_dbs = list(store_dbs)
     companies = companies if companies is not None else company_index(store_dbs)
+    company_names = {sym: full for sym, full in companies.values()}
     measures = measure_index()
     vocab = vocab_index()
     doc_store: dict[str, str] = {}
@@ -6256,7 +6321,8 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             before_gate = sum(1 for row in updated if row["status"] == "verified")
             apply_ar_statement_gate(updated)
             stats["ar_statement_rows"] += before_gate - sum(1 for row in updated if row["status"] == "verified")
-            apply_ar_row_gates(updated, raw_text)   # T-242: unit / qualifier / narrative / basis row gates
+            apply_ar_row_gates(updated, raw_text,   # T-242: unit / qualifier / narrative / basis row gates
+                               company_names.get(store_symbol.get(store_db, ""), ""))
         for row in updated:
             old_status = str(row["_old_status"])
             old_reason = str(row["_old_reason"])
