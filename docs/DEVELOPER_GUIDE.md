@@ -2834,4 +2834,6 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   off-balance notes (contingent liabilities, related parties, borrowing terms, ageing, revenue split), ratios,
   disputes, material RPTs; a heading-zone drop section (audit, governance, notice, CSR/BRSR, primary statements,
   policies) wins; an unheaded page after a running kept section continues it. Measured on 120 universe stores: 3,309
-  of 14,743 table pages kept (22%). Not yet wired into `observations.run`; pilot and 60-row grade first.
+  of 14,743 table pages kept (22%). Wired into `observations.pages_from_store`, `observations.run`, and the CLI via
+  `--ar-sections` (off by default, `ar_sections=False`), filtering only `annual_report` pages and counting dropped
+  pages under `dropped["ar_section"]` while leaving other document types untouched.
