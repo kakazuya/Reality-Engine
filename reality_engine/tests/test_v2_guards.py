@@ -91,3 +91,20 @@ def test_guard5_both_ends_share_a_unit():
     assert f("about INR310-325 crores", "INR310", 310.0) == 325.0
     assert f("Rs. 58 to Rs. 60, that", "Rs. 58", 58.0) == 60.0
     assert f("60 to 65% utilisation", "60", 60.0) == 65.0
+
+
+def test_guards_6_to_9_inner_range_fraction_bare_label_cost_of_funds():
+    text = ("We are borrowing at 6.3% now. 1/3 of revenue is exports. Margin 40%-45%. "
+            "Guidance INR310 to INR320 crore.")
+    rows = _rows(text, [
+        {"type": "number", "measure": "nim", "printed_label": "We are borrowing at", "value_text": "6.3%", "unit": "%"},
+        {"type": "number", "measure": "mix.share", "printed_label": "of revenue", "value_text": "1/3",
+         "segment": "exports"},
+        {"type": "number", "measure": "ebitda_margin", "printed_label": "Margin", "value_text": "40%-45%", "unit": "%"},
+        {"type": "number", "measure": "ebitda", "printed_label": "to", "value_text": "INR320", "unit": "crore"}])
+    got = [(r["measure"], r["value"], r["value_high"], r["unit"]) for r in rows]
+    assert ("cost_of_funds", 6.3, None, "%") in got
+    assert ("mix.share", 33.33, None, "%") in got
+    assert ("ebitda_margin", 40.0, 45.0, "%") in got
+    assert not [g for g in got if g[1] == 320.0]
+    assert obs.inner_range("2024-25") is None and obs.inner_range("12%") is None
