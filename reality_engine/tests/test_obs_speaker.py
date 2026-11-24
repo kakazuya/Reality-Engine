@@ -491,3 +491,30 @@ def test_thanks_before_an_answer_is_kept():
     assert not greeting_only("Thank you, Vaibhav, it is approximately INR5,400 crores for as an EPC cost of the project.")
     assert not greeting_only("Thank you very much for the support, and we see that the future is good as far as the upcoming quarters are concerned.")
     assert greeting_only("Thank you for your continued trust and support.")
+
+
+def test_ckpt_0003_housekeeping_and_welcome_passages_are_dropped():
+    """fy27_v3 ckpt_0003: hand-over after 'Now', closing logistics, 'good night', long welcome + uploads."""
+    from reality_engine.v2.obs_speaker import greeting_only
+    assert greeting_only("Now I hand it over to Mr. Nikhil Sohoni for his remarks.")
+    assert greeting_only(
+        "Thank you, everyone, for taking your valuable time for attending our earnings conference call. "
+        "We will keep you all posted for any further updates. I request you all to kindly send in your further "
+        "questions that may remain unanswered. Audio recording and the transcripts of this call will be uploaded "
+        "on our website in the due course. Looking forward to host you all in the next quarter. "
+        "Till then, stay healthy, stay safe.")
+    assert greeting_only("Thank you, Yashashree, and thank you, everyone, for joining the call. Good night.")
+    assert greeting_only(
+        "Good evening, everyone, and a very warm welcome to all participants joining us today to discuss the "
+        "financial and operating performance of Aavas Financiers Limited for Q2FY27 and H1FY27, along with our "
+        "outlook for the business. The results and the investor presentation have been uploaded to the stock "
+        "exchanges and are also available on our company website. I hope you’ve had a chance to review them. "
+        "We have also uploaded an Excel fact sheet containing historical data on our website for your easy reference.")
+
+
+def test_welcome_or_housekeeping_with_a_number_is_kept():
+    from reality_engine.v2.obs_speaker import greeting_only
+    assert not greeting_only("Thank you. Our revenue grew 12% this quarter.")
+    assert not greeting_only("Now let me take you through the financial performance: revenue was Rs 450 crore")
+    assert not greeting_only("Good evening, everyone. Revenue for Q2FY27 grew 12%.")
+    assert not greeting_only("Audio recording of the call is available; our margin was 18%.")
