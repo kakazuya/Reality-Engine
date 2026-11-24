@@ -2942,4 +2942,10 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   24 R and 2 P lost verified (all statement lines; XBRL is their authority), 25 rows stay verified -- W+J 1/25 = 4%
   (bar <= 5%). Tests `reality_engine/tests/test_ar_sections.py`; the transcript gate and its fingerprint
   (`e95108f16e65`) are untouched.
+- **AR statement gate exemptions (T-242, Eagle review, 24 Nov 2026).** `is_statement_line` returns False for
+  off-statement notes results XBRL does not hold (`OFF_STATEMENT_WORDS`: contingent, commitment, guarantee,
+  related_party, rpt, aoc, subsidiary, ageing, disputed, segment), and `apply_ar_statement_gate` skips rows carrying
+  segment/geography/product/customer/plant. Measured on the 200-page pilot rows: verified 3,017 -> 1,414 (was 1,124);
+  graded W gated 9 of 10 (unchanged), graded R kept verified 21 of 42 (was 18); the 28 graded rows still verified
+  are 21 R / 6 P / 1 W (75% right, 3.6% W+J).
 

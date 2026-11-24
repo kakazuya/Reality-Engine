@@ -3655,11 +3655,22 @@ def measure_root(measure_id: str) -> str:
 AR_STATEMENT_REASON = "ar_statement_line: XBRL holds statement lines; served labelled"
 
 
+OFF_STATEMENT_WORDS = ("contingent", "commitment", "guarantee", "related_party", "rpt", "aoc", "subsidiary",
+                       "ageing", "aging", "disputed", "segment")      # Eagle review: notes XBRL results do not hold
+AR_DIMENSION_KEYS = ("segment", "geography", "product", "customer", "plant")
+
+
 def is_statement_line(measure: str) -> bool:
-    """T-242: True for a measure that is a balance-sheet, P&L or cash-flow line of the financial statements."""
+    """T-242: True for a measure that is a balance-sheet, P&L or cash-flow line of the financial statements.
+
+    Off-statement notes the AR selector exists to read (contingent liabilities, commitments, guarantees, related
+    parties, AOC-1/2, ageing, disputes, segments) are not statement lines: results XBRL does not hold them.
+    """
     mid = norm_space(measure or "")
     if mid.startswith(NEW_PREFIX):
         mid = mid[len(NEW_PREFIX):].strip()      # a declared NEW id is judged on its bare name
+    if any(word in mid.lower() for word in OFF_STATEMENT_WORDS):
+        return False
     if mid in STATEMENT_LINE:
         return True
     if mid in _MEASURE_NODE:
@@ -3680,7 +3691,7 @@ def apply_ar_statement_gate(rows: list[dict[str, Any]]) -> None:
     """
     for row in rows:
         if (row.get("record_type") or "number") == "number" and row.get("status") == "verified" \
-                and is_statement_line(str(row.get("measure") or "")):
+                and not any(row.get(key) for key in AR_DIMENSION_KEYS)                 and is_statement_line(str(row.get("measure") or "")):
             row["status"] = "unverified"
             row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", AR_STATEMENT_REASON) if p)
 

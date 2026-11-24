@@ -157,3 +157,13 @@ def test_a_deck_row_is_untouched_and_only_an_annual_report_statement_line_is_gat
     obs.apply_number_gates(rows, "annual_report")
     assert rows[0]["status"] == "unverified" and "ar_statement_line" in rows[0]["status_reason"]
 
+
+
+def test_ar_gate_spares_off_statement_notes_and_dimensioned_rows():
+    for m in ("contingent_liabilities", "NEW:contingent_liability_tax", "NEW:related_party_sales", "segment_revenue"):
+        assert not obs.is_statement_line(m), m
+    rows = [{"record_type": "number", "status": "verified", "status_reason": "", "measure": "revenue.value",
+             "segment": "Cement"},
+            {"record_type": "number", "status": "verified", "status_reason": "", "measure": "inventories"}]
+    obs.apply_ar_statement_gate(rows)
+    assert [r["status"] for r in rows] == ["verified", "unverified"]
