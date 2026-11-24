@@ -2511,6 +2511,28 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   `28/30` attributed with correct speaker and role, `2/30` left empty (1 cover title before any turn, 1
   timestamp-format transcript without `Name:` colons), `0` wrong speaker, `0` wrong role. Tests:
   `reality_engine/tests/test_obs_speaker.py` (**5 passed**).
+- **T-241: canonical measure map and junk quarantine (`v2/obs_measure_map.py`, 24 Nov 2026).** Copies `--obs` to
+  `--out` via SQLite's backup API, quarantines deterministic junk `NEW:*` rows (`status='quarantined'`,
+  `status_reason += 'junk_measure: <pattern>'` requiring both bare-name regex and value/unit check across
+  `year_or_period_label`, `call_or_filing_date`, `page_count`, `identifier_or_reg`, `contact_or_address`, `call_time`,
+  `qa_question_count`), normalises names (`NEW:`/`<...>` strip, snake_case, singular/plural, `ratio_of_x_y` word
+  order, British/US spelling, curated true-synonym map) to match `measure_dict` / `measure_alias`, and clusters
+  remaining `NEW:*` names in `>= 3` companies within matching unit families (fixing `observations.py`'s `rs` plural
+  unit-family bug via `effective_unit_family`; `%` vs currency vs days vs capacity never merge), writing
+  `measure_map(new_name, canonical, source, rows)`, refreshing `measure_new` via `observations.index_new_measures`,
+  and optionally writing `--report <md>`:
+  ```
+  python -m reality_engine.v2.obs_measure_map --obs <obs.db> --out <copy.db> [--report <report.md>]
+  ```
+  Measured 24 Nov on the 394-company snapshot (`obs394.db`, `113,864` `NEW:*` rows / `69,148` distinct names,
+  `31.89 s` into `C:/RealityEngine/t241_measure/obs394_measures.db`, report `obs394_measures_report.md`): `4,835` junk
+  rows quarantined (`year_or_period_label` `1,312`, `call_or_filing_date` `1,078`, `page_count` `1,043`,
+  `identifier_or_reg` `766`, `contact_or_address` `379`, `call_time` `193`, `qa_question_count` `64`); `measure_map`
+  rows by source `dict` `526`, `alias` `431`, `cluster` `16,125` (`1,294` clusters >=3 companies, `868` multi-member),
+  `none` `95,451`; `NEW:*` rows `113,864 -> 112,907`, distinct `NEW:*` names `69,148 -> 67,673` (`65,600`
+  non-quarantined). Hand-check (seed `241` against `doc_page` text): `38/40` mapped rows right (`2/40` wrong:
+  unquarantined metadata `NEW:conference_call_period` and `NEW:office_number`), `20/20` quarantined junk rows truly
+  junk. Tests: `reality_engine/tests/test_obs_measure_map.py` (**3 passed**).
 
 ## Modular store repair (T-218, 16 Nov 2026)
 
