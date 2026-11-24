@@ -4650,8 +4650,8 @@ def filter_statement_pages(pages: list[dict[str, Any]], texts: dict[tuple[str, i
 
 def filter_ar_section_pages(pages: list[dict[str, Any]], texts: dict[tuple[str, int], str],
                             dropped: dict[str, int] | None = None) -> list[dict[str, Any]]:
-    """T-242: keep ``annual_report`` pages that pass ``ar_sections.safe_drop`` and hy4 ``triage``; count drops in
-    ``ar_section``."""
+    """T-242: keep ``annual_report`` pages that pass ``ar_sections.safe_drop``; count drops in ``ar_section``.
+    The hy4 triage runs later, in ``run``, only on the sampled pages (Eagle: never on every candidate)."""
     by_doc: dict[str, list[tuple[int, str]]] = {}
     for p in pages:
         if p.get("doc_type") == "annual_report":
@@ -4660,10 +4660,8 @@ def filter_ar_section_pages(pages: list[dict[str, Any]], texts: dict[tuple[str, 
             by_doc.setdefault(dk, []).append((pg, texts.get((dk, pg), "")))
     if not by_doc:
         return pages
-    candidates = {(dk, pg): text for dk, doc_pages in by_doc.items() for pg, text in doc_pages
-                  if not _ar_sections.safe_drop(text)}          # T-242 round 3: safe regex drops, then hy4 triage
-    verdict = _ar_sections.triage(candidates) if candidates else {}
-    kept_ar: set[tuple[str, int]] = {key for key, useful in verdict.items() if useful}
+    kept_ar: set[tuple[str, int]] = {(dk, pg) for dk, doc_pages in by_doc.items() for pg, text in doc_pages
+                                     if not _ar_sections.safe_drop(text)}   # T-242 round 3: safe drops; triage in run()
     kept: list[dict[str, Any]] = []
     for p in pages:
         if p.get("doc_type") != "annual_report" or (str(p["doc_key"]), int(p["page"])) in kept_ar:
@@ -4770,6 +4768,52 @@ def seed_stores(root: str | Path, sample: int, seed: int, ensure: Iterable[str] 
     extra = random.Random(seed).sample(pool, max(0, min(sample, len(pool)) - len(ensure_names)))
     picked = [root / name / f"{name}.db" for name in ensure_names] + [p / f"{p.name}.db" for p in extra]
     return [str(p) for p in picked]
+
+
+TRIAGE_OVERSAMPLE = 3
+
+
+def triage_selection(selected: list[dict[str, Any]], pool: list[dict[str, Any]], limit: int, seed: int,
+                     dropped: dict[str, int] | None = None) -> list[dict[str, Any]]:
+    """T-242: hy4-triage the sampled annual-report pages and top up from the seeded pool until ``limit`` useful pages,
+    asking at most ``TRIAGE_OVERSAMPLE * limit`` triage questions (checked by the read gate as ``limit`` reads first).
+    Non-AR pages pass through untouched."""
+    order = select_pages(pool, len(pool), seed)
+    chosen_keys = {(p["doc_key"], p["page"]) for p in selected}
+    order = selected + [p for p in order if (p["doc_key"], p["page"]) not in chosen_keys]
+    budget = TRIAGE_OVERSAMPLE * max(limit, 1)
+    kept: list[dict[str, Any]] = []
+    asked = 0
+    idx = 0
+    while len(kept) < limit and idx < len(order) and asked < budget:
+        chunk = []
+        while idx < len(order) and len(chunk) < min(limit - len(kept) + 10, budget - asked):
+            page = order[idx]
+            idx += 1
+            if page.get("doc_type") != "annual_report":
+                kept.append(page)
+                if len(kept) >= limit:
+                    break
+                continue
+            chunk.append(page)
+        if not chunk:
+            break
+        texts: dict[tuple[str, int], str] = {}
+        by_store: dict[str, list[dict[str, Any]]] = {}
+        for page in chunk:
+            by_store.setdefault(page["store"], []).append(page)
+        for store_db, pages in by_store.items():
+            texts.update(page_texts(store_db, pages))
+        verdict = _ar_sections.triage({(str(p["doc_key"]), int(p["page"])): texts.get((p["doc_key"], int(p["page"])), "")
+                                       for p in chunk})
+        asked += len(chunk)
+        for page in chunk:
+            if verdict.get((str(page["doc_key"]), int(page["page"]))) and len(kept) < limit:
+                kept.append(page)
+            elif dropped is not None:
+                dropped["ar_triage"] = dropped.get("ar_triage", 0) + 1
+    print(f"ar triage: asked {asked}, kept {len(kept)} of limit {limit}", file=sys.stderr)
+    return kept
 
 
 def select_pages(pages: list[dict[str, Any]], limit: int, seed: int,
@@ -5213,6 +5257,9 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
     # Scoped (--only) runs are gated too; the pilot allowance counts pages already in the output's ledger.
     from reality_engine.v2 import read_gate
     read_gate.check(list(doc_types), len(selected), out)
+    if ar_sections and only is None:
+        selected = triage_selection(selected, pool=(todo if resume else pages), limit=limit, seed=seed,
+                                    dropped=dropped_by_reason)
     reply_fp = ",".join(f"{d}:{read_gate.fingerprint(d)}" for d in doc_types)   # which prompt wrote page_reply.raw
     statement_filter = {"kept": len(pages), "dropped": sum(dropped_by_reason.values()),
                         "by_reason": dict(sorted(dropped_by_reason.items(), key=lambda kv: -kv[1]))}

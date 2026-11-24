@@ -2853,5 +2853,5 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   `--ar-sections` therefore drops only `SAFE_DROP` headings (notice, governance, audit, CSR/BRSR, remuneration, market
   data, cover letters, policies; 30 of 160 gold pages, no useful one) and empty pages, then asks hy4 `TRIAGE_PROMPT`
   per page; verdicts are cached in `C:/RealityEngine/t242/ar_triage.db`; an unparsed reply counts as useful and is
-  not cached. The gold set wrote the triage definition, so a fresh hand audit of triage verdicts gates the AR bulk.
+  not cached. Eagle's review: the triage runs in `run()` on the SAMPLED pages only (`triage_selection`: the seeded order, topped up until `--limit` useful pages, at most `TRIAGE_OVERSAMPLE`=3 x limit questions, after `read_gate.check` of `limit` reads), and `TRIAGE_PROMPT` is part of `read_gate.fingerprint('annual_report')`; `needs_ocr` AR pages have no text and are safe-dropped until their OCR words exist. The gold set wrote the triage definition, so a fresh hand audit of triage verdicts gates the AR bulk.
 

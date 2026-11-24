@@ -55,9 +55,14 @@ def test_pages_from_store_ar_sections_filters_only_when_enabled(tmp_path: Path, 
     assert [p["page"] for p in all_pages] == [1, 2, 3, 4]
     dropped: dict[str, int] = {}
     kept_pages = obs.pages_from_store(store_db, doc_types=("annual_report",), ar_sections=True, dropped=dropped)
-    assert seen == [("ar.pdf", 1), ("ar.pdf", 2)]          # governance and auditor pages never reach the model
-    assert [p["page"] for p in kept_pages] == [1]
-    assert dropped == {"ar_section": 3}
+    assert seen == []                                       # Eagle: no triage while listing candidates
+    assert [p["page"] for p in kept_pages] == [1, 2]        # governance and auditor pages are safe drops
+    assert dropped == {"ar_section": 2}
+    out = obs.triage_selection(kept_pages[:1], pool=kept_pages, limit=1, seed=1, dropped=dropped)
+    assert [p["page"] for p in out] == [1] and seen[0] == ("ar.pdf", 1)     # sample first, then triage
+    seen.clear()
+    out = obs.triage_selection([kept_pages[1]], pool=kept_pages, limit=1, seed=1, dropped=dropped)
+    assert [p["page"] for p in out] == [1] and dropped["ar_triage"] == 2    # a 'not useful' page is topped up
 
 
 def test_triage_caches_and_reads_unsure_as_useful(tmp_path: Path, monkeypatch):
