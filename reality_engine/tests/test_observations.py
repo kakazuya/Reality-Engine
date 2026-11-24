@@ -2335,3 +2335,33 @@ def test_stage_o_question_context_is_stored_beside_the_verbatim_answer():
     assert "question_context" in obs.PROMPT_TRANSCRIPT
 
 
+
+
+def test_ledger_pages_are_not_reread_but_errors_are():
+    """T-241: a page read with every row dropped, or skipped, is in page_read and not read again; an error is."""
+    con = obs.create_db(":memory:")
+    con.executemany("INSERT INTO page_read VALUES (?,?,?,?,?)",
+                    [(DECK, 1, "empty", 0, "t"), (DECK, 2, "skip", 0, "t"), (DECK, 3, "error", 0, "t")])
+    pages = [{"store": "s", "doc_key": DECK, "page": n} for n in (1, 2, 3, 4)]
+    assert [p["page"] for p in obs.missing_pages(con, pages)] == [3, 4]
+    con.close()
+
+
+def test_resume_samples_from_unread_pages_only(tmp_path, monkeypatch):
+    """T-241: with --resume the limit applies to unread pages, so a fixed seed never re-picks the done ones."""
+    out = tmp_path / "o.db"
+    con = obs.create_db(out)
+    con.executemany("INSERT INTO page_read VALUES (?,?,?,?,?)", [(DECK, n, "empty", 0, "t") for n in range(1, 9)])
+    con.commit()
+    con.close()
+    pages = [{"store": "s", "doc_key": DECK, "page": n} for n in range(1, 11)]
+    monkeypatch.setattr(obs, "pages_from_store", lambda *a, **k: list(pages))
+    monkeypatch.setattr(obs, "company_index", lambda dbs: {})
+    seen = []
+    monkeypatch.setattr(obs, "process_page", lambda store, key, page, comp, text_only: seen.append(page) or
+                        {"store": store, "doc_key": key, "page": page, "skip": "test"})
+    monkeypatch.setattr(obs, "propose_measures", lambda *a, **k: {})
+    monkeypatch.setattr(obs, "index_new_measures", lambda con: 0)
+    monkeypatch.setattr(obs, "write_new_merges", lambda con, path: 0)
+    obs.run(["s"], limit=2, workers=1, out=out, doc_types=("deck",), resume=True)
+    assert sorted(seen) == [9, 10]
