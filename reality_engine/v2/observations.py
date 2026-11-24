@@ -87,7 +87,7 @@ import requests
 
 from reality_engine.db.readonly import connect_ro
 from reality_engine.scripts.extract_deck_figures import parse_number
-from reality_engine.v2 import page_layout, page_reader, page_words
+from reality_engine.v2 import obs_speaker, page_layout, page_reader, page_words
 from reality_engine.v2 import reference_pages as rp
 
 READER = "hy4-flash-free"
@@ -1688,7 +1688,7 @@ def scope_cue(row: dict[str, Any], page_text: str = "") -> str:
     hay = " ".join([row.get("printed_label") or "", row.get("printed_axis") or "",
                     row.get("series_title") or "", row.get("group_path") or ""])
     root = measure_root(row.get("measure", ""))
-    if root in ("market", "demand") or MARKET_SCOPE_RE.search(hay):
+    if row.get("measure") != "market.share" and (root in ("market", "demand") or MARKET_SCOPE_RE.search(hay)):
         if MARKET_CAP_RE.search(row.get("printed_label") or ""):
             return ""
         current = canonical_scope(row.get("entity_scope") or "")
@@ -3252,7 +3252,9 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                        companies: dict[str, tuple[str, str]] | None = None,
                        deck_asof: str = "", deck_basis: str = "",
                        ocr_text: str = "", ocr_page: bool = False,
-                       transcript_v2: bool = False, deck_guards: bool = False) -> list[dict[str, Any]]:
+                       transcript_v2: bool = False, deck_guards: bool = False,
+                       analyst_speakers: Iterable[str] = (),
+                       mgmt_speakers: Iterable[str] = ()) -> list[dict[str, Any]]:
     """Model reply objects -> checked observation rows (status and status_reason set here).
 
     ``deck_guards`` (T-242, deck pages only): a growth/change row printed after a decrease word is negative, and a
@@ -3271,6 +3273,10 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
     out: list[dict[str, Any]] = []
     prose: list[dict[str, Any]] = []          # stage M: statement / guidance records, never number-checked
     hay_match = norm_match(norm_space(text + "\n" + ocr_text))
+    v2_mode = transcript_v2 or any(isinstance(raw, dict) and "claim_type" in raw for raw in reply_rows)
+    analyst_list = list(dict.fromkeys([obs_speaker._norm_name(s) for s in analyst_speakers if s]
+                                      + (_page_analyst_speakers(page_text) if v2_mode else [])))
+    mgmt_list = [obs_speaker._norm_name(s) for s in mgmt_speakers if s]
     for raw in reply_rows:
         if not isinstance(raw, dict):
             continue
@@ -3451,6 +3457,22 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 and not UNIT_IN_TEXT_RE.search(value_text)
                 and not UNIT_IN_TEXT_RE.search(page_text_after(page_text, value_text, 14))):
             scale_notes.append("no_unit: a ratio printed without its %, bps or x")   # T-242 guard 11
+        is_industry = bool((claim or transcript_v2)
+                           and industry_figure_cue(row["measure"], label, page_text, value_text))
+        if is_industry:
+            row["entity_scope"] = "industry"
+            scale_notes.append("industry_figure: a market/industry figure, not the company's")  # T-242 guard 13
+        is_not_mgmt = bool((claim or transcript_v2) and row["speaker"]
+                           and not_management_speaker(row["speaker"], raw.get("speaker_role", ""),
+                                                      analyst_list, mgmt_list))
+        if is_not_mgmt:
+            scale_notes.append("not_management: said by a participant, not the company")  # T-242 guard 14
+        if (claim or transcript_v2) and forward_number_cue(label, page_text, value_text):
+            if claim not in ("third_party", "hypothetical") and not is_industry and not is_not_mgmt:
+                row["record_type"] = "guidance"
+                if row["period_kind"] in ("", "actual"):
+                    row["period_kind"] = "target"
+            scale_notes.append("forward_number: a stated future figure, served as guidance")  # T-242 guard 12
         if row["period"] and comparative_period(
                 row["period"], page_text, " ".join([row["printed_label"], row["printed_axis"]])):
             row["period"] = ""         # stage L: a date inside "(31 March 2024 : NIL)" is not this row's period
@@ -3487,6 +3509,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             row["period_kind"] = period_kind_for(raw.get("period_kind", ""), row["period"])
         row["period"] = growth_change_period(row["period"], row["measure"], page_text)  # stage N2: the later of a pair
         apply_instant_period(row)                  # stage L: "Closing as on <date>" is a point in time
+        if row["record_type"] == "guidance" and row["period_kind"] in ("", "actual"):
+            row["period_kind"] = "target"
         foot = footnote_basis(page_text, row["period"]) if row["period"] else ""
         if foot:
             row["basis"] = foot
@@ -3503,6 +3527,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             [row["printed_label"], row["printed_axis"], row["series_title"]])) else 0
         if doc_owner_symbol and row["entity_scope"] in ("company", "subsidiary", ""):
             row["entity_scope"] = "parent"
+        if is_industry:
+            row["entity_scope"] = "industry"
         # T-241: a share/mix/order-book row must name which part it covers (segment, product, geography or customer)
         if MIX_MEASURE_RE.search(row["measure"]) and not any(
                 row[dim] for dim in ("segment", "product", "geography", "customer")):
@@ -3526,6 +3552,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
     apply_path_sum(out)
     apply_series_kind(out, text)
     apply_basis_conflicts(out)
+    if v2_mode:
+        out = apply_measure_conflicts(out, page_text)   # T-242 guard 15: dedup per measure / flag multi-measure value
     apply_guidance_statements(prose)          # stage O: a guidance value also needs its statement row
     return out + prose
 
@@ -3577,7 +3605,9 @@ def apply_parts_sum(rows: list[dict[str, Any]], stats: dict[str, Any] | None = N
                 if "no_unit:" in row["status_reason"] or "no_period:" in row["status_reason"] or \
                         "adjusted/hypothetical" in row["status_reason"] or "image_text" in row["status_reason"] or \
                         "geography_not_printed" in row["status_reason"] or "stacked_part" in row["status_reason"] or \
-                        "generic_label" in row["status_reason"] or "mix_without_segment" in row["status_reason"]:
+                        "generic_label" in row["status_reason"] or "mix_without_segment" in row["status_reason"] or \
+                        "forward_number:" in row["status_reason"] or "industry_figure:" in row["status_reason"] or \
+                        "not_management:" in row["status_reason"] or "measure_conflict:" in row["status_reason"]:
                     continue         # a parts sum never overrides a hard gate (stage L adds generic_label)
                 row["status"] = "verified"
                 row["status_reason"] = (row["status_reason"] + "; " if row["status_reason"] else "") + \
@@ -4037,7 +4067,16 @@ COVER_LETTER_RES = (re.compile(r"\b(?:scrip|security)\s+code\b", re.I),
                     re.compile(r"\bsub(?:ject)?\s*[:\-]", re.I),
                     re.compile(r"\bdear\s+(?:sir|sirs|madam)\b", re.I))
 CURRENCY_RE = re.compile(r"INR|Rs\.?|USD|US\$|\$|\u20b9|rupees", re.I)
-RANGE_TAIL_RE = re.compile(r"\s*(?:to|-|\u2013|\u2014)\s*(?:INR|Rs\.?|USD|US\$|\$|\u20b9)?\s*(\d[\d,]*(?:\.\d+)?)", re.I)
+_RANGE_UNIT_PAT = (
+    r"(?:crores?|crs?|cr\.?|lakhs?|lacs?|millions?|mn|billions?|bn|thousands?|"
+    r"percent|per\s*cent|pct|bps|basis\s+points?)"
+)
+_RANGE_UNIT_RE = re.compile(rf"\s*({_RANGE_UNIT_PAT})\b", re.I)
+PCT_UNIT_RE = re.compile(r"\b(?:percent|per\s*cent|pct)\b", re.I)
+RANGE_TAIL_RE = re.compile(
+    rf"(?:\s*{_RANGE_UNIT_PAT}\b)?\s*(?:to|-|\u2013|\u2014)\s*(?:INR|Rs\.?|USD|US\$|\$|\u20b9)?\s*(\d[\d,]*(?:\.\d+)?)",
+    re.I,
+)
 
 
 INNER_RANGE_RE = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*%?\s*(?:-|\u2013|\u2014|to)\s*(?:INR|Rs\.?|USD|US\$|\$|\u20b9)?\s*"
@@ -4053,6 +4092,37 @@ COST_OF_FUNDS_RE = re.compile(r"\bcost\s+of\s+(?:funds|borrowings?|deposits)\b|\
 WORD_FRACTION_RE = re.compile(r"\band\s+(?:a\s+)?(half|quarter|three[\s-]quarters?)\b", re.I)
 WORD_FRACTION = {"half": 0.5, "quarter": 0.25}
 UNIT_IN_TEXT_RE = re.compile(r"%|percent|per\s*cent|bps|basis\s+points?|\btimes\b|\d\s*x\b", re.I)
+FORWARD_CUE_RE = re.compile(
+    r"\b(?:will be|will touch|will reach|will go|would be|would try|has to move to|have to move to|"
+    r"going to be|we expect|expected to|targeting|target of|aim(?:ing)? to|should be|plan to|"
+    r"guided|guidance of|push (?:it|them) (?:up )?to|in due course)\b",
+    re.I,
+)
+PAST_ACTUAL_CUE_RE = re.compile(
+    r"\b(?:we have done|was|were|grew|stood at|reported|achieved|last year)\b",
+    re.I,
+)
+FORWARD_CLAUSE_BREAK_RE = re.compile(r"(?<!\brs)\.(?!\d)|[?;]|(?:^|\s+)and\s+", re.I)
+INDUSTRY_MEASURE_PREFIXES = ("industry_", "NEW:industry_", "NEW:market_")
+INDUSTRY_CLAUSE_RE = re.compile(
+    r"\b(?:market(?!\s+share\b)|industry|sector|country-?wide|india'?s|the\s+country|"
+    r"leasing\s+market|office\s+stock|vacancy|supply|absorption|gdp)\b",
+    re.I,
+)
+MARKET_SHARE_PHRASE_RE = re.compile(r"\b(?:market\s+share|share\s+of\s+(?:the\s+)?market)\b", re.I)
+INDUSTRY_SOURCE_RE = re.compile(
+    r"(?:source\s*:|\b(?:as\s+per|according\s+to)\b)[^.\n]{0,40}\b"
+    r"(?:IRSG|CBRE|JLL|Cushman|Knight\s+Frank|CRISIL|ICRA|World\s+Steel|IEA|IMF|RBI)\b",
+    re.I,
+)
+COMPANY_OUR_RE = re.compile(r"\bour\b", re.I)
+QUESTION_WE_HAVE_INTRO_RE = re.compile(
+    r"\b(?:first|next|last)?\s*question\s+we\s+have\s+(?:is\s+)?from\s+"
+    r"([A-Z][A-Za-z.'\u2019\-]+(?:[ \t]+(?:[A-Z][A-Za-z.'\u2019\-]+|de|da|van|von|singh)){0,3}?)"
+    r"(?=[ \t]+(?:from|of|with|an|at)\b|[.,;:)\n]|$)",
+    re.I,
+)
+SENT_END_RE = re.compile(r"(?:(?<!\brs)\.(?!\d)|[?!])(?=\s|$)", re.I)
 
 
 def word_fraction(value_text: str) -> float:
@@ -4089,13 +4159,22 @@ def printed_range_high(page_text: str, value_text: str, value: float | None) -> 
     idx = text.find(value_text)
     if idx < 0:
         return None
-    tail = text[idx + len(value_text): idx + len(value_text) + 40]
+    tail = text[idx + len(value_text): idx + len(value_text) + 50]
     m = RANGE_TAIL_RE.match(tail)
     if not m:
         return None
+    low_unit_m = _RANGE_UNIT_RE.match(tail)
+    low_unit = low_unit_m.group(1) if low_unit_m and low_unit_m.end() <= m.start(1) else ""
+    high_unit_m = _RANGE_UNIT_RE.match(tail[m.end():])
+    high_unit = high_unit_m.group(1) if high_unit_m else ""
     # the two ends share a unit: "rose by 11% to INR34.5 crores" is a growth and a new level, never a range
-    low_pct, high_pct = value_text.rstrip().endswith("%"), tail[m.end():].lstrip().startswith("%")
-    if low_pct != high_pct and not (not low_pct and high_pct and re.fullmatch(r"[\d.,\s]+", value_text)):
+    low_pct = value_text.rstrip().endswith("%") or bool(PCT_UNIT_RE.search(value_text)) or bool(
+        PCT_UNIT_RE.search(low_unit))
+    high_pct = tail[m.end():].lstrip().startswith("%") or bool(PCT_UNIT_RE.search(high_unit))
+    if low_pct != high_pct and not (not low_pct and not low_unit and high_pct
+                                    and re.fullmatch(r"[\d.,\s]+", value_text)):
+        return None
+    if low_unit and high_unit and _scale_factor(low_unit) != _scale_factor(high_unit):
         return None
     if CURRENCY_RE.search(tail[:m.start(1)]) and not CURRENCY_RE.search(value_text):
         return None
@@ -4122,6 +4201,146 @@ def _before(page_text: str, value_text: str, width: int) -> str:
     text = norm_space(page_text)
     idx = text.find(value_text) if value_text else -1
     return text[max(0, idx - width):idx] if idx > 0 else ""
+
+
+def _has_forward_cue(text: str) -> bool:
+    matches = list(FORWARD_CUE_RE.finditer(text or ""))
+    if not matches:
+        return False
+    return PAST_ACTUAL_CUE_RE.search(text[matches[-1].end():]) is None
+
+
+def _before_clause(page_text: str, value_text: str, width: int = 80) -> str:
+    """The value's own preceding clause (cut at '.', '?', ';' or ' and ', max ``width`` chars)."""
+    before = _before(page_text, value_text, width)
+    return FORWARD_CLAUSE_BREAK_RE.split(before)[-1] if before else ""
+
+
+def forward_number_cue(label: str, page_text: str, value_text: str) -> bool:
+    """T-242 guard 12: a transcript number row whose label or own preceding clause states a future figure."""
+    if _has_forward_cue(label):
+        return True
+    if PAST_ACTUAL_CUE_RE.search(label or ""):
+        return False
+    return _has_forward_cue(_before_clause(page_text, value_text, 80))
+
+
+def industry_figure_cue(measure: str, label: str, page_text: str, value_text: str) -> bool:
+    """T-242 guard 13: a market/industry/macro figure, not the company's own measure."""
+    if str(measure or "").startswith(INDUSTRY_MEASURE_PREFIXES):
+        return True
+    clause = _before_clause(page_text, value_text, 80)
+    if COMPANY_OUR_RE.search(label or "") or COMPANY_OUR_RE.search(clause):
+        return False
+    clean_label = MARKET_SHARE_PHRASE_RE.sub("", label or "")
+    clean_clause = MARKET_SHARE_PHRASE_RE.sub("", clause)
+    if INDUSTRY_CLAUSE_RE.search(clean_label) or INDUSTRY_CLAUSE_RE.search(clean_clause):
+        return True
+    around = f"{_before(page_text, value_text, 200)} {value_text} {page_text_after(page_text, value_text, 200)}"
+    return INDUSTRY_SOURCE_RE.search(around) is not None
+
+
+def _page_analyst_speakers(page_text: str) -> list[str]:
+    """Analyst/moderator names introduced on this page via moderator prompts or role-tagged turns."""
+    names: list[str] = []
+    txt = str(page_text or "")
+    for rx in (obs_speaker._ANALYST_INTRO_RE, QUESTION_WE_HAVE_INTRO_RE):
+        for m in rx.finditer(txt):
+            raw = next((g for g in m.groups() if g), "").strip()
+            nm = obs_speaker._is_valid_speaker_name(raw, allow_all_caps_role=False)
+            if nm:
+                names.append(obs_speaker._norm_name(nm))
+    for turn in obs_speaker.extract_turns(txt):
+        if turn.role_hint and (obs_speaker._ANALYST_HINT_RE.search(turn.role_hint)
+                                or "moderator" in turn.role_hint.lower()
+                                or "operator" in turn.role_hint.lower()):
+            names.append(obs_speaker._norm_name(turn.name))
+    return list(dict.fromkeys(n for n in names if n))
+
+
+def not_management_speaker(speaker: str, speaker_role: str, analyst_names: list[str],
+                           mgmt_names: list[str]) -> bool:
+    """T-242 guard 14: True when ``speaker`` is an analyst/participant/moderator, not management."""
+    sp = norm_space(speaker)
+    if not sp:
+        return False
+    role = norm_space(speaker_role).lower()
+    if role:
+        return role != "management"
+    norm = obs_speaker._norm_name(sp)
+    if (norm in obs_speaker._MODERATOR_NAMES or "moderator" in norm or "operator" in norm
+            or obs_speaker._ANALYST_HINT_RE.search(sp)):
+        return True
+    if mgmt_names and obs_speaker._name_matches_list(sp, mgmt_names):
+        return False
+    if analyst_names and obs_speaker._name_matches_list(sp, analyst_names):
+        return True
+    return False
+
+
+def _value_sentence(page_text: str, label: str, value_text: str) -> str:
+    """The sentence on ``page_text`` holding ``label + value_text`` (falling back to ``value_text``)."""
+    text = norm_space(page_text)
+    lbl = norm_space(label)
+    vt = norm_space(value_text)
+    if not text or not vt:
+        return ""
+    idx = -1
+    if lbl:
+        m = re.search(re.escape(lbl) + r"\s*" + re.escape(vt), text)
+        if m:
+            idx = m.end() - len(vt)
+        elif vt in lbl:
+            idx = text.find(lbl)
+    if idx < 0:
+        idx = text.find(vt)
+    if idx < 0:
+        return ""
+    start = 0
+    for m in SENT_END_RE.finditer(text, 0, idx):
+        start = m.end()
+    m_end = SENT_END_RE.search(text, idx + len(vt))
+    end = m_end.end() if m_end else len(text)
+    return text[start:end].strip()
+
+
+def apply_measure_conflicts(rows: list[dict[str, Any]], page_text: str) -> list[dict[str, Any]]:
+    """T-242 guard 15: dedup per measure within (value_text, value, sentence) and flag multi-measure conflicts."""
+    groups: dict[tuple[str, float, str], list[int]] = {}
+    for i, row in enumerate(rows):
+        if (row.get("record_type") != "number" or row.get("status") == "quarantined"
+                or row.get("value") is None or not row.get("value_text")):
+            continue
+        sent = _value_sentence(page_text, row.get("printed_label", ""), row.get("value_text", ""))
+        if not sent:
+            continue
+        key = (str(row["value_text"]), float(row["value"]), sent)
+        groups.setdefault(key, []).append(i)
+    drop: set[int] = set()
+    conflict_note = "measure_conflict: one printed figure mapped to several measures"
+    for indices in groups.values():
+        by_measure: dict[str, list[int]] = {}
+        for idx in indices:
+            by_measure.setdefault(str(rows[idx].get("measure") or ""), []).append(idx)
+        kept: list[int] = []
+        for m_indices in by_measure.values():
+            best = max(m_indices, key=lambda idx: (
+                rows[idx].get("status") == "verified",
+                len(str(rows[idx].get("printed_label") or "")),
+                -idx,
+            ))
+            kept.append(best)
+            for idx in m_indices:
+                if idx != best:
+                    drop.add(idx)
+        if len(by_measure) >= 2:
+            for idx in kept:
+                row = rows[idx]
+                row["status"] = "unverified"
+                reason = str(row.get("status_reason") or "")
+                if conflict_note not in reason:
+                    row["status_reason"] = "; ".join(part for part in (reason, conflict_note) if part)
+    return [row for i, row in enumerate(rows) if i not in drop]
 
 
 def negative_printed(label: str, page_text: str, value_text: str) -> bool:
@@ -4377,6 +4596,7 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
             continue
     stats: dict[str, Any] = {"pages": 0, "no_store": 0, "not_transcript": 0, "unselected": 0,
                              "rows_before": 0, "rows_after": 0, "v2_pages": 0}
+    doc_speaker_ctx: dict[tuple[str, str], tuple[list[str], list[str]]] = {}
     replies = con.execute("SELECT doc_key, page, fingerprint, raw FROM page_reply ORDER BY doc_key, page").fetchall()
     for doc_key, page, fingerprint, raw in replies:
         store_db = doc_store.get(str(doc_key))
@@ -4390,6 +4610,24 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
         if not meta or meta["doc_type"] != "transcript":
             stats["not_transcript"] += 1
             continue
+        ctx_key = (store_db, str(doc_key))
+        if ctx_key not in doc_speaker_ctx:
+            try:
+                s_con = connect_ro(store_db, timeout_s=60)
+                try:
+                    doc_pages = s_con.execute(
+                        "SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page", (doc_key,)
+                    ).fetchall()
+                finally:
+                    s_con.close()
+                dctx = obs_speaker.build_doc_context([(int(p), str(t or "")) for p, t in doc_pages])
+                doc_speaker_ctx[ctx_key] = (
+                    list(dict.fromkeys(dctx.analyst_names + dctx.moderator_names)),
+                    list(dctx.mgmt_names),
+                )
+            except sqlite3.Error:
+                doc_speaker_ctx[ctx_key] = ([], [])
+        analyst_list, mgmt_list = doc_speaker_ctx[ctx_key]
         owner = ""
         try:
             owner = doc_owner(store_db, doc_key, companies, meta["symbol"])
@@ -4400,7 +4638,8 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
         v2 = f"transcript:{v2_fp}" in str(fingerprint or "")
         rows = build_observations(symbol=meta["symbol"], doc_key=doc_key, page=int(page), known_at=meta["known_at"],
                                   page_text=text, reply_rows=reply_rows, doc_owner_symbol=owner,
-                                  companies=companies, transcript_v2=v2)
+                                  companies=companies, transcript_v2=v2,
+                                  analyst_speakers=analyst_list, mgmt_speakers=mgmt_list)
         stats["rows_before"] += int(con.execute("SELECT COUNT(*) FROM observation WHERE doc_key=? AND page=?",
                                                 (doc_key, int(page))).fetchone()[0])
         con.execute("DELETE FROM observation WHERE doc_key=? AND page=?", (doc_key, int(page)))
