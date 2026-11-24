@@ -8,6 +8,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
+00000. 24 Nov (dsh): T-242 statement speakers (`attach_statement_speakers`): verified 5,719->5,456, empty speaker 1,628->319 on reparse8; 46 of 47 graded R kept (BHAGYANGR R now unverified: company name printed as speaker), NOCIL cover-letter J gone; script-only, fingerprint e95108f16e65. NEXT: Wolf fresh 60-row grade.
 00. 24 Nov 16:55 (Wolf): AR statement lines never verified (XBRL holds them; DEVELOPER_GUIDE); pilot verified 3,017->1,124, graded W 9/10 gone; Eagle's exemptions (off-statement notes, dimensioned rows) 17:05 -> 1,414 verified. NEXT: fresh 60-row AR grade.
 0000. 24 Nov 15:15 (Eagle): T-242 merged v2 guards 10-16 (f1fac770) + filing_events fixes 1-6 (tuned on the graded 60: fresh-seed grade needed). NEXT: reparse fresh 394_v2 snapshot -> Wolf grades 60 verified; events on 20 new stores -> Wolf grades.
 000. 24 Nov 16:55 (Wolf): T-242 strict 60-row grades (bar >=70% R, <=5% W+J): call statements 78%/3% PASS -> statements gate (call numbers verified only by v2/corroborate.py: 352 of 10,543 match filings). Deck 80%/12% FAIL (entity; prompt change next). Events new20 55%/14% before round 2 (merged; 3rd fresh seed due). AR selector merged. dsh 635e3735 grading 394 ckpt_0002 + fy27 ckpt_0001 statements.
