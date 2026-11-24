@@ -94,6 +94,9 @@ def test_quota_pace_and_five_hour(env, monkeypatch):
     assert any("RULE quota: Wolf: weekly 20%" in line for line in og.check(WED_NIGHT, rules, LOOP))
     usage["rate_limits"]["five_hour"]["used_percentage"] = 95                      # window used: no pace breach
     (tmp / "Wolf" / "usage_status.json").write_text(json.dumps(usage), encoding="utf-8")
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp / "Eagle"))      # another account's session: not its job
+    assert not any("5-hour window" in line for line in og.check(WED_NIGHT, rules, LOOP))
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp / "Wolf"))       # its own session must hand off
     lines = og.check(WED_NIGHT, rules, LOOP)
     assert not any("RULE quota: Wolf: weekly" in line for line in lines)
     assert any("Wolf 5-hour window at 95%" in line for line in lines)

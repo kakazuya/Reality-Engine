@@ -109,7 +109,9 @@ def quota_lines(rules: dict[str, Any], now: dt.datetime) -> list[str]:
             if float(five) < p["five_due_now"] - q.get("slack_pct", 10):
                 p.update(name=acc["name"], k_source=_src)
                 out.append("RULE quota: " + quota_pace.line(p) + f" - start more work ({acc['source']})")
-        if five is not None and float(five) >= q.get("five_hour_handoff_pct", 90):
+        own = os.path.normcase(os.path.abspath(os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")))
+        mine = os.path.normcase(os.path.abspath(acc["config"])) == own    # the handoff is the full account's own job
+        if mine and five is not None and float(five) >= q.get("five_hour_handoff_pct", 90):
             out.append(f"RULE quota: {acc['name']} 5-hour window at {five}% - hand work to the other manager, "
                        "Hydrogen or DeepSeek")
     return out

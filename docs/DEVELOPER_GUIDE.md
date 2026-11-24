@@ -2895,4 +2895,7 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   (`transcript_number:` reason) after `build_observations` in both the read path and `--reparse`. The guards still run
   (their tests check the page check). A call number earns verified only from a filing we hold (results XBRL or a
   verified deck row, same company, measure and period within 1%): Eagle's corroboration matcher, separate step.
+- **Quota handoff rule is per account (T-242, 24 Nov 2026, Wolf).** `ops_gate.quota_lines` raises "5-hour window at N%
+  - hand work to..." only in the session whose `CLAUDE_CONFIG_DIR` (default `~/.claude`) is that account's config: the
+  manager that received the work no longer gets blocked by the other account's full window until its reset.
 
