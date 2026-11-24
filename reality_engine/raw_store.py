@@ -20,6 +20,7 @@ import hashlib
 import os
 import shutil
 import sqlite3
+import time
 import subprocess
 import tempfile
 import threading
@@ -232,15 +233,27 @@ class RawStore:
         """Read the manifest once (rows that have a Drive path; ``raw/user_research`` stays local)."""
         if not self.manifest.is_file():
             return
-        try:
-            con = sqlite3.connect(f"file:{self.manifest.as_posix()}?mode=ro", uri=True, timeout=30)
+        # T-241 (24 Nov): a busy manifest (the to_drive runs write it) used to make this return silently with no
+        # rows, so every moved file looked "not held" and a build wrote an empty store (universe c11).  Wait, retry,
+        # then fail loudly so the build part fails and is retried instead.
+        rows = None
+        last: Exception | None = None
+        for attempt in range(4):
             try:
-                rows = con.execute("SELECT root, rel, md5, drive_path FROM local_file "
-                                   "WHERE drive_path IS NOT NULL AND drive_path != ''").fetchall()
-            finally:
-                con.close()
-        except sqlite3.DatabaseError:
-            return
+                con = sqlite3.connect(f"file:{self.manifest.as_posix()}?mode=ro", uri=True, timeout=300)
+                try:
+                    rows = con.execute("SELECT root, rel, md5, drive_path FROM local_file "
+                                       "WHERE drive_path IS NOT NULL AND drive_path != ''").fetchall()
+                finally:
+                    con.close()
+                break
+            except sqlite3.OperationalError as exc:      # locked / busy: wait and retry
+                last = exc
+                time.sleep(30 * (attempt + 1))
+            except sqlite3.DatabaseError:                 # not a sqlite file: no manifest, as before
+                return
+        if rows is None:
+            raise RuntimeError(f"raw manifest {self.manifest} unreadable after retries: {last}")
         for root, rel, md5, drive in rows:
             root_key = str(root).strip().lower()
             rel_text = str(rel).replace("\\", "/").strip("/")
