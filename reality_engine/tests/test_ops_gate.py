@@ -63,6 +63,8 @@ def test_ungraded_or_failed_checkpoint_is_a_breach(env):
     assert any("not graded" in line for line in og.check(WED_NIGHT, rules, LOOP))
     (d / "ckpt_0001.grade.json").write_text('{"verdict": "fail"}', encoding="utf-8")
     assert any("fail" in line for line in og.check(WED_NIGHT, rules, LOOP))
+    (d / "ckpt_0001.fix.md").write_text("Eagle: guards on Eagle-v2-guards", encoding="utf-8")
+    assert og.check(WED_NIGHT, rules, LOOP) == []          # a fail with a named fix is not a breach
     (d / "ckpt_0001.grade.json").write_text('{"verdict": "pass"}', encoding="utf-8")
     assert og.check(WED_NIGHT, rules, LOOP) == []
 

@@ -171,8 +171,12 @@ def check(now: dt.datetime | None = None, rules: dict[str, Any] | None = None,
     from reality_engine.v2 import read_gate  # noqa: PLC0415
     for out in sorted(hy4_outputs(rules, cmds)):
         for bad in read_gate.pending_checkpoints(out):
-            lines.append(f"RULE hy4: audit checkpoint of {out} needs a passing grade ({bad}) - its reading is "
-                         "stopped until a manager who did not write its prompt grades it")
+            name = bad.split(":", 1)[0]
+            fix = read_gate.audit_dir(out) / name.replace(".jsonl", ".fix.md")
+            if not bad.endswith("not graded") and fix.is_file():
+                continue    # a failed audit with a named fix in progress: reading of that output stays stopped
+            lines.append(f"RULE hy4: audit checkpoint of {out} needs a passing grade ({bad}) - grade it (a manager who did "
+                         "not write its prompt), or for a fail write ckpt_NNNN.fix.md naming the fix and its owner")
     peak = in_peak(now, rules)
     dsh, agy = running_dsh(), running_agy()
     rep = rules["reportees"]
