@@ -251,3 +251,12 @@ def test_ar_row_gate_sets_the_basis_the_page_heading_prints():
     both = _gate_row(measure="NEW:trade_receivables_ageing_unbilled", printed_label="Undisputed", basis="consolidated")
     obs.apply_ar_row_gates([both], "Standalone financial statements\nConsolidated financial statements")
     assert both["basis"] == "consolidated"             # both headings: nothing to override with
+
+
+def test_basis_mention_in_body_text_does_not_flip_a_row():
+    from reality_engine.v2 import observations as o
+    body = "Directors' Report. " + "Revenue grew on strong demand across all segments. " * 8 +         "Details are in the standalone financial statements."
+    row = {"record_type": "number", "status": "verified", "basis": "consolidated", "measure": "revenue",
+           "printed_label": "Revenue from operations", "unit": "Rs crore", "scale": 1e7, "value": 120.0}
+    o.apply_ar_row_gates([row], body)
+    assert row["basis"] == "consolidated"

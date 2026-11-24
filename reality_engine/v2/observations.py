@@ -3785,7 +3785,9 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> None:
     """
     text = norm_space(page_text)
     note = ar_scale_note(text)
-    heading = {match.group(1).lower() for match in AR_HEADING_BASIS_RE.finditer(text)}
+    # the page HEAD only (Wolf review): body text such as "as per the consolidated financial statements" in a
+    # directors' report must not flip a row; a running head or a note title sits in the first 300 characters
+    heading = {match.group(1).lower() for match in AR_HEADING_BASIS_RE.finditer(text[:300])}
     basis = next(iter(heading)) if len(heading) == 1 else ""
     for row in rows:
         if norm_space(row.get("record_type") or "number") != "number":
