@@ -3200,6 +3200,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
     page_groups = {part for raw in reply_rows if isinstance(raw, dict)
                    for part in norm_space(raw.get("group_path")).split(" > ") if part}
     legend_groups = detect_legend(word_list, page_groups)
+    if transcript_v2 and is_cover_letter(page_text, page):
+        return []                              # T-241 guard 3: a filing cover letter is not part of the call
     out: list[dict[str, Any]] = []
     prose: list[dict[str, Any]] = []          # stage M: statement / guidance records, never number-checked
     hay_match = norm_match(norm_space(text + "\n" + ocr_text))
@@ -3211,6 +3213,9 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             record_type = "number"
         if record_type == "guidance" and norm_space(raw.get("claim_type")).lower() not in ("", "company_target"):
             continue                 # T-241 v2: a government / industry target or an ask is not company guidance
+        if (record_type == "guidance" and (transcript_v2 or "claim_type" in raw)
+                and PERIOD_VALUE_RE.match(norm_space(raw.get("low") or raw.get("value_text")))):
+            continue                 # T-241 guard 2: "H1FY28" read as a target of 1 is a period, not a value
         if record_type in ("statement", "guidance"):
             if record_type == "statement":
                 record = statement_observation(symbol=symbol, doc_key=doc_key, page=page, known_at=known_at,
@@ -3218,6 +3223,14 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             else:
                 record = guidance_observation(symbol=symbol, doc_key=doc_key, page=page, known_at=known_at,
                                               raw=raw, hay_match=hay_match, measures=measures, page_text=page_text)
+            if record is not None and record["record_type"] == "guidance" and (transcript_v2 or "claim_type" in raw):
+                if record["value_high"] is not None and record["value"] is not None \
+                        and record["value_high"] < record["value"]:
+                    record["value_high"] = None      # T-241 guard 4: "20% or 10%" is no range
+                if record["value_high"] is None:      # T-241 guard 5: the printed upper end
+                    low_text = norm_space(raw.get("low") or raw.get("value_text"))
+                    record["value_high"] = (printed_range_high(record["statement"], low_text, record["value"])
+                                            or printed_range_high(page_text, low_text, record["value"]))
             if record is not None:
                 prose.append(record)
             continue
@@ -3235,6 +3248,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         value = parse_number(value_text)
         if value is None:            # the model's own "value" is never trusted, and value_text is not a number
             continue
+        if (claim or transcript_v2) and PERIOD_VALUE_RE.match(value_text):
+            continue                 # T-241 guard 2: a period label ("Q2", "FY27", "H1FY28") is not a value
         row: dict[str, Any] = {key: norm_space(raw.get(key)) for key in ROW_TEXT_KEYS}
         if junk_measure(row["measure"]):
             continue                 # page number, phone, address, PIN, CIN/DIN, signature date: not a quantity
@@ -3284,6 +3299,14 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         printed = norm_space(raw.get("period_printed"))
         if printed and printed != row["period"]:
             row["period_source"] = printed[:120]
+        if claim or transcript_v2:
+            if (row["value"] is not None and row["value"] > 0 and not SIGNED_MEASURE.search(row["measure"])
+                    and "loss" not in row["measure"].lower() and negative_printed(label, page_text, value_text)):
+                row["value"] = -row["value"]   # T-241 guard 1: "stood at negative Rs27 crore" is -27
+            if row["value_high"] is not None and row["value"] is not None and row["value_high"] < row["value"]:
+                row["value_high"] = None       # T-241 guard 4: a high below the low is no range
+            if row["value_high"] is None and not high_text:
+                row["value_high"] = printed_range_high(page_text, value_text, row["value"])   # T-241 guard 5
         if not row["unit"] and value_text.rstrip().endswith("%"):
             row["unit"] = "%"            # T-241: a printed "12%" keeps its percent unit
         if claim == "third_party" and row["entity_scope"] in ("", "company", "parent"):
@@ -3896,6 +3919,48 @@ TRANSCRIPT_PROMPT = "v1"
 # a sign is kept only on a movement (growth / change / bps); a level (days, margin, amount) is never negated
 BY_CHANGE_RE = re.compile(r"\b(?:increas|decreas|reduc|improv|grew|grown|fell|declin|rose|risen|went\s+(?:up|down)|"
                           r"expand|contract|dropp?)\w*\s+by$", re.I)
+# T-241 (Wolf's fy27_v2 ckpt_0001 grade, 24 Nov): five number guards for v2 transcript rows
+PERIOD_VALUE_RE = re.compile(r"^(?:(?:Q[1-4]|H[12]|9M)\s*(?:FY\s*'?\d{2,4})?|FY\s*'?\d{2,4}(?:\s*[-\u2013]\s*'?\d{2,4})?)$",
+                             re.I)
+NEGATIVE_WORD_RE = re.compile(r"\bnegative\b|\bloss\s+of\b|\bminus\b|\bnet\s+loss\b", re.I)
+COVER_LETTER_RES = (re.compile(r"\b(?:scrip|security)\s+code\b", re.I),
+                    re.compile(r"\bsub(?:ject)?\s*[:\-]", re.I),
+                    re.compile(r"\bdear\s+(?:sir|sirs|madam)\b", re.I))
+RANGE_TAIL_RE = re.compile(r"\s*(?:to|-|\u2013|\u2014)\s*(?:INR|Rs\.?|USD|US\$|\$|\u20b9)?\s*(\d[\d,]*(?:\.\d+)?)", re.I)
+
+
+def is_cover_letter(page_text: str, page: int) -> bool:
+    """A filing cover letter (Scrip Code + Sub: + Dear Sir on page 1-2) carries no investor figure."""
+    text = str(page_text or "")
+    return int(page) <= 2 and all(rx.search(text) for rx in COVER_LETTER_RES)
+
+
+def printed_range_high(page_text: str, value_text: str, value: float | None) -> float | None:
+    """The upper end printed right after ``value_text`` ("$23 billion to $25 billion", "60% to 65%"), else None."""
+    if value is None or not value_text:
+        return None
+    text = norm_space(page_text)
+    idx = text.find(value_text)
+    if idx < 0:
+        return None
+    m = RANGE_TAIL_RE.match(text[idx + len(value_text): idx + len(value_text) + 40])
+    if not m:
+        return None
+    high = parse_number(m.group(1))
+    if high is None or high <= value or high > abs(value) * 20:
+        return None
+    return high
+
+
+def negative_printed(label: str, page_text: str, value_text: str) -> bool:
+    """'stood at negative Rs27 crore', 'a loss of 12 crore': the sign is printed in words, not with a minus."""
+    if NEGATIVE_WORD_RE.search(label or ""):
+        return True
+    text = norm_space(page_text)
+    idx = text.find(value_text) if value_text else -1
+    return idx > 0 and bool(NEGATIVE_WORD_RE.search(text[max(0, idx - 25):idx]))
+
+
 # T-241 v2c (Wolf's grade, 7 of 7 wrongs): a number that is not the company's own actual or target
 NOT_A_COMPANY_FIGURE = frozenset({"hypothetical", "expectation", "ask"})
 SIGNED_MEASURE = re.compile(r"growth|change|_yoy|_qoq|delta|\bbps\b|basis points", re.I)
@@ -4114,6 +4179,67 @@ _RETRY_EVENTS: list[dict[str, Any]] = []
 _RETRY_LOCK = threading.Lock()
 _QUOTA: dict[str, float] = {"seconds": 0.0}
 _QUOTA_LOCK = threading.Lock()
+
+
+def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: Any = None) -> dict[str, Any]:
+    """T-241: rebuild transcript rows from the stored raw replies (``page_reply``) with today's parsing and guards.
+
+    No model call.  Every selected page's rows are deleted and rebuilt from its reply; the ``page_read`` outcome is
+    updated.  A reply written by the v2 transcript prompt (its fingerprint in ``page_reply.fingerprint``) gets the
+    v2 guards.  Only transcript pages are re-parsed (a deck page also needs its words / OCR text); others are counted.
+    """
+    import hashlib
+    v2_fp = hashlib.sha256(f"{OBS_READER}\n{PROMPT_TRANSCRIPT_V2}".encode("utf-8")).hexdigest()[:12]
+    store_dbs = list(store_dbs)
+    companies = company_index(store_dbs)
+    doc_store: dict[str, str] = {}
+    for store_db in store_dbs:
+        try:
+            store_con = connect_ro(store_db, timeout_s=60)
+            try:
+                for (key,) in store_con.execute("SELECT doc_key FROM doc"):
+                    doc_store.setdefault(str(key), str(store_db))
+            finally:
+                store_con.close()
+        except sqlite3.Error:
+            continue
+    stats: dict[str, Any] = {"pages": 0, "no_store": 0, "not_transcript": 0, "unselected": 0,
+                             "rows_before": 0, "rows_after": 0, "v2_pages": 0}
+    replies = con.execute("SELECT doc_key, page, fingerprint, raw FROM page_reply ORDER BY doc_key, page").fetchall()
+    for doc_key, page, fingerprint, raw in replies:
+        store_db = doc_store.get(str(doc_key))
+        if store_db is None:
+            stats["no_store"] += 1
+            continue
+        if only is not None and not only.page(store_db, doc_key, page):
+            stats["unselected"] += 1
+            continue
+        meta = page_meta(store_db, doc_key)
+        if not meta or meta["doc_type"] != "transcript":
+            stats["not_transcript"] += 1
+            continue
+        owner = ""
+        try:
+            owner = doc_owner(store_db, doc_key, companies, meta["symbol"])
+        except Exception:
+            owner = ""
+        text = page_text_of(store_db, doc_key, page)
+        reply_rows, _bad = parse_reply(str(raw or ""))
+        v2 = f"transcript:{v2_fp}" in str(fingerprint or "")
+        rows = build_observations(symbol=meta["symbol"], doc_key=doc_key, page=int(page), known_at=meta["known_at"],
+                                  page_text=text, reply_rows=reply_rows, doc_owner_symbol=owner,
+                                  companies=companies, transcript_v2=v2)
+        stats["rows_before"] += int(con.execute("SELECT COUNT(*) FROM observation WHERE doc_key=? AND page=?",
+                                                (doc_key, int(page))).fetchone()[0])
+        con.execute("DELETE FROM observation WHERE doc_key=? AND page=?", (doc_key, int(page)))
+        write_rows(con, rows)
+        con.execute("INSERT OR REPLACE INTO page_read VALUES (?,?,?,?,?)",
+                    (doc_key, int(page), "rows" if rows else "empty", len(rows), ist_now()))
+        con.commit()
+        stats["pages"] += 1
+        stats["v2_pages"] += int(v2)
+        stats["rows_after"] += len(rows)
+    return stats
 
 
 def apply_prompt_choice(transcript_prompt: str) -> None:
@@ -5222,6 +5348,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="with --only: copy this DB to --out first, then patch the copy")
     parser.add_argument("--reader", default=READER,
                         help="MODELS registry entry to read with (default hy4-flash-free; T-234 bake-off)")
+    parser.add_argument("--reparse", action="store_true",
+                        help="T-241: copy --baseline to --out and rebuild its transcript rows from page_reply (no model)")
     parser.add_argument("--transcript-prompt", choices=("v1", "v2"), default="v1",
                         help="T-241 transcript prompt: v1 (default) or v2 (fiscal periods, ranges, sign, speaker)")
     parser.add_argument("--text-only", action="store_true",
@@ -5238,7 +5366,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.only:
         from reality_engine.research.selector import Selector
         only = Selector.load(args.only)
-    if args.baseline and (args.recheck or args.only):
+    if args.baseline and (args.recheck or args.only or args.reparse):
         from reality_engine.research.selector import copy_db
         copy_db(args.baseline, args.out)      # T-238: a recheck reads --out, so the baseline must reach it first
 
@@ -5261,6 +5389,16 @@ def main(argv: list[str] | None = None) -> int:
     store_dbs = [s for s in dict.fromkeys(store_dbs) if Path(s).is_file()]
     if not store_dbs:
         parser.error("no store found from --stores / --stores-root")
+    if args.reparse:                          # T-241: rebuild rows from page_reply; no model call, no read gate
+        if not args.baseline:
+            parser.error("--reparse needs --baseline (the DB with page_reply); --out receives the rebuilt copy")
+        back = create_db(args.out)
+        try:
+            reparse_stats = reparse_db(back, store_dbs, only=only)
+        finally:
+            back.close()
+        print(json.dumps(reparse_stats, indent=2))
+        return 0 if reparse_stats.get("pages") else 2
     if args.recheck:
         back = create_db(args.out)
         try:
