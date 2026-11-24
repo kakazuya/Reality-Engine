@@ -2190,6 +2190,13 @@ recorded in one SQLite file, `D:/RealityEngine/ledger/ledger.db`, by `reality_en
   by class, reader pages, notes).
 - **Backfill on 11 Nov.** 521 worker jobs (455 workers, 66 graders), 76 Claude sessions, 7 reader runs, 4 answer runs
   (T-179). Worker tool calls 57,596: MCP 5,704, raw SQL 4,534, data read outside the MCP tools 2,659.
+- **Control-char regex fix (T-241, 24 Nov 2026).** `ingest_dsh` in `reality_engine/scripts/run_ledger.py` (line 156) had
+  literal `0x08` backspace bytes in `r"\x08grad(e|er|ing)\x08|review"` after a shell heredoc ate a backslash from `\b`,
+  causing grader runs whose goal lacked `"review"` to be logged as `kind='dsh_worker'`. Replaced the `0x08` bytes with
+  `\b` word boundaries, added a `dsh_grader` classification test in `reality_engine/tests/test_run_ledger.py`, and
+  added `reality_engine/tests/test_no_control_chars.py` to scan every `*.py` file under `reality_engine/` and
+  `plugins/` (skipping `.git`, `worktrees`, `__pycache__`, and venvs) and fail with `file:line` on any control byte in
+  `0x00-0x08`, `0x0B`, `0x0C`, or `0x0E-0x1F`.
 
 
 ## Telegram priority build queue (T-214, 15 Nov 2026)

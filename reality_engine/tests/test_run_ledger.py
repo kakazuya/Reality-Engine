@@ -49,3 +49,25 @@ def test_reader_run(monkeypatch):
         encoding="utf-8")
     assert rl.ingest_reader(con, run) == 2
     assert con.execute("SELECT items, seconds, outcome FROM run").fetchone() == (2, 30.0, "1 errors")
+
+
+def test_ingest_dsh_classifies_grader_without_review(monkeypatch, tmp_path):
+    con = _fresh(monkeypatch, "dsh_kind")
+    jobs = tmp_path / "jobs"
+    cases = [
+        ("job_grader", "Goal: Grader for T-241 prompt check\n", "dsh_grader"),
+        ("job_grading", "Goal: Independent grading pass\n", "dsh_grader"),
+        ("job_worker", "Goal: Upgrade schema and run worker\n", "dsh_worker"),
+    ]
+    for job_id, brief, _expected in cases:
+        jdir = jobs / job_id
+        jdir.mkdir(parents=True)
+        (jdir / "status.json").write_text(json.dumps({"job_id": job_id, "outcome": "completed"}), encoding="utf-8")
+        (jdir / "brief.md").write_text(brief, encoding="utf-8")
+
+    monkeypatch.setattr(rl, "JOBS", jobs)
+    assert rl.ingest_dsh(con) == len(cases)
+    got = dict(con.execute("SELECT run_id, kind FROM run").fetchall())
+    for job_id, _brief, expected in cases:
+        assert got[job_id] == expected
+
