@@ -50,3 +50,29 @@ def test_a_v1_reply_is_unchanged():
     rows = _rows([{"type": "number", "measure": "pat_growth_yoy", "printed_label": "that is a degrowth of",
                    "value_text": "5%", "unit": "%", "period": "the quarter"}])
     assert rows[0]["value"] == 5.0 and rows[0]["speaker"] == "" and rows[0]["value_high"] is None
+
+
+def test_v2d_claim_type_drops_hypotheticals_and_third_party_guidance():
+    rows = _rows([
+        {"type": "number", "measure": "capacity.utilisation", "printed_label": "even if you assume",
+         "value_text": "80%", "unit": "%", "claim_type": "hypothetical"},
+        {"type": "number", "measure": "NEW:expressway_plan_km", "printed_label": "the government plans",
+         "value_text": "17,000", "unit": "km", "claim_type": "third_party", "new_definition": "x",
+         "new_driver_node": "none"},
+        {"type": "guidance", "measure": "order.intake", "low": "40,000", "unit": "crores",
+         "text": "NHAI targets 40,000 crores of awards this year.", "claim_type": "third_party"},
+    ])
+    assert [r["value"] for r in rows if r["record_type"] == "number"] == [17000.0]
+    assert next(r for r in rows if r["record_type"] == "number")["entity_scope"] == "industry"
+    assert not [r for r in rows if r["record_type"] == "guidance"]
+
+
+def test_v2d_percent_unit_lakh_crore_scale_and_section_basis():
+    assert obs._scale_factor("Lakh Crores") == 1e12 and obs._scale_factor("crores") == 1e7
+    text = ("Starting with the standalone numbers. Total income stood at INR 1,303 crores. Coming to the "
+            "consolidated results: Total income of Q2 stood at INR 1,908 crores.")
+    assert obs.section_basis(text, "Total income of Q2 stood at", "INR 1,908 crores") == "consolidated"
+    assert obs.section_basis(text, "Total income stood at", "INR 1,303 crores") == "standalone"
+    rows = _rows([{"type": "number", "measure": "pat_growth_yoy", "printed_label": "that is a degrowth of",
+                   "value_text": "5%", "unit": "", "period": "Q2 FY25", "claim_type": "company_actual"}])
+    assert rows[0]["unit"] == "%"

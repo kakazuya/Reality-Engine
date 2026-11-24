@@ -976,6 +976,7 @@ JUNK_MEASURE = re.compile(
     r"digital|letter|call|meeting|document|calendar|time|period|quarter|year|financial|fy|q[1-4]|ref|"
     r"registered|corporate|membership|stock)"
     r"(?:[._][a-z0-9]+)*$", re.I)
+LAKH_CRORE_RE = re.compile(r"\b(?:lakhs?|lacs?)\s*(?:crores?|crs?|cr)\b", re.I)
 SCALE_WORDS = ((r"thousands?", 1e3), (r"'000|000s", 1e3), (r"\blakhs?\b|\blacs?\b", 1e5),
                (r"\bcrores?\b|\bcrs?\b|\bcr\.", 1e7), (r"\bmillions?\b|\bmn\b|\bmm\b", 1e6),
                (r"\bbillions?\b|\bbn\b", 1e9),
@@ -1170,6 +1171,8 @@ def period_kind_for(raw: str, period: str) -> str:
 
 
 def _scale_factor(text: str) -> float | None:
+    if LAKH_CRORE_RE.search(str(text or "")):
+        return 1e12                  # T-241: "lakh crore" is one scale, not lakh and crore at once
     factors = {value for pattern, value in SCALE_WORDS if re.search(pattern, str(text or ""), re.I)}
     return factors.pop() if len(factors) == 1 else None
 
@@ -2227,6 +2230,29 @@ def generic_label_reason(row: dict[str, Any]) -> str:
     return ""
 
 
+SECTION_BASIS_RE = re.compile(r"\b(standalone|stand-alone|consolidated)\b", re.I)
+
+
+def section_basis(page_text: str, label: str, value_text: str) -> str:
+    """T-241: the basis a transcript number sits under: the last standalone / consolidated word before it.
+
+    A CFO reads "Starting with the standalone numbers ..." then "Coming to the consolidated results ..." on one
+    page, so the page-level rule (both words -> no basis) and the first heading are both wrong for half the rows."""
+    text = norm_space(page_text)
+    pos = -1
+    for probe in (f"{label} {value_text}".strip(), value_text, label):
+        if probe:
+            pos = text.find(probe)
+            if pos >= 0:
+                break
+    if pos < 0:
+        return ""
+    last = ""
+    for m in SECTION_BASIS_RE.finditer(text, 0, pos):
+        last = m.group(1).lower()
+    return "standalone" if last in ("standalone", "stand-alone") else last
+
+
 def page_basis(page_text: str) -> str:
     """Stage L: the page's own section heading names the basis when no column header does.
 
@@ -2987,6 +3013,8 @@ def guidance_observation(*, symbol: str, doc_key: str, page: int, known_at: str,
                       record_type="guidance", raw=raw)
     row["value"] = low if low is not None else high
     row["value_high"] = high
+    if not row["unit"] and low_text.rstrip().endswith("%"):
+        row["unit"] = "%"                # T-241: a printed "60%" target keeps its percent unit
     row["value_text"] = low_text if high_text in ("", low_text) else f"{low_text}-{high_text}"
     row["period_kind"] = period_kind_for(raw.get("period_kind", ""), row["period"]) or "target"
     row["statement"] = norm_space(raw.get("text") or raw.get("statement"))
@@ -3146,6 +3174,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         record_type = norm_space(raw.get("type") or "number").lower()
         if record_type not in RECORD_TYPES:
             record_type = "number"
+        if record_type == "guidance" and norm_space(raw.get("claim_type")).lower() not in ("", "company_target"):
+            continue                 # T-241 v2: a government / industry target or an ask is not company guidance
         if record_type in ("statement", "guidance"):
             build_prose = statement_observation if record_type == "statement" else guidance_observation
             record = build_prose(symbol=symbol, doc_key=doc_key, page=page, known_at=known_at, raw=raw,
@@ -3153,6 +3183,9 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             if record is not None:
                 prose.append(record)
             continue
+        claim = norm_space(raw.get("claim_type")).lower()
+        if claim in NOT_A_COMPANY_FIGURE:
+            continue                 # T-241 v2: a hypothetical, an expectation or an ask stays in its statement
         value_text = norm_space(raw.get("value_text"))
         if not value_text or not re.search(r"\d", value_text):
             continue
@@ -3205,6 +3238,10 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         printed = norm_space(raw.get("period_printed"))
         if printed and printed != row["period"]:
             row["period_source"] = printed[:120]
+        if not row["unit"] and value_text.rstrip().endswith("%"):
+            row["unit"] = "%"            # T-241: a printed "12%" keeps its percent unit
+        if claim == "third_party" and row["entity_scope"] in ("", "company", "parent"):
+            row["entity_scope"] = "industry"
         for dim in DIMS:
             row[dim] = canonical_dim(vocab, dim, row.get(dim, ""))
         row["stage"] = canonical_stage(vocab, row.get("stage", "")) or stage_from_group(vocab, row["group_path"])
@@ -3223,6 +3260,10 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             row["basis"] = column_basis(word_list, row["region"])
         if not row["basis"]:                      # stage L: the page/section heading names the basis
             row["basis"] = page_basis(page_text)
+        if claim:                                 # T-241 v2 (transcript): the latest standalone/consolidated
+            row["basis"] = (section_basis(page_text, row["printed_label"], value_text)   # words before it
+                            or (norm_space(raw.get("basis")).lower()
+                                if norm_space(raw.get("basis")).lower() in ("standalone", "consolidated") else ""))
         row["measure"] = canonical_measure(row["measure"], row["printed_label"], row["printed_axis"],
                                            row["series_title"], row["unit"], text)
         cagr = cagr_measure(row["measure"], row["printed_label"], row["printed_axis"], row["series_title"], page_text,
@@ -3819,6 +3860,8 @@ Transcript page text (verbatim):
 # quarter and returns the range's upper end, the sign and the speaker. Chosen with --transcript-prompt v2.
 TRANSCRIPT_PROMPT = "v1"
 # a sign is kept only on a movement (growth / change / bps); a level (days, margin, amount) is never negated
+# T-241 v2c (Wolf's grade, 7 of 7 wrongs): a number that is not the company's own actual or target
+NOT_A_COMPANY_FIGURE = frozenset({"hypothetical", "expectation", "ask"})
 SIGNED_MEASURE = re.compile(r"growth|change|_yoy|_qoq|delta|bps|basis points", re.I)
 
 PROMPT_TRANSCRIPT_V2 = """Read one page of an Indian company's earnings-call transcript (its text layer only, no image)
@@ -3833,7 +3876,8 @@ WITH its scale word (crore, lakh, million, billion, bps) and its noun (tonnes, M
 (rules below)", "period_printed": "the period words exactly as printed, empty when none",
 "period_kind": "actual|estimate|target", "basis": "standalone|consolidated|",
 "entity_scope": "company|subsidiary|industry|country|customer|peer", "segment": "", "product": "", "geography": "",
-"customer": "", "speaker": "the speaker name printed for the passage this number sits in", "new_definition": "",
+"customer": "", "speaker": "the speaker name printed for the passage this number sits in",
+"claim_type": "company_actual|company_target|third_party|hypothetical|expectation|ask", "new_definition": "",
 "new_driver_node": ""}}
 Statement: {{"type": "statement", "measure": "one id from the dictionary below", "text": "one management speaker's
 whole passage on one topic, verbatim from its first word to its last full stop", "speaker": "the speaker name
@@ -3841,7 +3885,8 @@ printed for it", "question_context": "when the passage only makes sense with the
 in one line; else empty", "direction": "up|down|flat|", "new_definition": "", "new_driver_node": ""}}
 Guidance: {{"type": "guidance", "measure": "one id from the dictionary below", "period": "fiscal label (rules below)",
 "low": "the lower or only printed number", "high": "the upper printed number, or empty", "unit": "unit as printed
-with its scale word", "direction": "up|down|flat|", "speaker": "the speaker name", "text": "the sentence that states
+with its scale word", "direction": "up|down|flat|", "speaker": "the speaker name",
+"claim_type": "company_target|third_party|ask", "text": "the sentence that states
 the target, verbatim", "new_definition": "", "new_driver_node": ""}}
 
 This call: filed {known_at}; it discusses {call_quarter} (Indian fiscal year April-March: Q1 = Apr-Jun, Q2 = Jul-Sep,
@@ -3855,6 +3900,18 @@ Rules:
   management speaker whose answer this page continues. Emit numbers and guidance ONLY when management states them.
   An analyst's figure, an analyst's arithmetic ("so that comes to 1,100 crores?") or a number management merely
   repeats back from the question is never a number row; emit it only when management states it as its own figure.
+- claim_type says whose figure it is. company_actual: the company's (or its subsidiary's) own reported figure;
+  company_target: the company's own plan, guidance or expectation for itself; third_party: a figure about the
+  government, a ministry, NHAI, a regulator, the industry, the economy, a competitor or a customer's own plans
+  ("NHAI targets 40,000 crores of awards", "the government plans 17,000 km of expressways");
+  hypothetical: "even if you assume 80%", "let's say", "suppose", "if prices fall to"; expectation: what the market,
+  analysts or "everyone" expected ("INR 20 was what everyone was expecting"); ask: what the company or its industry
+  asks the government or a regulator for ("450 crore should be allotted to the sugar sector"). Guidance is only
+  company_target. A duration ("11-12 months"), a share of the order book or a split of a pipeline is never capex,
+  revenue or revenue.mix: name the quantity it is (NEW:<id> when the dictionary has none).
+- unit: a printed "%" is the unit "%" (growth, margin, share, ratio rows); never drop it.
+- basis: the LATEST "standalone" / "consolidated" words before the number on this page ("Coming to the consolidated
+  results" switches every number after it); empty when the page names neither.
 - Never a value: page numbers, years or dates ("2024", "FY25" -> 25, "Q2" -> 2), list markers ("number one",
   "first", "2 things"), postcodes, phone numbers, times, ratings ("4-star"), counts of questions or speakers,
   the age of an anecdote ("2 months back"), or a hypothetical ("let's say 100", "suppose", "for example", "if").
@@ -3879,7 +3936,6 @@ Rules:
   result is not the company's). Never force-fit a broader, narrower or different-entity id. When nothing in the
   dictionary means exactly this quantity, write "NEW:<snake_case_id>" with "new_definition" (one line: what it is)
   and "new_driver_node" (revenue|cost|margin|capex|capacity|debt|equity|working_capital|none).
-- basis: "standalone" or "consolidated" only when this sentence or its paragraph says so; never guess it.
 - statement: one management speaker's continuous passage on ONE topic, copied verbatim from its first word to its
   last full stop -- normally 2-5 sentences. Never split a passage into single sentences and never cut it at a PDF
   line break or mid-sentence. A passage that runs onto the next page is stored whole on the page where it starts;
