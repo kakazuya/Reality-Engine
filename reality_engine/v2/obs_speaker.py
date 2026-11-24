@@ -880,6 +880,10 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
         return stats
     page_list = [(int(p), str(t or "")) for p, t in pages]
     pool = management_pool(page_list)
+    try:                                    # Eagle, v3 ckpt_0001 W (AMTECH p9): an analyst's name on an answer
+        analysts = [n for n in build_doc_context(page_list).analyst_names if not _name_matches_list(n, pool)]
+    except Exception:                       # noqa: BLE001 -- no roster: in-page cues only, as before
+        analysts = []
     company_keys = {_company_key(name) for name in company_names if name}
     if symbol:
         company_keys.add(_company_key(symbol))
@@ -912,6 +916,8 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
                 row["speaker"] = name
             if reason:
                 reasons.append(reason)
+            elif analysts and not _name_matches_list(name, pool) and _name_matches_list(name, analysts):
+                reasons.append(f"speaker_is_analyst: {name!r} asks questions on this call; a statement needs management")
         else:
             stats["empty"] += 1
             reasons.append("speaker_unresolved: no speaker label on this page or an earlier one")
