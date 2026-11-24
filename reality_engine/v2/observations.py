@@ -5147,6 +5147,21 @@ def _store_company_name(store_db: str | Path, symbol: str) -> str:
     return str(row[0]) if row and row[0] else symbol
 
 
+def doc_speakers(store_db: str | Path, doc_key: str) -> tuple[list[str], list[str]]:
+    """(analyst + moderator names, management names) of one call, from all its pages (obs_speaker roster)."""
+    try:
+        con = connect_ro(store_db, timeout_s=60)
+        try:
+            doc_pages = con.execute("SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page",
+                                    (doc_key,)).fetchall()
+        finally:
+            con.close()
+        dctx = obs_speaker.build_doc_context([(int(pg), str(t or "")) for pg, t in doc_pages])
+    except Exception:          # noqa: BLE001 -- no roster means in-page cues only, as before
+        return [], []
+    return list(dict.fromkeys(dctx.analyst_names + dctx.moderator_names)), list(dctx.mgmt_names)
+
+
 def process_window(store_db: str | Path, doc_key: str, own: list[int], context: list[int],
                    companies: dict[str, tuple[str, str]] | None = None) -> list[dict[str, Any]]:
     """T-242 v3: one hy4 call reads the transcript pages ``own`` (plus ``context`` pages shown for the speaker only).
@@ -5209,11 +5224,13 @@ def process_window(store_db: str | Path, doc_key: str, own: list[int], context: 
         seen.add(key)
         by_page[pg].append(r)
     out: list[dict[str, Any]] = []
+    analysts, managers = doc_speakers(store_db, doc_key)     # guard 14 sees the call's roster (Wolf review)
     for i, pg in enumerate(own):
         rows_in = by_page[pg]
         rows = build_observations(symbol=meta["symbol"], doc_key=doc_key, page=pg, known_at=meta["known_at"],
                                   page_text=texts[pg], words=[], reply_rows=rows_in, doc_owner_symbol=owner,
-                                  companies=companies, transcript_v2=True)
+                                  companies=companies, transcript_v2=True,
+                                  analyst_speakers=analysts, mgmt_speakers=managers)
         apply_number_gates(rows, str(meta.get("doc_type") or ""))
         out.append({**base[i], **common, "rows": rows, "parsed": len(rows_in), "bad_lines": bad if i == 0 else 0,
                     "raw": "\n".join(json.dumps(r, ensure_ascii=False) for r in rows_in) if rows_in else "",
