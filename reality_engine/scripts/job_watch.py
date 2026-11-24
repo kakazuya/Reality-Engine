@@ -649,6 +649,7 @@ def _write_waiter(wait_dir: Path) -> Path:
         "pid": os.getpid(),
         "started_at": datetime.now(timezone.utc).isoformat(),
         "created_at": _process_started(os.getpid()),
+        "owner": waiter_owner(),
     }
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(json.dumps(record), encoding="utf-8")
@@ -663,9 +664,24 @@ def _remove_waiter(path: Path) -> None:
         pass
 
 
-def waiter_alive(wait_dir: Path | None = None) -> bool:
-    """True while any ``wait`` process still holds ``.tmp/job_watch_wait/<pid>.json``."""
-    return any(_waiter_record_alive(_read_json(path)) for path in _waiter_files(Path(wait_dir or WAIT_DIR)))
+def waiter_owner() -> str:
+    """The Claude account a waiter belongs to: its config folder (Wolf sets CLAUDE_CONFIG_DIR, Eagle uses ~/.claude)."""
+    raw = os.environ.get("CLAUDE_CONFIG_DIR") or str(Path.home() / ".claude")
+    return Path(raw).as_posix().lower().rstrip("/")
+
+
+def waiter_alive(wait_dir: Path | None = None, owner: str | None = None) -> bool:
+    """True while any ``wait`` process still holds ``.tmp/job_watch_wait/<pid>.json``.
+
+    With ``owner``, only waiters recorded by that account count (T-241: each manager runs its own heartbeat).
+    """
+    for path in _waiter_files(Path(wait_dir or WAIT_DIR)):
+        record = _read_json(path)
+        if owner is not None and (not isinstance(record, dict) or record.get("owner") != owner):
+            continue
+        if _waiter_record_alive(record):
+            return True
+    return False
 
 
 def wait(

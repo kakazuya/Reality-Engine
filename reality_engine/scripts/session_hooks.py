@@ -26,7 +26,8 @@ KEEP = (
 ARM_WAIT = "arm a wait: run `python reality_engine/scripts/job_watch.py wait` with run_in_background"
 
 
-def stop_output(payload: dict, lines: list[str], live_work: bool = False, waiter: bool = False) -> str:
+def stop_output(payload: dict, lines: list[str], live_work: bool = False, waiter: bool = False,
+                ops: list[str] | None = None) -> str:
     if payload.get("stop_hook_active") or os.environ.get("DOC_REVIEW_LOOP"):
         return ""
     stalled = [line for line in lines if line.startswith("STALLED")]
@@ -40,6 +41,8 @@ def stop_output(payload: dict, lines: list[str], live_work: bool = False, waiter
         return _block("review or ack these before stopping:\n" + "\n".join(review))
     if live_work and not waiter:
         return _block(ARM_WAIT)
+    if ops:   # T-241 ops gate: Shivam's 24 Nov operating rules (heartbeat, hy4 always on, no idle reportee, quota pace)
+        return _block("Shivam's operating rules are breached; act on these before stopping:\n" + "\n".join(ops))
     return ""
 
 
@@ -74,7 +77,8 @@ def main(argv: list[str] | None = None) -> int:
             if not (payload.get("stop_hook_active") or os.environ.get("DOC_REVIEW_LOOP")):
                 lines = job_watch.status(limit=None)
                 live_work = job_watch.live_jobs(skip_acked=True) or job_watch.live_registered()
-                output = stop_output(payload, lines, live_work, job_watch.waiter_alive())
+                import ops_gate  # noqa: PLC0415
+                output = stop_output(payload, lines, live_work, job_watch.waiter_alive(), ops_gate.cached_check())
                 if output:
                     print(output)
     except Exception as exc:

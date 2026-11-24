@@ -88,6 +88,8 @@ def test_stop_main_arms_a_wait_then_passes_behind_the_recorded_pid(root: Path, m
     monkeypatch.setattr(job_watch, "live_registered", lambda: False)
     monkeypatch.setattr(job_watch, "WAIT_DIR", root / "waiters")
     monkeypatch.setattr(sys, "stdin", io.StringIO("{}"))
+    import ops_gate  # noqa: PLC0415  (the module session_hooks imports by its script path)
+    monkeypatch.setattr(ops_gate, "cached_check", lambda: [])   # the live machine's rules are not this test's subject
 
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
