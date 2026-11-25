@@ -1,4 +1,4 @@
-"""T-242: selection, the ocr_page row, resume and the reader's method priority for the Nemotron OCR fill."""
+"""T-242: selection, the ocr_page row, resume, model rotation and per-route AIMD for the free OCR fill."""
 import csv
 import json
 import shutil
@@ -11,6 +11,15 @@ from reality_engine.scripts import ocr_fill as of
 from reality_engine.v2 import page_words as pw
 
 TMP = Path(".tmp/test_ocr_fill")
+NEMOTRON = "ocr_nemotron_vl"
+DEEPSEEK = "ocr_deepseek_flash_vl"
+
+
+def _picked(reader, route: str = "zen") -> str:
+    """The id of the model the reader would call next (model_for waits, so never None here)."""
+    model = reader.model_for(route)
+    assert model is not None
+    return model["id"]
 
 
 def _fresh(name: str) -> Path:
@@ -103,7 +112,7 @@ def test_pseudo_words_one_per_line_and_reader_reads_them():
     con.executescript(of.SCHEMA)
     con.execute("INSERT INTO ocr_page VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                 ("AAA", "a.pdf", 1, "deck", "2026-01-01", text, json.dumps(words), None, len(words), 150, 1.0,
-                 of.METHOD))
+                 NEMOTRON))
     con.commit()
     con.close()
     assert [w[4] for w in pw.ocr_words([db], "a.pdf", 1)] == [w[4] for w in words]
@@ -116,8 +125,8 @@ def test_run_writes_row_under_out_dir_only(monkeypatch):
     pages = of.select(root / "u")
     out_dir = root / "out"
     monkeypatch.setattr(of, "render_page", lambda pdf_path, page: b"png")
-    monkeypatch.setattr(of, "ask", lambda route, png, timeout=420: "Revenue 1,234\nPAT 56")
-    stats = of.run(pages, ["kilo"], out_dir=out_dir, enabled={"kilo": True})
+    monkeypatch.setattr(of, "ask", lambda route, png, timeout=420, model=None: "Revenue 1,234\nPAT 56")
+    stats = of.run(pages, ["kilo"], out_dir=out_dir, enabled={"kilo": True}, start_workers=1, max_workers=1)
 
     out = out_dir / "c01_ocr.db"
     assert out.is_file()
@@ -128,8 +137,10 @@ def test_run_writes_row_under_out_dir_only(monkeypatch):
     con.close()
     assert row[:6] == ("AAA", "a.pdf", 1, "deck", "2026-01-01", "Revenue 1,234\nPAT 56")
     assert len(json.loads(row[6])) == 2
-    assert row[7] is None and row[8] == 2 and row[9] == 150 and row[10] == of.METHOD
+    assert row[7] is None and row[8] == 2 and row[9] == 150 and row[10] == NEMOTRON
     assert stats["written"] == 1 and stats["route"]["kilo"] == 1 and stats["pages_with_4_figures"] == 0
+    assert stats["limits"] == {"kilo": 1}
+    assert stats["models"]["nvidia/nemotron-3.5-super-vl:free"]["ok"] == 1
     assert (out_dir / "ocr_fill.jsonl").is_file()
     assert (out_dir / "samples.txt").is_file()
 
@@ -142,44 +153,157 @@ def test_resume_skips_and_never_overwrites_another_method(monkeypatch):
     out_dir = root / "out"
     calls: list[str] = []
 
-    def fake_ask(route, png, timeout=420):
+    def fake_ask(route, png, timeout=420, model=None):
         calls.append(route)
         return f"Revenue {len(calls)}"
 
     monkeypatch.setattr(of, "render_page", lambda pdf_path, page: b"png")
     monkeypatch.setattr(of, "ask", fake_ask)
-    of.run(pages, ["kilo"], out_dir=out_dir, enabled={"kilo": True})
+    of.run(pages, ["kilo"], out_dir=out_dir, enabled={"kilo": True}, start_workers=1, max_workers=1)
     assert calls == ["kilo"]
     first = of._held(out_dir / "c01_ocr.db")[("AAA", "a.pdf", 1)]
-    assert first == of.METHOD
+    assert first == NEMOTRON
 
-    stats = of.run(pages, ["kilo"], out_dir=out_dir, resume=True, enabled={"kilo": True})
+    stats = of.run(pages, ["kilo"], out_dir=out_dir, resume=True, enabled={"kilo": True},
+                   start_workers=1, max_workers=1)
     assert calls == ["kilo"] and stats["skipped"] == 1 and stats["written"] == 0
 
-    stats = of.run(pages, ["kilo"], out_dir=out_dir, resume=False, enabled={"kilo": True})
+    stats = of.run(pages, ["kilo"], out_dir=out_dir, resume=False, enabled={"kilo": True},
+                   start_workers=1, max_workers=1)
     assert calls == ["kilo", "kilo"] and stats["written"] == 1
     con = sqlite3.connect(out_dir / "c01_ocr.db")
     assert con.execute("SELECT text FROM ocr_page").fetchone()[0] == "Revenue 2"
     con.execute("UPDATE ocr_page SET method='ocr_rapid'")
     con.commit()
     con.close()
-    stats = of.run(pages, ["kilo"], out_dir=out_dir, enabled={"kilo": True})
+    stats = of.run(pages, ["kilo"], out_dir=out_dir, enabled={"kilo": True}, start_workers=1, max_workers=1)
     assert stats["skipped"] == 1 and calls == ["kilo", "kilo"]     # another reader owns the page
+
+
+def test_resume_treats_every_ocr_fill_model_as_held(monkeypatch):
+    root = _fresh("resume_models")
+    pdf = _pdf(root)
+    _store(root / "u", "c01", [ROUTES[0]], [("a.pdf", "AAA", "deck", "2026-01-01", str(pdf))])
+    pages = of.select(root / "u")
+    out_dir = root / "out"
+    out_dir.mkdir()
+    con = sqlite3.connect(out_dir / "c01_ocr.db")
+    con.executescript(of.SCHEMA)
+    con.execute("INSERT INTO ocr_page VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                ("AAA", "a.pdf", 1, "deck", "2026-01-01", "deepseek line",
+                 json.dumps(of.pseudo_words("deepseek line")), None, 1, 150, 41.0, DEEPSEEK))
+    con.commit()
+    con.close()
+    calls: list[str] = []
+    monkeypatch.setattr(of, "render_page", lambda pdf_path, page: b"png")
+    monkeypatch.setattr(of, "ask",
+                        lambda route, png, timeout=420, model=None: calls.append(route) or "Revenue 9")
+
+    stats = of.run(pages, ["zen"], out_dir=out_dir, resume=True, enabled={"zen": True},
+                   start_workers=1, max_workers=1)
+    assert stats["skipped"] == 1 and stats["written"] == 0 and calls == []   # the other model already read it
+
+    stats = of.run(pages, ["zen"], out_dir=out_dir, enabled={"zen": True}, start_workers=1, max_workers=1)
+    assert stats["written"] == 1 and len(calls) == 1                         # our own family: re-read without --resume
+
+    con = sqlite3.connect(out_dir / "c01_ocr.db")
+    con.execute("UPDATE ocr_page SET method='ocr_rapid'")
+    con.commit()
+    con.close()
+    stats = of.run(pages, ["zen"], out_dir=out_dir, enabled={"zen": True}, start_workers=1, max_workers=1)
+    assert stats["skipped"] == 1 and len(calls) == 1                         # a box reader's page is never overwritten
+
+
+def test_run_rotates_models_and_logs_route_and_model(monkeypatch, capsys):
+    root = _fresh("rotate")
+    pdf = _pdf(root)
+    _store(root / "u", "c01", [{**ROUTES[0], "page": 1}, {**ROUTES[0], "page": 2}],
+           [("a.pdf", "AAA", "deck", "2026-01-01", str(pdf))])
+    out_dir = root / "out"
+    asked: list[tuple[str, str]] = []
+    monkeypatch.setattr(of, "render_page", lambda pdf_path, page: b"png")
+
+    def fake_ask(route, png, timeout=420, model=None):
+        assert model is not None
+        asked.append((route, model["id"]))
+        return "Revenue 1,234"
+
+    monkeypatch.setattr(of, "ask", fake_ask)
+    stats = of.run(of.select(root / "u"), ["zen"], out_dir=out_dir, enabled={"zen": True},
+                   start_workers=1, max_workers=1)
+    assert [mid for _route, mid in asked] == ["nemotron-3.5-super-vl-free", "deepseek-v4.1-flash-free"]
+    con = sqlite3.connect(f"file:{(out_dir / 'c01_ocr.db').as_posix()}?mode=ro", uri=True)
+    methods = sorted(row[0] for row in con.execute("SELECT method FROM ocr_page"))
+    con.close()
+    assert methods == [DEEPSEEK, NEMOTRON]
+    assert stats["models"]["nemotron-3.5-super-vl-free"]["ok"] == 1
+    assert stats["models"]["deepseek-v4.1-flash-free"]["ok"] == 1
+    out = capsys.readouterr().out
+    assert "ok   zen:nemotron-3.5 AAA" in out
+    assert "ok   zen:deepseek-v4.1 AAA" in out
+
+
+def test_aimd_grows_after_20_ok_and_cuts_on_throttle(capsys):
+    reader = of.Reader(["kilo"], 6, 24)
+    model = of.FREE_ROUTES["kilo"]["models"][0]
+    for _ in range(of.AIMD_WINDOW - 1):
+        reader.success("kilo", model, 4.0)
+    assert reader.routes["kilo"]["limit"] == 6
+    reader.success("kilo", model, 4.0)
+    assert reader.routes["kilo"]["limit"] == 7
+    assert "limit kilo 6->7 (20 ok)" in capsys.readouterr().out
+    reader.throttle("kilo", model)
+    assert reader.routes["kilo"]["limit"] == 4                # floor(7 * 0.7)
+    assert "limit kilo 7->4 (429)" in capsys.readouterr().out
+    for _ in range(50):
+        reader.throttle("kilo", model)
+    assert reader.routes["kilo"]["limit"] == 1                # never below one
+
+
+def test_unmeasured_models_first_in_quality_order_then_fastest():
+    reader = of.Reader(["zen"], 6, 24)
+    nemotron, deepseek = of.FREE_ROUTES["zen"]["models"]
+    assert _picked(reader) == nemotron["id"]                   # unmeasured: quality order
+    reader.success("zen", nemotron, 58.0)
+    assert _picked(reader) == deepseek["id"]                   # the other unmeasured model next
+    reader.success("zen", deepseek, 40.0)
+    assert _picked(reader) == deepseek["id"]                   # 40 s beats 58 s
+
+
+def test_every_8th_call_explores_least_recently_used():
+    reader = of.Reader(["zen"], 6, 24)
+    nemotron, deepseek = of.FREE_ROUTES["zen"]["models"]
+    reader.success("zen", nemotron, 100.0)
+    reader.success("zen", deepseek, 10.0)
+    picks = [_picked(reader) for _ in range(of.EXPLORE_EVERY)]
+    assert picks[:-1] == [deepseek["id"]] * (of.EXPLORE_EVERY - 1)
+    assert picks[-1] == nemotron["id"]                        # the 8th call probes the slower, unused model
+
+
+def test_throttle_cools_only_that_model():
+    reader = of.Reader(["zen"], 6, 24)
+    nemotron, deepseek = of.FREE_ROUTES["zen"]["models"]
+    reader.success("zen", nemotron, 10.0)
+    reader.success("zen", deepseek, 20.0)
+    reader.throttle("zen", nemotron)
+    picks = [_picked(reader) for _ in range(of.EXPLORE_EVERY)]
+    assert picks == [deepseek["id"]] * of.EXPLORE_EVERY       # nemotron cools, its sibling keeps reading
 
 
 def test_method_priority_prefers_box_readers():
     assert pw.OCR_METHOD_PRIORITY["ocr_rapid"] < pw.OCR_METHOD_PRIORITY["ocr_nemotron_vl"]
     assert pw.OCR_METHOD_PRIORITY["ocr_textrec"] < pw.OCR_METHOD_PRIORITY["ocr_nemotron_vl"]
+    assert pw.OCR_METHOD_PRIORITY["ocr_nemotron_vl"] < pw.OCR_METHOD_PRIORITY["ocr_deepseek_flash_vl"]
     db = TMP / "priority.db"
     db.unlink(missing_ok=True)
     con = sqlite3.connect(db)
     con.executescript(of.SCHEMA)
     con.execute("INSERT INTO ocr_page VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                 ("AAA", "a.pdf", 1, "deck", "2026-01-01", "nemotron line", json.dumps(of.pseudo_words("nemotron line")),
-                 None, 1, 150, 1.0, of.METHOD))
+                 None, 1, 150, 1.0, NEMOTRON))
     con.commit()
     assert [w[4] for w in pw.ocr_words([db], "a.pdf", 1)] == ["nemotron line"]
-    assert pw._ocr_method([db], "a.pdf", 1) == of.METHOD
+    assert pw._ocr_method([db], "a.pdf", 1) == NEMOTRON
     con.execute("INSERT OR REPLACE INTO ocr_page VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                 ("AAA", "a.pdf", 1, "deck", "2026-01-01", "rapid box", json.dumps([[0, 0, 9, 9, "rapid box", 0.9]]),
                  0.9, 1, 300, 1.0, "ocr_rapid"))
@@ -201,11 +325,24 @@ def test_shared_acl_tempdir_is_writable():
     shutil.rmtree(folder, ignore_errors=True)
 
 
+def test_cli_exposes_adaptive_worker_flags(capsys):
+    with pytest.raises(SystemExit) as stop:
+        of.main(["--help"])
+    assert stop.value.code == 0
+    out = capsys.readouterr().out
+    assert "--start-workers" in out and "--max-workers" in out
+
+
 def test_free_only_guard_and_paid_cost_stop(monkeypatch):
     assert of.parse_routes("kilo,zen") == ["kilo", "zen"]
     with pytest.raises(SystemExit):
         of.parse_routes("kilo,step-5-preview@stepfun")
-    assert all(cfg["id"] in of.FREE_IDS for cfg in of.FREE_ROUTES.values())
+    assert all(m["id"] in of.FREE_IDS for cfg in of.FREE_ROUTES.values() for m in cfg["models"])
+    for paid_id in ("mimo-v2.6-flash-free", "hy4-flash-free", "opencode/hy4-flash-free"):
+        with pytest.raises(SystemExit):
+            of.model_entry("zen", paid_id)
+    with pytest.raises(SystemExit):
+        of.model_entry("zen", "some-unlisted-vision-model")
     assert of.parse_events('{"type":"step_finish","part":{"cost":0.0}}')[1] == 0.0
     assert of.parse_events('{"type":"text","part":{"text":"hello"}}\n'
                            '{"type":"step_finish","part":{"cost":0.25}}') == ("hello", 0.25, "")
@@ -215,9 +352,10 @@ def test_free_only_guard_and_paid_cost_stop(monkeypatch):
     _store(root / "u", "c01", [ROUTES[0]], [("a.pdf", "AAA", "deck", "2026-01-01", str(pdf))])
     monkeypatch.setattr(of, "render_page", lambda pdf_path, page: b"png")
 
-    def paid(route, png, timeout=420):
+    def paid(route, png, timeout=420, model=None):
         raise of.PaidModel("zen reported a cost of 0.25 on a free model")
 
     monkeypatch.setattr(of, "ask", paid)
-    stats = of.run(of.select(root / "u"), ["zen"], out_dir=root / "out", enabled={"zen": True})
+    stats = of.run(of.select(root / "u"), ["zen"], out_dir=root / "out", enabled={"zen": True},
+                   start_workers=1, max_workers=1)
     assert stats["paid"] and stats["errors"] == 1 and stats["written"] == 0

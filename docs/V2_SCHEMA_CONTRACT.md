@@ -1256,7 +1256,7 @@ column check passed. A row label ending in a footnote digit ("EBITDA 1") also ma
 the layout renderer and the position check: `pdf_words(pdf_path, page_no)` turns the PDF text layer upright for any
 page of a multi-page PDF (same logic as `reference_geom.page_words`, now a one-line delegate), `ocr_words(ocr_dbs,
 doc_key, page_no)` reads `ocr_page` rows by method priority (`ocr_textrec`, `ocr_rapid`, then the T-242 fill's
-`ocr_nemotron_vl`) and parses `words_json` into
+`ocr_nemotron_vl` and `ocr_deepseek_flash_vl`) and parses `words_json` into
 `(x0, y0, x1, y1, text)` tuples, `quality(words)` returns `("none", reason)` under 20 non-space characters,
 `("jumbled", reason)` when the vowel-less 4+ letter word share exceeds 0.3, words longer than 25 characters exceed
 0.2, or single-character words exceed 0.6 (thresholds are named constants pending T-175 tuning), else `("ok", "")`,
