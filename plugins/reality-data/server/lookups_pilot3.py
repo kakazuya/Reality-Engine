@@ -2738,7 +2738,10 @@ def _sentence_hits(text: str | None, words: list[str], measures: list[str] | Non
         for word in words:
             if any(_token_matches(tok, word) for tok in tokens):
                 found += 1
-                score += weights.get(word, 1.0)
+                # T-242 fix 7b: the rare-word weight rewards the asked word ITSELF being printed once in the reply;
+                # a sentence that only carries an inflection of it ("running" -> "run at full gallop") is still
+                # evidence, but not the same evidence, so it never earns the rarity bonus.
+                score += weights.get(word, 1.0) if word in tokens else min(weights.get(word, 1.0), 1.0)
         measures_hit, phrases_hit = 0, 0
         for term in measures or ():
             if " " in term:

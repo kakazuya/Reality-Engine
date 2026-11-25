@@ -1,3 +1,4 @@
 2026-11-26 T-242 shared_cache: code + tests + docs done (15 and 172 passed, 0 new typecheck errors); committing.
 T-242 fix 6: lookups_pilot3.py C1 (guidance held_quarantined + obs fallback), C2 (alias map + printed as-on periods), C3 (sentence-level all-ask-word ranking, call dates), W (filed-vs-transcript >20% conflict); test_retrieval_fix6.py 7 passed; acceptance 124 passed 1 skipped; next: typecheck, docs, replay grade.
 T-242 fix 6 done: tests 124 passed 1 skipped; replay 36R->45R/2P/0W/0M/1N (0 R lost); STATE 3993 chars; docs: DEVELOPER_GUIDE, MSI_LAPTOP, STATE, plugins/reality-data/README.
+T-242 fix 7b: `_sentence_hits` pays the rare-ask-word weight only when the sentence prints the word itself (stem match capped at 1.0); #26 BMW operations rank 2->1; 96-row replay audit-7 38R->39R, audit-6 38R unchanged (0 R lost); tests 132 passed 1 skipped; typecheck 0 errors; docs: DEVELOPER_GUIDE, MSI_LAPTOP, STATE.

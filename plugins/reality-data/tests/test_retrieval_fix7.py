@@ -1,6 +1,7 @@
 """T-242 retrieval fix 7: the company's own figure first (an industry / country / peer / customer figure is never the
 answer), the asked period and unit family decide a number, a component's margin is not the company's, a paraphrased
-question reaches the call's own sentence, and guidance elects the group's full-year target over a WOS approval.
+question reaches the call's own sentence, guidance elects the group's full-year target over a WOS approval, and a
+stem-only match never earns the rare ask word's weight (fix 7b).
 
     python -m pytest -q plugins/reality-data/tests/test_retrieval_fix7.py
 
@@ -189,3 +190,13 @@ def test_an_obs_guidance_placeholder_measure_is_served(store: Path) -> None:
     answer = reply["rows"][0]
     assert answer["source"] == "obs_fact", answer
     assert (answer["low"], answer["high"]) == (35.0, 40.0), answer
+
+
+def test_a_stem_match_never_earns_the_rare_word_weight() -> None:
+    # T-242 fix 7b: "running" is printed once in the reply, so it weighs 1.5 -- but only in a sentence that prints
+    # the word itself.  "run at full gallop" is a stem match and must not outrank "running at full capacity".
+    weights = {"running": 1.5, "full": 1.0}
+    exact = p3._sentence_hits("We are running at full capacity today.", ["running", "full"], weights=weights)[1]
+    stem = p3._sentence_hits("We run at full gallop today.", ["running", "full"], weights=weights)[1]
+    assert exact == 3.0, exact
+    assert stem == 2.5, stem
