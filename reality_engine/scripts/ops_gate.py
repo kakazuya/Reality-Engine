@@ -59,13 +59,22 @@ def _cmdlines() -> list[str]:
 
 
 def running_dsh() -> int:
-    """Active dsh code workers; ``start_job`` data jobs (kind ``data_job``) are not code workers."""
+    """Active dsh code workers; ``start_job`` data jobs (kind ``data_job``) are not code workers.
+
+    26 Nov (Eagle): a read-only job without a worktree (a grader or an audit) holds no code slot, as in the dsh start
+    gate (core.py ``_running_code_workers``); counting it here flagged 5 workers when 3 were writing code.
+    """
     now = dt.datetime.now(dt.timezone.utc)
     n = 0
     for job_dir in job_watch._recent_job_dirs(Path(job_watch.JOBS_DIR), now):
         record = job_watch._read_json(job_dir / "status.json")
         if (isinstance(record, dict) and str(record.get("phase") or "") in job_watch.ACTIVE_PHASES
                 and record.get("kind") != "data_job"):
+            job = job_watch._read_json(job_dir / "job.json")
+            job = job if isinstance(job, dict) else {}
+            worktree = job.get("worktree")
+            if job.get("permission") == "read-only" and not (isinstance(worktree, dict) and worktree.get("enabled")):
+                continue
             n += 1
     return n
 
