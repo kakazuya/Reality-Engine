@@ -172,3 +172,167 @@ def test_deck_period_not_in_the_footnote_pairing_is_untouched():
     assert rows[0]["basis"] == "consolidated" and rows[0]["basis_source"] == "page_footnote"
     # FY24 is not in the pairing: it keeps the page-level result and no page_footnote source
     assert rows[1]["basis"] == "standalone" and rows[1]["basis_source"] == ""
+
+
+# --------------------------------------------------------------------------- T-242 audit_deck1 gates (3 rules)
+
+
+def _deck_row(**kw):
+    row = {"record_type": "number", "status": "verified", "status_reason": "", "measure": "revenue.value",
+           "printed_label": "Revenue", "value": 1234.0, "value_text": "1,234", "unit": "Rs Cr",
+           "period": "FY26", "basis": "", "basis_source": ""}
+    row.update(kw)
+    return row
+
+
+def test_deck_bound_gates_floors_and_bounds_but_keeps_exact_values():
+    # Positive audit cases: BANKBARODA '>10,000 ATMs' and AEQUS '>100% YoY'
+    atms = _deck_row(measure="count.atms", printed_label="ATMs", value=10000.0, value_text=">10,000", unit="ATMs")
+    yoy = _deck_row(measure="revenue_growth_yoy", printed_label="Consumer Revenue", value=100.0,
+                    value_text=">100% YoY", unit="%")
+    lbl_bound = _deck_row(measure="count.atms", printed_label=">10,000 ATMs and Cash Recyclers",
+                          value=10000.0, value_text="10,000", unit="ATMs")
+    for tok_row in (
+        _deck_row(value_text="~12%", value=12.0, unit="%"),
+        _deck_row(value_text="approx. 500", value=500.0),
+        _deck_row(value_text="≤ 5%", value=5.0, unit="%"),
+        _deck_row(value_text="≥10", value=10.0),
+        _deck_row(value_text="up to 25%", value=25.0, unit="%"),
+        _deck_row(printed_label="Installed capacity of nearly", value_text="90,000", value=90000.0),
+        _deck_row(printed_label="Order book of over", value_text="Rs. 350", value=350.0),
+        _deck_row(printed_label="EBITDA margin stayed below", value_text="15%", value=15.0, unit="%"),
+        _deck_row(printed_label="Sales less than", value_text="100", value=100.0),
+        _deck_row(printed_label="Margin above", value_text="20%", value=20.0, unit="%"),
+    ):
+        assert obs.deck_bound_reason(tok_row).startswith("deck_bound_not_exact:"), tok_row
+    rows = [atms, yoy, lbl_bound]
+    obs.apply_number_gates(rows, "deck")
+    assert all(r["status"] == "unverified" and "deck_bound_not_exact:" in r["status_reason"] for r in rows)
+
+    # Negative cases that must stay verified
+    exact = _deck_row(measure="revenue.value", printed_label="Revenue", value=1234.0, value_text="1,234")
+    other_above = _deck_row(measure="other_bank_balances",
+                            printed_label="(iii) Bank balances other than (ii) above",
+                            value=707.0, value_text="707")
+    bucket = _deck_row(measure="NEW:asset_liability_maturity_outflow", printed_label="<3 Months",
+                       value=1406.0, value_text="1,406")
+    other_num = _deck_row(measure="count.schools",
+                          printed_label="school science labs equipped, benefiting ~5,000 students",
+                          value=7.0, value_text="7", unit="schools")
+    neg_rows = [exact, other_above, bucket, other_num]
+    obs.apply_number_gates(neg_rows, "deck")
+    assert all(r["status"] == "verified" for r in neg_rows)
+
+
+def test_deck_combined_label_gates_split_measures_and_keeps_allowlist():
+    # Positive audit cases: AXISCADES 'Other income & share of associate' and BANKBARODA 'ATMs and Cash Recyclers'
+    assoc = _deck_row(measure="share_of_profit_of_jv_and_associates",
+                      printed_label="Other income & share of associate", value=8.4, value_text="8.4")
+    atms = _deck_row(measure="count.atms", printed_label="ATMs and Cash Recyclers",
+                     value=10000.0, value_text="10,000", unit="ATMs")
+    plus = _deck_row(measure="total_comprehensive_income",
+                     printed_label="Revenue + Other Comprehensive Income", value=500.0, value_text="500")
+    rows = [assoc, atms, plus]
+    obs.apply_number_gates(rows, "deck")
+    assert all(r["status"] == "unverified" and "deck_combined_label:" in r["status_reason"] for r in rows)
+
+    # Negative cases & standard single-term allowlist that must stay verified
+    kept = [
+        _deck_row(measure="revenue.value", printed_label="Revenue", value=1234.0, value_text="1,234"),
+        _deck_row(measure="NEW:rd_spend", printed_label="R&D spend", value=45.0, value_text="45"),
+        _deck_row(measure="profit_before_tax", printed_label="Profit & Loss before tax", value=90.0, value_text="90"),
+        _deck_row(measure="revenue.value", printed_label="Oil & Gas segment revenue", value=200.0, value_text="200"),
+        _deck_row(measure="depreciation_and_amortisation_expense",
+                  printed_label="Depreciation & Amortisation", value=24.2, value_text="24.2"),
+        _deck_row(measure="exceptional_items",
+                  printed_label="Exceptional & Extraordinary items", value=12.0, value_text="12"),
+        _deck_row(measure="total_equity_and_liabilities",
+                  printed_label="Total equity and liabilities", value=500.0, value_text="500"),
+        _deck_row(measure="NEW:instagram_followers",
+                  printed_label="Digital Milestone: 1M+ Instagram Followers", value=1000000.0, value_text="1M"),
+    ]
+    obs.apply_number_gates(kept, "deck")
+    assert all(r["status"] == "verified" for r in kept), [(r["printed_label"], r["status_reason"]) for r in kept]
+
+
+def test_deck_heading_basis_fills_empty_basis_and_documents_starred_column():
+    # Positive audit case: BLUESTONE p40 (id 32)
+    bluestone_page = ("39\n39\nCash Flow Statement\nConsolidated | INR mn\n"
+                      "Cash and cash equivalents at the beginning of the year 487.75")
+    row = _deck_row(measure="opening_cash_and_cash_equivalents",
+                    printed_label="Cash and cash equivalents at the beginning of the year",
+                    value=487.75, value_text="487.75", basis="", basis_source="")
+    obs.apply_number_gates([row], "deck", page_text=bluestone_page)
+    assert (row["basis"], row["basis_source"], row["status"]) == ("consolidated", "page_heading", "verified")
+
+    # Standalone in first 300 chars
+    stand_row = _deck_row(basis="", basis_source="")
+    obs.apply_number_gates([stand_row], "deck", page_text="Standalone Financial Highlights\nRevenue 1,234")
+    assert (stand_row["basis"], stand_row["basis_source"]) == ("standalone", "page_heading")
+
+    # Negative cases: both bases, existing basis, basis beyond 300 chars
+    both = _deck_row(basis="", basis_source="")
+    obs.apply_number_gates([both], "deck", page_text="Standalone and Consolidated Results\nRevenue 1,234")
+    assert (both["basis"], both["basis_source"]) == ("", "")
+
+    preset = _deck_row(basis="standalone", basis_source="page_footnote")
+    obs.apply_number_gates([preset], "deck", page_text="Consolidated Results\nRevenue 1,234")
+    assert (preset["basis"], preset["basis_source"]) == ("standalone", "page_footnote")
+
+    late = _deck_row(basis="", basis_source="")
+    obs.apply_number_gates([late], "deck", page_text=("Revenue 1,234. " * 25) + "Consolidated results.")
+    assert (late["basis"], late["basis_source"]) == ("", "")
+
+    # Known starred-column case (ALLTIME p12, audit id 3): unstarred H1FY27 column stored as consolidated
+    # under '*Consolidated' footer; rule intentionally leaves it untouched.
+    alltime_page = ("Cashflow Statement\nParticulars (Rs. Cr)\nH1FY27*\nH1FY27\nH1FY26\n"
+                    "Cash and cash equivalents at the end of the period\n47.4\n46.0\n136.1\n11\n*Consolidated")
+    starred = _deck_row(measure="cash_and_cash_equivalents",
+                        printed_label="Cash and cash equivalents at the end of the period",
+                        value=46.0, value_text="46.0", period="H1FY27", basis="consolidated", basis_source="")
+    obs.apply_number_gates([starred], "deck", page_text=alltime_page)
+    assert (starred["basis"], starred["basis_source"], starred["status"]) == ("consolidated", "", "verified")
+
+
+def test_recheck_db_applies_deck_row_gates(tmp_path):
+    import sqlite3
+    store_db = tmp_path / "store.db"
+    scon = sqlite3.connect(store_db)
+    scon.executescript(
+        "CREATE TABLE company(symbol TEXT, name TEXT);"
+        "CREATE TABLE doc(doc_key TEXT, symbol TEXT, doc_type TEXT, known_at TEXT);"
+        "CREATE TABLE doc_page(doc_key TEXT, page INTEGER, text TEXT);"
+    )
+    scon.execute("INSERT INTO company VALUES ('BLUESTONE', 'BlueStone Jewellery')")
+    scon.execute("INSERT INTO doc VALUES ('d.pdf', 'BLUESTONE', 'deck', '2026-08-10T10:00:00')")
+    page_text = (
+        "39\n39\nCash Flow Statement\nConsolidated | INR mn\n"
+        "FY26\nRevenue 1,234\nATMs >10,000\nLine 3\nLine 4\nLine 5\nLine 6"
+    )
+    scon.execute("INSERT INTO doc_page VALUES ('d.pdf', 1, ?)", (page_text,))
+    scon.execute("INSERT INTO doc_page VALUES ('d.pdf', 2, 'Standalone Results Summary')")
+    scon.commit()
+    scon.close()
+
+    obs_db = tmp_path / "obs.db"
+    ocon = obs.create_db(obs_db)
+    rows = obs.build_observations(
+        symbol="BLUESTONE", doc_key="d.pdf", page=1, known_at="2026-08-10T10:00:00",
+        page_text=page_text,
+        reply_rows=[
+            {"type": "number", "measure": "revenue.value", "printed_label": "Revenue",
+             "value_text": "1,234", "unit": "INR mn", "period": "FY26", "entity_scope": "company"},
+            {"type": "number", "measure": "count.atms", "printed_label": "ATMs",
+             "value_text": ">10,000", "unit": "ATMs", "period": "FY26", "entity_scope": "company"},
+        ],
+        deck_guards=True,
+    )
+    obs.write_rows(ocon, rows)
+    stats = obs.recheck_db(ocon, [str(store_db)])
+    got = ocon.execute(
+        "SELECT printed_label, basis, basis_source, status, status_reason FROM observation ORDER BY observation_id"
+    ).fetchall()
+    ocon.close()
+    assert stats["basis_deck_heading"] == 2
+    assert got[0][1:4] == ("consolidated", "page_heading", "verified")
+    assert got[1][3] == "unverified" and "deck_bound_not_exact:" in got[1][4]
