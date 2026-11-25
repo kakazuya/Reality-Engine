@@ -23,11 +23,30 @@ OBS_SOURCES = [
     ("transcript", "D:/RealityEngine/t238/obs_transcripts_91o.db", "transcript"),
 ]
 EVENTS_DB = "D:/RealityEngine/t231/events.db"            # the last fallback
-# T-242 filing_events round 4 (only order_win verified); same first-db-with-rows rule per symbol.
+# T-242 filing_events, round 7 (25 Nov); same first-db-with-rows rule per symbol.  Whatever a db says, a row is
+# loaded `verified` only when its kind is in the CURRENT filing_events.VERIFIED_KINDS (see _gate_event_rows), so an
+# older db (t231, round 6) can never serve a kind that has since failed its grade as verified.
 EVENTS_PRIORITY = [
-    "C:/RealityEngine/t242/events_r6_fresh4.db",     # round 6 (L1 veto, subsidiary label), 25 Nov
-    "C:/RealityEngine/t242/events_r6_fresh3.db",
+    "C:/RealityEngine/t242/orderwin_r7d/events_r7d_fresh5.db",
+    "C:/RealityEngine/t242/orderwin_r7d/events_r7d_fresh4.db",
+    "C:/RealityEngine/t242/orderwin_r7d/events_r7d_fresh3.db",
+    "C:/RealityEngine/t242/fresh6/events_r7_fresh6.db",
 ]
+
+
+def _gate_event_rows(cols: list[str], rows: list[tuple]) -> tuple[list[tuple], int]:
+    """Re-apply the live per-kind gate: a `verified` row whose kind is not in VERIFIED_KINDS becomes `unverified`."""
+    from reality_engine.research.filing_events import VERIFIED_KINDS
+    if "status" not in cols or "kind" not in cols:
+        return rows, 0
+    si, ki = cols.index("status"), cols.index("kind")
+    out, moved = [], 0
+    for r in rows:
+        if r[si] == "verified" and r[ki] not in VERIFIED_KINDS:
+            r = (*r[:si], "unverified", *r[si + 1:])
+            moved += 1
+        out.append(r)
+    return out, moved
 
 DOC_TYPE = {"deck": "deck", "annual_report": "annual_report", "transcript": "transcript"}
 
@@ -211,6 +230,7 @@ def _load_store(store_path: Path, symbol: str | None = None) -> dict:
             if ev_rows:
                 stats["events_db"] = ev_db
                 break
+        ev_rows, stats["events_ungated"] = _gate_event_rows(ev_cols, ev_rows)
         ev_placeholders = ",".join("?" * len(ev_cols))
         if ev_rows:
             con.executemany(f"INSERT INTO filing_event ({','.join(ev_cols)}) VALUES ({ev_placeholders})", ev_rows)
