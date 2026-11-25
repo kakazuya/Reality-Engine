@@ -253,5 +253,12 @@ T-242 deck value guards: code+tests done (test_deck_guards 13 passed), pilot mea
   statement-fixes entry, STATE line. Sandbox note: pytest tmp_path dirs are mode 0o700 and unlistable/writable here;
   runs used a job-local plugin (`.tmp/t242_tmpplugin.py`) forcing default-mode temp dirs.
 
+- 25 Nov, T-242 round 6 (order_win audit fixes): L1-only veto (`why='l1_only'`), subsidiary scope
+  (`entity_scope='subsidiary'`, printed name in `detail`), headline-customer veto in `_clean_party`; tests 107 pass,
+  typecheck only the 2 pre-existing reconfigure errors. Measured on fresh4/fresh3 into `.tmp/events_r6_fresh{4,3}.db`:
+  all 8 audit W rows fixed (#54 folds into the verified BSNL twin), 0 graded R status/amount changed, verified
+  order_win 132 -> 132 (fresh4) and 193 -> 179 (fresh3: 13 EMSLIMITED L1-only + 1 fold). Docs: T-231 §3e, guide
+  round-6 bullet + loader note, STATE line. Next: controller merges/publishes the r6 DBs and swaps EVENTS_PRIORITY.
+
 
 

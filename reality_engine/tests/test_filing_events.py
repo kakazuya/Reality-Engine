@@ -1575,7 +1575,10 @@ def test_t242_r3_fix4_l1_and_loss_reduction_are_awards() -> None:
     )
     rows, _missing = fe.event_rows(l1)
     assert not [r for r in rows if r["kind"] == "order_amendment"], rows
-    assert _row(rows, "order_win")["amount_inr_cr"] == pytest.approx(148.1069)
+    # T-242 round 6: an L1-only intimation is not an order yet; the printed value is kept, the status is not.
+    l1_row = _row(rows, "order_win")
+    assert l1_row["amount_inr_cr"] == pytest.approx(148.1069)
+    assert (l1_row["status"], l1_row["why"]) == ("unverified", "l1_only")
 
     loa = _doc(
         "EMS Limited has informed the exchange regarding Intimation of Receipt of letter of award for Development of "
@@ -2005,3 +2008,140 @@ def test_t242_r5_a_notice_and_a_later_step_do_not_fold() -> None:
     kept = [row for row in fe._fold_same_raise(rows, amends) if row["kind"] == "fund_raise"]
     assert [row["doc_key"] for row in kept] == ["board", "notice", "allotment"]
     assert amends == []
+
+
+# ---- T-242 round 6: the 8 wrong rows of the 60-row order_win audit ------------------------------------
+def test_t242_r6_an_l1_only_intimation_is_unverified_but_a_received_award_stays() -> None:
+    # fresh audit #7 (EMSLIMITED c315): the subject says L1 status, no LoA is received.
+    jal = _doc(
+        "EMS Limited has informed the exchange about the L1 Status awarded by UP Jal Nigam (Urban)",
+        "June 17, 2025 Subject: Intimation of receipt of Lowest Bidder(L-1) status awarded by UP Jal Nigam (Urban) - "
+        "Disclosure under Regulation 30 of the Securities and Exchange Board of India (Listing Obligations and "
+        "Disclosure Requirements) Regulations, 2015, as amended (\u201cSEBI Listing Regulations\u201d) by EMS Limited "
+        "(the \u201cCompany\u201d) Dear Sir/Ma\u2019am, Pursuant to the Regulation 30 read with schedule III of the "
+        "Securities and Exchange Board of India (Listing Obligations and Disclosure Requirements) Regulations 2015, "
+        "and SEBI circular no. GIR/CFD/CFD-PoD-I/P/CIR/2023/123 dated July 13,2023 (as amended); we are pleased to "
+        "inform you that EMS Limited has receipt the lowest bidder (L-1) status awarded by UP Jal Nigam (Urban). The "
+        "estimated order value (excluding GST) is approximately Rs. 18381.49 lakhs (Rupees Eighteen Thousand Three "
+        "Hundred Eighty-one lakhs and Forty-Nine Thousand only). The details of the works are as under: S. No "
+        "Particulars Details 1. Name(s) of the entity awarding the order [s) /Contract(s) UP Jal Nigam (Urban) 2. "
+        "Significant terms and conditions of order(s) / contract(s) awarded in brief As per Contract 3. Whether "
+        "order(s) /contract(s) have been awarded by domestic /international entity Domestic Entity (L-1) 4. Nature "
+        "of order(s) /contract(s) Construction of various components for Fatehpur Sewerage and sewage treatment "
+        "scheme Zone-1 Distt. Fatehpur. 5. Whether domestic or international Domestic Entity 6. Time period by "
+        "which the order(s)/contract(s) is to executed 24 months 7. Broad consideration or size of the order(s) "
+        "contract(s) Order value (excluding GST) of Rs. 18381.49 lakhs (Rupees Eighteen Thousand Three Hundred "
+        "Eighty-one lakhs and Forty-Nine Thousand only).",
+    )
+    jal_row = _row(fe.event_rows(jal)[0], "order_win")
+    assert (jal_row["status"], jal_row["why"]) == ("unverified", "l1_only")
+    assert jal_row["amount_inr_cr"] == pytest.approx(183.8149)
+
+    # audit #26: the LoA is received; a lowest-bidder mention elsewhere does not unverify it.
+    kolkata = _doc(
+        "Intimation of receipt of Letter of Acceptance (LOA) From the office of the Kolkata Municipal Corporation",
+        "Subject: Intimation of receipt of Letter of Acceptance (LOA) from the office of The Kolkata Municipal "
+        "Corporation - Disclosure under Regulation 30 of the SEBI (LODR) Regulations, 2015. Pursuant to Regulation "
+        "30, we are pleased to inform you that EMS Limited has received a Letter of Acceptance (LOA) from the office "
+        "of The Kolkata Municipal Corporation for the work of Pollution Abatement. The order value is approximately "
+        "Rs.78197.91 Lakhs. The Company had earlier been declared the L-1 bidder for this project.",
+    )
+    kolkata_row = _row(fe.event_rows(kolkata)[0], "order_win")
+    assert kolkata_row["status"] == "verified"
+    assert kolkata_row["amount_inr_cr"] == pytest.approx(781.9791)
+
+    # fresh3 #28: the LoA is received first and the press release later says "emerged as the lowest bidder".
+    work_order = _doc(
+        "We are please to inform you that the KMEW has received a work order from New Mangalore Port Authority "
+        "(NMPA) for Maintenance Dredging at New Mangalore Port for the period of 3 years.",
+        "Pursuant to Regulation 30 read with Schedule III of the Listing Regulations, we are pleased to inform you "
+        "that Knowledge Marine & Engineering Works Limited has received a Work Order from New Mangalore Port "
+        "Authority (NMPA). KMEW has secured its largest dredging order by receiving a Letter of Acceptance from NMPA "
+        "valued at approximately Rs.303.17 crore. KMEW emerged as the lowest bidder, with its bid approximately "
+        "10.16% below the competitor.",
+    )
+    assert _row(fe.event_rows(work_order)[0], "order_win")["status"] == "verified"
+
+
+def test_t242_r6_a_subsidiary_order_is_labelled_and_keeps_its_status() -> None:
+    cases = [
+        # audit #24 (MCLOUD c22)
+        (_doc("Attached Herewith the Regulation 30 for receipt of order",
+              "Pursuant to Regulation 30 read with Schedule III of the SEBI (LODR) Regulations, 2015, we wish to "
+              "inform that Provigil Surveillance Limited, a wholly owned subsidiary of the Company, has received a "
+              "Letter of Acceptance (LOA) from South Western Railway, Hubli Division, for an aggregate contract "
+              "value of INR 4.31 Crore Approx."),
+         "Provigil Surveillance Limited", 4.31),
+        # the printed "subsdiary" typo in a title
+        (_doc("MAGELLANIC CLOUD LIMITED VIDE ITS SUBSDIARY SCANDRON PRIVATE LIMITED HAS SECURED ITS FIRST MAJOR "
+              "LOGISTICS DRONE ORDER",
+              "We wish to inform you that our subsidiary Scandron Private Limited has secured its first major "
+              "logistics drone order from an Indian robotics firm, valued at Rs 43 crore."),
+         "SCANDRON PRIVATE LIMITED", 43.0),
+        # audit #42 (EFCIL c69)
+        (_doc("Press Release on New Big Contract of Interior and Fit-out worth INR 57 Crore.",
+              "In compliance with Regulation 30 of the SEBI (LODR) Regulations, 2015, we are pleased to inform you "
+              "of a major development involving EFC Limited, our wholly-owned unlisted subsidiary. EFC Limited has "
+              "been awarded an Interior and Fit-out Contract worth Rs. 57 crore from a leading MNC."),
+         "EFC Limited", 57.0),
+        # audit #49 (PACEDIGITK c312)
+        (_doc("Award of Contract to Material Subsidiary- Lineage Power Private Limited by Advait Greenergy Private "
+              "Limited.",
+              "We would like to bring to your kind attention that M/s. Lineage Power Private Limited, a Material "
+              "Subsidiary of the Company, has received order worth Rs. 997.10 Million (including taxes) from M/s. "
+              "Advait Greenergy Private Limited."),
+         "Lineage Power Private Limited", 99.71),
+        # audit #58 (AURIONPRO c33)
+        (_doc("Aurionpro announces one of its largest US markets wins with USD 33 million fintech engagement",
+              "PRESS RELEASE Aurionpro Solutions Ltd Ninad Kelkar Ninad.kelkar@aurionpro.com AZN Partners "
+              "Publicrelations Pvt Ltd Harry Pinto harry.pinto@aznpartners.com For further information, please "
+              "contact: Aurionpro announces one of its largest US market wins with USD 33 million fintech "
+              "engagement The significant order win from a leading US-based digital insurance payments platform "
+              "will see Aurionpro deliver advanced AI-led technology solutions Mumbai/USA, May 21, 2026 - "
+              "Aurionpro, through its US-based subsidiary Aurionpro Fintech Inc., is pleased to announce its "
+              "largest order win in the US market with the signing of a strategic three-year engagement with one "
+              "of the leading fintech platforms in the United States specializing in digital insurance payments. "
+              "The engagement is expected to generate more than USD 33 million in revenue over the contract "
+              "period."),
+         "Aurionpro Fintech Inc", 33.0),
+    ]
+    for doc, name, amount in cases:
+        row = _row(fe.event_rows(doc)[0], "order_win")
+        assert row["entity_scope"] == "subsidiary", (name, row)
+        assert row["detail"] == f"subsidiary: {name}", (name, row["detail"])
+        assert row["status"] == "verified", (name, row)
+        assert (row["amount_inr_cr"] if row["amount_inr_cr"] is not None else row["amount_usd_mn"]) \
+            == pytest.approx(amount)
+
+    # the filing names no subsidiary, only "a subsidiary": the scope stays the company (Wolf, 25 Nov).
+    unnamed = _doc("Attached is the purchase order received by subsidiary company",
+                   "We wish to inform you that the subsidiary has received a Purchase Order worth USD 4.70 million "
+                   "(~INR 39 crores) for supply of equipment. The order is to be executed within one year.")
+    assert _row(fe.event_rows(unnamed)[0], "order_win")["entity_scope"] == "company"
+
+    # a third party's subsidiary is the customer, not the issuer's subsidiary (CAPACITE's TenX LOI).
+    third_party = _doc(
+        "Receipt of Letter of intent of Rs. 220 crore from TenX Realty Limited, (a step-down subsidiary of "
+        "Raymond Limited)",
+        "We wish to inform you that Capacit'e Infraprojects Limited has received Letter of Intent (LOI) from TenX "
+        "Realty Limited, (a step-down subsidiary of Raymond Limited), for a total contract value of Rs. 220 crore.",
+    )
+    assert _row(fe.event_rows(third_party)[0], "order_win")["entity_scope"] == "company"
+
+
+def test_t242_r6_a_press_release_headline_is_not_the_customer() -> None:
+    # audit #54 (PACEDIGITK c312): the page-2 headline ran into the body name; the body names BSNL.
+    doc = _doc(
+        "Press Release.",
+        "Pursuant to regulation 30 read with Schedule III of the SEBI (LODR) Regulations, 2015, please find "
+        "enclosed herewith the Press Release dated January 01, 2026, for receipt of advance purchase order worth "
+        "Rs. 94.35 Crore from Bharat Sanchar Nigam Limited (BSNL) to Lineage Power private limited a material "
+        "Subsidiary of the Pace Digitek Limited. PRESS RELEASE Pace Digitek's Subsidiary Lineage Power Secures "
+        "Massive Rs. 94.35 Crore Strategic Order from BSNL to Power India's Telecom Future BANGALORE - January 01, "
+        "2026 - Pace Digitek Limited today announced a landmark achievement as its material subsidiary, Lineage "
+        "Power Private Limited, has received a prestigious Order from Bharat Sanchar Nigam Limited (BSNL).",
+    )
+    row = _row(fe.event_rows(doc)[0], "order_win")
+    assert row["customer"] == "Bharat Sanchar Nigam Limited (BSNL)"
+    assert row["entity_scope"] == "subsidiary"
+    assert "Lineage Power" in (row["detail"] or "")
