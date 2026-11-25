@@ -25,11 +25,17 @@ Steps:
    and no LoA, work order or contract award is ALSO stated as received, the row is not an order_win (drop it or
    set status 'unverified' with why 'l1_only'). Test on the two quoted subjects, plus a counter-test: "received
    LoA ... after being declared L1" stays an order.
-2. Subsidiary orders. When the order sentence's subject is a subsidiary ("<Name>, a (wholly owned|material|step-down)
-   subsidiary of the Company, has received", "our (wholly-owned) subsidiary <Name>", "received by subsidiary",
-   "<Name> (wholly owned subsidiary)"), set entity_scope='subsidiary' and store the subsidiary's name in `detail`
-   (or `customer_desc` if `detail` holds JSON: read how `detail` is used first). Status becomes 'unverified'
-   (why 'subsidiary_order') unless the filing also says the order is the company's. Tests on the 5 quoted shapes.
+2. Subsidiary orders (REVISED 25 Nov by Eagle after a measured stop, agy 70ccab33: unverifying would hit 59 of 325
+   verified rows, 18.2%, and earlier grades counted these orders R). A subsidiary's order is a real order for the
+   listed group: KEEP its status. When the order sentence's subject is a subsidiary ("<Name>, a (wholly
+   owned|material|step-down) subsidiary of the Company, has received", "our (wholly-owned) subsidiary <Name>",
+   "received by subsidiary", "<Name> (wholly owned subsidiary)", "US-based subsidiary <Name>"), set
+   entity_scope='subsidiary' and store the subsidiary's printed name in `detail`, or in `customer_desc` if `detail`
+   holds JSON (read how `detail` is used first, and report which you chose). The measured shapes: Provigil and
+   Scandron (MCLOUD), EFC Limited (EFCIL), Lineage Power (PACEDIGITK), SAE Towers (KEC), Aurionpro Fintech Inc.,
+   and one STLTECH row. Tests on 5 shapes.
+   The measured stop found Steps 1 and 3 clean. The L1 veto touches 13/193 fresh3 rows (all EMSLIMITED) and keeps
+   LoA-plus-L1 rows (audit #26, fresh3 #28). The headline-customer rule touches 1 row. Both break 0 graded R.
 3. Customer from a press-release headline: a customer containing a headline verb or date ("to Power", "BANGALORE -",
    a month name with a day) is rejected. Fall back to the customer named in the body, or leave it empty. Test on
    #54's text.
@@ -48,7 +54,8 @@ Pitfalls:
 - Patterns only, no company names in code.
 - Run pytest on test_filing_events.py only.
 
-Accept: test_filing_events.py passes; all 8 W rows are no longer verified-and-wrong; 0 graded R rows broken.
+Accept: test_filing_events.py passes; all 8 W rows are no longer verified-and-wrong (the 5 subsidiary rows by their
+label); 0 graded R rows change status or amount. Report how many graded rows got entity_scope='subsidiary'.
 Stop if: a graded R row breaks and two attempts don't fix it, or one rule unverifies more than 15% of the verified
 order_win rows. Report and stop.
 Budget: about 2 hours; write scope is your worktree only.
