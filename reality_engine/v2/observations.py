@@ -3920,6 +3920,16 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
                 and AR_MONEY_MEASURE_RE.search(measure) and not AR_QUANTITY_MEASURE_RE.search(measure):
             reason = f"ar_unit_unknown: {unit!r} is the row's label noun, not the money unit the measure needs"
         label = norm_space(row.get("printed_label"))
+        # AR ckpt_0001 (25 Nov) J/W: a GRI index page number, a clause "(1)", the "3" of "in the past 3 years",
+        # and an industry projection were verified as the company's figures
+        if reason:
+            pass
+        elif AR_REFERENCE_MEASURE_RE.search(measure):
+            reason = f"ar_not_a_figure: {measure!r} is a reference number (page, clause, note, section), not a figure"
+        elif _label_duration_echo(row):
+            reason = f"ar_not_a_figure: {row.get('value')!r} is the label's own duration ({label!r})"
+        elif str(row.get("entity_scope") or "") in AR_OUTSIDE_SCOPES:
+            reason = f"ar_outside_entity: entity_scope {row.get('entity_scope')!r} is not the company's own figure"
         if not reason and headline and AR_BUCKET_LABEL_RE.search(label) \
                 and not _measure_names_qualifier(measure, label):
             reason = f"ar_qualified_label: {label!r} is an ageing/overdue bucket, not {measure}"
@@ -3943,6 +3953,25 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
         if reason:
             row["status"] = "unverified"
             row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", reason) if p)
+
+
+AR_REFERENCE_MEASURE_RE = re.compile(
+    r"(?<![a-z])(?:page_ref\w*|page_no|page_number|clause\w*|serial_no|sr_no|note_no|note_number|section_number"
+    r"|regulation_number|reference_number|folio_no)(?![a-z])", re.I)
+AR_OUTSIDE_SCOPES = ("industry", "country", "peer")     # "customer" left alone: often the company's own split
+AR_DURATION_RE = re.compile(r"\b(?:past|last|preceding|previous|next)\s+(\w+)\s+(?:financial\s+)?years?\b", re.I)
+_NUMBER_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "ten": 10}
+
+
+def _label_duration_echo(row: dict[str, Any]) -> bool:
+    """The value only repeats the duration printed in its own label ("ceased ... in the past 3 years" -> 3)."""
+    cue = " ".join(norm_space(row.get(key)) for key in ("printed_label", "period", "measure"))
+    match = AR_DURATION_RE.search(cue)
+    if not match or row.get("value") is None:
+        return False
+    word = match.group(1).lower()
+    number = _NUMBER_WORDS.get(word) or (int(word) if word.isdigit() else None)
+    return number is not None and float(row["value"]) == float(number)
 
 
 def _measure_names_qualifier(measure: str, label: str) -> bool:

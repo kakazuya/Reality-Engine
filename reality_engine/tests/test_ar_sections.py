@@ -326,3 +326,28 @@ def test_parent_name_plus_words_is_another_entity():
     assert not _is_own_entity("Tata Motors Finance Limited", "Tata Motors Limited")
     assert _is_own_entity("The Bombay Dyeing and Manufacturing Company Limited", "Bombay Dyeing & Mfg Company Limited")
     assert _is_own_entity("A. K. Capital Services Limited", "AK Capital Services Limited")
+
+
+def test_ar_ckpt_0001_non_figures_and_outside_entities_are_unverified():
+    """AR ckpt_0001 (25 Nov) J/W: page reference, clause number, label duration, industry projection."""
+    def row(**kw):
+        base = {"record_type": "number", "status": "verified", "unit": "", "entity_scope": "company",
+                "printed_label": "", "period": "FY2025-26"}
+        return {**base, **kw}
+    rows = [row(measure="NEW:gri_disclosure_page_reference", printed_label="GRI 403-6", value=48.0),
+            row(measure="NEW:internal_control_definition_clause_number", printed_label="(1)", value=1.0),
+            row(measure="NEW:directorships_ceased_in_past_3_years", value=3.0, unit="years",
+                printed_label="Listed companies from which ceased to be a director in the past 3 years"),
+            row(measure="market.share", value=35.0, unit="%", entity_scope="industry",
+                printed_label="organised retail projected to exceed 35% of the market"),
+            # kept: a real figure, a portfolio fee, a customer split, and a 3-year count that is not the label's
+            row(measure="revenue_from_operations", value=1200.0, unit="Rs crore", printed_label="Revenue"),
+            row(measure="NEW:service_fees_for_management_of_assigned_portfolio_of_loans", value=18.35,
+                unit="Rs crore", printed_label="Service fees for management of assigned portfolio of loans"),
+            row(measure="NEW:top_10_customers_share", value=42.0, unit="%", entity_scope="customer"),
+            row(measure="NEW:dividends_paid_past_3_years", value=12.5, unit="Rs crore",
+                printed_label="Dividend paid in the past 3 years")]
+    obs.apply_ar_row_gates(rows, "", "")
+    assert [r["status"] for r in rows] == ["unverified"] * 4 + ["verified"] * 4
+    assert rows[0]["status_reason"].startswith("ar_not_a_figure")
+    assert rows[3]["status_reason"].startswith("ar_outside_entity")
