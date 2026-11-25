@@ -2,7 +2,7 @@
 History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
-- Stores `D:/RealityEngine/{p20/p20new.db,u8/u8.db,q12/q12.db,n10/n10.db,pilot10/pilot10.db}`; u8/p20/q12 rebuilt 11 Nov 17:10, backups `*_before_rebuild_2026-11-11.db`; reality-data restart needed.
+- Stores `D:/RealityEngine/{p20/p20new.db,u8/u8.db,q12/q12.db,n10/n10.db,pilot10/pilot10.db}`; backups `*_before_rebuild_2026-11-11.db`.
 - Extraction: `v2/page_words.py` -> `page_layout.py` -> `page_route.py` (T-189, four routes; `table_or_chart` read on the page IMAGE, `needs_ocr` on its OCR words since T-238, plus the two T-242 deck options) -> `reference_geom.py` (T-185) -> `page_reader.py` writes page_cell verified/unverified/quarantined, served by `pilot3_cells`. T-199 atoms (`page_atom` v10): `docs/PILOT3_BLUEPRINT.md` T-199 block.
 - T-225 checker open: FROZEN 464/773, target 95%.
 - 24-26 Nov T-242: `grade_pack.py`, `docs/grading/`. audits 2-6: 33R8P3W4M / 32R12P4M / 45R3P / 36R1P11M / 36R5P1W5M1N; 7 (fresh, paraphrased) 29R16P1W1M1N. F3/4: 25-row window <19 kB; named call by call or filing date ±3 d. F5: named-call obs_fact statements + doc_page hits come from its PRINTED call-date documents, not the filing-date window; 16 audit-5 statements by call date 4R3P9M -> 15R1P. F6: held-but-quarantined guidance disclosed, obs_fact guidance fallback, PAT/as-on aliases, all-ask-word sentence first, filed beats call figure >20%; audit-6 replay 36R->45R.
@@ -14,7 +14,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 26 Nov 03:20 (Eagle) events: Shivam switched order_win/fund_raise to hy4 model + script check; merged (agy c858aea0, fp 546696b94a21): fresh5-7 graded W/J 69/70 fixed or unverified, R kept 92%. VERIFIED_KINDS empty until a fresh8 60-row grade per kind (Eagle).
-00000. 26 Nov deck-wide read DONE (9,632 pages incl. 1,204 OCR, ckpt 1-4 pass); loads via loader SUPPLEMENTS; OCR rows graded before load.
+00000. 26 Nov deck-wide read DONE (9,632 pages incl. 1,204 OCR, ckpt 1-4 pass); loads via loader SUPPLEMENTS (page-disjoint, +3,381 pages); OCR rows graded before load.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
 1. T-214/T-218 Telegram build: plan `tasks/handoff/T-214_TG_BUILD_PLAN.md`, queue `D:/RealityEngine/tg_build/build_queue.csv`, stores `tg_build/measure10/c01..c91`; repair notes `tasks/store_repair/INDEX.md`, grid `reports/store_repair_grid.xlsx`.
 
