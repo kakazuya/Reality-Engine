@@ -8,7 +8,7 @@ split. The factor study needs dated, quantified corporate events, one row per fi
 extractor over calls and annual reports restated facts across documents and stored parent-company facts under a
 subsidiary.
 
-Code `reality_engine/research/filing_events.py`; tests `reality_engine/tests/test_filing_events.py` (104 tests, no
+Code `reality_engine/research/filing_events.py`; tests `reality_engine/tests/test_filing_events.py` (112 tests, no
 network: stage-A real excerpts, stage-B/C/T-242 excerpts from the graded filings, and synthetic traps; every real
 excerpt quotes its `doc_key`). Output DB `--out`, default `.tmp/t231/events.db`; stores are read with `connect_ro`
 (`mode=ro`) and never written.
@@ -86,7 +86,7 @@ source in stage A).
 Status (T-242 round 3, 24 Nov 2026; scope and L1 in round 6; the step's amount/issuer/stage in round 7): `verified` =
 every field printed, scope company or
 `subsidiary` (a subsidiary's order keeps its status with the printed name in `detail`), no `l1_only` veto, **and the
-row's kind is in `VERIFIED_KINDS`** (`frozenset({"order_win"})`; `_gate_status`, then `_finish_scope`); `unverified` =
+row's kind is in `VERIFIED_KINDS`** (EMPTY since 25 Nov 2026; it held `order_win` 24-25 Nov; `_gate_status`, then `_finish_scope`); `unverified` =
 a computed figure, an amount the script could not fill, a parent-scope row, an L1-only intimation
 (`why='l1_only'`), or a kind that has not passed its own fresh strict 60-row grade (detail
 `kind_not_gated: <kind> awaits its own 60-row grade`); `quarantined` = the value is not on the page. A kind joins
@@ -282,9 +282,63 @@ Measured on the same stores into new DBs (cache `C:/RealityEngine/t242/events_ca
   round 6 (121 after round 7).
 * **Deliberate ceilings.** The scope test is document-level, not sentence-level: an order the issuer *received
   from* its own subsidiary would be labelled `subsidiary` too (rare; the related-party crop is small). A subsidiary
-  whose parent is named rather than "the Company" is rejected as a name-before-marker match and recovered by the
-  marker-before-name shape where the filing prints one; where it does not, the row stays `company`. No company name
-  is in the code (patterns only).
+  whose parent is named rather than "the Company" is recovered where an order-receiving verb follows (or via the
+  marker-before-name shape where the filing prints one), while third-party customer subsidiaries remain `company`. No
+  company name is in the code (patterns only).
+
+## 3f. T-242 round 7 (25 Nov 2026): customer, subsidiary, JV/past-order value and press-release folds
+
+After `order_win` failed its strict 60-row grade on 40 untuned stores (`C:/RealityEngine/t242/audit_orderwin_fresh5/`,
+round 6: **39 R / 5 P / 14 W / 2 J**), `VERIFIED_KINDS` remained empty (`frozenset()`) and four structural rule groups
+were added to `reality_engine/research/filing_events.py` (no `fund_raise` logic and no `VERIFIED_KINDS` change):
+
+1. **Customer (`_clean_party`, `_strip_party_junk`, `_split_customer`, `_DATE_OR_PERIOD_CUSTOMER`,
+   `_UNDISCLOSED_CUSTOMER`, `_ANNEXURE_AWARDER`, `_ANNEXURE_TARGET_AWARDER`, `_ANNEXURE_LABEL_STRIP`,
+   `_BAD_CUSTOMER`, `order_fields`, `_loose_order_record`).** `order_fields` prefers annexure awarders over
+   title/body `loose_order_v1` guesses, `_ANNEXURE_AWARDER` stops before `Whether the acquisitions` / `Objects and
+   effects` / `Indicative time period` / `Total cost`, `_ANNEXURE_TARGET_AWARDER` reads `Name of the target entity`
+   when the prescribed awarder label is absent (#1, #15, #19, #21, #23), and `_ANNEXURE_LABEL_STRIP` strips
+   `/Redevelopment(s)`, `/Letter of Intent|Acceptance|Award`, and garbled `con...t(s)` labels (#47, #60).
+   `_strip_party_junk` strips leading/trailing bullets (`•●▪✓✔◦·*`) and punctuation plus single-letter OCR markers
+   (`l : `, `e ` before an awarder), `_clean_party` rejects date, month-year and period strings
+   (`_DATE_OR_PERIOD_CUSTOMER`: `<Month> <YYYY>( to <Month> <YYYY>)?`, `Q1 FY26`, `FY 2025-26`, numeric dates, e.g.
+   `December 2024 to May 2025` / `January 2025` / `May 2025`), single generic words (`_SINGLE_GENERIC_CUSTOMERS`:
+   Public, Office, Government, Department, Client, ...), own-segment prefixes (`_OWN_PARTY_PREFIX`:
+   `our`/`its`/`their`/`the Company's`, #9, #12), bare countries/regions (`_COUNTRIES_AND_REGIONS`, #31),
+   `<Day> <Month>` datelines (`_HEADLINE_CUSTOMER`, `_HEADLINE_PLACE`, #32), and leading table-header words
+   (`_HEADER_PARTY_PREFIX`), while `_BAD_CUSTOMER` narrows `promoter` to `whether the promoter` / `promoter/group`
+   (keeping `Yucca Promoters LLP`, #43) and matches `customers` plural and `same client` (#13, #14). On both script
+   and model rows, `_split_customer` and `_finish_scope` turn `'Not disclosed'` / `'Confidential'` / `'withheld'`
+   (`_UNDISCLOSED_CUSTOMER`) into `customer = NULL` and append `customer not disclosed` to `detail`.
+2. **Subsidiary (`_SUB_*`, `_valid_sub_name`, `_subsidiary_names_from_span`, `_subsidiary_name`).** Accepts quoted names
+   (#30, #55 `“KRN HVAC Products Private Limited”`), strips `(formerly known as ...)` before `_SUB_JUNK` (#60), adds
+   `GmbH` to `_SUB_SUFFIX`, supports plural `subsidiaries` and multi-name lists joined by `'; '` before or after the
+   marker (#14, #49), allows parent-named clauses when followed by an active order-receiving verb while still rejecting
+   customer-side third-party subsidiaries, and rejects digits, capacity/unit tokens (`_SUB_UNIT_TOKEN`: `MW`/`MWp`/
+   `kW`/`GW`/`DC`/`AC`/..., fixing #60 `'MW DC'`), bare countries, and single-word non-suffix acronyms (`Sweden)`,
+   `KSPL)`).
+3. **Order value (`_consortium_share`, `_strip_past_order_values`, `_ORDER_ROLLUP`).**
+   - `_consortium_share` matches full-rupee share spans (`_CONSORTIUM_AMOUNT_FULL`), named `<Issuer>'s order value` /
+     `share of <Issuer>` / `holds X% partnership stake` gated to the issuer (`_issuer_tokens`, `_matches_issuer`), so
+     JV gross values store the company's share and note the gross value in `detail` (#23: `16.4743` cr, `70%`, gross
+     `23.5347` cr; `CAPACITE` `e8953bba` uses its `40%` share `153.888` cr rather than the lead partner's `60%`).
+   - `_strip_past_order_values` masks clauses/phrases introduced by `delivered` / `executed & delivered` / `earlier` /
+     `previous` / `prior` order before `order_wins.parse`, `_loose_order_record`, and `_order_value_from_text` (#28:
+     `0.415` -> `0.89` cr).
+   - `_ORDER_ROLLUP` widens to `secures/receives ... orders worth/aggregating to ... in Q2 FY 2027` / `in the
+     <Month-Month> quarter` (#18 vetoed).
+4. **Duplicates (`_fold_same_order`) & `build()`/`_finish_scope()`.** A press/media release within 10 days of an order
+   with the same value (within 0.5%) folds into it with an `amend` link when customers do not conflict (treating empty
+   and `Not disclosed`/`Confidential` as unnamed; #13 -> #27, #20 -> #38), while never folding a valued press release
+   into an empty earlier row. `_finish_scope` still stamps `l1_only` while `VERIFIED_KINDS` is empty, and `build()`'s
+   `covered` check replaces `amount not filled by script` rows whenever the model fills a non-quarantined printed-unit
+   value regardless of `VERIFIED_KINDS`.
+
+Measured against the round-6 DBs with copied caches (0 new model requests; `.tmp/events_r7d_fresh{5,4,3}.db`):
+* **21/21 fresh5 W/P/J rows fixed**: all 11 customer failures (#1, #9, #12, #15, #17, #19, #21, #31, #32, #43, #47), all 5 subsidiary failures (#14, #30, #49, #55, #60), all 3 value failures (#18 vetoed, #23 `16.4743` cr / 70%, #28 `0.89` cr), and both duplicate press releases (#13 -> #27, #20 -> #38; #32 also folded into `60b37559`).
+* **Customer follow-up fixes (`r7c -> r7d`)**: on `fresh5`, date/period rejection cleared 3 `PREMIERENE` rows (`December 2024 to May 2025`, `January 2025`, `May 2025` -> `NULL`), leading bullet/punctuation stripping cleaned 3 rows (`VEERHEALTH 9b3b0373` `'• Apollo Healthco Limited'`, 2 `SBGLP` rows) plus 1 `HECPROJECT` row on `fresh4`, and undisclosed handling moved 48 `fresh5` rows (`VEERHEALTH` 30, `QPOWER` 15, `HIGHNESS` 3) to `customer = NULL` with `customer not disclosed` in `detail` (0 on `fresh4`, 0 on `fresh3`; 1 side-effect row on `fresh5` `QPOWER 1d08d2d9`).
+* **Graded R rows**: `events_grade_fresh3` 25/25 unchanged; `audit_orderwin_r5` 51/52 and `events_grade_fresh4` 45/46 unchanged (`CAPACITE e8953bba` moved from gross `384.72` cr to its 40% JV share `153.888` cr, computed `unverified`); on `fresh5`, `#10` and `#11` (`VEERHEALTH` press releases) folded into the previous day's identical Reg 30 filings (`19b7b74e`, `f5a69454`), the 6 undisclosed-customer R rows (`#4, #8, #27, #36, #44, #48`) moved to `customer = NULL` with `customer not disclosed` in `detail`, and the remaining 31/39 are unchanged in status/amount/customer.
+* **Set diffs (`r6 -> r7d`)**: `fresh5` 118/267 (44.2%, MSECL annexure customers + VEERHEALTH/QPOWER undisclosed customers + PREMIERENE), `fresh4` 11/199 (5.5%, under 15% stop), `fresh3` 3/209 (1.4%, under 15% stop). **Tests**: 114 passed in `test_filing_events.py`.
 
 ## 3f. T-242 round 7 (25 Nov 2026): the step's own amount, the issuer, the stage
 
@@ -473,3 +527,8 @@ buyer/exploring/completion vetoes, restated dates, field hygiene). Detail `D:/Re
 final DB `D:/RealityEngine/t231/events.db` (604 events, 439 verified). Factor use: one row per raise_id
 (raise_primary=1); order_win only with order_kind new order; companies with a verified order win in the trailing 12
 months: median 25 of 91 over 2025-06..2026-10.
+
+
+## Gate withdrawn (25 Nov 2026, Eagle)
+
+`order_win` left `VERIFIED_KINDS` after a strict 60-row grade of its verified rows on 40 stores no fix was tuned on (fresh5, round 6; Hydrogen 05f386b3, `C:/RealityEngine/t242/audit_orderwin_fresh5/`): 39 R / 5 P / 14 W / 2 J (65% right, 26.7% wrong+junk). Its causes: a wrong, truncated or garbled customer (the company's own segment, a one-word title fragment, a country, a headline); subsidiary orders missed by `_subsidiary_name` or with a non-name in `detail`; a customer printed in the annexure left empty; a JV's gross value for the company's share; a past order's value; a quarterly roll-up stored as an order; press-release repeats. The fund_raise fresh5 grade was 31/7/22/0. Since then no kind is gated: every event row is `unverified` (served labelled). Event DBs built BEFORE this change still hold `verified` on order wins, so re-run filing_events (or `--recheck`) before any store load. Tests run with order_win gated through an autouse fixture, so the row checks stay tested; `test_live_gate_is_empty_until_a_kind_passes_a_fresh_store_grade` checks the live gate.

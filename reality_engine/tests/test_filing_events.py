@@ -20,6 +20,22 @@ from reality_engine.research import filing_events as fe
 OUT_DIR = Path(".tmp/t231")
 
 
+@pytest.fixture(autouse=True)
+def _order_win_checks_as_gated(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests check the order_win row checks, so they run with order_win as a gated kind.  The LIVE gate is
+    empty since 25 Nov 2026 (order_win failed its fresh-store grade 39/5/14/2); `test_live_gate` checks that."""
+    if "live_gate" not in request.node.name:
+        monkeypatch.setattr(fe, "VERIFIED_KINDS", frozenset({"order_win"}))
+
+
+def test_live_gate_is_empty_until_a_kind_passes_a_fresh_store_grade() -> None:
+    assert fe.VERIFIED_KINDS == frozenset()
+    order = _doc("New orders worth Rs. 816 Crores",
+                 "The Company has secured new orders of Rs. 816 crores across its various businesses.")
+    row = _row(fe.event_rows(order)[0], "order_win")
+    assert row["status"] == "unverified" and "kind_not_gated: order_win" in row["detail"]
+
+
 def _doc(title: str, text: str, *, symbol: str = "ACME", doc_key: str = "doc-1",
          filing_date: str = "2026-01-05", known_at: str = "2026-01-05T10:00:00") -> dict[str, Any]:
     return {"store": "cXX", "symbol": symbol, "isin": "INE000A01001", "doc_key": doc_key, "title": title,
@@ -2232,3 +2248,283 @@ def test_t242_r7_not_the_listed_company_as_issuer(title: str, text: str) -> None
 ])
 def test_t242_r7_raise_stage_shapes(title: str, text: str, expected: str) -> None:
     assert _row(fe.event_rows(_doc(title, text))[0], "fund_raise")["raise_stage"] == expected
+
+
+# ---- T-242 round 7: structural customer, subsidiary, value and duplicate rules ----------------------------
+def test_t242_r7_customer_rejects_fragments_segments_countries_headers_and_prefers_annexure() -> None:
+    # Single generic words ('Public', 'Office') in a truncated title yield to the page-2 annexure awarder.
+    annex_over_title = _doc(
+        "Pursuant to Regulation 30, we submit that Company has received an order from Public ....",
+        "The Company is pleased to announce that it has received an LOA for consultancy services and total order "
+        "value of the project is Rs. 1,74,24,057/-. Annexure A: Name of the target entity details in brief such "
+        "as size, turnover, etc. Public Works Roads Department, Government of Assam Whether the acquisitions "
+        "would fall within related party transactions No Total cost or contract amount involved Rs. 1,74,24,057/-",
+        symbol="AAA",
+    )
+    assert _row(fe.event_rows(annex_over_title)[0], "order_win")["customer"] == (
+        "Public Works Roads Department, Government of Assam"
+    )
+
+    # 'Name of the entity awarding' stops before 'Whether the acquisitions' so 'Office' in title is replaced.
+    office_annex = _doc(
+        "We hereby submit that Company has received an order from Office ....",
+        "The Company has received a work order worth Rs. 4,92,93,508/-. Annexure A: Name of the entity awarding "
+        "the order(s)/contract(s); OFFICE OF THE EXECUTIVE ENGINEER P.W (WB) Project Division, Chhatrapati "
+        "Sambhajinagar Whether the acquisitions would fall within related party transactions No",
+        symbol="AAA",
+    )
+    assert _row(fe.event_rows(office_annex)[0], "order_win")["customer"] == (
+        "OFFICE OF THE EXECUTIVE ENGINEER P.W (WB) Project Division, Chhatrapati Sambhajinagar"
+    )
+
+    # A company name containing 'Promoters' ('Yucca Promoters LLP') is not rejected by promoter boilerplate.
+    promoters_llp = _doc(
+        "Company receives Letter of Intent from Yucca Promoters LLP, Pune amounting to Rs. 85.43 Crores",
+        "a) Name of the entity awarding the order(s)/contract(s); Yucca Promoters LLP, Pune "
+        "g) Broad consideration or size of the order(s)/contract(s) Rs. 85.43 Crores (Including GST).",
+        symbol="AAA",
+    )
+    assert _row(fe.event_rows(promoters_llp)[0], "order_win")["customer"] == "Yucca Promoters LLP"
+
+    # A table header prefix ('Redevelopment(s) ...') is stripped/rejected in favour of the named entity.
+    header_prefix = _doc(
+        "Letter of Intent for Redevelopment of building amounting to Rs. 161.18 Crore",
+        "The Company has received Letter of Intent (LOI) from MSEB holding Company Limited Amounting to Rs.161.18 "
+        "Crore. a) Name of the entity awarding the order(s)/contract(s)/Redevelopment(s) MSEB Holding Company Limited "
+        "b) Significant terms Not applicable g) Broad consideration Rs. 161.18 Crores",
+        symbol="AAA",
+    )
+    assert _row(fe.event_rows(header_prefix)[0], "order_win")["customer"] == "MSEB Holding Company Limited"
+
+    # Reject single generic words, own segments ('our ...'), bare countries/regions, datelines, and headers.
+    for bad in ("Public", "Office", "Government", "Department", "Client",
+                "our T&D business", "its infrastructure division", "the Company's EPC business",
+                "Malaysia", "Middle East region",
+                "Top US Institutional Supplier Mumbai - 17th May",
+                "Redevelopment(s) Foo Bar Limited", "Appointment of Agency"):
+        assert fe._clean_party(bad) is None, bad
+
+    # Own segment and bare country orders leave customer empty instead of storing a wrong customer.
+    own_seg = _doc(
+        "PRESS RELEASE - COMPANY AWARDED NEW ORDERS OF RS. 2,273 CRORES",
+        "The Company has secured new orders of ₹ 2,273 Crores. Nearly 56% of order intake till date is from "
+        "our T&D business.",
+        symbol="AAA",
+    )
+    assert _row(fe.event_rows(own_seg)[0], "order_win")["customer"] is None
+
+    country = _doc(
+        "Company has informed the exchange about receipt of order.",
+        "The Company received its maiden overseas contract in the Rail and Metro segment from Malaysia for the "
+        "Retrofit of the Mass Rapid Transport System, valued at USD 1 million.",
+        symbol="AAA",
+    )
+    assert _row(fe.event_rows(country)[0], "order_win")["customer"] is None
+
+
+def test_t242_r7_subsidiary_captures_quoted_and_multiple_names_and_rejects_units() -> None:
+    # Quoted name before 'wholly owned subsidiary' (#30, #55).
+    quoted = _doc(
+        "General Business Updates",
+        "We wish to inform you that \u201cKRN HVAC Products Private Limited\u201d, a wholly owned subsidiary of "
+        "the Company has received an export order. Estimated Single Order Value: Approx. INR 55 Crore.",
+        symbol="KRN",
+    )
+    r_quoted = _row(fe.event_rows(quoted)[0], "order_win")
+    assert r_quoted["entity_scope"] == "subsidiary"
+    assert r_quoted["detail"] == "subsidiary: KRN HVAC Products Private Limited"
+
+    # Multiple subsidiaries before 'Subsidiaries of <Parent>' (#14, #49) and after '(material|step-down) subsidiaries'.
+    multi_before = _doc(
+        "Receipt of new orders",
+        "We hereby inform you that Premier Energies International Private Ltd. and Premier Energies Photovoltaic "
+        "Private Ltd., both subsidiaries of Premier Energies Limited, have received and accepted multiple orders "
+        "amounting to a total value of INR 765 crore.",
+        symbol="PREMIERENE",
+    )
+    r_mb = _row(fe.event_rows(multi_before)[0], "order_win")
+    assert r_mb["entity_scope"] == "subsidiary"
+    assert r_mb["detail"] == (
+        "subsidiary: Premier Energies International Private Ltd; Premier Energies Photovoltaic Private Ltd"
+    )
+
+    multi_after = _doc(
+        "Receipt of order by subsidiaries",
+        "Our wholly owned material subsidiaries, Alpha Tech GmbH and Beta Energy LLP, have received an order "
+        "worth Rs. 120 Crore from Northern Railway.",
+        symbol="AAA",
+    )
+    r_ma = _row(fe.event_rows(multi_after)[0], "order_win")
+    assert r_ma["entity_scope"] == "subsidiary"
+    assert r_ma["detail"] == "subsidiary: Alpha Tech GmbH; Beta Energy LLP"
+
+    # Capacity/unit tokens ('MW DC') never pass as a subsidiary name; the named subsidiary after marker wins (#60).
+    unit_trap = _doc(
+        "Bagging of order 20 MW AC/ 28.1 MW DC BY OUR SUBSIDIARY SUNPOWER ENERGY RESOURCE PRIVATE LIMITED "
+        "(FORMERLY SUNPOWER LLP)",
+        "Our Subsidiary Sunpower Energy Resource Private Limited (formerly known as Sunpower LLP) has been awarded "
+        "20MWAC /28.1 MW DC EPC basis Letter of Intent by Shree Warana SSK Ltd. Broad consideration: Rs. 69 Crores.",
+        symbol="AAA",
+    )
+    r_unit = _row(fe.event_rows(unit_trap)[0], "order_win")
+    assert r_unit["entity_scope"] == "subsidiary"
+    assert "MW" not in r_unit["detail"] and "DC" not in r_unit["detail"]
+    assert "SUNPOWER ENERGY RESOURCE PRIVATE LIMITED" in r_unit["detail"]
+
+
+def test_t242_r7_value_jv_share_past_delivered_and_quarterly_rollup() -> None:
+    # JV filing printing gross value and company's 70% share stores the share and notes gross value (#23).
+    jv_doc = _doc(
+        "We submit that Company has received an order from Maharashtra ....",
+        "The Monarch Surveyors and Engineering Consultants Limited has received Letter of Acceptance and the "
+        "project have been awarded under a Joint Venture (JV), in which the Monarch Surveyors and Engineering "
+        "Consultants Limited holds a 70% partnership stake and total order value of the project is Rs. "
+        "23,53,47,000/-. As per MOU signed with a third-party, share of Monarch is 70% of the total order value. "
+        "Accordingly, Monarch\u2019s order value is Rs. 16,47,42,900/-. Annexure A: Name of the target entity "
+        "details in brief such as size, turnover, etc. Maharashtra Rural Roads Development Association Whether the "
+        "acquisitions would fall within related party transactions No",
+        symbol="MSECL",
+    )
+    r_jv = _row(fe.event_rows(jv_doc)[0], "order_win")
+    assert r_jv["amount_inr_cr"] == pytest.approx(16.4743)
+    assert r_jv["value_total"] == pytest.approx(23.5347)
+    assert r_jv["share_pct"] == pytest.approx(70.0)
+    assert r_jv["customer"] == "Maharashtra Rural Roads Development Association"
+    assert "23.5347" in r_jv["detail"]
+
+    # Partner's 60% share in a JV is skipped in favour of the issuer's 40% share.
+    partner_jv = _doc(
+        "Receipt of Letter of Acceptance from NHSRCL",
+        "M/s. Partner-Issuer (JV) has received a Letter of Acceptance from NHSRCL for a total contract value of "
+        "Rs. 384.72 crores. In the aforementioned Joint Venture, Partner Private Limited holds 60% share as the "
+        "Lead Partner, while Issuer Infraprojects Limited holds a 40% share.",
+        symbol="ISSUER",
+    )
+    r_pjv = _row(fe.event_rows(partner_jv)[0], "order_win")
+    assert r_pjv["share_pct"] == pytest.approx(40.0)
+    assert r_pjv["amount_inr_cr"] == pytest.approx(153.888)
+    assert r_pjv["value_total"] == pytest.approx(384.72)
+
+    # Past delivered/executed/earlier/previous order value is never chosen over the new order's value (#28).
+    past_order = _doc(
+        "Company has received new export order worth US $ 106673 from existing top institutional supplier",
+        "The company has executed & delivered Export Order valued at US$ 50,000 (approximately ₹41.50 Lakhs), "
+        "another export order valued at $ 197,793 (approximately ₹ 165 Lakhs) which shall be fully executed and "
+        "delivered by end of July. Now Company has received an additional export order worth $ 106,673 "
+        "(approximately ₹ 89 Lakhs).",
+        symbol="AAA",
+    )
+    r_past = _row(fe.event_rows(past_order)[0], "order_win")
+    assert r_past["amount_inr_cr"] == pytest.approx(0.89)
+
+    # Quarterly roll-up ('orders worth X in Q2 FY 2027' / 'aggregating to X in the July-September quarter') vetoed.
+    rollup = _doc(
+        "Solar Co Secures New Orders Worth Rs. 4,001 Crore in Q2 FY 2027",
+        "Solar Co Limited has received orders aggregating to ₹4,001 crores in the July\u2013September quarter. "
+        "These orders come from a mix of major power producers and EPC companies.",
+        symbol="AAA",
+    )
+    assert not [r for r in fe.event_rows(rollup)[0] if r["kind"] == "order_win"]
+
+
+def test_t242_r7_press_release_duplicate_within_10_days_folds_with_amend() -> None:
+    # Reg 30 filing with named customer + press release 2 days later with no customer named (#20 -> #38).
+    reg30 = _doc(
+        "Intimation of Receipt of Purchase order under Regulation 30",
+        "Name of the entity awarding the order(s)/contract(s) Premia Solutionz Private Limited "
+        "7. Broad consideration or size of the order(s)/contract(s) Approximately ₹6 Crore.",
+        symbol="HIGHNESS", doc_key="reg30", filing_date="2026-09-26", known_at="2026-09-26T13:01:00",
+    )
+    pr = _doc(
+        "Press Release pursuant to Regulation 30 of SEBI (LODR) Regulations, 2015.",
+        "Subject: Press Release \u2013 Company Secures Approx. ₹6 Crore Order. "
+        "Company has secured an approx ₹6 crore order from a domestic customer. Order Value: Approx ₹6.00 Crore.",
+        symbol="HIGHNESS", doc_key="pr", filing_date="2026-09-28", known_at="2026-09-28T18:06:00",
+    )
+    rows = fe.event_rows(reg30)[0] + fe.event_rows(pr)[0]
+    assert len(rows) == 2
+    amends: list[dict[str, Any]] = []
+    kept = [r for r in fe._fold_same_order(rows, amends) if r["kind"] == "order_win"]
+    assert [r["doc_key"] for r in kept] == ["reg30"]
+    assert [(a["doc_key"], a["amends"]) for a in amends] == [("pr", "reg30")]
+
+    # A valued press release must never fold into an earlier valueless row.
+    empty_prior = _doc(
+        "Receipt of New Order from Apollo Healthco Limited",
+        "We have received a purchase order from Apollo Healthco Limited.",
+        symbol="VEER", doc_key="empty", filing_date="2024-04-01", known_at="2024-04-01T15:00:00",
+    )
+    valued_pr = _doc(
+        "Press Release of New order received from Apollo Healthco Limited",
+        "Press Release: Company secures New order worth ₹ 57.36 Lakhs from Apollo Healthco Limited.",
+        symbol="VEER", doc_key="valued", filing_date="2024-04-02", known_at="2024-04-02T11:00:00",
+    )
+    rows2 = fe.event_rows(empty_prior)[0] + fe.event_rows(valued_pr)[0]
+    amends2: list[dict[str, Any]] = []
+    kept2 = [r for r in fe._fold_same_order(rows2, amends2) if r["kind"] == "order_win"]
+    assert len(kept2) == 2 and amends2 == []
+
+
+def test_t242_r7d_rejects_date_and_period_customers() -> None:
+    for period in ("December 2024 to May 2025", "January 2025", "May 2025", "Q1 FY26", "FY 2025-26", "18.05.2026"):
+        assert fe._clean_party(period, from_annexure=False) is None
+        assert fe._clean_party(period, from_annexure=True) is None
+    assert fe._clean_party("May Industries Limited") == "May Industries Limited"
+
+    doc = _doc(
+        "Solar Co secures orders worth Rs. 500 Crore for modules",
+        "The Company has secured orders aggregating to Rs. 500 Crore for supply of modules, which "
+        "will commence from December 2024 to May 2025. "
+        "a) Name of the entity awarding the order(s)/contract(s): Multiple orders from 2 Domestic IPP customers "
+        "f) Time period by which the order(s)/contract(s) is to be executed: May 2025 "
+        "g) Broad consideration or size of the order(s)/contract(s): Rs. 500 Crore.",
+        symbol="AAA",
+    )
+    orders = [r for r in fe.event_rows(doc)[0] if r["kind"] == "order_win"]
+    assert orders and orders[0]["customer"] is None
+
+
+def test_t242_r7d_strips_bullets_and_marks_undisclosed_customer() -> None:
+    assert fe._clean_party("• Acme Healthcare Limited", from_annexure=True) == "Acme Healthcare Limited"
+    assert fe._clean_party("l : • Acme Healthcare Limited", from_annexure=True) == "Acme Healthcare Limited"
+
+    bullet_doc = _doc(
+        "Receipt of New Order",
+        "Name of the entity awarding the order(s)/contract(s): • Acme Healthcare Limited "
+        "g) Broad consideration or size of the order(s)/contract(s): Rs. 12 Crore.",
+        symbol="AAA",
+    )
+    bullet_orders = [r for r in fe.event_rows(bullet_doc)[0] if r["kind"] == "order_win"]
+    assert bullet_orders and bullet_orders[0]["customer"] == "Acme Healthcare Limited"
+
+    for phrase in (
+        "• Not disclosed",
+        "l : • Not disclosed",
+        "contraczt(s): • Not disclosed",
+        "e Not disclosed",
+        "Not disclosed as per confidential terms.",
+        "Confidential",
+        "Name withheld due to NDA",
+    ):
+        script_doc = _doc(
+            "Receipt of Order",
+            f"Name of the entity awarding the order(s)/contract(s): {phrase} "
+            "7. Broad consideration or size of the order(s)/contract(s): Rs. 25 Crore.",
+            symbol="AAA",
+        )
+        script_rows = [r for r in fe.event_rows(script_doc)[0] if r["kind"] == "order_win"]
+        assert script_rows and script_rows[0]["customer"] is None
+        assert "customer not disclosed" in (script_rows[0].get("detail") or "")
+
+        model_doc = {**_doc(
+            "Receipt of Order",
+            f"We received an order worth Rs. 25 Crore from {phrase}.",
+            symbol="AAA",
+        ), "pages": {1: f"We received an order worth Rs. 25 Crore from {phrase}."}}
+        model_rows = fe.model_rows(
+            model_doc,
+            ["order_win"],
+            _model_reply(customer=phrase, amount_inr_cr=25.0, value_text="Rs. 25 Crore"),
+        )
+        assert model_rows and model_rows[0]["customer"] is None
+        assert "customer not disclosed" in (model_rows[0].get("detail") or "")

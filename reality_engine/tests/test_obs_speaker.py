@@ -295,7 +295,7 @@ def test_roster_edge_cases_and_non_speaker_labels():
 
 def _statement(page: int, text: str, speaker: str = "", status: str = "verified") -> dict[str, Any]:
     return {"record_type": "statement", "page": page, "statement": text, "speaker": speaker,
-            "status": status, "status_reason": ""}
+            "status": status, "status_reason": "", "question_context": ""}
 
 
 def test_statement_speaker_carries_across_a_page_break():
@@ -358,8 +358,9 @@ def test_statement_first_name_and_initials_resolve_to_one_management_name():
     # two management names share the first name: keep it, never guess
     assert rows[2]["speaker"] == "Amit" and rows[2]["status"] == "unverified"
     assert rows[2]["status_reason"].startswith("speaker_unresolved:")
-    # a role word is a usable speaker
-    assert rows[3]["speaker"] == "Management" and rows[3]["status"] == "verified"
+    # generic role words ('Management', 'Company', 'Moderator') and bare designations are unverified
+    assert rows[3]["speaker"] == "Management" and rows[3]["status"] == "unverified"
+    assert rows[3]["status_reason"].startswith("speaker_generic:")
     assert stats["resolved"] == 2
 
 
@@ -576,3 +577,137 @@ def test_r2_regrade_tag_tails_and_question_context():
     assert question_passage("So margins are 18%, right?")                         # short: still a question
     assert question_passage("We understand the plant runs at 70% utilisation now. Is that correct?")
     assert question_passage("What is the capex plan for FY27?")
+
+
+# --------------------------------------- T-242 question_context fill from the printed analyst question
+
+_ROSTER = "Synth Corp Limited\nPage 1 of 3\nMANAGEMENT: MR. RAMESH IYER - MANAGING DIRECTOR\n"
+_ANNOUNCE = ("Moderator: Thank you. The next question is from the line of Pritesh Chheda from Lucky Investment.\n")
+_QUESTION = "Sir, for that INR1,500 crores revenue, what capex is planned?"
+_ANSWER = "We plan INR200 crores of capex for the year."
+
+
+def test_question_context_filled_from_the_analyst_turn_on_the_same_page():
+    pages = [
+        (1, _ROSTER),
+        (2, "Synth Corp Limited\nPage 2 of 3\n" + _ANNOUNCE
+            + f"Pritesh Chheda: {_QUESTION}\n{_ANSWER}\n"),          # unlabelled answer, as mid-call prose
+    ]
+    rows = [dict(_statement(2, _ANSWER), speaker="Ramesh Iyer")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["question_context"] == f"Q (Pritesh Chheda): {_QUESTION}"
+    assert stats["question_filled"] == 1
+
+
+def test_question_context_filled_from_the_analyst_turn_on_the_previous_page():
+    pages = [
+        (1, _ROSTER),
+        (2, "Synth Corp Limited\nPage 2 of 3\n" + _ANNOUNCE
+            + "Pritesh Chheda: How much capex is planned for FY27?"),
+        (3, "Synth Corp Limited\nPage 3 of 3\nThe capex stays at INR200 crores for the year.\n"),
+    ]
+    rows = [dict(_statement(3, "The capex stays at INR200 crores for the year."), speaker="Ramesh Iyer")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["question_context"] == "Q (Pritesh Chheda): How much capex is planned for FY27?"
+    assert stats["question_filled"] == 1
+
+
+def test_question_context_empty_in_opening_remarks():
+    # An unlisted speaker's opening remarks carry a question cue but no analyst has been given the floor yet.
+    pages = [(1, "Synth Corp Limited\nPage 1 of 3\n"
+                 "Mr. Anil Kumar: Can everyone hear me? This is our founder speaking. We had a good year.")]
+    rows = [dict(_statement(1, "We had a good year."), speaker="Anil Kumar")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["question_context"] == ""
+    assert stats["question_filled"] == 0
+
+
+def test_question_context_empty_when_a_management_label_intervenes():
+    # The passage sits in the CFO's turn; the turn before his is another manager's answer, not a question.
+    pages = [
+        (1, "Synth Corp Limited\nPage 1 of 3\nMANAGEMENT:\n"
+            "Mr. Ramesh Iyer - Managing Director\nMr. Anil Kumar - Chief Financial Officer\n"),
+        (2, "Synth Corp Limited\nPage 2 of 3\n" + _ANNOUNCE
+            + f"Pritesh Chheda: {_QUESTION}\nRamesh Iyer: {_ANSWER}\n"
+            + "Anil Kumar: The balance is spread over the next two quarters.\n"),
+    ]
+    rows = [dict(_statement(2, "The balance is spread over the next two quarters."), speaker="Anil Kumar")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["question_context"] == ""
+    assert stats["question_filled"] == 0
+
+
+def test_question_context_never_replaces_the_models_question():
+    pages = [
+        (1, _ROSTER),
+        (2, "Synth Corp Limited\nPage 2 of 3\n" + _ANNOUNCE
+            + f"Pritesh Chheda: {_QUESTION}\n{_ANSWER}\n"),
+    ]
+    rows = [dict(_statement(2, _ANSWER), speaker="Ramesh Iyer", question_context="capex plan for FY27")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["question_context"] == "capex plan for FY27"
+    assert stats["question_filled"] == 0
+
+
+# --------------------------------------- T-242 pleasantries, praise, defer/hand-over and generic speakers
+
+
+def test_thanks_welcome_praise_and_defer_are_dropped_with_ligature_normalisation():
+    from reality_engine.v2.obs_speaker import greeting_only
+
+    assert greeting_only("Thank you, Surajit and welcome to all the participants for the Q2 earnings call.")
+    assert greeting_only("Very \ufb01ne ques\u019fon, Ashok.")
+    assert greeting_only("That is a pertinent question.")
+    assert greeting_only("Yes, I think that's a really great question, sir.")
+    assert greeting_only(
+        "On the second part, maybe I'll defer to Sandhya or Anesh on that, insurance sitting inside a listed company."
+    )
+    assert greeting_only("Let me hand over to our CFO for the financial highlights.")
+    assert greeting_only("Sandhya will answer that.")
+    assert greeting_only("Arjun will take that question.")
+    assert greeting_only("On the ROE question, I'll request Nilesh to respond.")
+
+    # Counter-tests: substantive clauses or figures stay
+    assert not greeting_only("Thank you. Our revenue grew 12% to Rs 500 crore")
+    assert not greeting_only("I'll defer to Sandhya; but on margins, we expect 14% next year")
+    assert not greeting_only("Good question, but margins fell this quarter.")
+    assert not greeting_only("Our balance sheet is strong enough to take that forward.")
+    assert not greeting_only("We will take this call as and when it appears.")
+    assert not greeting_only("We have pre-poned the date of handing over to the client.")
+
+
+def test_ligature_normalisation_never_mutates_stored_statement():
+    raw_kept = "Our revenue o\u01afset cost \ufb02uctua\u019fons by 12%."
+    pages = [(2, f"Synth Corp Limited\nRamesh Iyer: Very \ufb01ne ques\u019fon, Ashok.\n{raw_kept}\n")]
+    rows = [
+        _statement(2, "Very \ufb01ne ques\u019fon, Ashok.", speaker="Ramesh Iyer"),
+        _statement(2, raw_kept, speaker="Ramesh Iyer"),
+    ]
+    ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert len(rows) == 1
+    assert rows[0]["statement"] == raw_kept
+    assert rows[0]["status"] == "verified"
+
+
+def test_generic_empty_and_bare_designation_speakers_are_unverified():
+    pages = [
+        (1, "Synth Corp Limited\nMANAGEMENT:\nMr. Ramesh Iyer - Chief Financial Officer\n"),
+        (2, "Synth Corp Limited\nNo turn label on this page.\n"),
+    ]
+    rows = [
+        _statement(2, "Revenue grew strongly in the core segment.", speaker=""),
+        _statement(2, "Margins expanded across export geographies.", speaker="Management"),
+        _statement(2, "Demand remains healthy across urban markets.", speaker="Company"),
+        _statement(2, "We are opening the floor for questions.", speaker="Moderator"),
+        _statement(2, "Capex will be funded via internal accruals.", speaker="CFO"),
+        _statement(2, "Working capital days improved sequentially.", speaker="ED (Finance)"),
+        _statement(2, "Collection efficiency remained stable.", speaker="VP. Nandakumar"),
+        _statement(2, "Order inflow was healthy in the quarter.", speaker="Ramesh"),
+    ]
+    ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    for idx in range(6):
+        assert rows[idx]["status"] == "unverified", (idx, rows[idx])
+        assert "speaker_generic" in rows[idx]["status_reason"], (idx, rows[idx])
+    # Full management name (printed or resolved) stays verified
+    assert rows[6]["status"] == "verified"
+    assert rows[7]["speaker"] == "Ramesh Iyer" and rows[7]["status"] == "verified"
