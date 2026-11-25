@@ -353,6 +353,49 @@ def test_ar_ckpt_0001_non_figures_and_outside_entities_are_unverified():
     assert rows[3]["status_reason"].startswith("ar_outside_entity")
 
 
+def test_ar_duration_echo_variants_and_target_year_are_unverified():
+    """T-242 follow-up: trailing/period duration echoes and target years (e.g. Net zero by 2040) are ar_not_a_figure."""
+    def row(**kw):
+        base = {"record_type": "number", "status": "verified", "unit": "", "entity_scope": "company",
+                "printed_label": "", "period": "FY2025-26"}
+        return {**base, **kw}
+
+    unverified_rows = [
+        # BAGFILMS shape + trailing/period duration variants across printed_label, period, measure
+        row(measure="NEW:remuneration_period", value=5.0, unit="years",
+            printed_label="a period of 5 years immediately preceding the balance sheet date"),
+        row(measure="NEW:lookback_years", value=5.0, unit="years",
+            printed_label="5 years immediately preceding"),
+        row(measure="NEW:lookback_years", value=3.0, unit="",
+            printed_label="three years ago"),
+        row(measure="NEW:lookback_years", value=4.0, unit="",
+            period="4 years before"),
+        row(measure="NEW:period_of_five_years", value=5.0, unit="",
+            printed_label="Bonus window"),
+        row(measure="NEW:lookback_years", value=2.0, unit="",
+            printed_label="2 years prior to listing"),
+        # AMBUJACEM target-year shapes
+        row(measure="NEW:net_zero_target", value=2040.0, unit="",
+            printed_label="Net zero by 2040"),
+        row(measure="NEW:emission_goal", value=2030.0, unit="year",
+            printed_label="Goal"),
+        row(measure="NEW:target_year", value=2035.0, unit="",
+            printed_label="Carbon neutrality"),
+    ]
+    kept_rows = [
+        row(measure="revenue_from_operations", value=2040.0, value_text="2,040", unit="Rs crore",
+            printed_label="Revenue"),
+        row(measure="employees", value=2040.0, unit="(count)", printed_label="Employees"),
+        row(measure="NEW:dividends_paid_past_3_years", value=12.5, unit="Rs crore",
+            printed_label="Dividend paid in the past 3 years"),
+    ]
+    all_rows = unverified_rows + kept_rows
+    obs.apply_ar_row_gates(all_rows, "(Amount in Lakh)", "")
+    assert [r["status"] for r in unverified_rows] == ["unverified"] * len(unverified_rows)
+    assert all(r["status_reason"].startswith("ar_not_a_figure") for r in unverified_rows)
+    assert [r["status"] for r in kept_rows] == ["verified"] * len(kept_rows)
+
+
 def _make_recheck_ar_store(store_db: Path, symbol: str, name: str, doc_key: str,
                            page: int, text: str) -> None:
     store_db.parent.mkdir(parents=True, exist_ok=True)
