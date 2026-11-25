@@ -4561,7 +4561,10 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
             derived_tokens = {"growth", "pct", "pp", "change", "yoy", "qoq", "margin", "share", "ratio", "delta"}
             m_norm = _norm_measure(measure)
             m_tokens = set(m_norm.split("_"))
-            cands = [c for c in cands if _norm_measure(c) == m_norm or _label_covers(measure, c)
+            # T-242 fix 3 review (Wolf): a measure code with extra movement tokens is accepted only through the
+            # printed-label path below (the row prints the words asked), never from the asked words alone
+            # (revenue must not reach revenue_growth_yoy).
+            cands = [c for c in cands if _norm_measure(c) == m_norm
                      or not ((set(_norm_measure(c).split("_")) & derived_tokens) - m_tokens)]
             if "mix" not in m_norm and "segment" not in m_norm:
                 non_mix = [c for c in cands if not c.lower().endswith(".mix")]
