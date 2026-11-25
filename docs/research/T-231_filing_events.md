@@ -80,7 +80,7 @@ source in stage A).
 
 Status (T-242 round 3, 24 Nov 2026; scope and L1 in round 6): `verified` = every field printed, scope company or
 `subsidiary` (a subsidiary's order keeps its status with the printed name in `detail`), no `l1_only` veto, **and the
-row's kind is in `VERIFIED_KINDS`** (`frozenset({"order_win"})`; `_gate_status`, then `_finish_scope`); `unverified` =
+row's kind is in `VERIFIED_KINDS`** (EMPTY since 25 Nov 2026; it held `order_win` 24-25 Nov; `_gate_status`, then `_finish_scope`); `unverified` =
 a computed figure, an amount the script could not fill, a parent-scope row, an L1-only intimation
 (`why='l1_only'`), or a kind that has not passed its own fresh strict 60-row grade (detail
 `kind_not_gated: <kind> awaits its own 60-row grade`); `quarantined` = the value is not on the page. A kind joins
@@ -390,3 +390,8 @@ buyer/exploring/completion vetoes, restated dates, field hygiene). Detail `D:/Re
 final DB `D:/RealityEngine/t231/events.db` (604 events, 439 verified). Factor use: one row per raise_id
 (raise_primary=1); order_win only with order_kind new order; companies with a verified order win in the trailing 12
 months: median 25 of 91 over 2025-06..2026-10.
+
+
+## Gate withdrawn (25 Nov 2026, Eagle)
+
+`order_win` left `VERIFIED_KINDS` after a strict 60-row grade of its verified rows on 40 stores no fix was tuned on (fresh5, round 6; Hydrogen 05f386b3, `C:/RealityEngine/t242/audit_orderwin_fresh5/`): 39 R / 5 P / 14 W / 2 J (65% right, 26.7% wrong+junk). Its causes: a wrong, truncated or garbled customer (the company's own segment, a one-word title fragment, a country, a headline); subsidiary orders missed by `_subsidiary_name` or with a non-name in `detail`; a customer printed in the annexure left empty; a JV's gross value for the company's share; a past order's value; a quarterly roll-up stored as an order; press-release repeats. The fund_raise fresh5 grade was 31/7/22/0. Since then no kind is gated: every event row is `unverified` (served labelled). Event DBs built BEFORE this change still hold `verified` on order wins, so re-run filing_events (or `--recheck`) before any store load. Tests run with order_win gated through an autouse fixture, so the row checks stay tested; `test_live_gate_is_empty_until_a_kind_passes_a_fresh_store_grade` checks the live gate.
