@@ -86,6 +86,17 @@
    "evidence": "D:/RealityEngine/t242/grades/results_r5_regrade_348a9b96.md",
    "note": "48/11/1/0 on 60 fresh rows of results_r5.db; first pilot grade failed 33/12/6/9",
    "at": "2026-11-26 00:24"
+  },
+  {
+   "doc_type": "annual_report",
+   "fingerprint": "48d75aa69de7",
+   "verdict": "fail",
+   "reviewer": "Eagle (non-author recorder; grader agy Hydrogen high 20261125T205337Z-7a8618e3)",
+   "author": "Wolf (AR prompt + AR gates)",
+   "rows": 60,
+   "evidence": "C:/RealityEngine/t242/ar_grade_r3/pack.jsonl; D:/RealityEngine/t242/grades/ar_r3_regrade_7a8618e3.md",
+   "note": "ar_r3 (AR gates + gate_not_company) 45/8/5/2 (R 75%, W+J 11.7%). W: unnamed JV/associate tagged subsidiary verified (2); own figure tagged subsidiary/parent verified (3). J: director-term '5 years', '34th Annual Report'. Fix owner Wolf, dsh 9de63d5f; fix note C:/RealityEngine/t242/ar_grade_r3/fix.md. obs_ar_fy27 not swapped.",
+   "at": "2026-11-26 02:34"
   }
  ]
 }
