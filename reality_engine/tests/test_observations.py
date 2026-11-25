@@ -1,5 +1,6 @@
 """T-230 stage A-F: observation schema, independent checks and the writer (synthetic, no network)."""
 import contextlib
+import csv
 import json
 import shutil
 import sqlite3
@@ -1093,6 +1094,120 @@ def test_seed_stores_follows_the_doc_type():
         assert [Path(p).parent.name for p in picked] == ["b"]
     finally:
         shutil.rmtree(SEED_ROOT, ignore_errors=True)
+
+
+# --------------------------------------------------------------------------- T-242: the two deck widenings
+
+ROUTES_DECK = Path(".tmp/t230/routes_deck")
+
+
+def _make_route_rows(rows):
+    """``(doc_key, page, doc_type, route, reason)`` rows -> the routes.csv and db beside a deck store."""
+    ROUTES_DECK.mkdir(parents=True, exist_ok=True)
+    (ROUTES_DECK / "routes.csv").unlink(missing_ok=True)
+    store = ROUTES_DECK / "c01.db"
+    store.unlink(missing_ok=True)
+    con = sqlite3.connect(store)
+    con.execute("CREATE TABLE doc_page (doc_key TEXT, page INTEGER, text TEXT)")
+    con.commit()
+    con.close()
+    with (ROUTES_DECK / "routes.csv").open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["doc_key", "page", "doc_type", "route", "reason", "word_source", "quality"])
+        for doc_key, page, doc_type, route, reason in rows:
+            writer.writerow([doc_key, page, doc_type, route, reason, "store_text", "ok"])
+    return store
+
+
+def test_deck_few_figures_option_reads_only_the_one_to_three_figure_pages():
+    """T-242: a deck page with 1-3 printed figures is readable with --deck-few-figures; a 0-figure page is not,
+    and the option never widens an annual report."""
+    store = _make_route_rows([
+        ("d.pdf", 1, "deck", "no_figures", "0 printed figures (fewer than 4)"),
+        ("d.pdf", 2, "deck", "no_figures", "2 printed figures (fewer than 4)"),
+        ("d.pdf", 3, "deck", "table_or_chart", "table: labeled lines of printed figures"),
+        ("ar.pdf", 4, "annual_report", "no_figures", "3 printed figures (fewer than 4)"),
+    ])
+    try:
+        assert [p["page"] for p in obs.pages_from_store(store, doc_types=("deck",))] == [3]
+        assert [p["page"] for p in obs.pages_from_store(store, doc_types=("deck",),
+                                                        deck_few_figures=True)] == [2, 3]
+        assert [p["page"] for p in obs.pages_from_store(store, doc_types=("deck", "annual_report"),
+                                                        deck_few_figures=True)] == [2, 3]
+    finally:
+        shutil.rmtree(ROUTES_DECK, ignore_errors=True)
+
+
+def test_deck_jumbled_min_reads_only_the_pages_at_or_above_the_share():
+    """T-242: a 'text layer jumbled' deck page at/above the share is read on its own text layer, with no OCR words.
+    A page whose jumbled reason prints no label-dictionary share, or one below it, stays unread."""
+    store = _make_route_rows([
+        ("d.pdf", 1, "deck", "needs_ocr",
+         "text layer jumbled: label-dictionary share 0.72 < 0.75 (110 of 153 tokens clean); OCR pending"),
+        ("d.pdf", 2, "deck", "needs_ocr",
+         "text layer jumbled: label-dictionary share 0.64 < 0.75 (98 of 153 tokens clean); OCR pending"),
+        ("d.pdf", 3, "deck", "needs_ocr", "text layer none: fewer than 40 non-space characters; no OCR words yet"),
+        ("d.pdf", 4, "deck", "table_or_chart", "table: labeled lines of printed figures"),
+    ])
+    try:
+        assert obs.jumbled_share("text layer jumbled: label-dictionary share 0.69 < 0.75") == 0.69
+        assert obs.jumbled_share("text layer none: no usable words") is None
+        assert [p["page"] for p in obs.pages_from_store(store, doc_types=("deck",))] == [4]   # no OCR words yet
+        kept = obs.pages_from_store(store, doc_types=("deck",), deck_jumbled_min=0.70)
+        assert [p["page"] for p in kept] == [1, 4]
+        assert kept[0]["text_source"] == "text_layer_jumbled"
+        assert [p["page"] for p in obs.pages_from_store(store, doc_types=("deck",),
+                                                        deck_jumbled_min=0.60)] == [1, 2, 4]
+    finally:
+        shutil.rmtree(ROUTES_DECK, ignore_errors=True)
+
+
+JUMBLE_STORE = Path(".tmp/t230/test_c_jumble_store.db")
+JUMBLE_DECK = "D:/RealityEngine/raw/pilot60_history/SOMANYCERA/investor_presentation/jumble.pdf"
+JUMBLE_PAGE = "Somany Ceramics Investor Presentation May 2025\nRevenue from operations 1,268 1,150\nXKCDQW RTYPSD"
+
+
+def _make_jumble_store():
+    JUMBLE_STORE.parent.mkdir(parents=True, exist_ok=True)
+    JUMBLE_STORE.unlink(missing_ok=True)
+    con = sqlite3.connect(JUMBLE_STORE)
+    con.execute("CREATE TABLE company (symbol TEXT, name TEXT)")
+    con.execute("CREATE TABLE doc (doc_key TEXT, title TEXT, symbol TEXT, doc_type TEXT, known_at TEXT, "
+                "pages INTEGER, source_key TEXT)")
+    con.execute("CREATE TABLE doc_page (doc_key TEXT, page INTEGER, text TEXT, method TEXT, "
+                "PRIMARY KEY (doc_key, page))")
+    con.execute("INSERT INTO company VALUES ('SOMANYCERA','Somany Ceramics Limited')")
+    con.execute("INSERT INTO doc VALUES (?,?,?,?,?,?,?)",
+                (JUMBLE_DECK, "Somany deck", "SOMANYCERA", "deck", KNOWN_AT, 1, "missing/deck.pdf"))
+    con.execute("INSERT INTO doc_page VALUES (?,?,?,?)", (JUMBLE_DECK, 1, JUMBLE_PAGE, "text_layer"))
+    con.commit()
+    con.close()
+
+
+def test_a_jumbled_deck_page_read_records_text_layer_jumbled_on_its_rows(monkeypatch):
+    """T-242: a page read on a jumbled text layer marks its rows, and a --recheck keeps the marker."""
+    try:
+        _make_jumble_store()
+
+        def fake_reader(prompt, image_b64, doc_key="", page=0):
+            return {"output": json.dumps({
+                "series_id": "s1", "series_title": "", "measure": "revenue_from_operations",
+                "printed_label": "Revenue from operations", "printed_axis": "", "value_text": "1,268",
+                "unit": "INR Cr", "scale": 1e7, "period": "", "period_kind": "", "segment": "",
+                "product": "", "geography": "", "plant": "", "customer": "", "group_path": "",
+                "group_source": "", "stage": "", "entity_scope": "company", "is_total": False}),
+                "error": None, "seconds": 1.0, "in_tok": 1, "out_tok": 1}
+
+        monkeypatch.setattr(obs, "call_reader", fake_reader)
+        monkeypatch.setattr(obs.page_reader, "_page_image", lambda *args, **kwargs: (b"image", 1.0))
+        result = obs.process_page(str(JUMBLE_STORE), JUMBLE_DECK, 1, text_source="text_layer_jumbled")
+        assert len(result["rows"]) == 1
+        assert result["rows"][0]["text_source"] == "text_layer_jumbled"
+        row = dict(result["rows"][0])
+        obs.evaluate_status(row, JUMBLE_PAGE, obs.measure_index())
+        assert row["text_source"] == "text_layer_jumbled"
+    finally:
+        JUMBLE_STORE.unlink(missing_ok=True)
 
 
 # --------------------------------------------------------------------------- stage H (T-230): picture reading
