@@ -382,7 +382,7 @@ def test_recheck_db_applies_deck_row_gates(tmp_path):
     scon.execute("INSERT INTO doc VALUES ('d.pdf', 'BLUESTONE', 'deck', '2026-08-10T10:00:00')")
     page_text = (
         "39\n39\nCash Flow Statement\nConsolidated | INR mn\n"
-        "FY26\nRevenue 1,234\nATMs >10,000\nLine 3\nLine 4\nLine 5\nLine 6"
+        "FY26\nRevenue 1,234\nATMs >10,000\nCelebrating 40 years of innovation\nLine 4\nLine 5\nLine 6"
     )
     scon.execute("INSERT INTO doc_page VALUES ('d.pdf', 1, ?)", (page_text,))
     scon.execute("INSERT INTO doc_page VALUES ('d.pdf', 2, 'Standalone Results Summary')")
@@ -399,6 +399,9 @@ def test_recheck_db_applies_deck_row_gates(tmp_path):
              "value_text": "1,234", "unit": "INR mn", "period": "FY26", "entity_scope": "company"},
             {"type": "number", "measure": "count.atms", "printed_label": "ATMs",
              "value_text": ">10,000", "unit": "ATMs", "period": "FY26", "entity_scope": "company"},
+            {"type": "number", "measure": "NEW:company_age_years",
+             "printed_label": "Celebrating 40 years of innovation", "value_text": "40", "unit": "years",
+             "period": "FY26", "new_definition": "years since incorporation", "new_driver_node": "capacity"},
         ],
         deck_guards=True,
     )
@@ -409,5 +412,74 @@ def test_recheck_db_applies_deck_row_gates(tmp_path):
     ).fetchall()
     ocon.close()
     assert stats["basis_deck_heading"] == 2
+    assert stats["deck_dropped"] == 1 and len(got) == 2       # the celebration row is deleted, not served
     assert got[0][1:4] == ("consolidated", "page_heading", "verified")
     assert got[1][3] == "unverified" and "deck_bound_not_exact:" in got[1][4]
+
+
+# --------------------------------------------------- T-242 r4: untied chart/matrix values and junk ordinals
+
+
+def test_deck_unlabelled_chart_bar_is_untied_but_a_named_chart_title_ties_it():
+    """Ckpt-4 #11 ASIANPAINT p26: ten unlabelled bar percentages under a section title."""
+    bar = _deck_row(measure="gross_profit_growth_yoy", printed_label="", value=6.0, value_text="6%",
+                    unit="%", period="Q2 FY27", series_title="Summary Standalone Financials")
+    obs.apply_number_gates([bar], "deck")
+    assert bar["status"] == "unverified" and "deck_untied_value" in bar["status_reason"]
+
+    # a chart whose own title names the measure ties its bars (graded right: BATLIBOI machines installed)
+    machines = _deck_row(measure="NEW:count.machines_installed", printed_label="", value=2.0,
+                         value_text="2", unit="machines", period="1QFY26",
+                         series_title="Number of machines installed")
+    obs.apply_number_gates([machines], "deck")
+    assert machines["status"] == "verified", machines["status_reason"]
+
+    # a label beside the value ties it even when the series title is a section heading
+    labelled = _deck_row(measure="revenue.value", printed_label="Revenue", value=1234.0, value_text="1,234")
+    obs.apply_number_gates([labelled], "deck")
+    assert labelled["status"] == "verified"
+
+
+def test_deck_matrix_cell_carrying_another_period_as_its_label_is_untied():
+    """Ckpt-4 #56 ANGELONE p14: the cohort matrix's bare 7,924 under the FY24 column, filed as FY26."""
+    cell = _deck_row(measure="NEW:total_net_income_by_acquisition_cohort", printed_label="FY24",
+                     printed_axis="Cohorts Acquired In", value=7924.0, value_text="7,924",
+                     unit="Rs Mn", period="FY26",
+                     series_title="Revenue contribution from every cohort")
+    obs.apply_number_gates([cell], "deck")
+    assert cell["status"] == "unverified" and "deck_untied_value" in cell["status_reason"]
+
+    # the same column token as the row's own period is a data label, not a detached coordinate
+    ok = _deck_row(measure="pat", printed_label="FY26", value=6596.0, value_text="6,596", unit="Rs Mn",
+                   period="FY26")
+    obs.apply_number_gates([ok], "deck")
+    assert ok["status"] == "verified", ok["status_reason"]
+
+
+def test_deck_junk_slogan_edition_and_appointment_term_are_dropped():
+    slogan = _deck_row(measure="NEW:company_age_years",
+                       printed_label="Celebrating 40 years of innovation and service excellence",
+                       value=40.0, value_text="40", unit="years", period="2024")
+    edition = _deck_row(measure="NEW:annual_report_edition_number", printed_label="Annual Report",
+                        value=34.0, value_text="34th", unit="", period="2025-26")
+    term = _deck_row(measure="NEW:director_term_duration",
+                     printed_label="consecutive term of three (3) years as managing director",
+                     value=3.0, value_text="3", unit="years", period="FY26")
+    kept = _deck_row(measure="NEW:employee_average_tenure", printed_label="Average employee tenure",
+                     value=4.5, value_text="4.5", unit="years", period="FY26")
+    rows = [slogan, edition, term, kept]
+    obs.apply_number_gates(rows, "deck")
+    assert rows == [kept] and kept["status"] == "verified"
+
+
+def test_gate_not_company_holds_jv_and_associate_figures_unless_the_entity_is_named():
+    unnamed = _deck_row(measure="revenue.value", printed_label="Revenue", value=100.0, value_text="100",
+                        entity_scope="associate")
+    named = _deck_row(measure="revenue.value", printed_label="Smartmeters Technologies Private Limited",
+                      value=100.0, value_text="100", entity_scope="associate")
+    obs.gate_not_company([unnamed, named])
+    assert unnamed["status"] == "unverified" and "not_company" in unnamed["status_reason"]
+    assert named["status"] == "verified" and named["entity_scope"] == "associate"
+    from reality_engine.v2.observations import canonical_scope
+    assert canonical_scope("Joint Venture") == "jv" and canonical_scope("Associates") == "associate"
+

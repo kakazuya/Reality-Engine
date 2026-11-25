@@ -801,3 +801,87 @@ def test_ar_ckpt2_regrade_row_gates_and_negatives():
     assert all(r["entity_scope"] == "subsidiary" and r["status"] == "verified" for r in (adani, alkem, ajr, bosch))
 
 
+# ------------------------------------------------- T-242 r4: entity scope from the page, junk ordinals (AR ckpt_0003)
+
+
+def _r4_row(**kw):
+    base = {"record_type": "number", "status": "verified", "unit": "", "entity_scope": "company",
+            "printed_label": "", "period": "FY2025-26", "measure": "revenue_from_operations"}
+    return {**base, **kw}
+
+
+def test_ar_jv_scope_comes_from_the_page_and_an_unnamed_jv_figure_never_verifies():
+    """Ckpt_0003 #11 BLIL p174 / #31 ATGL p283: a JV/associate note's unlabelled total is not the company's."""
+    key = _r4_row(measure="NEW:capital_commitments", printed_label="Capital Commitments",
+                  value=13941.76, unit="lakhs", value_text="13,941.76")
+    excise = _r4_row(measure="excise_duty", printed_label="Excise Duty on Sale of Compressed Natural Gas",
+                     value=263.08, unit="crore", value_text="263.08")
+    obs.apply_ar_row_gates(
+        [key, excise],
+        "Notes to Consolidated Financial Statements FY2025-26\n46 Interest in Joint Venture Entities\n"
+        "(` in crore) Particulars IndianOil-Adani Gas Private Limited\n"
+        "Excise Duty on Sale of Compressed Natural Gas 263.08",
+        "",
+        previous_text="FY2025-26 (c) Interest in Associates and Joint Ventures of Balmer Lawrie & Co. Ltd.\n"
+                      "Capital Commitments 13,941.76",
+    )
+    assert key["entity_scope"] == excise["entity_scope"] == "jv"
+    assert key["status"] == "unverified" and "ar_jv_unnamed" in key["status_reason"]
+    assert excise["status"] == "unverified" and "ar_jv_unnamed" in excise["status_reason"]
+
+    # a JV figure whose own label names the entity stays verified, labelled
+    named = _r4_row(measure="revenue.value", printed_label="Smartmeters Technologies Private Limited",
+                    value=50.0, unit="crore", value_text="50")
+    obs.apply_ar_row_gates([named], "FY2025-26\n46 Interest in Joint Venture Entities\n"
+                                    "Smartmeters Technologies Private Limited 50", "")
+    assert (named["entity_scope"], named["status"]) == ("jv", "verified")
+    assert obs.gate_not_company([named]) == 0 and named["status"] == "verified"
+
+
+def test_ar_parent_scope_without_a_printed_parent_is_unbacked():
+    """Ckpt_0003 #15 BHATEXT p91: the AOC-2 rent row was tagged 'parent'; no parent company is printed."""
+    row = _r4_row(measure="NEW:related_party_transaction_value",
+                  printed_label="Jitendra Bhandari (Relatives of Directors & Key Management Personnel)",
+                  value=3.0, unit="Lakhs", value_text="3.00", entity_scope="parent")
+    obs.apply_ar_row_gates([row], "ANNEXURE -D FORM NO. AOC -2 FY2025-26\nName of the related party\n"
+                                  "Jitendra Bhandari Rent 3.00 Lakhs", "")
+    assert row["entity_scope"] == "company"
+    assert row["status"] == "unverified" and "scope_unbacked" in row["status_reason"]
+
+    keep = _r4_row(measure="revenue.value", printed_label="Revenue", value=100.0, unit="Rs crore",
+                   value_text="100", entity_scope="parent")
+    obs.apply_ar_row_gates([keep], "XYZ Holdings Limited, the parent company\nFY2025-26 Revenue 100", "")
+    assert (keep["entity_scope"], keep["status"]) == ("parent", "verified")
+
+
+def test_ar_subsidiary_holding_pct_in_a_subsidiaries_table_is_the_company_s_own_figure():
+    """Ckpt_0003 #10 APOLLOHOSP p163: '% of holding' rows in the subsidiaries table are the Group's own."""
+    stake = _r4_row(measure="ownership_stake_pct", printed_label="Apollo Dialysis Philippines Inc.",
+                    value=69.2, unit="%", value_text="69.20%", entity_scope="subsidiary")
+    obs.apply_ar_row_gates([stake], "FY2025-26\nName of the Subsidiary Country of Incorporation % of holding\n"
+                                    "Step down subsidiaries\nApollo Dialysis Philippines Inc. 69.20%", "")
+    assert stake["entity_scope"] == "company" and stake["status"] == "verified"
+
+    # the page or the label is not a subsidiaries table: the entity's own figure keeps its scope
+    rev = _r4_row(measure="revenue.value", printed_label="Ascend Laboratories SpA", value=1910.4,
+                  unit="INR Lakhs", value_text="1,910.4", entity_scope="subsidiary")
+    obs.apply_ar_row_gates([rev], "FY2025-26\nAscend Laboratories SpA 1,910.4", "")
+    assert rev["entity_scope"] == "subsidiary" and rev["status"] == "verified"
+
+
+def test_ar_junk_ordinals_are_dropped_not_served():
+    """Ckpt_0003 J: '34th Annual Report' and 'consecutive term of five (5) years' are not figures."""
+    edition = _r4_row(measure="NEW:annual_report_edition_number", printed_label="Annual Report",
+                      value_text="34th", value=34.0, unit="")
+    term = _r4_row(measure="NEW:director_term_duration",
+                   printed_label="consecutive term of five (5) years, effective from March 25, 2025",
+                   value_text="five (5)", value=5.0, unit="years")
+    keep = _r4_row(measure="NEW:employee_average_tenure", printed_label="Average employee tenure",
+                   value_text="4.5", value=4.5, unit="years")
+    rows = [edition, term, keep]
+    obs.apply_ar_row_gates(rows, "34th Annual Report 2025-26\nFY2025-26 Average employee tenure 4.5 years", "")
+    assert rows == [keep]
+    assert keep["status"] == "verified"
+
+
+
