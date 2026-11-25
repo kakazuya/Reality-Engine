@@ -3029,7 +3029,9 @@ carry a non-dictionary id), 1,359 quarantined. Stage N recovers the right rows b
   | deck copy quarantined | 1,359 | 1,359 (unchanged) |
 
   9,949 upgraded, **0 downgraded, 0 upgrades without a new printed source**; 81 further upgrades kept their old
-  hard reason (`parts sum to`/`geography_not_printed`/`scale`). By the reason that blocked each row: measure
+  hard reason (`parts sum to`/`geography_not_printed`/`scale` -- the hard reasons then in force; T-242 on 26 Nov 2026
+  added `not_company` and `subsidiary_unnamed` and the `gate_not_company` invariant, DEVELOPER_GUIDE). By the reason
+  that blocked each row: measure
   6,398, period 1,857, printed text/OCR source 1,327, basis 367. After the pass 8,133 rows carry
   `period_source='deck_asof'`, 3,910 `slide_title`, 20,104 `basis_source='deck'`; **zero verified rows changed
   measure** (the 2% stop rule). The stop-rule sample: 300 random upgraded rows, every value printed in the page

@@ -4,6 +4,7 @@ import csv
 import json
 import shutil
 import sqlite3
+import uuid
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,17 @@ PAGE = (
     "Container (New Mangalore)\n1.8\nKeni Port, Karnataka\n30\nPotential Projects\n45\n"
 )
 KNOWN_AT = "2025-05-13T15:27:33"
+
+
+@pytest.fixture()
+def tmp_path():
+    """A writable scratch folder: the sandbox's pytest basetemp root can be ACL-locked (as test_grade_pack)."""
+    base = Path(".tmp") / f"t242_obs_{uuid.uuid4().hex}"
+    base.mkdir(parents=True, exist_ok=True)
+    try:
+        yield base
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
 
 
 def reply(**kw):
@@ -728,6 +740,72 @@ def test_recheck_refuses_an_upgrade_without_a_new_printed_source():
         con.close()
     finally:
         _cleanup_store()
+
+
+def test_recheck_keeps_a_not_company_row_unverified_even_with_a_proof():
+    """T-242: an inherited unit and period is a proof, but never over a hard not_company reason."""
+    page = "Particulars (INR Mn) FY25 Total Equity 3.7 Indian Market Size 705"
+    try:
+        _make_store(pages=(page,), first_page=14)
+        con = obs.create_db(":memory:")
+        rows = build([
+            reply(measure="total_equity", unit="", printed_axis="Particulars (INR Mn)",
+                  printed_label="Total Equity", value_text="3.7", period=""),
+            reply(measure="market.value", unit="", printed_axis="Particulars (INR Mn)",
+                  printed_label="Indian Market Size", value_text="705", period="",
+                  entity_scope="industry"),
+        ], page_text=page)
+        # simulate the stage-B rows: no unit / no period, the industry row carrying its old hard scope reason
+        rows[0].update({"unit": "", "unit_family": "", "period": "", "period_kind": "",
+                        "status": "unverified", "status_reason": "no_unit; no_period"})
+        rows[1].update({"unit": "", "unit_family": "", "period": "", "period_kind": "",
+                        "status": "unverified",
+                        "status_reason": "not_company: a industry figure is served labelled, never verified"})
+        obs.write_rows(con, rows)
+        stats = obs.recheck_db(con, [str(STORE)])
+        got = {row["measure"]: (row["status"], row["status_reason"])
+               for row in con.execute("SELECT measure, status, status_reason FROM observation")}
+        company = got["total_equity"]
+        assert company[0] == "verified", company          # a company row with the same proof still upgrades
+        industry = next(value for measure, value in got.items() if "market" in measure)
+        assert industry[0] == "unverified", industry
+        assert "not_company" in industry[1]
+        assert stats["kept_hard_reason"] >= 1
+        con.close()
+    finally:
+        _cleanup_store()
+
+
+def test_recheck_unverifies_a_stored_verified_industry_row():
+    """T-242 final invariant: a row already stored verified with a non-company scope is downgraded."""
+    page = "Indian Tractor Industry 705 FY20 Sale units (in Thousands)"
+    try:
+        _make_store(pages=(page,), first_page=14)
+        con = obs.create_db(":memory:")
+        rows = build([reply(measure="volume.sales", value_text="705", unit="thousand units",
+                            printed_label="Indian Tractor Industry", printed_axis="FY20", period="FY20",
+                            entity_scope="industry")], page_text=page)
+        assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+        obs.write_rows(con, rows)
+        stats = obs.recheck_db(con, [str(STORE)])
+        status, reason = con.execute("SELECT status, status_reason FROM observation").fetchone()
+        assert status == "unverified" and "not_company: a industry figure" in reason
+        assert stats["not_company_gated"] == 1
+        con.close()
+    finally:
+        _cleanup_store()
+
+
+def test_read_path_gate_never_stores_a_verified_industry_figure():
+    """T-242 final invariant: the read path's own row gating applies the same scope rule."""
+    page = "Indian Tractor Industry 705 FY20 Sale units (in Thousands)"
+    rows = build([reply(measure="volume.sales", value_text="705", unit="thousand units",
+                        printed_label="Indian Tractor Industry", printed_axis="FY20", period="FY20",
+                        entity_scope="industry")], page_text=page)
+    assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+    obs.apply_number_gates(rows, "deck")
+    assert rows[0]["status"] == "unverified"
+    assert "not_company: a industry figure is served labelled, never verified" in rows[0]["status_reason"]
 
 # --------------------------------------------------------------------------- stage D (T-230)
 
