@@ -217,10 +217,11 @@ _RAISE_OUTBOUND_VETO = re.compile(
     r"|\btarget\s+company\b",
     re.I,
 )
-# T-242: a kind enters VERIFIED_KINDS only after its own fresh strict 60-row grade.  ``order_win`` passed it
-# (25 R / 5 P / 0 W / 0 J on the 24 Nov 2026 fresh3 grade); every other kind is stored ``unverified`` until its
-# own 60-row pass, so a non-order row is never presented as verified evidence.
-VERIFIED_KINDS = frozenset({"order_win"})
+# T-242: a kind enters VERIFIED_KINDS only after its own strict 60-row grade on stores NO fix was tuned on.
+# ``order_win`` was gated after the 24 Nov fresh3 grade (25/5/0/0) but failed the 25 Nov grade on 40 untuned stores
+# (fresh5, round 6: 39 R / 5 P / 14 W / 2 J), so since 25 Nov no kind is gated: every event is stored
+# ``unverified`` (served labelled) until its kind passes a fresh-store grade.
+VERIFIED_KINDS: frozenset[str] = frozenset()
 # a title naming the company's own QIP/NCD/preferential/rights issue is never vetoed by the agreement words below
 # (the annexure of a genuine issuance also prints "sanction letter" / "facility" boilerplate).
 _OWN_ISSUE_TITLE = re.compile(

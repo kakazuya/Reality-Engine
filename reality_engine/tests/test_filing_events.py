@@ -20,6 +20,22 @@ from reality_engine.research import filing_events as fe
 OUT_DIR = Path(".tmp/t231")
 
 
+@pytest.fixture(autouse=True)
+def _order_win_checks_as_gated(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests check the order_win row checks, so they run with order_win as a gated kind.  The LIVE gate is
+    empty since 25 Nov 2026 (order_win failed its fresh-store grade 39/5/14/2); `test_live_gate` checks that."""
+    if "live_gate" not in request.node.name:
+        monkeypatch.setattr(fe, "VERIFIED_KINDS", frozenset({"order_win"}))
+
+
+def test_live_gate_is_empty_until_a_kind_passes_a_fresh_store_grade() -> None:
+    assert fe.VERIFIED_KINDS == frozenset()
+    order = _doc("New orders worth Rs. 816 Crores",
+                 "The Company has secured new orders of Rs. 816 crores across its various businesses.")
+    row = _row(fe.event_rows(order)[0], "order_win")
+    assert row["status"] == "unverified" and "kind_not_gated: order_win" in row["detail"]
+
+
 def _doc(title: str, text: str, *, symbol: str = "ACME", doc_key: str = "doc-1",
          filing_date: str = "2026-01-05", known_at: str = "2026-01-05T10:00:00") -> dict[str, Any]:
     return {"store": "cXX", "symbol": symbol, "isin": "INE000A01001", "doc_key": doc_key, "title": title,
