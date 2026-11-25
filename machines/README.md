@@ -7,9 +7,15 @@ This folder is about running the machines, not about the Reality Engine itself. 
 - Two loops:
   - `transcripts`: `.tmp/hy4_always.sh`, log `D:/RealityEngine/hy4_out/hy4_lowssd.log`;
   - `ar`: `.tmp/hy4_ar.sh`, log `hy4_ar.log`.
-- `start` launches the loop hidden and records its bash PID in `D:/RealityEngine/hy4_out/<loop>.pid`.
-- `stop` ends ONLY that recorded PID and its child tree, never processes picked by image name. On 25 Nov a kill-by-name
-  ended every worker and MCP server.
+- Git bash re-launches itself (`exec bash "$0"`, `$(...)` subshells) as new Windows processes, so one recorded PID
+  never covers a loop. Every action therefore finds the loop's processes by their exact command line: bash running
+  the loop script, and python readers whose `--out` is one of the loop's DBs. It then acts on those PIDs only, never
+  on processes picked by image name. (On 25 Nov a kill-by-name ended every worker and MCP server.)
+- `status` lists each loop instance and reader PID, and prints `DUPLICATE` when two instances run. On 26 Nov three
+  transcript loops were found, two writing `obs_transcripts_394_v3.db` at once.
+- `start` refuses while any instance runs, launches the loop hidden, and records its PID in
+  `D:/RealityEngine/hy4_out/<loop>.pid`.
+- `stop` ends every matched instance and reader by PID, re-checks, and lists any survivors.
 - `adopt` records the PID of a loop that was started without the script.
 - A loop at an ungraded checkpoint keeps running and rechecks every 10 minutes; it never exits.
 
