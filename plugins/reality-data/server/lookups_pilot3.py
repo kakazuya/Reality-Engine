@@ -307,6 +307,35 @@ def _named_call_docs(sym: str, day: str, days: int = 3) -> list[str]:
     return sorted(matched)
 
 
+def _named_call_dates(sym: str, docs: list[str]) -> dict[str, dict[str, str]]:
+    """Per document of a named call: its ``filed`` date and the call date its transcript prints (T-242 fix 6).
+
+    Keyed by the resolved doc_key AND every alias key the store maps to it, because obs_fact and transcript rows
+    are held under either one.  A document with no transcript keeps an empty ``printed``."""
+    out: dict[str, dict[str, str]] = {}
+    if not docs or not _has_table("doc"):
+        return out
+    marks = ",".join("?" * len(docs))
+    filed: dict[str, str] = {}
+    for r in _q(f"SELECT doc_key, filing_date FROM doc WHERE symbol=? AND doc_key IN ({marks})", (sym, *docs)):
+        if r["doc_key"]:
+            filed[str(r["doc_key"])] = str(r["filing_date"] or "")[:10]
+    printed: dict[str, str] = {}
+    if _has_table("transcript_statement"):
+        for r in _q("SELECT d.doc_key AS dk, MAX(t.call_date) AS cd FROM transcript_statement t "
+                    "JOIN doc d ON d.doc_key=COALESCE((SELECT a.doc_key FROM doc_alias a WHERE a.symbol=t.symbol "
+                    "AND a.alias_key=t.doc_key), t.doc_key) WHERE t.symbol=? GROUP BY 1", (sym,)):
+            if r["dk"] and str(r["dk"]) in filed:
+                printed[str(r["dk"])] = str(r["cd"] or "")[:10]
+    for key, day in filed.items():
+        out[key] = {"filed": day, "printed": printed.get(key, "")}
+    if _has_table("doc_alias"):
+        for r in _q("SELECT doc_key, alias_key FROM doc_alias WHERE symbol=?", (sym,)):
+            if str(r["doc_key"]) in out and r["alias_key"]:
+                out[str(r["alias_key"])] = out[str(r["doc_key"])]
+    return out
+
+
 def _fy2(text: str) -> str:
     return text[-2:]
 
@@ -395,6 +424,27 @@ def _natural_period_forms(text: str | None) -> set[str]:
                     f"{day.day}{suffix}{name}{year}", f"{day.day}{suffix}{name}{year % 100:02d}",
                     f"{abbr}{day.day}{suffix}{year % 100:02d}", f"{name}{day.day}{suffix}{year % 100:02d}"}
     return {_period_key(form) for form in out}
+
+
+def _period_matches(stored: str | None, asked: str | None) -> bool:
+    """Does a stored period label answer the period asked (T-242 fix 6)?
+
+    A fiscal label matches itself ('Q2FY27'); a printed natural date ('As on 30th Sept, 2026', 'Quarter ended
+    September 30, 2026') matches by its date keys, allowing the words a label prefixes or suffixes to it."""
+    _kind, label = norm_period(asked)
+    if not label:
+        return True
+    key = _period_key(stored)
+    if not key:
+        return False
+    keys = {_period_key(label)}
+    day, _ym = _natural_date(asked)
+    if day is not None:
+        day_keys = _natural_period_forms(asked) | {_period_key(asked)}
+        keys |= day_keys
+        full = {k for k in day_keys if len(k) >= 12}       # a full printed day, never a bare month/year
+        return any(key == k or (k in full and (key.endswith(k) or key.startswith(k))) for k in keys)
+    return key == _period_key(label)
 
 
 def _text_day(*texts: str | None) -> dt.date | None:
@@ -633,18 +683,40 @@ def _trim(text: str | None, n: int = QUOTE_CHARS) -> str | None:
 
 
 def _trim_around(text: str | None, words: list[str], n: int) -> str | None:
-    """The ``n``-character window around the first asked word, so trimming a long quote keeps the match (T-242)."""
+    """The ``n``-character window that keeps the most asked words, so trimming a long quote keeps the match
+    (T-242 fix 6: one sentence of a long observation, not the first asked word in it)."""
     if text is None:
         return None
     text = re.sub(r"[ \t]+", " ", text).strip()
     if len(text) <= n:
         return text
     low = text.lower()
-    at = min((h for h in (low.find(w.lower()) for w in words if w) if h >= 0), default=-1)
-    if at < 0:
+    words = [w for w in words if w]
+    spots: set[int] = set()
+    for w in words:
+        needle = w.lower()
+        for needle in [needle] + ([needle[:5]] if len(needle) >= 5 else []):
+            at = low.find(needle)
+            while at >= 0:
+                spots.add(at)
+                at = low.find(needle, at + 1)
+    if not spots:
         return text[:n].rstrip() + " …"
-    start = max(0, at - n // 3)
+    best: tuple[int, int, int] | None = None
+    for at in sorted(spots):
+        start = max(0, at - n // 3)
+        piece = low[start:start + n]
+        exact = sum(1 for w in words if w.lower() in piece)
+        stem = sum(1 for w in words if len(w) >= 5 and w.lower()[:5] in piece)
+        key = (-exact, -stem, at)         # a window holding the literal words before one holding only their stems
+        if best is None or key < best:
+            best = key
+    start = max(0, best[2] - n // 3) if best else max(0, min(spots) - n // 3)
     piece = text[start:start + n].strip()
+    if start + n < len(text) and text[start + n - 1].isalnum():
+        tail = re.match(r"\S*", text[start + n:start + n + 40])      # never cut the asked word in half
+        if tail and tail.group(0):
+            piece = (piece + tail.group(0)).strip()
     return ("… " if start else "") + piece.rstrip() + " …"
 
 
@@ -710,6 +782,36 @@ def _money_inr_cr(value: Any, unit: str | None, scale: Any = None) -> tuple[floa
     inr = num * mult
     cr = round(inr / 1e7, 2) if abs(inr) >= 1e5 else None
     return inr, cr
+
+
+def _money_base(value: Any, unit: str | None, scale: Any = None) -> float | None:
+    """A money value on one base (rupees) whatever the store's unit spelling, else the bare number.
+
+    Some filings print "Rs. Crore", "Rs. in Crs." or "Rs. Cr", which ``_INR_UNIT_MULTIPLIER`` does not spell; two
+    such printings still describe the same money (T-242 fix 6: a filed value and a call remark are compared)."""
+    pair = _money_inr_cr(value, unit, scale)
+    if pair is not None:
+        return pair[0]
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return None
+    try:
+        sc = float(scale) if scale not in (None, "", 0) else 1.0
+    except (TypeError, ValueError):
+        sc = 1.0
+    if sc not in (1.0, 0.0):
+        return num * sc
+    low = re.sub(r"[^a-z]+", " ", str(unit or "").lower())
+    if "crore" in low or re.search(r"\bcr\b", low):
+        return num * 1e7
+    if "million" in low or re.search(r"\bmn\b", low):
+        return num * 1e6
+    if "billion" in low or re.search(r"\bbn\b", low):
+        return num * 1e9
+    if "lakh" in low:
+        return num * 1e5
+    return num
 
 
 def _add_money(row: dict[str, Any], value: Any, unit: str | None, scale: Any = None) -> dict[str, Any]:
@@ -937,6 +1039,12 @@ _MEASURE_ALIASES = {
     "gwp": "gross_written_premium",
     "capacity_utilisation": "capacity.utilisation",
     "capacity_utilization": "capacity.utilisation",
+    # T-242 fix 6: the words investors use for a line the store files under its short code.  One map serves every
+    # route (`_pick` is used by fact, fin, kpi, guidance, ratio and obs), so "profit after tax" resolves wherever
+    # "PAT" does, and "installed capacity" reaches the point-in-time capacity.total row.
+    "profit_after_tax": "pat",
+    "net_profit": "pat",
+    "installed_capacity": "capacity.total",
 }
 
 
@@ -1009,6 +1117,7 @@ _KPI_WORDS = {
     "losses_and_provisions_to_assets": "credit_cost", "provisions_to_assets": "credit_cost",
     "credit_costs": "credit_cost", "cost_of_borrowings": "cost_of_funds", "cost_of_borrowing": "cost_of_funds",
     "cost_of_fund": "cost_of_funds",
+    "opex_to_net_total_income": "opex_to_nti", "opex_to_net_interest_income": "opex_to_nti",
 }
 
 
@@ -1169,8 +1278,9 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
         return _reply(sym, [], "pilot3_kpi", available=allnames[:40], metric_asked=metric_asked,
                       nearest=f"{metric_asked} {period or ''}".strip(), nearest_as_of=as_of)
     kind, label = norm_period(period)
+    natural, _ym = _natural_date(period)
     where, args = f"k.symbol=? AND k.metric IN ({','.join('?' * len(names))})", [sym, *names]
-    if label:
+    if label and natural is None:
         where += " AND k.fiscal_period=?"
         args.append(label)
     if dimension:
@@ -1198,6 +1308,8 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
               # Beauty & Wellbeing EBIT came back standalone 1,242 first (filed later) for consolidated 1,235 (8 Nov)
               f"(k.dimension='total') DESC, (k.basis='consolidated') DESC, k.known_at DESC, k.id LIMIT ?",
               (*args, *eargs, _cap(limit) * 30))
+    if natural is not None:     # a printed point-in-time label answers the date it prints (T-242 fix 6)
+        rows = [r for r in rows if _period_matches(r["fiscal_period"], period)]
     out, seen = [], set()
     for r in rows:
         row_basis = r["basis"] if r["basis"] in _REPORTING_BASES else "not_stated"
@@ -1281,7 +1393,8 @@ def _cells_from_atoms(sym: str, terms: str | None, period: str | None, day: str 
     if not include_unverified:
         where.append("a.check_status='verified'")
     _kind, label = norm_period(period)
-    if label:
+    natural, _ym = _natural_date(period)
+    if label and natural is None:
         where.append("lower(COALESCE(a.period,''))=lower(?)")
         args.append(label)
     extra, eargs = "", []
@@ -1302,6 +1415,8 @@ def _cells_from_atoms(sym: str, terms: str | None, period: str | None, day: str 
     seen: set[tuple] = set()
     starts = [re.compile(r"(?<![a-z0-9])" + re.escape(w)) for w in words]   # a term starts a word: 'us' != 'business'
     for r in rows:
+        if natural is not None and not _period_matches(r["period"], period):
+            continue
         text = " ".join((r["row_label"] or "", r["col_header"] or "", r["table_title"] or ""))
         if not all(p.search(text.lower()) for p in starts):
             continue
@@ -2390,6 +2505,65 @@ def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categor
 
 
 # --- pilot3_statements ------------------------------------------------------------------------------
+def _ask_tokens(*texts: str | None) -> list[str]:
+    """The words a statement question is asked with: topic, terms and rank_terms, deduped, 3+ letters (T-242)."""
+    out: list[str] = []
+    for text in texts:
+        for word in re.findall(r"[\w₹%&\-\.]+", text or ""):
+            low = word.lower()
+            if len(low) > 2 and low not in out:
+                out.append(low)
+    return out
+
+
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+")
+
+
+def _token_matches(token: str, word: str) -> bool:
+    """A light stem match: the word, a word starting with it, or their shared first five letters."""
+    return (token == word or token.startswith(word) or word.startswith(token)
+            or (len(word) >= 5 and len(token) >= 5 and token[:5] == word[:5]))
+
+
+def _sentence_hits(text: str | None, words: list[str]) -> tuple[bool, int, int]:
+    """(every ask word in ONE sentence, ask words close together in it, occurrences) -- T-242 fix 6.
+
+    A long ``obs_fact`` statement is several sentences: the sentence that answers the ask is ranked, not the blob
+    around it and not the whole answer turn.  'Close together' is two different ask words within four tokens, so a
+    phrase a label prints in either order ('capital raise', 'the growth of industry') beats a sentence that merely
+    repeats one word far apart.  A light stem covers plural/derived forms ('industry' == 'industries')."""
+    best: tuple[bool, int, int] = (False, 0, 0)
+    for sentence in _SENTENCE_SPLIT.split(str(text or "")):
+        tokens = re.findall(r"[a-z0-9]+", sentence.lower())
+        if not tokens:
+            continue
+        found = 0
+        matches = 0
+        for word in words:
+            if any(_token_matches(tok, word) for tok in tokens):
+                found += 1
+        for tok in tokens:
+            if any(_token_matches(tok, word) for word in words):
+                matches += 1
+        close = 0
+        for start in range(max(0, len(tokens) - 1)):
+            window = tokens[start:start + 4]
+            distinct = {word for word in words if any(_token_matches(tok, word) for tok in window)}
+            if len(distinct) >= 2:
+                close = 1
+                break
+        cand = (bool(words) and found == len(words), close, matches)
+        if cand > best:
+            best = cand
+    return best
+
+
+def _group_ask_rank(group: list[dict[str, Any]], words: list[str]) -> tuple[int, int, int]:
+    """All ask words present first, then close together, then how often -- the stable tie-break is existing order."""
+    all_hit, close, occ = _sentence_hits(" ".join(str(r.get("quote") or "") for r in group), words)
+    return (0 if all_hit else 1, -close, -occ)
+
+
 def _term_hits(column: str, words: list[str]) -> tuple[str, list]:
     """SQL that scores a row by how many of ``words`` it carries (0 when no word was asked)."""
     if not words:
@@ -2430,7 +2604,10 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     window is 25 statements instead of 10.
 
     ``period`` (Q4FY26 / FY26) and ``rank_terms`` (the question's own words) rank the rows: a statement of the
-    period asked, carrying more of the question's words, comes first; the newest call breaks a tie.  ``latest``
+    period asked, carrying more of the question's words, comes first; the newest call breaks a tie.  Inside a named
+    call the sentence carrying EVERY ask word (topic, terms or rank_terms, light-stemmed and read per sentence, not
+    per answer turn) ranks first, then the sentence carrying them closest together and most often; each named-call
+    row carries ``call_date`` plus ``filed`` and ``call_date_printed`` where they differ.  ``latest``
     keeps only the newest call's statements.  The tagged statements are joined by the same phrase-first page-text
     matcher ``pilot3_search`` uses, over every held document type, so a sentence the tagger missed still answers
     (``match: tag | text``); ``offset`` pages a cut reply and ``coverage`` says what the reply did not show."""
@@ -2632,6 +2809,12 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     items = merged_stmts + [[item] for item in page_items]
     if topic and tagged_match is False and not obs_v:
         items = [[item] for item in page_items] + merged_stmts
+    # T-242 fix 6: inside a named call the sentence that carries EVERY ask word comes first, then the one carrying
+    # the most; the stable sort keeps the reply's existing order for ties (fix 3/4/5 stay as they were).
+    if named_day:
+        ask_tokens = _ask_tokens(topic, terms, rank_terms)
+        if ask_tokens:
+            items.sort(key=lambda group: _group_ask_rank(group, ask_tokens))
     page_groups = items[start:start + cap]
     out = [item for group in page_groups for item in group]
     fallback = "doc_page_bm25" if (topic and tagged_match is False and not obs_v and page_items) else None
@@ -2677,17 +2860,34 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     if named_day:
         # T-242 fix 4: a named call serves one document, so a per-row document key, a repeated title and every
         # empty field are exactly the weight the 19 kB reply cannot afford (25 rows did not fit, 15 were served).
-        # coverage.documents still names every document; provenance keeps table, page, known_at and row id, and a
-        # row keeps its doc_key when the served rows span more than one document.
-        one_doc = len({row.get("doc_key") for row in out if row.get("doc_key")}) == 1
+        # coverage.documents still names every document; provenance keeps table, page, known_at and row id, and now
+        # only a row whose document is not the call's main transcript names its doc_key (T-242 fix 6: that key is
+        # ~100 bytes on every row of a 25-row reply).
+        counts: dict[str, int] = {}
         for row in out:
+            if row.get("doc_key"):
+                counts[str(row["doc_key"])] = counts.get(str(row["doc_key"]), 0) + 1
+        main_doc = max(counts, key=lambda key: counts[key]) if counts else None    # the call's own transcript, usually
+        call_dates = _named_call_dates(sym, named_docs)
+        for row in out:
+            # T-242 fix 6: the call's printed date and the filing date sit on every row, so a model quotes the
+            # right one (a call printed 2026-11-03 and filed 2026-11-10 is never quoted as one date).
+            when = call_dates.get(str(row.get("doc_key") or ""))
+            if when:
+                # one extra date field per row keeps the 25-row window under the byte cap: a transcript row already
+                # shows its printed call_date, an obs/page row already shows its filing date.
+                today = str(row.get("call_date") or "")
+                if when.get("filed") and when["filed"] != today:
+                    row["filed"] = when["filed"]
+                if when.get("printed") and when["printed"] != today:
+                    row["call_date_printed"] = when["printed"]
             prov = row.get("provenance")
             if isinstance(prov, dict):
                 prov.pop("title", None)
                 if row.get("page") not in (None, ""):
                     prov["source"] = f"p{row['page']}"
-            if one_doc:
-                row.pop("doc_key", None)
+            if main_doc and str(row.get("doc_key") or "") == main_doc:
+                row.pop("doc_key", None)      # only a row of another document names its key; coverage lists them all
             for k in [k for k, v in row.items() if v in (None, "")]:
                 row.pop(k)
     reply = _reply(sym, out, "pilot3_statements", fallback=fallback, as_of=_day(as_of, "as_of"), text=text,
@@ -2723,18 +2923,26 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
                  if len(w) > 2]
     cuts: list[tuple[str, Any]] = []
     if named_day:
-        # a named call trims each quote to the window around the ask before it drops any statement: the matched
-        # words are what the call is asked about, and 25 short rows fit where 25 long ones did not (T-242 fix 4)
-        cuts.append(("quotes cut to 240 characters around the match", lambda: quotes_around(240)))
-    cuts += [
-        ("quotes cut to 300 characters", lambda: quotes(300)),
-        ("sentences cut to the first 120", lambda: row_cut(120)),
-        ("quotes cut to 160 characters", lambda: quotes(160)),
-        ("sentences cut to the first 60", lambda: row_cut(60)),
-        ("quotes cut to 110 characters", lambda: quotes(110)),
-        ("sentences cut to the first 30", lambda: row_cut(30)),
-        ("sentences cut to the first 15", lambda: row_cut(15)),
-    ]
+        # a named call trims each quote around the ask before it drops any statement: the matched words are what the
+        # call is asked about, and 25 short rows fit where 25 long ones did not (T-242 fix 4); a second, tighter trim
+        # keeps the whole 25-row window under the cap when the matched set is wide (T-242 fix 6).
+        cuts = [
+            ("quotes cut to 240 characters around the match", lambda: quotes_around(240)),
+            ("quotes cut to 170 characters around the match", lambda: quotes_around(170)),
+            ("sentences cut to the first 20", lambda: row_cut(20)),
+            ("quotes cut to 110 characters around the match", lambda: quotes_around(110)),
+            ("sentences cut to the first 15", lambda: row_cut(15)),
+        ]
+    else:
+        cuts = [
+            ("quotes cut to 300 characters", lambda: quotes(300)),
+            ("sentences cut to the first 120", lambda: row_cut(120)),
+            ("quotes cut to 160 characters", lambda: quotes(160)),
+            ("sentences cut to the first 60", lambda: row_cut(60)),
+            ("quotes cut to 110 characters", lambda: quotes(110)),
+            ("sentences cut to the first 30", lambda: row_cut(30)),
+            ("sentences cut to the first 15", lambda: row_cut(15)),
+        ]
     reply = _shrink(reply, cuts)
     reply["n"] = len(out)
     return reply
@@ -2856,6 +3064,38 @@ def _guidance_alt(row: dict[str, Any]) -> dict[str, Any]:
                                 row_id=row["id"])}
 
 
+def _guidance_held_quarantined(symbol: str, names: list[str], label: str | None,
+                               day: str | None) -> list[str]:
+    """Targets the row check quarantined for the metric asked, said plainly (T-242 fix 6).
+
+    A hidden target is held, never absent: the block names the metric, period, value and page, and says that
+    ``include_quarantined=true`` shows the row.  It is never returned as the answer."""
+    if not _has_table("row_check") or not _has_table("guidance"):
+        return []
+    where = ["g.symbol=?", "rc.status='quarantined'"]
+    args: list[Any] = [symbol]
+    if names:
+        where.append(f"g.metric IN ({','.join('?' * len(names))})")
+        args.extend(names)
+    if label:
+        where.append("g.target_period=?")
+        args.append(label)
+    extra, eargs = _asof(day, "g.known_at")
+    rows = _q(f"SELECT g.metric, g.target_period, g.low, g.high, g.unit, g.said_on, g.page "
+              f"FROM guidance g JOIN row_check rc ON rc.tbl='guidance' AND rc.row_id=g.id "
+              f"WHERE {' AND '.join(where)}{extra} ORDER BY COALESCE(g.known_at, g.said_on) DESC LIMIT 10",
+              (*args, *eargs))
+    out: list[str] = []
+    for r in rows:
+        low, high = r["low"], r["high"]
+        span = (f"{low:g}" if isinstance(low, (int, float)) else str(low or "?")) + (
+            f"-{high:g}" if isinstance(high, (int, float)) and high != low else "")
+        out.append(f"guidance / {r['metric']} / {r['target_period']}: {span} {r['unit'] or ''}, "
+                   f"said {r['said_on']} (p{r['page']}); the row check quarantined it: include_quarantined=true "
+                   f"shows it")
+    return out
+
+
 def guidance(symbol: str, metric: str | None = None, period: str | None = None, as_of: str | None = None,
              limit: int = 12, history: bool = False, include_quarantined: bool = False) -> dict[str, Any]:
     """Rule-extracted forward guidance: the CURRENT target of each metric and target period, newest first, with
@@ -2864,15 +3104,20 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
     the kept row says how many (``superseded_rows``); ``history=true`` returns every row as stored.  ``low`` and
     ``high`` are NULL on a target said in words ("high single-digit", "in the 70s, mid-70s or higher"): the
     direction and the quote carry it.  A row the independent checker quarantined is hidden unless
-    ``include_quarantined=True``, and every row says ``check_status`` verified or unverified (T-113).  A target
+    ``include_quarantined=True``; when no served row matches, the quarantined targets for the metric and period are
+    still reported under ``held_quarantined`` (with value, page and the way to show them), never as the answer, and a
+    target held only in ``obs_fact`` ``record_type='guidance'`` is served with ``source='obs_fact'`` (its target
+    period is the period asked when the call printed the range without a year, marked ``period_source='unstated'``).
+    Every row says ``check_status`` verified or unverified (T-113).  A target
     stated for a named subsidiary, segment or investee is stored with that ``entity`` and never returned here: only
     the group's own guidance is served (T-192)."""
     sym = resolve_symbol(symbol)
     has_obs = _has_table("obs_fact")
     names, allnames = ([], list(GUIDANCE_METRICS))
     if metric:
-        names, allnames = _pick("guidance", "metric", sym, metric,
-                                extra="" if include_quarantined else _visible("guidance"))
+        # T-242 fix 6: the metric NAMES are resolved without the quarantine filter -- a target whose only rows the
+        # checker quarantined still has a name, and the reply must say it is held (never serve it as the answer).
+        names, allnames = _pick("guidance", "metric", sym, metric)
         if not names and not has_obs:
             return _reply(sym, [], "pilot3_guidance", available=allnames[:40], metric_asked=metric,
                           nearest=f"{metric} {period or ''}".strip(), nearest_as_of=as_of)
@@ -2963,6 +3208,27 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
     if has_obs:
         obs_g = _obs_rows(sym, measure=metric, period=period, record_type="guidance", as_of=as_of,
                           limit=_cap(limit), measure_exact=True)
+        if metric and not obs_g:
+            # T-242 fix 6: a guidance observation filed under a longer measure ("revenue growth" ->
+            # revenue_growth_yoy) is held with record_type='guidance'; the number route rejects a movement token, the
+            # guidance route does not -- the ask itself named it.
+            cands = _pick("obs_fact", "measure", sym, metric,
+                          extra=" AND record_type='guidance' AND status IN ('verified','unverified')")[0]
+            if cands:
+                wanted = {_norm_measure(c) for c in cands}
+                pool = _obs_rows(sym, period=period, record_type="guidance", as_of=as_of, limit=200)
+                obs_g = [r for r in pool if _norm_measure(r["measure"]) in wanted][: _cap(limit)]
+        if metric and not obs_g and period:
+            # T-242 fix 6: a guidance observation often prints the range but not the year it targets ("the range we
+            # have always spoken is 65% to 67%").  Rows whose target period is unstated answer the period asked and
+            # say so; a row of a DIFFERENT stated period is never borrowed.
+            asked_kind, asked_label = norm_period(period)
+            loose = _obs_rows(sym, measure=metric, period=None, record_type="guidance", as_of=as_of,
+                              limit=_cap(limit) * 4, measure_exact=True)
+            obs_g = [r for r in loose if not r.get("period")][: _cap(limit)]
+            for r in obs_g:
+                r["period"] = asked_label or period
+                r["period_source"] = "unstated"
         for r in obs_g:
             item = {"metric": r["measure"], "period": r["period"], "low": r["value"], "high": r["value_high"],
                     "unit": r["unit"], "direction": r["direction"], "said_on": (r.get("known_at") or "")[:10],
@@ -2970,22 +3236,27 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
                     "previous": None, "changed": False, "superseded_rows": 0, "is_latest": True,
                     "superseded_by": None, "status": r["status"], "check_status": r["status"],
                     "source": "obs_fact", "doc_key": r["doc_key"], "page": r["page"], "provenance": r["provenance"]}
+            if r.get("period_source") == "unstated":
+                item["period_source"] = "unstated"       # the call printed the range, not the target year
             _add_money(item, r["value"], r["unit"], r["scale"])
             out.append(item)
     if out:
         out.sort(key=lambda row: 0 if (row.get("status") or row.get("check_status")) == "verified" else 1)
     held = None
+    held_hidden = None
     if not out:   # say what the table does hold, so the next call can be exact
         held = [f"{r[0]} / {r[1]} ({r[2]} rows)" for r in _q(
             f"SELECT metric, target_period, COUNT(*) FROM guidance WHERE symbol=?"
             + (f" AND metric IN ({','.join('?' * len(names))})" if names else "")
             + _visible("guidance") + " GROUP BY 1, 2 ORDER BY MAX(known_at) DESC LIMIT 40", (sym, *names))]
+        if not include_quarantined:     # T-242 fix 6: a quarantined target is held and hidden, not absent
+            held_hidden = _guidance_held_quarantined(sym, names, label, _day(as_of, "as_of"))
     return _reply(sym, out, "pilot3_guidance", metrics_matched=names or None, history=True if history else None,
                   alternatives=alternatives or None,
                   available=allnames[:40] if (metric and not out and not names) else None,
                   metric_asked=metric if (metric and not out and not names) else None,
                   nearest=f"{metric or ''} {period or ''}".strip(), nearest_as_of=as_of,
-                  held_options=held, as_of=_day(as_of, "as_of"))
+                  held_options=held, held_quarantined=held_hidden or None, as_of=_day(as_of, "as_of"))
 
 
 # --- pilot3_docs ------------------------------------------------------------------------------------
@@ -4461,6 +4732,65 @@ def _fact_company_stated(symbol: str, names: list[str], period: str | None, basi
                       best["value"], best["unit"], best["scale"])
 
 
+def _fact_filed_conflict(symbol: str, key: str, period: str | None, day: str | None,
+                         row: dict[str, Any]) -> tuple[dict[str, Any], str] | None:
+    """A transcript number a filed results / press-release figure contradicts by more than 20% (T-242 fix 6).
+
+    A call remark is unverified until a filing matches it within 1% (Shivam, 24 Nov).  When the preferred row is such
+    a transcript observation and a filed row of the same measure and period differs by more than 20%, the filed value
+    is served first and the call remark is listed as an alternative with ``conflict: true``.  Returns
+    ``(filed_row, note)`` or None."""
+    prov = row.get("provenance") or {}
+    if row.get("source") != "obs_fact" or str(prov.get("doc_type") or "").lower() != "transcript":
+        return None
+    measure = str(row.get("metric") or "").strip()
+    if not measure:
+        names = _pick("obs_fact", "measure", symbol, key, extra=" AND record_type='number'")[0]
+        measure = names[0] if names else ""
+    if not measure:
+        return None
+    filed = [r for r in _obs_rows(symbol, measure=measure, period=period, record_type="number", as_of=day,
+                                  limit=20, measure_exact=True)
+             if str(r.get("doc_type") or "").lower() in ("results", "press_release")
+             and r.get("value") is not None]
+    if not filed:
+        return None
+    best = filed[0]              # _obs_rows orders results before press release, newest first
+    value, unit, scale = _fact_value(row)
+    filed_value, filed_unit, filed_scale = _fact_value(best)
+    transcript_pair = _money_inr_cr(value, unit, scale)
+    filed_pair = _money_inr_cr(filed_value, filed_unit, filed_scale)
+    transcript_num: float | None
+    filed_num: float | None
+    if transcript_pair is not None and filed_pair is not None:
+        transcript_num, filed_num = transcript_pair[0], filed_pair[0]
+    elif (transcript_pair is None) != (filed_pair is None):
+        # one spelling the money parser does not know ("Rs. Crore"): compare through the wider parser
+        transcript_num, filed_num = _money_base(value, unit, scale), _money_base(filed_value, filed_unit, filed_scale)
+    elif _norm_measure(unit or "") == _norm_measure(filed_unit or ""):
+        try:
+            transcript_num, filed_num = float(value) * scale, float(filed_value) * filed_scale
+        except (TypeError, ValueError):
+            return None
+    else:
+        return None
+    if transcript_num is None or filed_num is None:
+        return None
+    if not filed_num or abs(transcript_num - filed_num) <= 0.20 * abs(filed_num):
+        return None
+    doc_type = str(best.get("doc_type") or "").lower().replace("_", " ")
+    note = (f"the call remark says {value} {unit or ''} for {row.get('period') or period}, while the filed "
+            f"{doc_type} prints {filed_value} {filed_unit or ''} for the same measure and period; the filed value is "
+            f"served first and the call remark is an alternative (`conflict: true`)")
+    filed_row = dict(best)
+    filed_row.setdefault("metric", measure)
+    filed_row["definition"] = "observed"
+    filed_row["source"] = "obs_fact"
+    filed_row["status"] = best.get("status")
+    filed_row["check_status"] = best.get("check_status") or best.get("status")
+    return filed_row, note
+
+
 def _fact_atoms(sym: str, metric: str, period: str | None, day: str | None) -> dict[str, Any] | None:
     """T-199: the resolved printed figure when no pilot3 table holds the metric; ``source: page_atom`` labels it.
 
@@ -4480,7 +4810,8 @@ def _fact_atoms(sym: str, metric: str, period: str | None, day: str | None) -> d
         where.append("lower(COALESCE(a.row_label,'')||' '||COALESCE(a.table_title,'')) LIKE ?")
         args.append(f"%{word}%")
     _kind, label = norm_period(period)
-    if label:
+    natural, _ym = _natural_date(period)
+    if label and natural is None:
         where.append("lower(COALESCE(a.period,''))=lower(?)")
         args.append(label)
     extra, eargs = _asof(day, "a.known_at")
@@ -4492,6 +4823,8 @@ def _fact_atoms(sym: str, metric: str, period: str | None, day: str | None) -> d
         f"WHERE {' AND '.join(where)}{extra} "
         "ORDER BY CASE COALESCE(a.check_status,'') WHEN 'verified' THEN 0 ELSE 1 END, "
         "substr(COALESCE(a.known_at,''),1,10) DESC, a.page LIMIT 12", (*args, *eargs))
+    if natural is not None:     # a printed point-in-time label answers the date it prints (T-242 fix 6)
+        rows = [r for r in rows if _period_matches(r["period"], period)]
 
     def matches(label_text: str) -> bool:
         norm = _metric_key(label_text or "")
@@ -4555,7 +4888,10 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
     Returns ``answer`` = value, unit and scale word, period, basis, as_of used, source {table, document, page, quote},
     known_at, and ``computed`` {formula, inputs} for a figure the store derives; up to three ``alternatives`` from
     another table or filing, and ``why_this_one``.  Nothing matching returns ``found: false`` with the tables and
-    names searched and up to three nearest rows."""
+    names searched and up to three nearest rows.  A metric word resolves through one alias map ("profit after tax"
+    -> pat, "installed capacity" -> capacity.total) and a printed point-in-time period ("As on 30th Sept, 2026")
+    matches the row that prints that date; a transcript number a filed results / press-release figure contradicts by
+    more than 20% is served filed-first, with the call remark as an alternative carrying ``conflict: true``."""
     sym = resolve_symbol(symbol)
     key = _metric_key(metric)
     if not key:
@@ -4615,6 +4951,18 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
     row = rows[0]
     if used == "fin":
         row = _fact_prefer_xbrl_annual(row, day) or row
+    conflict_alt = None
+    conflict_note = None
+    if used in ("kpi", "fin"):
+        # T-242 fix 6: a transcript number a filed results / press-release figure contradicts by > 20% is never
+        # served first -- the filed value answers and the call remark is labelled ``conflict: true``.
+        conflict = _fact_filed_conflict(sym, key, period, day, row)
+        if conflict:
+            filed_row, conflict_note = conflict
+            conflict_alt = _fact_alt(row)
+            conflict_alt["conflict"] = True
+            conflict_alt["note"] = conflict_note
+            row = filed_row
     alternatives: list[dict[str, Any]] = []
     if used == "fin":
         for alt in (row.get("alternatives") or [])[:3]:
@@ -4639,6 +4987,9 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
             alternatives.append(alternative)
     answer = _fact_answer(row, day, _fact_computed(used, sym, row, day), period, bas)
     why = _fact_why(used, row)
+    if conflict_alt is not None:
+        alternatives = ([conflict_alt] + alternatives)[:3]
+        why = f"{conflict_note}; {why}"
     company_stated = None
     if _fact_is_derived(used, row):
         # T-198: never call a derived figure "the preferred" one without naming what the company itself states
@@ -4671,11 +5022,22 @@ def _obs_period_clause(period: str | None) -> tuple[str, list[Any]]:
             q_part = label[:-4]
             forms.update({f"{q_part} FY{yy}", f"{q_part}FY20{yy}", f"{q_part} FY20{yy}", f"{q_part} FY {yy}"})
     forms |= _natural_period_forms(period)
+    if period:
+        forms.add(str(period))       # the label as printed: "As on 30th Sept, 2026" answers itself
     if not forms:
         return " AND UPPER(COALESCE(o.period,''))=UPPER(?)", [label]
     keys = sorted({_period_key(form) for form in forms if _period_key(form)})
-    placeholders = ",".join("?" * len(keys))
-    return f" AND {_period_norm_sql('COALESCE(o.period,\'\')')} IN ({placeholders})", keys
+    col = _period_norm_sql("COALESCE(o.period,'')")
+    clause = f"({col} IN ({','.join('?' * len(keys))})"
+    args: list[Any] = list(keys)
+    day, _ym = _natural_date(period)
+    if day is not None:
+        # a label prefixes the date ("Quarter ended September 30, 2026", "As on 30th Sept, 2026"): the full printed
+        # day keys are matched as a suffix/prefix too, so the prefix words a label adds never hide the row.
+        for key in [k for k in keys if len(k) >= 12]:
+            clause += f" OR {col} LIKE '%' || ?"
+            args.append(key)
+    return f" AND {clause})", args
 
 
 def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
@@ -4912,8 +5274,11 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
             elif not _near_day(str(g("known_at") or "")[:10], named_at):
                 continue
         say_blob = " ".join(str(x or "") for x in (stmt, g("question_context"))).lower()
+        if named_day:       # T-242 fix 6: the sentence's own words rank, not the whole answer turn's
+            say_blob = str(stmt or "").lower()
         measure_blob = " ".join(str(x or "") for x in (g("measure"), g("printed_label"))).lower()
         say_score = sum(1 for alts in qword_alts if any(a in say_blob for a in alts)) if qword_alts else 0
+        sent_all, sent_close, sent_occ = _sentence_hits(stmt, qwords) if named_day else (False, 0, 0)
         measure_score = sum(1 for alts in qword_alts if any(a in measure_blob for a in alts)) if qword_alts else 0
         t_score = say_score + measure_score
         p_rank = 0
@@ -4946,7 +5311,10 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
         }
         if g("question_context"):
             item["question_context"] = _trim(g("question_context"), 300)
-        scored.append(((s_rank, day_rank, p_rank, -say_score, -measure_score), item))
+        scored.append(((0 if (named_day and sent_all) else 1,
+                        -sent_close if named_day else 0,
+                        -sent_occ if named_day else 0,
+                        s_rank, day_rank, p_rank, -say_score, -measure_score), item))
     scored.sort(key=lambda pair: pair[0])
     return [pair[1] for pair in scored]
 
