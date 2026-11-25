@@ -18,6 +18,7 @@ Checkpoint rows first, then a seeded fill (one company per row where possible, <
 
 ## 2. Grade
 - Grader, best first (Shivam 26 Nov): agy `gemini-4-hydrogen-high` (smarter than DeepSeek max and Sonnet medium; use for new doc types, re-grades after a fail, jumbled/OCR pages); a read-only dsh worker off-peak for routine checkpoints; or two Sonnet subagents (`model: sonnet`), 30 rows each, < 100k context. Rubric `docs/grading/number_rubric.md` or `statement_rubric.md`.
+- An agy grader brief must contain the line `permission: read-only` (ops_gate then does not count it as a code worker); Hydrogen reads absolute C:/RealityEngine pack paths with read_file.
 - Graders recompute every figure (totals, growth %, QoQ/YoY columns) and read the previous page for headers. Lenient reads overstate (89% vs 80% strict).
 - Output per row: R / P / W / J + one-line reason; CSVs `grades_part00.csv`, `grades_part01.csv`.
 
