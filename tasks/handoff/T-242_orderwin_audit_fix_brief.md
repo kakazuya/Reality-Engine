@@ -6,6 +6,9 @@ Goal: a surprise audit of 60 verified order_win events (round 5 DBs, rows in no 
 8 W / 0 J (agy b87f8d84). That is 13% wrong among VERIFIED rows, against a bar of 5%. Fix the three causes in
 `reality_engine/research/filing_events.py` so that none of them stays verified. Do not change fund_raise logic.
 
+Files: reality_engine/research/filing_events.py (order_win build, customer, entity_scope), tests in
+reality_engine/tests/test_filing_events.py, docs docs/research/T-231_filing_events.md and docs/DEVELOPER_GUIDE.md.
+
 Evidence: C:/RealityEngine/t242/audit_orderwin_r5/pack.jsonl (match on store + doc_key + kind, never on event_id,
 which repeats across the two DBs). Grades: C:/RealityEngine/t242/audit_orderwin_r5/grades.csv. Pages:
 C:/RealityEngine/tg_build/full394/<store>/<store>.db, doc_page (open read-only).
@@ -33,7 +36,8 @@ Steps:
    entity_scope='subsidiary' and store the subsidiary's printed name in `detail`, or in `customer_desc` if `detail`
    holds JSON (read how `detail` is used first, and report which you chose). The measured shapes: Provigil and
    Scandron (MCLOUD), EFC Limited (EFCIL), Lineage Power (PACEDIGITK), SAE Towers (KEC), Aurionpro Fintech Inc.,
-   and one STLTECH row. Tests on 5 shapes.
+   and one STLTECH row. Tests on 5 shapes. The stored name is the one PRINTED in the filing, never inferred.
+   Where the filing says "a subsidiary" without naming it, keep entity_scope='company' (Wolf, 25 Nov).
    The measured stop found Steps 1 and 3 clean. The L1 veto touches 13/193 fresh3 rows (all EMSLIMITED) and keeps
    LoA-plus-L1 rows (audit #26, fresh3 #28). The headline-customer rule touches 1 row. Both break 0 graded R.
 3. Customer from a press-release headline: a customer containing a headline verb or date ("to Power", "BANGALORE -",
