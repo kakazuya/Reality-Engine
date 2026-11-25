@@ -4263,6 +4263,16 @@ def ar_measure_family(row: dict[str, Any]) -> str:
     return AR_NEW_NODE_FAMILY.get(node, "")
 
 
+def heading_basis(page_text: str, pattern: re.Pattern[str] = AR_HEADING_BASIS_RE, chars: int = 300) -> str:
+    """The single standalone/consolidated basis named in the first ``chars`` characters of ``page_text``."""
+    head = norm_space(page_text)[:chars]
+    found = {
+        "standalone" if match.group(1).lower().startswith("stand") else "consolidated"
+        for match in pattern.finditer(head)
+    }
+    return next(iter(found)) if len(found) == 1 else ""
+
+
 def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company: str = "",
                        previous_text: str = "", report_fy: str = "") -> None:
     """T-242: the annual-report number errors a script can catch from the row and its page.
@@ -4297,18 +4307,16 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
     note = ar_scale_note(text)
     # the page HEAD only (Wolf review): body text such as "as per the consolidated financial statements" in a
     # directors' report must not flip a row; a running head or a note title sits in the first 300 characters
-    heading = {match.group(1).lower() for match in AR_HEADING_BASIS_RE.finditer(text[:300])}
-    basis = next(iter(heading)) if len(heading) == 1 else ""
+    basis = heading_basis(text)
     basis_source = "page_heading"
     # T-242: a note's continuation page prints its rows and often no basis at all; the statement heading on the
     # page before is then the only printed basis those rows have.  Carried only when this page prints no basis
     # word anywhere and starts no statement/note/section of its own, and the page before heads exactly one basis.
     if not basis and previous_text:
-        previous_heading = {match.group(1).lower() for match in
-                            AR_HEADING_BASIS_RE.finditer(norm_space(previous_text)[:300])}
-        if len(previous_heading) == 1 and not AR_SECTION_TITLE_RE.search(text[:300]) \
+        previous_heading = heading_basis(previous_text)
+        if previous_heading and not AR_SECTION_TITLE_RE.search(text[:300]) \
                 and not AR_BASIS_WORD_RE.search(text):
-            basis, basis_source = previous_heading.pop(), "previous_page_heading"
+            basis, basis_source = previous_heading, "previous_page_heading"
     # a bound subsidiary section names its entity in the page head, or (its field pages) only in the printed
     # running header/footer; either one is another reporting entity, never the store company
     other_entity = ""
@@ -4502,10 +4510,240 @@ def _narrative_change_label(label: str) -> bool:
         and all(word in AR_NARRATIVE_WORDS for word in words)
 
 
+# T-242: three script-catchable deck number gates from the 60-row surprise audit (C:/RealityEngine/t242/audit_deck1).
+# Rule 1 keeps only true floors/bounds (not approximations like '~', 'nearly', 'approx').
+DECK_BOUND_TOKEN_PAT = (
+    r"(?:>=|<=|[><\u2265\u2264]"
+    r"|\b(?:over|more\s+than|less\s+than|above|below|up\s*to|upto|at\s+least|exceeding)\b)"
+)
+_DECK_CURR_PAT = r"(?:(?:rs\.?|inr|\u20b9|\$|usd|us\$)\s*)?"
+DECK_BOUND_BEFORE_NUM_RE = re.compile(
+    rf"(?:^|[\s(\[])({DECK_BOUND_TOKEN_PAT})\s*{_DECK_CURR_PAT}(\d[\d,]*(?:\.\d+)?)",
+    re.I,
+)
+DECK_BOUND_LABEL_END_RE = re.compile(
+    rf"(?:^|\s)({DECK_BOUND_TOKEN_PAT})\s*{_DECK_CURR_PAT}$",
+    re.I,
+)
+DECK_BOUND_IGNORE_TAIL_RE = re.compile(
+    r"(?:\bother\s+than\b.{0,60}?\babove|(?:&|\band)\s+above|\brespectively\s+over)\s*$",
+    re.I,
+)
+
+DECK_SINGLE_TERM_ALLOWLIST_RE = re.compile(
+    r"\b(?:"
+    r"profit\s*(?:&|and)\s*loss"
+    r"|p\s*&\s*l"
+    r"|r\s*&\s*d"
+    r"|research\s*(?:&|and)\s*development"
+    r"|oil\s*(?:&|and)\s*gas"
+    r"|depreciation(?:,?\s*amorti[sz]ation)?\s*(?:&|and)\s*(?:amorti[sz]ation|impairment)"
+    r"|d\s*&\s*a"
+    r"|exceptional\s+(?:&|and)\s+extraordinary"
+    r"|exceptional\s+(?:&|and)\s+prior\s+period"
+    r"|reserves?\s*(?:&|and)\s*surplus"
+    r"|cash(?:,?\s*cash\s+equivalents?)?\s*(?:&|and)\s*(?:cash\s+equivalents?|bank(?:\s+balances?)?)"
+    r"|property,?\s*plant\s*(?:&|and)\s*equipment"
+    r"|pp\s*&\s*e"
+    r"|power\s*(?:&|and)\s*fuel"
+    r"|loans?\s*(?:&|and)\s*advances?"
+    r"|borrowings?\s*(?:&|and)\s*debt\s+securities"
+    r"|basic\s*(?:&|and)\s*diluted"
+    r"|interest\s*(?:&|and)\s*finance\s+charges?"
+    r"|sales\s*(?:&|and)\s*marketing"
+    r"|selling\s*(?:&|and)\s*(?:distribution|general|administrative)"
+    r"|general\s*(?:&|and)\s*administrative"
+    r"|sg\s*&\s*a"
+    r"|mergers?\s*(?:&|and)\s*acquisitions?"
+    r"|m\s*&\s*a"
+    r")\b",
+    re.I,
+)
+DECK_COMBINED_QUALIFIER_TAIL_RE = re.compile(
+    r"(?:,?\s*\b(?:excluding|excl\.?|net\s+of|before|other\s+than)\b.*)$",
+    re.I,
+)
+DECK_COMBINED_SPLIT_RE = re.compile(r"\s*(?:\+|&|\band\b)\s*", re.I)
+
+# Rule 2 financial-measure vocabulary: each entry is (concept_id, label_pattern, measure_tokens).
+# A combined label fires only when BOTH sides of '&'/'and'/'+' match a concept here and ``measure`` names only one.
+DECK_COMBINED_CONCEPTS: tuple[tuple[str, re.Pattern[str], tuple[str, ...]], ...] = (
+    ("other_income", re.compile(r"\bother\s+income\b", re.I), ("other_income",)),
+    ("share_of_associate",
+     re.compile(r"\b(?:share\s+of\s+(?:profit(?:/\(loss\))?\s+(?:of|from)\s+)?(?:jv|joint\s+ventures?|associates?)"
+                r"|associates?|jv)\b", re.I),
+     ("share_of_profit", "associate", "associates", "jv")),
+    ("cash_recyclers", re.compile(r"\bcash\s+recyclers?\b", re.I), ("cash_recycler", "cash_recyclers", "recycler")),
+    ("ebitda", re.compile(r"\bebitda\b", re.I), ("ebitda", "ebidta")),
+    ("ebit", re.compile(r"\bebit\b", re.I), ("ebit",)),
+    ("pbt", re.compile(r"\b(?:pbt|profit\s+before\s+tax)\b", re.I), ("pbt", "profit_before_tax")),
+    ("pat", re.compile(r"\b(?:pat|profit\s+after\s+tax|net\s+profit)\b", re.I), ("pat", "profit_after_tax", "net_profit")),
+    ("revenue_sales", re.compile(r"\b(?:revenue|sales)\b", re.I), ("revenue", "sales")),
+    ("income", re.compile(r"\bincome\b", re.I), ("income",)),
+    ("profit", re.compile(r"\bprofits?\b", re.I), ("profit", "pat", "pbt", "ebitda", "ebit")),
+    ("margin", re.compile(r"\bmargins?\b", re.I), ("margin",)),
+    ("gnpa", re.compile(r"\bgnpa\b", re.I), ("gnpa",)),
+    ("nnpa", re.compile(r"\bnnpa\b", re.I), ("nnpa",)),
+    ("goodwill", re.compile(r"\bgoodwill\b", re.I), ("goodwill",)),
+    ("intangibles", re.compile(r"\bintangibles?(?:\s+assets?)?\b", re.I), ("intangible", "intangibles")),
+    ("atms", re.compile(r"\batms?\b", re.I), ("atm", "atms")),
+    ("branches", re.compile(r"\bbranch(?:es)?\b", re.I), ("branch", "branches")),
+    ("deposits", re.compile(r"\bdeposits?\b", re.I), ("deposit", "deposits")),
+    ("advances", re.compile(r"\badvances?\b", re.I), ("advance", "advances", "loans")),
+    ("aum", re.compile(r"\baum\b", re.I), ("aum",)),
+    ("opex", re.compile(r"\b(?:opex|operating\s+expenses?)\b", re.I), ("opex", "operating_expenses", "other_expenses")),
+    ("capex", re.compile(r"\b(?:capex|capital\s+expenditure)\b", re.I), ("capex",)),
+)
+
+
+def _deck_part_concepts(part: str) -> set[str]:
+    """Financial-measure concepts named in one side of a joined printed_label."""
+    text = part
+    found: set[str] = set()
+    for cid, rx, _tokens in DECK_COMBINED_CONCEPTS:
+        if rx.search(text):
+            found.add(cid)
+            text = rx.sub(" ", text)     # consume multi-word matches ('other income' -> don't also match 'income')
+    return found
+
+
+def _deck_measure_has_concept(measure_norm: str, concept_id: str) -> bool:
+    for cid, _rx, tokens in DECK_COMBINED_CONCEPTS:
+        if cid == concept_id:
+            parts = set(re.split(r"[._]+", measure_norm))
+            return any(tok in parts or tok in measure_norm for tok in tokens)
+    return False
+
+
+def deck_bound_reason(row: dict[str, Any]) -> str:
+    """Return a status reason when ``value_text`` or ``printed_label`` puts a floor/bound right before the number."""
+    vt = norm_space(row.get("value_text"))
+    label = norm_space(row.get("printed_label"))
+    match = DECK_BOUND_BEFORE_NUM_RE.search(vt)
+    if match:
+        return f"deck_bound_not_exact: {match.group(1)!r} in value_text {vt!r} is a bound, not an exact figure"
+    end_match = DECK_BOUND_LABEL_END_RE.search(label)
+    if end_match and not DECK_BOUND_IGNORE_TAIL_RE.search(label):
+        return f"deck_bound_not_exact: {end_match.group(1)!r} before {vt!r} in printed_label {label!r}"
+    row_val = row.get("value")
+    if row_val is None and vt:
+        row_val = parse_number(vt)
+    if row_val is not None:
+        try:
+            target = abs(float(row_val))
+        except (TypeError, ValueError):
+            target = None
+        if target is not None:
+            for match in DECK_BOUND_BEFORE_NUM_RE.finditer(label):
+                num = parse_number(match.group(2))
+                if num is not None and abs(num - target) <= 1e-6 * max(1.0, abs(num)):
+                    return (f"deck_bound_not_exact: {match.group(1)!r} before {match.group(2)!r} "
+                            f"in printed_label {label!r}")
+    return ""
+
+
+def _deck_value_line(page_text: str, label: str, value_text: str) -> str:
+    """Return the page line holding ``value_text`` (preferring the line or nearest line after ``label``)."""
+    if not page_text or not value_text:
+        return ""
+    lines = [norm_space(ln) for ln in page_text.splitlines() if norm_space(ln)]
+    vt_forms = [vf for vf in value_forms(value_text) if vf]
+    if not vt_forms:
+        return ""
+
+    def has_val(ln: str) -> bool:
+        return any(vf in ln for vf in vt_forms)
+
+    label_probe = norm_match(label)[:24].lower()
+    if label_probe:
+        for ln in lines:
+            if label_probe in norm_match(ln).lower() and has_val(ln):
+                return ln
+        for i, ln in enumerate(lines):
+            if label_probe in norm_match(ln).lower():
+                for cand in lines[i + 1 : i + 12]:
+                    if has_val(cand):
+                        return cand
+    for ln in lines:
+        if has_val(ln):
+            return ln
+    return ""
+
+
+def _deck_figure_count(text: str) -> int:
+    """Count printed numeric figures in ``text``, ignoring calendar dates."""
+    cleaned = re.sub(
+        r"\b(?:\d{1,2}(?:st|nd|rd|th)?\s+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?,?\s+\d{2,4}\b",
+        " ",
+        text,
+        flags=re.I,
+    )
+    return len(_numbers_in(cleaned))
+
+
+def deck_combined_label_reason(row: dict[str, Any], page_text: str = "") -> str:
+    """Return a reason when ``printed_label`` joins two financial measures ('&', 'and', '+') for ONE figure."""
+    label = norm_space(row.get("printed_label"))
+    measure = norm_space(row.get("measure"))
+    vt = norm_space(row.get("value_text"))
+    if not label or not measure or len(label.split()) > 12:
+        return ""
+    if re.search(r"\brespectively\b", label, re.I) or _deck_figure_count(label) >= 2:
+        return ""
+    if label and vt and re.search(r"(?:&|\band\b|\+)\s*$", label, re.I) and _deck_figure_count(f"{label} {vt}") >= 2:
+        return ""
+    cleaned = re.sub(r"\([^)]*\)", "", label).strip()
+    cleaned = re.sub(r"(\d[a-zA-Z]*)\+", r"\1", cleaned)
+    cleaned = DECK_COMBINED_QUALIFIER_TAIL_RE.sub("", cleaned).strip()
+    cleaned = DECK_SINGLE_TERM_ALLOWLIST_RE.sub(" ", cleaned)
+    if _deck_figure_count(cleaned) >= 2:
+        return ""
+    parts = [part.strip() for part in DECK_COMBINED_SPLIT_RE.split(cleaned) if part.strip()]
+    if len(parts) < 2:
+        return ""
+    part_concepts = [_deck_part_concepts(part) for part in parts]
+    # Every non-empty joined side (at least 2) must carry a financial-measure concept from the vocabulary.
+    matched_parts = [c for c in part_concepts if c]
+    if len(matched_parts) < 2:
+        return ""
+    all_concepts = set().union(*matched_parts)
+    if len(all_concepts) < 2:
+        return ""
+    if len(all_concepts - {"margin", "growth"}) <= 1:
+        return ""        # X & Margin, X & X Margin, X & Growth, X & X Growth: same underlying metric
+    measure_norm = (measure[len(NEW_PREFIX):] if measure.startswith(NEW_PREFIX) else measure).lower()
+    in_measure = {cid for cid in all_concepts if _deck_measure_has_concept(measure_norm, cid)}
+    if not (in_measure and len(in_measure) < len(all_concepts)):
+        return ""
+    value_line = _deck_value_line(page_text, label, vt)
+    if value_line and (re.search(r"\brespectively\b", value_line, re.I) or _deck_figure_count(value_line) >= 2):
+        return ""
+    return f"deck_combined_label: {label!r} joins multiple measures while stored measure is {measure!r}"
+
+
+def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> None:
+    """T-242: script gates for deck number rows (bounds, combined labels, empty basis from page heading)."""
+    basis = heading_basis(page_text, SECTION_BASIS_RE) if page_text else ""
+    for row in rows:
+        if norm_space(row.get("record_type") or "number") != "number":
+            continue
+        if basis and not norm_space(row.get("basis")):
+            row["basis"] = basis
+            row["basis_source"] = "page_heading"
+        if str(row.get("status") or "") != "verified":
+            continue
+        reason = deck_bound_reason(row)
+        if not reason:
+            reason = deck_combined_label_reason(row, page_text)
+        if reason:
+            row["status"] = "unverified"
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", reason) if p)
+
+
 def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2: bool = True,
                        page_text: str = "", company: str = "", previous_text: str = "",
                        report_fy: str = "") -> None:
-    """T-242: the number gates that depend on the document type (a call number, an AR statement line, an AR row).
+    """T-242: the number gates that depend on the document type (a call number, an AR statement line, an AR row, a deck row).
 
     ``previous_text`` is the page before this one, for the AR row gates' carried basis.
     """
@@ -4514,6 +4752,8 @@ def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2:
     elif doc_type == "annual_report":
         apply_ar_statement_gate(rows)
         apply_ar_row_gates(rows, page_text, company, previous_text, report_fy=report_fy)
+    elif doc_type == "deck":
+        apply_deck_row_gates(rows, page_text)
 
 
 def apply_parts_sum(rows: list[dict[str, Any]], stats: dict[str, Any] | None = None) -> None:
@@ -6686,7 +6926,8 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                              "unit_family_fixed": 0, "is_total_rows": 0, "parts_sum_restored": 0,
                              "basis_header": 0, "period_header": 0, "generic_labels": 0,
                              "parts_degenerate": 0, "comparative_periods": 0, "instant_periods": 0,
-                             "basis_page": 0, "basis_prev_page": 0, "ar_statement_rows": 0, "no_store": 0}
+                             "basis_page": 0, "basis_prev_page": 0, "basis_deck_heading": 0,
+                             "ar_statement_rows": 0, "no_store": 0}
     pages = list(con.execute("SELECT DISTINCT doc_key, page FROM observation ORDER BY doc_key, page"))
     if only is not None:                      # T-233: a scoped recheck touches only the selected pages
         pages = [p for p in pages if only.page(doc_store.get(str(p[0])), str(p[0]), int(p[1]))]
@@ -6703,6 +6944,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
         except Exception:
             meta = None                 # a fixture store without a doc_type column is no annual report
         ar_page = bool(meta) and meta["doc_type"] == "annual_report"
+        deck_page = bool(meta) and meta["doc_type"] == "deck"
         raw_text = page_text_of(store_db, doc_key, int(page))
         page_footnote = page_footnote_bases(raw_text) if bool(meta) and meta["doc_type"] == "deck" else {}
         try:
@@ -6990,6 +7232,9 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     stats["ar_dropped"] = int(stats.get("ar_dropped", 0)) + 1
             stats["basis_prev_page"] += sum(1 for row in updated
                                             if row.get("basis_source") == "previous_page_heading")
+        elif deck_page:
+            apply_deck_row_gates(updated, raw_text)
+            stats["basis_deck_heading"] += sum(1 for row in updated if row.get("basis_source") == "page_heading")
         for row in updated:
             old_status = str(row["_old_status"])
             old_reason = str(row["_old_reason"])
