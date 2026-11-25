@@ -9,10 +9,10 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - 24-25 Nov T-242: empty window page = `no_rows`; `scripts/grade_pack.py` builds the 60-row pack; rubrics `docs/grading/`. Fix 2: named call, dates, label-first, guidance, holding route; audits 2/3/4: 33R8P3W4M / 32R12P4M / 45R3P (fix 3; quote first 14/16). Fix 3: call rank, 25/named call, label subset.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
-00000. 25 Nov 19:50 (Wolf): deck gates merged (bounds 81, combined labels 11, heading basis 242 of 66,526 verified); next: --recheck obs_decks_fy27 copy, swap, load_symbols.
-00000. 25 Nov 19:15 (Wolf): sonnet_settle stops on a usage reading >5 min old or 25 runs/window, bare 12-page runs; stays OFF until Shivam's OK + one smoke run.
+00000. 25 Nov 19:50 (Wolf): deck gates merged (81+11 unverified, 242 basis); next: --recheck obs_decks_fy27 copy, swap, load_symbols.
+00000. 25 Nov 19:15 (Wolf): sonnet_settle guarded (stale >5 min, 25 runs/window); OFF until Shivam's OK + one smoke run.
 00000. 25 Nov 19:30 (Eagle) events: r7b (fund_raise) and r8 (order_win) merged; fresh7 gate (40 never-seen stores, code cb741c24) FAILS: order_win 35/10/14/1, fund_raise 31/8/16/0 -> VERIFIED_KINDS stays empty (served unverified). Retrieval fix 1 merged 20:00 (tools serve verified obs_fact first; audit Qs 13->20/20) -> fresh-question audit after MCP restart. NEXT: hy4 model reading + script check (Shivam's call pending).
-00000. 25 Nov 17:25 (DeepSeek, worktree 20261125T112919Z) order_win r8: structural kind vetoes (authority/regulator/board/LOI/L1), joint scope, GDV/target/investment not the value, EUR value_text, bracket/OCR/consortium customers, twin fold. All 25 fresh6 W+J fixed (16 gone, 9 in place; #52 folded into #19 with USD 3.4 mn); 193 graded R on 5 sets, none worse; fresh6 278->257, fresh5 258->256, fresh4 198->197, fresh3 209->200 (4.3%, under the 10% stop); tests 138; `.tmp/r8_fresh{6,5,4,3}.db`. VERIFIED_KINDS empty. NEXT: merge, Eagle builds fresh7, non-author grades.
+00000. 25 Nov 17:25 (DeepSeek, worktree 20261125T112919Z) order_win r8: structural kind vetoes (authority/regulator/board/LOI/L1), joint scope, GDV/target/investment not the value, EUR value_text, customer and fold fixes; 25/25 fresh6 W+J fixed, 193 graded R none worse; tests 138. VERIFIED_KINDS empty. NEXT: merge, Eagle builds fresh7, non-author grades.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
 1. T-214/T-218 Telegram build: plan `tasks/handoff/T-214_TG_BUILD_PLAN.md`, queue `D:/RealityEngine/tg_build/build_queue.csv`, stores `tg_build/measure10/c01..c91`; repair notes `tasks/store_repair/INDEX.md`, grid `reports/store_repair_grid.xlsx`.
 2. T-213: r15 MERGED (`answer/answer_checker.py` C1-C5 + repair): run B 54/9/1 -> 57/7/0; next checks on Telegram stores, frozen halves.
@@ -20,3 +20,4 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 
 ## Recipes
 Store copy: checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE`. Merge: grader row first; merge_worker; drop root PROGRESS_NOTES.md; tests per file; docs; remove worktree; log in worker_reviews.jsonl. Store diff: `reality_engine.scripts.store_diff`.
+- 25 Nov AR re-grade gates merged (Hydrogen, T-242): 5(c) unnamed-sub 184 unverified, 535 reset to company, 0 R changed. Next: --recheck AR copy, non-author grade, then load.

@@ -3798,7 +3798,11 @@ AR_NARRATIVE_WORDS = frozenset(
 AR_CHANGE_WORD_RE = re.compile(
     r"\b(?:increase|increased|increasing|grow|grew|growth|rose|risen|rise|up|down|decrease|decreased|"
     r"decline|declined|fell|fall|higher|lower)\b", re.I)
-AR_HEADING_BASIS_RE = re.compile(r"\b(standalone|consolidated)\b[^.\n]{0,40}?\bfinancial statements?\b", re.I)
+AR_HEADING_BASIS_RE = re.compile(
+    r"(?:\bnotes?\s+annexed\s+to(?:\s+and\s+forming\s+part\s+of)?\s+(?:the\s+)?)?"
+    r"\b(standalone|consolidated)\b[^.\n]{0,40}?\bfinancial statements?\b",
+    re.I,
+)
 # T-242: a page that starts its own statement / note / section says nothing about the page before it
 AR_SECTION_TITLE_RE = re.compile(
     r"\bnotes?\s+forming\b|\bnotes?\s+(?:to|on)\b|\bnotes?\s+\d+\b|"
@@ -3835,7 +3839,8 @@ AR_DATE_MONTH_DAY_YEAR_RE = re.compile(
 AR_DATE_DMY_RE = re.compile(r"^(?P<d>\d{1,2})([./-])(?P<m>\d{1,2})\2(?P<y>(?:19|20)?\d{2})$")
 AR_DATE_ISO_RE = re.compile(r"^(?P<y>(?:19|20)\d{2})-(?P<m>\d{1,2})-(?P<d>\d{1,2})(?:[T ]\d{2}:\d{2}.*)?$")
 AR_HEADING_CONSOLIDATED_RE = re.compile(
-    r"^(?:notes?\s+(?:to(?:\s+(?:the\s+)?accounts?)?|forming\s+part\s+of|on)|accompanying\s+notes?\s+(?:to|forming)|"
+    r"^(?:notes?\s+(?:annexed\s+to(?:\s+and\s+(?:forming\s+part\s+of|attached\s+to))?|"
+    r"to(?:\s+(?:the\s+)?accounts?)?|forming\s+part\s+of|on)|accompanying\s+notes?\s+(?:to|forming)|"
     r"(?:notes?\s+(?:to\s+(?:the\s+)?accounts?\s+)?)?forming\s+part\s+of|"
     r"statement\s+of|"
     r"schedules?\s+to|annexures?\s+to|(?:independent\s+)?auditors?['\u2019]?\s+report\s+on|ind\s+as\s+)?\s*"
@@ -3856,17 +3861,24 @@ AR_PROSE_CONSOLIDATED_RE = re.compile(
 AR_CONS_GROUP_HEAD_RE = re.compile(r"\b(?:consolidated|the\s+group)\b", re.I)
 AR_SUBSIDIARY_NAME_RE = re.compile(
     r"\b(?:private\s+limited|pvt\.?\s+ltd|limited|ltd\.?|llp|inc\.?|corp\.?|corporation|"
-    r"gmbh|s\.?a\.?r\.?l\.?|s\.?a\.?|s\.?l\.?u\.?|s\.?r\.?l\.?|llc|sdn\.?\s*bhd|b\.?v\.?|pte\.?\s*ltd|"
-    r"co\.?\s*ltd|plc|ag|nv|pty\.?\s*ltd|fze|fzco|wll|k\.?k\.?|sp\.?\s*z\.?o\.?o\.?|"
-    r"foundation|partnership\s+firm|subsidiar(?:y|ies)|joint\s+venture|associate|step[\s-]+down)\b",
+    r"gmbh|s\.?a\.?r\.?l\.?|s\.?a\.?|s\.?l\.?u\.?|s\.?r\.?l\.?|llc|sdn\.?\s*bhd\.?|b\.?v\.?|pte\.?\s*ltd\.?|"
+    r"pte\.?|co\.?\s*ltd\.?|co\.|plc|ag|nv|pty\.?\s*ltd\.?|fze|fzco|wll|k\.?k\.?|"
+    r"spa|kft|ltda|sa)\b|"
+    r"\bsp\.?\s*z\.?\s*o\.?\s*o\.?\b|"
+    r"\b(?:foundation|partnership\s+firm|subsidiar(?:y|ies)|joint\s+venture|associate|step[\s-]+down)\b",
     re.I,
 )
-# T-242 Eagle review: do not reset subsidiary -> company on Schedule III Additional Information tables,
-# NCI / stake / associate / JV / 'held ...% in' lines, summarised entity tables, or proper company names.
+# T-242 Eagle/Wolf review: do not reset subsidiary -> company on Schedule III Additional Information tables,
+# NCI / stake / associate / JV / 'held ...% in' lines, AOC-1 / related-party / RSU trust tables, or proper names.
 AR_SUBSIDIARY_TABLE_RE = re.compile(
     r"\badditional\s+information\b|\bshare\s+in\s+(?:net\s+assets|consolidated\s+(?:profit|loss|oci|total))|"
     r"\bnet\s+assets,?\s+i\.e\.|\bsummarised\s+(?:balance\s*sheet|statement\s+of\s+profit|financial)|"
-    r"\bfair\s+value\s+of\s+assets\s+and\s+liabilities\s+acquired\b",
+    r"\bfair\s+value\s+of\s+assets\s+and\s+liabilities\s+acquired\b|"
+    r"\brelated[\s-]+part(?:y|ies)\b|\bind[\s-]*as[\s-]*24\b|\baoc[\s-]*1\b|\bform\s+aoc\b|"
+    r"\bpart\s*[\"\u201c\u201d']?[ab][\"\u201c\u201d']?\s*:?\s*(?:subsidiar|associates?\s+and\s+joint\s+ventures?)|"
+    r"\bassociates?\s+and\s+joint\s+ventures?\b|\btransactions?\s+with\s+subsidiar|\bgroup[\s-]+structure\b|"
+    r"\b(?:joint\s+venture|jv)\b|\brsu\s+trust\b|\bstatement\s+containing\s+salient\s+features\b|"
+    r"\bname\s+of\s+(?:the\s+)?subsidiar",
     re.I,
 )
 AR_SUBSIDIARY_LABEL_CUE_RE = re.compile(
@@ -4213,12 +4225,16 @@ def _ar_has_consolidated_heading(row: dict[str, Any], page_text: str) -> bool:
 
 
 def _ar_keep_subsidiary_scope(row: dict[str, Any], page_text: str, company: str) -> bool:
-    """True when ``entity_scope='subsidiary'`` under a Consolidated head should stay ``subsidiary``."""
+    """True when ``entity_scope='subsidiary'`` should stay ``subsidiary`` (entity named or sub/RPT/AOC table)."""
     label = norm_space(row.get("printed_label"))
     series = norm_space(row.get("series_title"))
     group = norm_space(row.get("group_path"))
     axis = norm_space(row.get("printed_axis"))
-    if AR_SUBSIDIARY_TABLE_RE.search(" ".join([series, group, axis, label, norm_space(page_text)[:600]])):
+    customer = norm_space(row.get("customer"))
+    measure = norm_space(row.get("measure"))
+    if AR_SUBSIDIARY_TABLE_RE.search(" ".join([series, group, axis, label, norm_space(page_text)[:700]])):
+        return True
+    if "related_party" in measure.lower():
         return True
     if AR_SUBSIDIARY_LABEL_CUE_RE.search(" ".join([label, series, group])):
         return True
@@ -4227,10 +4243,288 @@ def _ar_keep_subsidiary_scope(row: dict[str, Any], page_text: str, company: str)
     for m in AR_PROPER_ENTITY_ACRONYM_RE.finditer(label):
         if m.group(1) not in AR_ACRONYM_PLAIN:
             return True
-    for val in (series, group):
+    for val in (series, group, customer):
         if val and AR_SUBSIDIARY_NAME_RE.search(val) and not (company and _is_own_entity(val, company)):
             return True
     return False
+
+
+# T-242 AR ckpt_0002 re-grade: subset-as-total, flow-vs-stock, current-vs-non-current, unnamed-subsidiary gates
+AR_HEADLINE_HEAD_NOUNS: dict[str, tuple[str, ...]] = {
+    "revenue_from_operations": ("revenue", "revenues", "sales", "turnover", "income"),
+    "trade_payables": ("payable", "payables", "creditor", "creditors"),
+    "trade_receivables": ("receivable", "receivables", "debtor", "debtors"),
+    "preference_share_capital": ("capital",),
+    "equity_share_capital": ("capital",),
+}
+_AR_TOTAL_STOP_WORDS = frozenset({
+    "of", "and", "or", "the", "for", "in", "on", "to", "by", "from", "at", "under", "with",
+    "including", "excluding", "net", "gross", "other", "all", "volume", "amount", "number", "count", "value",
+})
+AR_NON_TOTAL_SUFFIX_RE = re.compile(
+    r"(?:_growth|_margin|_ratio|_pct|_days|_turnover|_change)(?:$|_)|_share$|_per_|^changes_in_", re.I
+)
+AR_TOTAL_WORD_RE = re.compile(r"^(?:grand\s+)?total\b", re.I)
+AR_SUBSET_MSME_RE = re.compile(
+    r"\b(?:micro\s*(?:,|&|and)\s*small\s+enterprises?|micro\s+enterprises?|small\s+enterprises?|msme)\b", re.I
+)
+AR_OTHER_THAN_MSME_RE = re.compile(r"\bother\s+than\s+(?:micro|msme)", re.I)
+AR_SUBSET_QUAL_RE = re.compile(r"\bof\s+which\b|\bothers\b", re.I)
+AR_SUBSET_CLASS_RE = re.compile(
+    r"\b(?:class|series)\b|\bof\s+(?:rs\.?|inr|₹|`|re\.?)\s*\d+(?:\.\d+)?\s*/?-?\s*each\b", re.I
+)
+
+AR_BALANCE_MEASURES = frozenset({
+    "investments", "non_current_investments", "current_investments", "borrowings",
+    "short_term_borrowings", "long_term_borrowings", "loans", "long_term_loans_and_advances",
+    "short_term_loans_and_advances", "property_plant_equipment", "capital_work_in_progress",
+    "gross_block", "net_block", "accumulated_depreciation", "intangible_assets",
+    "intangible_assets_under_development", "trade_receivables", "trade_payables", "inventories",
+    "cash_and_cash_equivalents", "total_assets", "total_liabilities", "total_equity", "net_worth",
+    "reserves_and_surplus", "equity_share_capital", "preference_share_capital", "provisions",
+    "long_term_provisions", "deposits", "lease_liabilities", "deferred_tax_assets_net",
+    "deferred_tax_liabilities_net", "other_assets", "other_non_current_financial_assets",
+    "other_non_current_liabilities", "other_liabilities_and_provisions", "other_financial_liabilities",
+    "financial_asset", "investment_in_property", "employee_stock_option_outstanding",
+    "tangible_net_worth", "capital_employed", "aum.value", "order.book",
+})
+AR_FLOW_MEASURE_SKIP_RE = re.compile(
+    r"(?:^|_)(?:additions?|made|purchased|sold|redeemed|repaid|repayments?|receipts?|"
+    r"disposed|disposals?|deletions?|capitalis\w*|capitaliz\w*|reductions?|written_off|write_off|"
+    r"adjustments?|deductions?|change|changes|movement|inflow|outflow|capex|turnover|ratio|growth|margin|"
+    r"pct|share|count)(?:$|_)", re.I
+)
+AR_BALANCE_NOUN_RE = re.compile(
+    r"(?:^|_)(?:investments?|borrowings?|loans?|property_plant_equipment|ppe|cwip|capital_work_in_progress|"
+    r"gross_block|net_block|intangibles?|receivables?|payables?|inventor(?:y|ies)|assets?|liabilit(?:y|ies)|"
+    r"debt|reserves?|equity|capital|provisions?|deposits?|balance)(?:$|_)", re.I
+)
+AR_FLOW_PHRASE_RE = re.compile(
+    r"\b(?:made\s+during\s+(?:the\s+|current\s+|previous\s+|financial\s+)?year|"
+    r"additions(?:\s+during\s+(?:the\s+|current\s+|previous\s+|financial\s+)?year)?|"
+    r"purchased\s+during|sold\s+during|redeemed\s+during)\b", re.I
+)
+AR_BALANCE_LABEL_RE = re.compile(
+    r"\b(?:closing|opening|as\s+(?:at|on)\b|balance\s+(?:as\s+at|at\s+the)|"
+    r"outstanding\s+(?:as\s+at|balance)|at\s+the\s+end\s+of\s+(?:the\s+)?year|"
+    r"carrying\s+(?:amount|value)|net\s+block|gross\s+block)\b", re.I
+)
+
+AR_CUR_IGNORE_RE = re.compile(r"current_(?:ratio|account|tax|service|year|period|capital)", re.I)
+AR_MSUF_NON_CUR_RE = re.compile(r"_(?:non_?current|long_?term)(?:_net|_gross|_total)?$", re.I)
+AR_MSUF_CUR_RE = re.compile(r"_(?:current|short_?term)(?:_net|_gross|_total)?$", re.I)
+AR_M_NON_CUR_RE = re.compile(r"(?:^|[_.:])(?:non_?current|long_?term)(?:$|[_.:])", re.I)
+AR_M_CUR_RE = re.compile(r"(?:^|[_.:])(?:current|short_?term)(?:$|[_.:])", re.I)
+AR_T_NON_CUR_RE = re.compile(r"\b(?:non[\s-]*current|long[\s-]*term)\b", re.I)
+AR_T_CUR_RE = re.compile(r"(?<!non[\s-])(?<!non)\b(?:current|short[\s-]*term)\b", re.I)
+AR_T_CUR_NOISE_RE = re.compile(
+    r"\bcurrent\s+(?:maturities\s+of\s+long[\s-]*term|ratio|account|tax|service|year|period|capital)\b", re.I
+)
+
+AR_SUB_COMPANY_SECTION_RE = re.compile(
+    r"\b(?:shareholding\s+(?:pattern|of\s+promoters)|distribution\s+of\s+shareholding|demateriali[sz]ation|"
+    r"corporate\s+governance|annual\s+general\s+meeting|\bagm\b|"
+    r"directors['\u2019]?\s*report|board['\u2019]?s?\s*report|\bboard\s+report\b|"
+    r"management\s+discussion|md\s*&\s*a|business\s+responsibility|\bbrsr\b|sustainability)\b",
+    re.I,
+)
+AR_STANDALONE_HEAD_RE = re.compile(r"\bstandalone\b", re.I)
+AR_DOC_CONS_SECTION_RE = re.compile(
+    r"\bconsolidated\s+(?:financial\s+statements?|balance\s+sheet|statement\s+of\s+profit)\b", re.I
+)
+_AR_DOC_HAS_CONS_CACHE: dict[tuple[str, str], bool] = {}
+
+
+def _ar_doc_has_consolidated(store_db: str | Path, doc_key: str) -> bool:
+    """True when the annual report has a separate consolidated financial statements section."""
+    key = (str(store_db), str(doc_key))
+    cached = _AR_DOC_HAS_CONS_CACHE.get(key)
+    if cached is not None:
+        return cached
+    has_cons = False
+    try:
+        con = connect_ro(store_db, timeout_s=60)
+        try:
+            cur = con.execute("SELECT text FROM doc_page WHERE doc_key=?", (str(doc_key),))
+            if cur is not None:
+                for row in cur:
+                    if row and AR_DOC_CONS_SECTION_RE.search(str(row[0] or "")[:400]):
+                        has_cons = True
+                        break
+        finally:
+            con.close()
+    except Exception:
+        has_cons = False
+    _AR_DOC_HAS_CONS_CACHE[key] = has_cons
+    return has_cons
+
+
+def _ar_headline_head_nouns(measure: str) -> tuple[str, ...] | None:
+    bare = measure[len(NEW_PREFIX):] if measure.startswith(NEW_PREFIX) else measure
+    bl = bare.lower()
+    if AR_NON_TOTAL_SUFFIX_RE.search(bl):
+        return None
+    if bl in AR_HEADLINE_HEAD_NOUNS:
+        return AR_HEADLINE_HEAD_NOUNS[bl]
+    if bl == "borrowings" or bl.startswith("borrowings_") or bl.startswith("borrowings."):
+        return ("borrowing", "borrowings", "debt", "debts", "loan", "loans")
+    if bl.startswith("total_"):
+        toks = [t for t in bl[6:].split("_") if t and t not in _AR_TOTAL_STOP_WORDS]
+        return tuple(toks) if toks else None
+    return None
+
+
+def _ar_subset_as_total_reason(row: dict[str, Any]) -> str:
+    measure = norm_space(row.get("measure"))
+    nouns = _ar_headline_head_nouns(measure)
+    if not nouns:
+        return ""
+    lbl = norm_space(row.get("printed_label"))
+    ser = norm_space(row.get("series_title"))
+    grp = norm_space(row.get("group_path"))
+    seg = norm_space(row.get("segment"))
+    prod = norm_space(row.get("product"))
+    bl = (measure[len(NEW_PREFIX):] if measure.startswith(NEW_PREFIX) else measure).lower()
+    m_words = set(re.split(r"[^a-z0-9]+", bl))
+    if (AR_SUBSET_MSME_RE.search(lbl) or AR_SUBSET_MSME_RE.search(seg)) and not AR_OTHER_THAN_MSME_RE.search(lbl):
+        return f"ar_subset_as_total: MSME subset {lbl!r} under {measure}"
+    if AR_SUBSET_QUAL_RE.search(lbl) or AR_SUBSET_QUAL_RE.search(seg):
+        return f"ar_subset_as_total: restricting qualifier {lbl!r} under {measure}"
+    if seg and seg.lower() not in ("total", "all", "consolidated", "standalone") and "segment" not in m_words:
+        seg_words = {w for w in re.split(r"[^a-z0-9]+", seg.lower()) if w}
+        if not (seg_words and seg_words <= m_words):
+            return f"ar_subset_as_total: segment {seg!r} under {measure}"
+    if prod and prod.lower() not in ("total", "all"):
+        prod_words = {w for w in re.split(r"[^a-z0-9]+", prod.lower()) if w}
+        if not (prod_words and prod_words <= m_words):
+            return f"ar_subset_as_total: product {prod!r} under {measure}"
+    if AR_SUBSET_CLASS_RE.search(lbl) and not ({"class", "series"} & m_words):
+        return f"ar_subset_as_total: class/series {lbl!r} under {measure}"
+    if lbl:
+        if AR_TOTAL_WORD_RE.match(lbl) and not re.search(r"\bsub[\s-]*total\b", lbl, re.I):
+            ctx = f"{lbl} {ser} {grp}".lower()
+            if any(re.search(rf"\b{re.escape(n)}\b", ctx) for n in nouns):
+                return ""
+        if any(re.search(rf"\b{re.escape(n)}\b", lbl, re.I) for n in nouns):
+            return ""
+        if (row.get("is_total") or row.get("_is_total")) and re.search(
+                r"\b(?:end\s+of\s+(?:the\s+)?year|closing\s+balance)\b", lbl, re.I):
+            ctx = f"{ser} {grp}".lower()
+            if any(re.search(rf"\b{re.escape(n)}\b", ctx) for n in nouns):
+                return ""
+        return f"ar_subset_as_total: {lbl!r} lacks head noun for {measure}"
+    return ""
+
+
+def _ar_is_balance_measure(measure: str) -> bool:
+    bare = measure[len(NEW_PREFIX):] if measure.startswith(NEW_PREFIX) else measure
+    bl = bare.lower()
+    if bl.startswith("count.") or AR_FLOW_MEASURE_SKIP_RE.search(bl):
+        return False
+    if _MEASURE_FAMILY.get(measure, "") in ("percent", "ratio", "count", "time", "bps"):
+        return False
+    if bl in AR_BALANCE_MEASURES:
+        return True
+    return bool(AR_BALANCE_NOUN_RE.search(bl)) and measure.startswith(NEW_PREFIX)
+
+
+def _ar_flow_section_above(label: str, page_text: str) -> str:
+    if not label or not page_text:
+        return ""
+    idx = page_text.lower().find(label.lower())
+    if idx < 0:
+        return ""
+    before = page_text[max(0, idx - 600):idx]
+    lines = [ln.strip() for ln in before.splitlines() if ln.strip()]
+    kept: list[str] = []
+    for ln in reversed(lines[-15:]):
+        if AR_BALANCE_LABEL_RE.search(ln):
+            break
+        if re.search(r"[\d,.)]\s*$", ln) and not re.search(r"year\s*:?\s*$", ln, re.I):
+            continue
+        kept.append(ln)
+        if re.match(r"^\d+(?:\.\d+)?\s+[A-Z]", ln):
+            break
+    return "\n".join(reversed(kept))
+
+
+def _ar_flow_as_stock_reason(row: dict[str, Any], page_text: str) -> str:
+    measure = norm_space(row.get("measure"))
+    if not _ar_is_balance_measure(measure):
+        return ""
+    lbl = norm_space(row.get("printed_label"))
+    ser = norm_space(row.get("series_title"))
+    grp = norm_space(row.get("group_path"))
+    ax = norm_space(row.get("printed_axis"))
+    if AR_BALANCE_LABEL_RE.search(lbl) and not AR_FLOW_PHRASE_RE.search(grp):
+        return ""
+    direct = " | ".join(p for p in (lbl, ser, grp, ax) if p)
+    if AR_FLOW_PHRASE_RE.search(direct):
+        return f"ar_flow_as_stock: flow text in {direct!r} under balance {measure}"
+    above = _ar_flow_section_above(lbl, page_text)
+    if above and AR_FLOW_PHRASE_RE.search(above):
+        return f"ar_flow_as_stock: section above {above!r} is flow under balance {measure}"
+    return ""
+
+
+def _ar_measure_polarity(measure: str) -> str:
+    if AR_CUR_IGNORE_RE.search(measure):
+        return ""
+    if AR_MSUF_NON_CUR_RE.search(measure):
+        return "non_current"
+    if re.search(r"(?:^|:)current_maturities", measure, re.I) or AR_MSUF_CUR_RE.search(measure):
+        return "current"
+    if AR_M_NON_CUR_RE.search(measure):
+        return "non_current"
+    if AR_M_CUR_RE.search(measure):
+        return "current"
+    return ""
+
+
+def _ar_text_polarity(text: str) -> str:
+    cleaned = AR_T_CUR_NOISE_RE.sub("", text)
+    nc = bool(AR_T_NON_CUR_RE.search(cleaned))
+    c = bool(AR_T_CUR_RE.search(cleaned))
+    if nc and not c:
+        return "non_current"
+    if c and not nc:
+        return "current"
+    return ""
+
+
+def _ar_current_mismatch_reason(row: dict[str, Any]) -> str:
+    measure = norm_space(row.get("measure"))
+    m_pol = _ar_measure_polarity(measure)
+    if not m_pol:
+        return ""
+    lbl = norm_space(row.get("printed_label"))
+    if re.search(r"(?:^|:)current_maturities", measure, re.I) and re.search(r"\bcurrent\s+maturities\b", lbl, re.I):
+        return ""
+    for key in ("printed_label", "printed_axis", "group_path"):
+        pol = _ar_text_polarity(norm_space(row.get(key)))
+        if pol:
+            return f"ar_current_mismatch: {key} is {pol} under {measure}" if pol != m_pol else ""
+    ser_pol = _ar_text_polarity(norm_space(row.get("series_title")))
+    if ser_pol and ser_pol != m_pol:
+        return f"ar_current_mismatch: series_title is {ser_pol} under {measure}"
+    return ""
+
+
+def _ar_is_company_section_scope(row: dict[str, Any], page_text: str, previous_text: str,
+                                 has_consolidated: bool) -> bool:
+    pt = norm_space(page_text)
+    prev = norm_space(previous_text)
+    page_head = f"{pt[:350]} {pt[-200:]} {prev[:300]}"
+    sec_ctx = f"{page_head} {norm_space(row.get('series_title'))} {norm_space(row.get('group_path'))}"
+    if AR_SUB_COMPANY_SECTION_RE.search(sec_ctx):
+        return True
+    if AR_STANDALONE_HEAD_RE.search(page_head):
+        return True
+    return bool(
+        has_consolidated
+        and not AR_CONS_GROUP_HEAD_RE.search(pt[:350])
+        and str(row.get("basis") or "") != "consolidated"
+    )
 
 
 def ar_scale_note(page_text: str) -> tuple[str, str, float] | None:
@@ -4274,7 +4568,8 @@ def heading_basis(page_text: str, pattern: re.Pattern[str] = AR_HEADING_BASIS_RE
 
 
 def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company: str = "",
-                       previous_text: str = "", report_fy: str = "") -> None:
+                       previous_text: str = "", report_fy: str = "",
+                       has_consolidated: bool = False) -> None:
     """T-242: the annual-report number errors a script can catch from the row and its page.
 
     A fresh strict grade after the AR statement gate was 49 right / 4 partial / 7 wrong: a >3-year ageing bucket
@@ -4339,16 +4634,24 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             continue
         kept.append(row)
         stated_basis = str(row.get("basis") or "")
-        if basis and stated_basis != basis and (basis_source == "page_heading" or not stated_basis):
+        if basis and (stated_basis != basis or (basis_source == "page_heading" and not row.get("basis_source"))) \
+                and (basis_source == "page_heading" or not stated_basis):
             row["basis"] = basis            # a carried basis never replaces a stated one
             row["basis_source"] = basis_source
         if row.get("basis") == "consolidated" and has_prose_consolidated \
                 and not _ar_has_consolidated_heading(row, page_text):
             row["basis"] = ""
             row["basis_source"] = ""
-        if str(row.get("entity_scope") or "") == "subsidiary" and cons_group_head \
+        unnamed_subsidiary = False
+        if str(row.get("entity_scope") or "") == "subsidiary" \
                 and not _ar_keep_subsidiary_scope(row, page_text, company):
-            row["entity_scope"] = "company"
+            if cons_group_head:
+                row["entity_scope"] = "company"
+            elif _ar_is_company_section_scope(row, page_text, previous_text, has_consolidated):
+                row["entity_scope"] = "company"
+                row["scope_source"] = "no_subsidiary_named"
+            else:
+                unnamed_subsidiary = True
         period_reason = _ar_period_reason(row, page_text, previous_text, fy_spec)
         unit = norm_space(row.get("unit"))
         cues = " ".join(norm_space(row.get(key)) for key in
@@ -4415,6 +4718,14 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
                 and normalize_name(str(row.get("segment") or "")) == normalize_name(other_entity)):
             row["entity_scope"], row["segment"] = "subsidiary", other_entity
             reason = f"ar_other_entity: {other_entity!r} statements, not {company}"
+        if not reason:
+            reason = _ar_subset_as_total_reason(row)
+        if not reason:
+            reason = _ar_flow_as_stock_reason(row, page_text)
+        if not reason:
+            reason = _ar_current_mismatch_reason(row)
+        if not reason and unnamed_subsidiary:
+            reason = f"ar_subsidiary_unnamed: no subsidiary named in {label!r} / {norm_space(row.get('series_title'))!r}"
         if reason:
             row["status"] = "unverified"
             row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", reason) if p)
@@ -4742,7 +5053,7 @@ def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> Non
 
 def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2: bool = True,
                        page_text: str = "", company: str = "", previous_text: str = "",
-                       report_fy: str = "") -> None:
+                       report_fy: str = "", has_consolidated: bool = False) -> None:
     """T-242: the number gates that depend on the document type (a call number, an AR statement line, an AR row, a deck row).
 
     ``previous_text`` is the page before this one, for the AR row gates' carried basis.
@@ -4751,7 +5062,8 @@ def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2:
         apply_transcript_number_gate(rows)       # Shivam 24 Nov: call numbers need a filing to verify
     elif doc_type == "annual_report":
         apply_ar_statement_gate(rows)
-        apply_ar_row_gates(rows, page_text, company, previous_text, report_fy=report_fy)
+        apply_ar_row_gates(rows, page_text, company, previous_text, report_fy=report_fy,
+                           has_consolidated=has_consolidated)
     elif doc_type == "deck":
         apply_deck_row_gates(rows, page_text)
 
@@ -6027,7 +6339,8 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
             apply_number_gates(rows, doc_type, page_text=check_text,       # T-242: AR statement line + row gates
                                company=(company_names.get(str(meta["symbol"])) or [""])[0],
                                previous_text=prev_txt,
-                               report_fy=ar_report_fy(store_db, doc_key, check_text, prev_txt))
+                               report_fy=ar_report_fy(store_db, doc_key, check_text, prev_txt),
+                               has_consolidated=_ar_doc_has_consolidated(store_db, doc_key))
             stats["ar_pages"] += 1
         else:
             ctx_key = (store_db, str(doc_key))
@@ -6530,7 +6843,9 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
     apply_number_gates(result["rows"], str(meta.get("doc_type") or ""), page_text=check_text,
                        company=own_name, previous_text=prev_txt,
                        report_fy=ar_report_fy(store_db, doc_key, check_text, prev_txt)
-                       if meta.get("doc_type") == "annual_report" else "")
+                       if meta.get("doc_type") == "annual_report" else "",
+                       has_consolidated=_ar_doc_has_consolidated(store_db, doc_key)
+                       if meta.get("doc_type") == "annual_report" else False)
     if transcript and any(str(r.get("record_type") or "") == "statement" for r in result["rows"]):
         # T-242: the same statement-speaker carry/resolve as --reparse, from the doc's stored pages
         try:
@@ -7225,7 +7540,8 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             apply_ar_row_gates(updated, raw_text,   # T-242: unit / qualifier / narrative / basis row gates
                                company_names.get(store_symbol.get(store_db, ""), ""),
                                prev_txt,
-                               report_fy=ar_report_fy(store_db, doc_key, raw_text, prev_txt))
+                               report_fy=ar_report_fy(store_db, doc_key, raw_text, prev_txt),
+                               has_consolidated=_ar_doc_has_consolidated(store_db, doc_key))
             for row in before_ar:
                 if all(row is not kept_row for kept_row in updated):
                     con.execute("DELETE FROM observation WHERE observation_id=?", (int(row["observation_id"]),))
