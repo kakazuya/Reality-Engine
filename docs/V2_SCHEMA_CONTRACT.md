@@ -1926,7 +1926,9 @@ Writer: `reality_engine/v2/observations.py` (DDL is its `SCHEMA` constant; tests
   when the page's title line names it, `column_header` when the printed header over the value does, `label_instant`
   for an "as at <date>" label, else empty), `basis` (`standalone` / `consolidated` / empty), `basis_source`
   (`deck` when every basis word the deck prints names that one basis, `page_heading` when a printed AR page heading
-  names it, `page_footnote` when a deck footnote pairs the row's period with its basis, else empty),
+  names it, `previous_page_heading` when an AR continuation page with no basis word of its own and no new
+  statement/note/section title takes the one basis the page before it heads, `page_footnote` when a deck footnote
+  pairs the row's period with its basis, else empty),
   `series_kind` (`level` / `bridge`),
   `segment`, `product`,
   `geography`, `plant`,

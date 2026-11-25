@@ -3798,6 +3798,12 @@ AR_CHANGE_WORD_RE = re.compile(
     r"\b(?:increase|increased|increasing|grow|grew|growth|rose|risen|rise|up|down|decrease|decreased|"
     r"decline|declined|fell|fall|higher|lower)\b", re.I)
 AR_HEADING_BASIS_RE = re.compile(r"\b(standalone|consolidated)\b[^.\n]{0,40}?\bfinancial statements?\b", re.I)
+# T-242: a page that starts its own statement / note / section says nothing about the page before it
+AR_SECTION_TITLE_RE = re.compile(
+    r"\bnotes?\s+forming\b|\bnotes?\s+(?:to|on)\b|\bnotes?\s+\d+\b|"
+    r"\bstatement\s+of\s+(?:profit|loss|cash|changes|financial|comprehensive)|"
+    r"\bbalance\s+sheet\b|\bcash\s+flow\b|\bindependent\s+auditor", re.I)
+AR_BASIS_WORD_RE = re.compile(r"\b(?:standalone|consolidated)\b", re.I)
 AR_NET_CASH_LABEL_RE = re.compile(
     r"\bnet\s+cash\b(?!\s*(?:flow|generated|provided|from|used|in\b|out\b))", re.I)
 AR_OTHER_ENTITY_HEAD_RE = re.compile(
@@ -3842,7 +3848,8 @@ def ar_measure_family(row: dict[str, Any]) -> str:
     return AR_NEW_NODE_FAMILY.get(node, "")
 
 
-def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company: str = "") -> None:
+def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company: str = "",
+                       previous_text: str = "") -> None:
     """T-242: the annual-report number errors a script can catch from the row and its page.
 
     A fresh strict grade after the AR statement gate was 49 right / 4 partial / 7 wrong: a >3-year ageing bucket
@@ -3856,7 +3863,10 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
     2. qualifier label: an ageing/overdue bucket or a party-with-transaction label under a headline measure is a
        slice, not the measure (a party-only label stays: it is the row's dimension);
     3. narrative growth: a percent row whose whole label is change words ("an increase of") names no measure;
-    4. basis: the page heading's standalone/consolidated statement overrides a disagreeing basis;
+    4. basis: the page heading's standalone/consolidated statement overrides a disagreeing basis.  A page that
+       prints no basis word and starts no statement / note / section of its own carries the one basis its
+       previous page's heading names (`previous_text`, `basis_source='previous_page_heading'`); a stated basis is
+       never replaced by a carried one;
     5. net cash sign: a verified row whose printed label or series title says "net cash" (a "Net cash / EBITDA"
        chart) under a ``net_debt*`` measure prints the opposite of net debt -> ``ar_net_cash_sign``;
     6. other reporting entity: a page whose head (or running header) names another company followed by
@@ -3874,6 +3884,16 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
     # directors' report must not flip a row; a running head or a note title sits in the first 300 characters
     heading = {match.group(1).lower() for match in AR_HEADING_BASIS_RE.finditer(text[:300])}
     basis = next(iter(heading)) if len(heading) == 1 else ""
+    basis_source = "page_heading"
+    # T-242: a note's continuation page prints its rows and often no basis at all; the statement heading on the
+    # page before is then the only printed basis those rows have.  Carried only when this page prints no basis
+    # word anywhere and starts no statement/note/section of its own, and the page before heads exactly one basis.
+    if not basis and previous_text:
+        previous_heading = {match.group(1).lower() for match in
+                            AR_HEADING_BASIS_RE.finditer(norm_space(previous_text)[:300])}
+        if len(previous_heading) == 1 and not AR_SECTION_TITLE_RE.search(text[:300]) \
+                and not AR_BASIS_WORD_RE.search(text):
+            basis, basis_source = previous_heading.pop(), "previous_page_heading"
     # a bound subsidiary section names its entity in the page head, or (its field pages) only in the printed
     # running header/footer; either one is another reporting entity, never the store company
     other_entity = ""
@@ -3886,9 +3906,10 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
     for row in rows:
         if norm_space(row.get("record_type") or "number") != "number":
             continue
-        if basis and str(row.get("basis") or "") != basis:
-            row["basis"] = basis
-            row["basis_source"] = "page_heading"
+        stated_basis = str(row.get("basis") or "")
+        if basis and stated_basis != basis and (basis_source == "page_heading" or not stated_basis):
+            row["basis"] = basis            # a carried basis never replaces a stated one
+            row["basis_source"] = basis_source
         unit = norm_space(row.get("unit"))
         cues = " ".join(norm_space(row.get(key)) for key in
                         ("measure", "printed_label", "printed_axis", "series_title"))
@@ -4013,13 +4034,16 @@ def _narrative_change_label(label: str) -> bool:
 
 
 def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2: bool = True,
-                       page_text: str = "", company: str = "") -> None:
-    """T-242: the number gates that depend on the document type (a call number, an AR statement line, an AR row)."""
+                       page_text: str = "", company: str = "", previous_text: str = "") -> None:
+    """T-242: the number gates that depend on the document type (a call number, an AR statement line, an AR row).
+
+    ``previous_text`` is the page before this one, for the AR row gates' carried basis.
+    """
     if doc_type == "transcript" and transcript_v2:
         apply_transcript_number_gate(rows)       # Shivam 24 Nov: call numbers need a filing to verify
     elif doc_type == "annual_report":
         apply_ar_statement_gate(rows)
-        apply_ar_row_gates(rows, page_text, company)
+        apply_ar_row_gates(rows, page_text, company, previous_text)
 
 
 def apply_parts_sum(rows: list[dict[str, Any]], stats: dict[str, Any] | None = None) -> None:
@@ -5290,7 +5314,8 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
                                       deck_basis=deck_basis(str(store_db), str(doc_key)),
                                       ocr_text=str(ocr_row[0] or "") if ocr_row else "", ocr_page=ocr_page)
             apply_number_gates(rows, doc_type, page_text=check_text,       # T-242: AR statement line + row gates
-                               company=(company_names.get(str(meta["symbol"])) or [""])[0])
+                               company=(company_names.get(str(meta["symbol"])) or [""])[0],
+                               previous_text=page_text_of(store_db, doc_key, int(page) - 1))
             stats["ar_pages"] += 1
         else:
             ctx_key = (store_db, str(doc_key))
@@ -5790,7 +5815,7 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
     if not own_name and meta.get("doc_type") == "annual_report":
         own_name = _store_company_name(store_db, meta["symbol"])
     apply_number_gates(result["rows"], str(meta.get("doc_type") or ""), page_text=check_text,
-                       company=own_name)
+                       company=own_name, previous_text=page_text_of(store_db, doc_key, page - 1))
     if transcript and any(str(r.get("record_type") or "") == "statement" for r in result["rows"]):
         # T-242: the same statement-speaker carry/resolve as --reparse, from the doc's stored pages
         try:
@@ -6186,7 +6211,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                              "unit_family_fixed": 0, "is_total_rows": 0, "parts_sum_restored": 0,
                              "basis_header": 0, "period_header": 0, "generic_labels": 0,
                              "parts_degenerate": 0, "comparative_periods": 0, "instant_periods": 0,
-                             "basis_page": 0, "ar_statement_rows": 0, "no_store": 0}
+                             "basis_page": 0, "basis_prev_page": 0, "ar_statement_rows": 0, "no_store": 0}
     pages = list(con.execute("SELECT DISTINCT doc_key, page FROM observation ORDER BY doc_key, page"))
     if only is not None:                      # T-233: a scoped recheck touches only the selected pages
         pages = [p for p in pages if only.page(doc_store.get(str(p[0])), str(p[0]), int(p[1]))]
@@ -6479,7 +6504,10 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             apply_ar_statement_gate(updated)
             stats["ar_statement_rows"] += before_gate - sum(1 for row in updated if row["status"] == "verified")
             apply_ar_row_gates(updated, raw_text,   # T-242: unit / qualifier / narrative / basis row gates
-                               company_names.get(store_symbol.get(store_db, ""), ""))
+                               company_names.get(store_symbol.get(store_db, ""), ""),
+                               page_text_of(store_db, doc_key, int(page) - 1))     # T-242: carried basis
+            stats["basis_prev_page"] += sum(1 for row in updated
+                                            if row.get("basis_source") == "previous_page_heading")
         for row in updated:
             old_status = str(row["_old_status"])
             old_reason = str(row["_old_reason"])
