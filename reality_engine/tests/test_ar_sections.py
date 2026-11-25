@@ -535,8 +535,8 @@ def test_ar_row_gate_never_replaces_a_stated_basis_with_the_previous_pages():
     assert (row["basis"], row.get("basis_source", "")) == ("standalone", "")
 
 
-def test_ar_ckpt2_period_printed_and_no_year():
-    """T-242 AR ckpt_0002: unprinted years (#46 AFSL, #49 63MOONS) and no-year periods (#34 AIAENG) go unverified."""
+def test_ar_ckpt2_period_printed_and_relative_fy_resolved():
+    """T-242 AR ckpt_0002: unprinted years (#46 AFSL, #49 63MOONS) go unverified; relative periods resolve to AR FY."""
     afsl = _gate_row(measure="count.shares", printed_label="Nirbhay Vassa", value_text="166,667",
                      unit="No. of shares", period="December 2019")
     moons = _gate_row(measure="shareholding_pct", printed_label="IEPF", value_text="0.23", unit="%",
@@ -544,19 +544,34 @@ def test_ar_ckpt2_period_printed_and_no_year():
     aiaeng = _gate_row(measure="NEW:total_differently_abled_employees_female",
                        printed_label="Total differently abled employees (D + E)", value_text="0",
                        period="end of Financial Year")
+    during = _gate_row(measure="NEW:csr_amount_required", printed_label="CSR required", value_text="17.94",
+                       period="during the year")
+    beg = _gate_row(measure="shareholding_pct", printed_label="Promoter", value_text="50.0", unit="%",
+                    period="beginning of the year")
     py_row = _gate_row(measure="count.shares", printed_label="Shares", value_text="100", period="P.Y.")
-    cy_row = _gate_row(measure="count.shares", printed_label="Shares", value_text="100", period="C.Y.")
+    non_cal = _gate_row(measure="capex", printed_label="Phase I capex", value_text="500", period="Phase I")
     kept = _gate_row(measure="shareholding_pct", printed_label="IEPF", value_text="0.23", unit="%",
                      period="As at 31 March 2026")
     qtr_fy = _gate_row(measure="NEW:orders", printed_label="Orders", value_text="410", period="Q4FY26")
-    obs.apply_ar_row_gates([afsl, moons, aiaeng, py_row, cy_row, kept, qtr_fy],
-                           "Shareholding Pattern As at 31 March 2026 Q4FY26", "")
+    obs.apply_ar_row_gates([afsl, moons, aiaeng, during, beg, py_row, non_cal, kept, qtr_fy],
+                           "Annual Report 2025-26 Shareholding Pattern As at 31 March 2026 Q4FY26", "")
     assert afsl["status"] == "unverified" and "period_not_printed" in afsl["status_reason"]
     assert moons["status"] == "unverified" and "period_not_printed" in moons["status_reason"]
-    assert aiaeng["status"] == "unverified" and "period_no_year" in aiaeng["status_reason"]
-    assert py_row["status"] == "unverified" and "period_no_year" in py_row["status_reason"]
-    assert cy_row["status"] == "unverified" and "period_no_year" in cy_row["status_reason"]
+    assert aiaeng["status"] == "verified" and aiaeng["period"] == "31 March 2026"
+    assert during["status"] == "verified" and during["period"] == "FY2025-26"
+    assert beg["status"] == "verified" and beg["period"] == "1 April 2025"
+    assert py_row["status"] == "verified" and py_row["period"] == "FY2024-25"
+    assert all(r["period_source"] == "ar_report_year" for r in (aiaeng, during, beg, py_row))
+    assert non_cal["status"] == "verified" and non_cal["period"] == "Phase I"
     assert kept["status"] == "verified" and qtr_fy["status"] == "verified"
+
+    # Without a discoverable AR FY, relative periods go unverified period_no_year while non-calendar phrases stay
+    no_fy_rel = _gate_row(measure="NEW:csr", printed_label="CSR", value_text="10", period="during the year")
+    no_fy_noncal = _gate_row(measure="NEW:energy", printed_label="Energy", value_text="10",
+                             period="180-day monitoring period")
+    obs.apply_ar_row_gates([no_fy_rel, no_fy_noncal], "Plain text without any fiscal year", "")
+    assert no_fy_rel["status"] == "unverified" and "period_no_year" in no_fy_rel["status_reason"]
+    assert no_fy_noncal["status"] == "verified" and no_fy_noncal["period"] == "180-day monitoring period"
 
 
 def test_ar_ckpt2_previous_page_year_carries_over_and_instant_resolves():
@@ -632,16 +647,33 @@ def test_ar_ckpt2_prose_consolidated_basis_cleared_and_headings_kept():
 
 
 def test_ar_ckpt2_consolidated_subsidiary_scope_resets_when_label_names_none():
-    """T-242 AR ckpt_0002: entity_scope='subsidiary' on Consolidated/Group page (#21 BALKRISIND) resets to company."""
+    """T-242 AR ckpt_0002: plain consolidated items reset to company; NCI/stake/Schedule III/entities stay."""
     bkt = _gate_row(measure="NEW:currency_sensitivity_strengthening_weakening_percentage",
                     printed_label="USD", series_title="Sensitivity analysis", value_text="3%", unit="%",
                     period="31st March, 2025", basis="consolidated", entity_scope="subsidiary")
+    cash = _gate_row(measure="cash_and_cash_equivalents", printed_label="Cash and cash equivalents",
+                     value_text="100", unit="Rs crore", period="31st March, 2025", basis="consolidated",
+                     entity_scope="subsidiary")
     sub = _gate_row(measure="shareholding_pct", printed_label="Asian Paints (Vanuatu) Limited",
                     value_text="60.00", unit="%", period="31st March, 2025", basis="consolidated",
                     entity_scope="subsidiary")
-    obs.apply_ar_row_gates([bkt, sub],
+    nci = _gate_row(measure="NEW:nci", printed_label="Non-controlling interest percentage",
+                    value_text="25.0", unit="%", period="31st March, 2025", basis="consolidated",
+                    entity_scope="subsidiary")
+    stake = _gate_row(measure="shareholding_pct", printed_label="previously held 49.9% stake in BAIHAG",
+                      value_text="49.9", unit="%", period="31st March, 2025", basis="consolidated",
+                      entity_scope="subsidiary")
+    fze = _gate_row(measure="revenue", printed_label="Accelya Middle East FZE",
+                    value_text="50", unit="Rs crore", period="31st March, 2025", basis="consolidated",
+                    entity_scope="subsidiary")
+    sched3 = _gate_row(measure="net_worth", printed_label="Parent",
+                       series_title="Additional Information to Consolidated Financial Statements",
+                       value_text="1000", unit="Rs crore", period="31st March, 2025", basis="consolidated",
+                       entity_scope="subsidiary")
+    obs.apply_ar_row_gates([bkt, cash, sub, nci, stake, fze, sched3],
                            "Notes forming part of the Consolidated Financial Statements\nAs at 31st March, 2025",
                            "Balkrishna Industries Limited")
     assert bkt["entity_scope"] == "company"
-    assert sub["entity_scope"] == "subsidiary"
+    assert cash["entity_scope"] == "company"
+    assert all(r["entity_scope"] == "subsidiary" for r in (sub, nci, stake, fze, sched3))
 

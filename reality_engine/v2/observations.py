@@ -3855,10 +3855,159 @@ AR_PROSE_CONSOLIDATED_RE = re.compile(
 AR_CONS_GROUP_HEAD_RE = re.compile(r"\b(?:consolidated|the\s+group)\b", re.I)
 AR_SUBSIDIARY_NAME_RE = re.compile(
     r"\b(?:private\s+limited|pvt\.?\s+ltd|limited|ltd\.?|llp|inc\.?|corp\.?|corporation|"
-    r"gmbh|s\.?a\.?r\.?l\.?|s\.?a\.?|s\.?l\.?u\.?|s\.?r\.?l\.?|llc|sdn\s+bhd|b\.v\.?|pte\.?\s+ltd|"
-    r"co\.?\s+ltd|plc|ag|nv|pty\s+ltd|subsidiar(?:y|ies)|joint\s+venture|associate|step[\s-]+down)\b",
+    r"gmbh|s\.?a\.?r\.?l\.?|s\.?a\.?|s\.?l\.?u\.?|s\.?r\.?l\.?|llc|sdn\.?\s*bhd|b\.?v\.?|pte\.?\s*ltd|"
+    r"co\.?\s*ltd|plc|ag|nv|pty\.?\s*ltd|fze|fzco|wll|k\.?k\.?|sp\.?\s*z\.?o\.?o\.?|"
+    r"foundation|partnership\s+firm|subsidiar(?:y|ies)|joint\s+venture|associate|step[\s-]+down)\b",
     re.I,
 )
+# T-242 Eagle review: do not reset subsidiary -> company on Schedule III Additional Information tables,
+# NCI / stake / associate / JV / 'held ...% in' lines, summarised entity tables, or proper company names.
+AR_SUBSIDIARY_TABLE_RE = re.compile(
+    r"\badditional\s+information\b|\bshare\s+in\s+(?:net\s+assets|consolidated\s+(?:profit|loss|oci|total))|"
+    r"\bnet\s+assets,?\s+i\.e\.|\bsummarised\s+(?:balance\s*sheet|statement\s+of\s+profit|financial)|"
+    r"\bfair\s+value\s+of\s+assets\s+and\s+liabilities\s+acquired\b",
+    re.I,
+)
+AR_SUBSIDIARY_LABEL_CUE_RE = re.compile(
+    r"\bnon[\s-]*controlling\b|\bnci\b|\bminority\s+interest\b|\bstake\b|"
+    r"\bheld\b[^.\n]{0,30}%\s*in\b|\bholding\b[^.\n]{0,30}%\s*in\b|"
+    r"\bequity\s+shares\s+of\b|\bshare\s+in\s+(?:net\s+assets|consolidated|total\s+comprehensive)|"
+    r"^\s*parent\s*$",
+    re.I,
+)
+AR_ACRONYM_PLAIN = frozenset({
+    "TOTAL", "EBITDA", "EBIT", "CWIP", "IAUD", "FVTPL", "FVOCI", "INDAS", "ESOP", "RSU", "OECD", "SEBI",
+    "CGST", "SGST", "IGST", "MSME", "NBFC", "ROIC", "ROCE", "FII", "DII", "NRI", "IEPF", "CSR", "AGM",
+    "IFRS", "GAAP", "HUF", "FIFO", "LIFO", "WACC", "CAGR", "PCFC", "LIBOR", "SOFR", "EURIBOR", "MIBOR",
+    "CONSOLIDATED", "STANDALONE", "CURRENT", "NON", "ASSETS", "LIABILITIES", "EQUITY", "OPERATIONS",
+    "INCOME", "PROFIT", "LOSS", "OTHER", "COMPREHENSIVE", "ATTRIBUTABLE", "OWNERS", "COMPANY", "RESTATED",
+})
+AR_PROPER_ENTITY_ACRONYM_RE = re.compile(r"\b([A-Z]{4,}(?:-[A-Z]{2,})?)\b")
+
+# T-242 Eagle review: AR fiscal-year resolution for relative periods ('during the year', 'end of Financial Year',
+# 'beginning of the year', 'P.Y.').  Non-calendar phrases ('Phase I', 'last 3 years') are left alone.
+AR_FY_TITLE_RE = re.compile(
+    r"(?:annual\s+report|integrated\s+(?:annual\s+)?report|financial\s+year|fiscal\s+year|\bFY\b)"
+    r"[^.\n]{0,60}?(20\d{2})\s*[-\u2013/\s]\s*(20\d{2}|\d{2})\b|"
+    r"(?<![A-Za-z])FY\s*['\u2019-]?\s*(20\d{2})\s*[-\u2013/]\s*(20\d{2}|\d{2})\b|"
+    r"(?<![A-Za-z])FY\s*['\u2019-]?\s*(\d{2})\s*[-\u2013/]\s*(\d{2})\b|"
+    r"(?:annual\s+report|integrated\s+(?:annual\s+)?report)[^.\n]{0,40}?(?:-\s*)?"
+    r"(?:\bFY\s*['\u2019-]?\s*(\d{2,4})\b|(20\d{2})\b)|"
+    r"(?:year\s+ended|ended\s+on)\s+(?:31st?\s+)?March,?\s*(20\d{2})\b|"
+    r"\b(20\d{2})\s*[-\u2013]\s*(20\d{2}|\d{2})\s*(?:annual\s+report|integrated\s+report)",
+    re.I,
+)
+AR_REL_END_FY_RE = re.compile(
+    r"^(?:(?:as\s+(?:at|on)\s+)?(?:the\s+)?end\s+of\s+(?:the\s+)?(?:financial\s+year|year|reporting\s+(?:period|year))|"
+    r"(?:at\s+(?:the\s+)?)?(?:year[\s-]+end|end\s+of\s+(?:the\s+)?(?:financial\s+year|year))|"
+    r"(?:as\s+at\s+(?:the\s+)?)?balance\s+sheet\s+date|"
+    r"(?:shareholding|indebtedness)\s+at\s+the\s+end\s+of\s+the\s+(?:financial\s+)?year)$",
+    re.I,
+)
+AR_REL_BEG_FY_RE = re.compile(
+    r"^(?:(?:at\s+(?:the\s+)?)?beginning\s+of\s+(?:the\s+)?(?:financial\s+year|year|reporting\s+(?:period|year))|"
+    r"(?:shareholding|indebtedness)\s+at\s+the\s+beginning\s+of\s+the\s+(?:financial\s+)?year)$",
+    re.I,
+)
+AR_REL_PREV_FY_RE = re.compile(
+    r"^(?:P\.?Y\.?|(?:during\s+(?:the\s+)?|figures\s+for\s+(?:the\s+)?)?previous\s+"
+    r"(?:year|financial\s+year|reporting\s+period)|"
+    r"(?:the\s+)?(?:last|immediately\s+preceding|prior)\s+(?:financial\s+)?year)$",
+    re.I,
+)
+AR_REL_CURR_FY_RE = re.compile(
+    r"^(?:(?:during|for|in)\s+(?:the\s+|a\s+|this\s+|current\s+)?(?:financial\s+|reporting\s+)?"
+    r"(?:year|period)(?:\s+under\s+(?:the\s+)?review)?|"
+    r"(?:the\s+|this\s+|current\s+|as\s+of\s+the\s+)?(?:financial\s+|fiscal\s+|reporting\s+)?"
+    r"(?:year|period)(?:\s+under\s+(?:the\s+)?review)?|"
+    r"C\.?Y\.?|annual|annually|year\s+ended\s+on\s+that\s+date|"
+    r"(?:cumulative\s+shareholding|change\s+in\s+indebtedness|addition)\s+during\s+the\s+(?:financial\s+)?year|"
+    r"(?:items\s+of\s+oci|other\s+comprehensive\s+income)\s+for\s+the\s+year.*)$",
+    re.I,
+)
+AR_SHORT_SPAN_RE = re.compile(r"^(\d{2})\s*[-\u2013/]\s*(\d{2})$")
+
+
+def _parse_ar_fy(text: str) -> tuple[int, int] | None:
+    """Extract ``(start_year, end_year)`` of an annual report's fiscal year from a title/cover/header string."""
+    t = norm_space(text)
+    if not t:
+        return None
+    t_dense = re.sub(r"(?<=\b[A-Za-z0-9])\s+(?=[A-Za-z0-9]\b)", "", t)
+    for src in (t, t_dense):
+        m = AR_FY_TITLE_RE.search(src)
+        if not m:
+            continue
+        g = m.groups()
+        pair: tuple[int, int] | None = None
+        if g[0] and g[1]:
+            s = int(g[0])
+            e = int(g[1]) if len(g[1]) == 4 else 2000 + int(g[1])
+            pair = (s, e)
+        elif g[2] and g[3]:
+            s = int(g[2])
+            e = int(g[3]) if len(g[3]) == 4 else 2000 + int(g[3])
+            pair = (s, e)
+        elif g[4] and g[5]:
+            pair = (2000 + int(g[4]), 2000 + int(g[5]))
+        elif g[6]:
+            y = int(g[6]) if len(g[6]) == 4 else 2000 + int(g[6])
+            pair = (y - 1, y)
+        elif g[7]:
+            y = int(g[7])
+            pair = (y - 1, y)
+        elif g[8]:
+            y = int(g[8])
+            pair = (y - 1, y)
+        elif g[9] and g[10]:
+            s = int(g[9])
+            e = int(g[10]) if len(g[10]) == 4 else 2000 + int(g[10])
+            pair = (s, e)
+        if pair and 2000 <= pair[0] <= 2035 and pair[1] == pair[0] + 1:
+            return pair
+    return None
+
+
+def ar_report_fy_from_text(*texts: str) -> str:
+    """Return ``'FY2025-26'`` from the first AR title/header string naming a fiscal year, else ``''``."""
+    for text in texts:
+        pair = _parse_ar_fy(text)
+        if pair:
+            return f"FY{pair[0]}-{pair[1] % 100:02d}"
+    return ""
+
+
+def ar_report_fy(store_db: str | Path, doc_key: str, page_text: str = "", previous_text: str = "") -> str:
+    """The annual report's own fiscal year (``'FY2025-26'``) from ``doc.title``, cover pages 1-6, or page heads."""
+    title = ""
+    pages: list[str] = []
+    try:
+        con = connect_ro(store_db, timeout_s=60)
+        try:
+            _cur = con.execute("SELECT title FROM doc WHERE doc_key=?", (doc_key,))
+            row = _cur.fetchone() if _cur is not None else None
+            title = str(row[0] or "") if row else ""
+            _cur = con.execute("SELECT text FROM doc_page WHERE doc_key=? AND page BETWEEN 1 AND 6 ORDER BY page",
+                               (doc_key,))
+            if _cur is not None:
+                pages = [str(r[0] or "") for r in _cur if r is not None]
+        finally:
+            con.close()
+    except Exception:
+        pass
+    got = ar_report_fy_from_text(title)
+    if got:
+        return got
+    for txt in pages:
+        if not FILING_LETTER_RE.search(txt):
+            got = ar_report_fy_from_text(txt)
+            if got:
+                return got
+    for txt in pages:
+        got = ar_report_fy_from_text(txt)
+        if got:
+            return got
+    return ar_report_fy_from_text(page_text, previous_text)
 
 
 def _is_ar_date_value(value_text: str) -> bool:
@@ -3881,30 +4030,77 @@ def _is_ar_date_value(value_text: str) -> bool:
     return False
 
 
-def _ar_period_reason(period: str, page_text: str, previous_text: str) -> str:
-    """Return ``period_no_year`` or ``period_not_printed`` reason when an AR period lacks a printed year."""
-    period_s = norm_space(period)
+def _ar_has_year(period_s: str) -> bool:
+    dense = re.sub(r"(?<=\d)\s+(?=\d)", "", period_s)
+    return bool(
+        re.search(r"(?:19|20)\d{2}", dense)
+        or re.search(r"(?<![A-Za-z])FY\s*['\u2019-]?\s*(\d{2})(?!\d)", dense, re.I)
+        or AR_SPAN_END_RE.search(dense)
+        or AR_SHORT_DATE_YEAR_RE.search(dense)
+        or AR_SHORT_SPAN_RE.match(dense)
+    )
+
+
+def _ar_period_reason(row: dict[str, Any], page_text: str, previous_text: str,
+                      report_fy_pair: tuple[int, int] | None) -> str:
+    """Resolve relative AR periods to the report's FY (``period_source='ar_report_year'``), or gate missing years."""
+    period_s = norm_space(row.get("period"))
     if not period_s:
         return ""
-    years4 = re.findall(r"(?:19|20)\d{2}", period_s)
-    fy2 = re.findall(r"(?<![A-Za-z])FY\s*['\u2019-]?\s*(\d{2})\b", period_s, re.I)
-    span2 = AR_SPAN_END_RE.findall(period_s)
-    short2 = AR_SHORT_DATE_YEAR_RE.findall(period_s)
-    if not (years4 or fy2 or span2 or short2):
-        return f"period_no_year: {period_s!r} names no year"
-    combined = f"{page_text}\n{previous_text}"
-    if period_in_text(period_s, combined):
+    if not _ar_has_year(period_s):
+        kind = ""
+        resolved = ""
+        if AR_REL_END_FY_RE.match(period_s):
+            kind = "end"
+        elif AR_REL_BEG_FY_RE.match(period_s):
+            kind = "beg"
+        elif AR_REL_PREV_FY_RE.match(period_s):
+            kind = "prev"
+        elif AR_REL_CURR_FY_RE.match(period_s):
+            kind = "curr"
+        if not kind:
+            return ""          # non-calendar phrase ('Phase I', '180-day monitoring period', 'last 3 years')
+        if report_fy_pair is None:
+            return f"period_no_year: {period_s!r} names no year"
+        start, end = report_fy_pair
+        if kind == "end":
+            resolved = f"31 March {end}"
+            row["period_kind"] = "instant"
+        elif kind == "beg":
+            resolved = f"1 April {start}"
+            row["period_kind"] = "instant"
+        elif kind == "prev":
+            resolved = f"FY{start - 1}-{start % 100:02d}"
+            row["period_kind"] = "actual"
+        else:
+            resolved = f"FY{start}-{end % 100:02d}"
+            row["period_kind"] = "actual"
+        row["period"] = resolved
+        row["period_source"] = "ar_report_year"
         return ""
-    for s2 in span2:
-        if f"20{s2}" in combined or f"19{s2}" in combined or re.search(rf"(?<![A-Za-z])FY\s*['\u2019-]?\s*{s2}\b", combined, re.I):
+    dense = re.sub(r"(?<=\d)\s+(?=\d)", "", period_s)
+    years4 = re.findall(r"(?:19|20)\d{2}", dense)
+    fy2 = re.findall(r"(?<![A-Za-z])FY\s*['\u2019-]?\s*(\d{2})(?!\d)", dense, re.I)
+    span2 = AR_SPAN_END_RE.findall(dense)
+    short2 = AR_SHORT_DATE_YEAR_RE.findall(dense)
+    m_ss = AR_SHORT_SPAN_RE.match(dense)
+    if m_ss:
+        fy2.append(m_ss.group(2))
+    combined = f"{page_text}\n{previous_text}"
+    combined_dense = re.sub(r"(?<=\d)\s+(?=\d)", "", combined)
+    for txt in (combined, combined_dense):
+        if period_in_text(dense, txt) or period_in_text(period_s, txt):
             return ""
-    for sd in short2:
-        if f"20{sd}" in combined or re.search(rf"(?:[-/'\u2019]|FY\s*){sd}\b", combined, re.I):
-            return ""
-    for f2 in fy2:
-        prev = f"{int(f2) - 1:02d}"
-        if f"20{prev}-{f2}" in combined or f"20{prev}-20{f2}" in combined or f"20{prev}\u2013{f2}" in combined or f"20{f2}" in combined:
-            return ""
+        for s2 in span2:
+            if f"20{s2}" in txt or f"19{s2}" in txt or re.search(rf"(?<![A-Za-z])FY\s*['\u2019-]?\s*{s2}\b", txt, re.I):
+                return ""
+        for sd in short2:
+            if f"20{sd}" in txt or re.search(rf"(?:[-/'\u2019]|FY\s*){sd}\b", txt, re.I):
+                return ""
+        for f2 in fy2:
+            prev = f"{int(f2) - 1:02d}"
+            if f"20{prev}-{f2}" in txt or f"20{prev}-20{f2}" in txt or f"20{prev}\u2013{f2}" in txt or f"20{f2}" in txt:
+                return ""
     return f"period_not_printed: {period_s!r} is not printed on the page or previous page"
 
 
@@ -3935,12 +4131,22 @@ def _ar_has_consolidated_heading(row: dict[str, Any], page_text: str) -> bool:
     return any(_ar_is_consolidated_heading_line(ln) for ln in (page_text or "").splitlines())
 
 
-def _ar_names_subsidiary(row: dict[str, Any], company: str) -> bool:
+def _ar_keep_subsidiary_scope(row: dict[str, Any], page_text: str, company: str) -> bool:
+    """True when ``entity_scope='subsidiary'`` under a Consolidated head should stay ``subsidiary``."""
     label = norm_space(row.get("printed_label"))
+    series = norm_space(row.get("series_title"))
+    group = norm_space(row.get("group_path"))
+    axis = norm_space(row.get("printed_axis"))
+    if AR_SUBSIDIARY_TABLE_RE.search(" ".join([series, group, axis, label, norm_space(page_text)[:600]])):
+        return True
+    if AR_SUBSIDIARY_LABEL_CUE_RE.search(" ".join([label, series, group])):
+        return True
     if AR_SUBSIDIARY_NAME_RE.search(label):
         return True
-    for key in ("series_title", "group_path"):
-        val = norm_space(row.get(key))
+    for m in AR_PROPER_ENTITY_ACRONYM_RE.finditer(label):
+        if m.group(1) not in AR_ACRONYM_PLAIN:
+            return True
+    for val in (series, group):
         if val and AR_SUBSIDIARY_NAME_RE.search(val) and not (company and _is_own_entity(val, company)):
             return True
     return False
@@ -3977,7 +4183,7 @@ def ar_measure_family(row: dict[str, Any]) -> str:
 
 
 def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company: str = "",
-                       previous_text: str = "") -> None:
+                       previous_text: str = "", report_fy: str = "") -> None:
     """T-242: the annual-report number errors a script can catch from the row and its page.
 
     A fresh strict grade after the AR statement gate was 49 right / 4 partial / 7 wrong: a >3-year ageing bucket
@@ -4033,6 +4239,7 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             other_entity = norm_space(entity_match.group(1)).strip(" .,;|")
     cons_group_head = bool(AR_CONS_GROUP_HEAD_RE.search(text[:300]))
     has_prose_consolidated = bool(CONSOLIDATED_RE.search(page_text) or CONSOLIDATED_PAGE_RE.search(page_text))
+    fy_pair = _parse_ar_fy(report_fy) if report_fy else _parse_ar_fy(ar_report_fy_from_text(page_text, previous_text))
     kept: list[dict[str, Any]] = []
     for row in rows:
         if norm_space(row.get("record_type") or "number") != "number":
@@ -4050,8 +4257,9 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             row["basis"] = ""
             row["basis_source"] = ""
         if str(row.get("entity_scope") or "") == "subsidiary" and cons_group_head \
-                and not _ar_names_subsidiary(row, company):
+                and not _ar_keep_subsidiary_scope(row, page_text, company):
             row["entity_scope"] = "company"
+        period_reason = _ar_period_reason(row, page_text, previous_text, fy_pair)
         unit = norm_space(row.get("unit"))
         cues = " ".join(norm_space(row.get(key)) for key in
                         ("measure", "printed_label", "printed_axis", "series_title"))
@@ -4096,7 +4304,7 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
         elif str(row.get("entity_scope") or "") in AR_OUTSIDE_SCOPES:
             reason = f"ar_outside_entity: entity_scope {row.get('entity_scope')!r} is not the company's own figure"
         if not reason:
-            reason = _ar_period_reason(str(row.get("period") or ""), page_text, previous_text)
+            reason = period_reason
         if not reason and headline and AR_BUCKET_LABEL_RE.search(label) \
                 and not _measure_names_qualifier(measure, label):
             reason = f"ar_qualified_label: {label!r} is an ageing/overdue bucket, not {measure}"
@@ -4213,7 +4421,8 @@ def _narrative_change_label(label: str) -> bool:
 
 
 def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2: bool = True,
-                       page_text: str = "", company: str = "", previous_text: str = "") -> None:
+                       page_text: str = "", company: str = "", previous_text: str = "",
+                       report_fy: str = "") -> None:
     """T-242: the number gates that depend on the document type (a call number, an AR statement line, an AR row).
 
     ``previous_text`` is the page before this one, for the AR row gates' carried basis.
@@ -4222,7 +4431,7 @@ def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2:
         apply_transcript_number_gate(rows)       # Shivam 24 Nov: call numbers need a filing to verify
     elif doc_type == "annual_report":
         apply_ar_statement_gate(rows)
-        apply_ar_row_gates(rows, page_text, company, previous_text)
+        apply_ar_row_gates(rows, page_text, company, previous_text, report_fy=report_fy)
 
 
 def apply_parts_sum(rows: list[dict[str, Any]], stats: dict[str, Any] | None = None) -> None:
@@ -5492,9 +5701,11 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
                                       deck_asof=deck_period(store_db, doc_key, check_text),
                                       deck_basis=deck_basis(str(store_db), str(doc_key)),
                                       ocr_text=str(ocr_row[0] or "") if ocr_row else "", ocr_page=ocr_page)
+            prev_txt = page_text_of(store_db, doc_key, int(page) - 1)
             apply_number_gates(rows, doc_type, page_text=check_text,       # T-242: AR statement line + row gates
                                company=(company_names.get(str(meta["symbol"])) or [""])[0],
-                               previous_text=page_text_of(store_db, doc_key, int(page) - 1))
+                               previous_text=prev_txt,
+                               report_fy=ar_report_fy(store_db, doc_key, check_text, prev_txt))
             stats["ar_pages"] += 1
         else:
             ctx_key = (store_db, str(doc_key))
@@ -5993,8 +6204,11 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
     own_name = next((full for sym, full in (companies or {}).values() if sym == meta["symbol"]), "")
     if not own_name and meta.get("doc_type") == "annual_report":
         own_name = _store_company_name(store_db, meta["symbol"])
+    prev_txt = page_text_of(store_db, doc_key, page - 1)
     apply_number_gates(result["rows"], str(meta.get("doc_type") or ""), page_text=check_text,
-                       company=own_name, previous_text=page_text_of(store_db, doc_key, page - 1))
+                       company=own_name, previous_text=prev_txt,
+                       report_fy=ar_report_fy(store_db, doc_key, check_text, prev_txt)
+                       if meta.get("doc_type") == "annual_report" else "")
     if transcript and any(str(r.get("record_type") or "") == "statement" for r in result["rows"]):
         # T-242: the same statement-speaker carry/resolve as --reparse, from the doc's stored pages
         try:
@@ -6683,9 +6897,11 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             apply_ar_statement_gate(updated)
             stats["ar_statement_rows"] += before_gate - sum(1 for row in updated if row["status"] == "verified")
             before_ar = list(updated)
+            prev_txt = page_text_of(store_db, doc_key, int(page) - 1)
             apply_ar_row_gates(updated, raw_text,   # T-242: unit / qualifier / narrative / basis row gates
                                company_names.get(store_symbol.get(store_db, ""), ""),
-                               page_text_of(store_db, doc_key, int(page) - 1))     # T-242: carried basis
+                               prev_txt,
+                               report_fy=ar_report_fy(store_db, doc_key, raw_text, prev_txt))
             for row in before_ar:
                 if all(row is not kept_row for kept_row in updated):
                     con.execute("DELETE FROM observation WHERE observation_id=?", (int(row["observation_id"]),))
