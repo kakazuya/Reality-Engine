@@ -7977,19 +7977,22 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                              "statement_filter": statement_filter, "failed_replies": []}
     companies = company_index(store_dbs)
     t0 = time.time()
-    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+    from reality_engine import raw_store          # T-242: every worker shares one Drive download per document
+    with raw_store.default_store().shared_cache(), ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
         if items is None:
             # T-242: only a jumbled-layer page carries a text_source, so a reader wrapper of the old five-argument
-            # signature keeps working for every other page.
+            # signature keeps working for every other page.  Pages go in (doc_key, page) order so one document's
+            # pages are read close together and the shared cache stays small.
             futures = {pool.submit(process_page, p["store"], p["doc_key"], p["page"], companies, text_only,
                                    **({"text_source": p["text_source"]} if p.get("text_source") else {})): p
-                       for p in selected}
+                       for p in sorted(selected, key=lambda p: (str(p["doc_key"]), int(p["page"])))}
         else:                                   # T-242 v3: one call per transcript window
             futures = {(pool.submit(process_window, item[0]["store"], item[0]["doc_key"],
                                     [int(p["page"]) for p in item], list(item[0]["context"]), companies)
                         if "context" in item[0] else
                         pool.submit(process_page, item[0]["store"], item[0]["doc_key"], item[0]["page"], companies,
-                                    text_only)): item[0] for item in items}
+                                    text_only)): item[0]
+                       for item in sorted(items, key=lambda it: (str(it[0]["doc_key"]), int(it[0]["page"])))}
         done = 0
 
         def _results() -> Any:          # a page dict, or {"_exc": exception} for a call that raised
