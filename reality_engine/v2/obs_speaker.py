@@ -127,6 +127,7 @@ _NON_SPEAKER_WORDS = {
     "asset", "quality", "deposits", "mobility", "geographical", "diversification", "initiative", "agency",
     "supply", "government", "internally", "first", "second", "third", "firstly", "finally",
     "good", "morning", "afternoon", "evening", "ladies", "gentlemen", "so",
+    "place", "location",
 }
 
 _PAGE_HEADER_LINE = re.compile(r"^\s*Page\s+\d+\s+of\s+\d+\s*$", re.I)
@@ -269,12 +270,18 @@ _FINANCIAL_TERMS = frozenset({
     "expenses", "revenue", "revenues", "margin", "margins", "capex", "debt", "cash", "dividend", "eps",
     "turnover", "sales", "growth", "order", "orders", "book", "borrowings", "receivables", "payables",
     "inventory", "npa", "gnpa", "nnpa", "aum", "nim", "roa", "roe", "roce", "net", "gross", "total",
-    "operations", "operating", "expenditure", "flow", "flows", "earnings", "interest", "taxes",
+    "operations", "operating", "expenditure", "flow", "flows", "earnings", "interest", "taxes", "cost", "costs",
 })
 _HEADING_STOP = frozenset({
     "after", "before", "from", "and", "or", "of", "the", "in", "on", "for", "to", "per", "at", "by",
     "vs", "statement", "statements", "sheet", "account", "accounts", "highlights", "summary",
     "overview", "performance", "update", "updates", "outlook", "guidance",
+})
+# Letter / metadata labels ("Date:", "Place:", "Location:") read as speakers on notice and deck pages.
+_LABEL_FIELD_WORDS = frozenset({
+    "date", "time", "place", "location", "venue", "mode", "link", "webcast", "event", "purpose",
+    "details", "detail", "particulars", "agenda", "subject", "sub", "ref", "reference", "regarding",
+    "participant", "participants", "dial-in", "dialin", "passcode", "access", "packet", "transcription",
 })
 
 
@@ -287,40 +294,102 @@ def _is_heading_label(name: str) -> bool:
 
 
 def is_person_speaker(speaker: str) -> bool:
-    """T-242: a speaker label that can be a person: no digits, no heading words, a person's short name."""
-    s = " ".join((speaker or "").split()).strip()
-    if not s or len(s) > 60 or any(ch.isdigit() for ch in s) or "," in s:
+    """T-242: a speaker label that can be a person: a person's short name, not a slide/table heading.
+
+    A label may carry the designation after the name ("Mr. Alexander Gerding, Managing Director",
+    "Mr. Sanjay Wadhwa - Chief Financial Officer, 360 ONE WAM Limited:"): the name before the first separator is what
+    must be a person, and only that name is checked for digits (the company in the designation may hold one).  A
+    slide or table heading is rejected whole.
+    """
+    s = " ".join((speaker or "").split()).strip().rstrip(":").strip()
+    if not s or len(s) > 90 or _is_heading_label(s):
         return False
-    if len(s.split()) > 5:
+    head = _LABEL_SPLIT_RE.split(s, maxsplit=1)[0].strip()
+    if not head or _is_heading_label(head) or any(ch.isdigit() for ch in head):
         return False
-    return not _is_heading_label(s)
+    toks = head.split()
+    if not 1 <= len(toks) <= 5:
+        return False
+    return _norm_name(head) not in _LABEL_FIELD_WORDS
 
 
 def call_label_lines(pages: Iterable[tuple[int, str]]) -> int:
     """T-242: how many call turns a document prints.
 
-    A colon/designation turn (``Name:``, ``Name - Designation:``) counts as extracted.  A name printed on its own
-    line, with or without a dash/designation/parenthesised role and without a colon (``Vaidehi Sharma - Moderator``,
-    ``SHIVANG BAGLA (HOST- EMKAY)``), counts only when it is a role word or the same name recurs: unique slide
-    headings never add up to a call.
+    A colon/designation turn (``Name:``, ``Name - Designation:``, ``Analyst:``) counts as extracted.  A name printed
+    on its own line, with or without a dash/designation/parenthesised role and without a colon (``Vaidehi Sharma -
+    Moderator``, ``SHIVANG BAGLA (HOST- EMKAY)``), counts only when it is a role word or the same name recurs: unique
+    slide headings never add up to a call.  An auto-transcript timestamp before or after the name (``0:05 Ved
+    Krishna:``, ``[1:33] Pranay Pasricha:``, ``Sachin Srivastava 0:10``) is metadata, not part of the speaker, and
+    makes the line a label whichever side it sits on (PAKKA).
+
+    Only the label part is checked for digits: "Ramesh Iyer: revenue grew 12%" is a turn, "Date: 27.09.2026" is not.
     """
     page_list = [(int(pg), str(txt or "")) for pg, txt in pages]
-    strict = sum(len(extract_turns(txt, pg, allow_standalone=False)) for pg, txt in page_list)
+    strict = 0
+    for pg, txt in page_list:
+        for turn in extract_turns(txt, pg, allow_standalone=False):
+            norm = _norm_name(turn.name)
+            if norm in _CALL_ROLE_WORDS or 2 <= len(norm.split()) <= 5:
+                strict += 1
     if strict >= 3:
         return strict
-    labelled: list[str] = []
+    strong = 0
+    standalone: list[tuple[str, bool]] = []
     for _pg, txt in page_list:
         for line in txt.splitlines():
-            # a PDF font bullet (U+F02D and friends) sits before many transcript labels
-            s = re.sub(r"^[^0-9A-Za-z]+", "", line).strip()
-            if not s or any(ch.isdigit() for ch in s):
+            got = _call_label_line(line)
+            if got is None:
                 continue
-            name = re.split(r"\s*[:–—]\s*|\s+-\s+|[(\[,]", s, 1)[0].strip()
-            nm = _is_valid_speaker_name(name, allow_all_caps_name=True)
-            if nm:
-                labelled.append(_norm_name(nm))
-    names = Counter(labelled)
-    return sum(1 for n in labelled if n in _ROLE_WORDS or names[n] >= 2)
+            norm, has_colon, timestamped = got
+            role = norm in _CALL_ROLE_WORDS or bool(_CALL_ROLE_IN_LINE_RE.search(line))
+            if has_colon or timestamped:
+                if timestamped or role or len(norm.split()) >= 2:
+                    strong += 1
+            elif role or len(norm.split()) >= 2:
+                standalone.append((norm, role))
+    names = Counter(n for n, _role in standalone)
+    return strict + strong + sum(1 for n, role in standalone if role or names[n] >= 2)
+
+
+# T-242 (25 Nov, surprise audit J): a transcript label may carry an auto-transcript timestamp before or after the name.
+_TS_PREFIX_RE = re.compile(r"^\[?\d{1,2}:\d{2}(?::\d{2})?\]?[ \t]+")
+_TS_SUFFIX_RE = re.compile(r"[ \t]+\[?\d{1,2}:\d{2}(?::\d{2})?\]?[ \t]*$")
+_LABEL_SPLIT_RE = re.compile(r"\s*[:–—]\s*|\s+-\s+|[(\[,]")
+# Role labels are call turns too: "CS:", "CMD:", "Analyst:", "MD - Finance:".
+_CALL_ROLE_WORDS = frozenset(_ROLE_WORDS | {"analyst", "analysts", "cs", "cmd", "md", "cfo", "ceo", "coo",
+                                            "cto", "ed", "ir", "investor relations", "company secretary"})
+_CALL_ROLE_IN_LINE_RE = re.compile(
+    r"\b(?:moderator|operator|host|coordinator|participant|management|analyst|cs|cmd|md|cfo|ceo|coo|cto|ed|ir)\b",
+    re.I)
+
+
+def _call_label_line(line: str) -> tuple[str, bool, bool] | None:
+    """(normalised label, printed with a colon, timestamped) for one call-turn line, else None."""
+    s = re.sub(r"^[^0-9A-Za-z]+", "", line).strip()
+    if not s:
+        return None
+    timestamped = False
+    m = _TS_PREFIX_RE.match(s)
+    if m:
+        s, timestamped = s[m.end():].strip(), True
+    m = _TS_SUFFIX_RE.search(s)
+    if m:
+        s, timestamped = s[:m.start()].strip(), True
+    if not s:
+        return None
+    has_colon = ":" in s
+    head = s.split(":", 1)[0] if has_colon else s
+    if any(ch.isdigit() for ch in head):       # the label, never the speech after its colon, must be digit-free
+        return None
+    name = _LABEL_SPLIT_RE.split(head, maxsplit=1)[0].strip()
+    if not name:
+        return None
+    cleaned = _is_valid_speaker_name(name, allow_all_caps_name=True)
+    if cleaned:
+        return _norm_name(cleaned), has_colon, timestamped
+    role = _norm_name(name)
+    return (role, has_colon, timestamped) if role in _CALL_ROLE_WORDS else None
 
 
 def is_call_document(pages: Iterable[tuple[int, str]]) -> bool:
@@ -406,6 +475,7 @@ def extract_turns(
         hint = m.group(2).strip()
         if (
             any(ch.isdigit() for ch in raw_name)
+            or any(ch.isdigit() for ch in hint)   # T-242: "Sunday, September 27, 2026 at 11:30" is a date line
             or re.search(r"^\d|\b(?:Page\s+\d+|tel\.?|fax|phone|email|www)\b", hint, re.I)
         ):
             continue

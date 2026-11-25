@@ -301,6 +301,7 @@ def _statement(page: int, text: str, speaker: str = "", status: str = "verified"
 def test_statement_speaker_carries_across_a_page_break():
     pages = [
         (1, "Satin Creditcare Network Limited\nPage 1 of 6\n"
+            "Moderator: Welcome to the Satin Creditcare call.\n"
             "MANAGEMENT: DR. HP SINGH - CHAIRMAN AND MANAGING DIRECTOR\n"
             "HP Singh: Over the last six years our RoA stayed strong.\n"),
         (2, "Satin Creditcare Network Limited\nPage 2 of 6\n"
@@ -825,6 +826,51 @@ def test_call_detection_reads_bullet_designation_and_no_colon_label_styles():
     deck = [(1, "KEY HIGHLIGHTS\n"), (2, "Profit After Tax:\nRs 697 Lakhs\n"),
             (3, "Revenue from Operations:\nRs 11,767 Lakhs\n")]
     assert not ospeaker.is_call_document(deck)
+
+
+def test_agm_minutes_with_date_lines_signatures_and_resolution_words_are_not_a_call():
+    # BRIPORT: proceedings print "Sunday, September 27, 2026 at 11:30", "Ordinary"/"Special" resolution words and
+    # signature names; none is a call turn.
+    minutes = [
+        (1, "Sub: Proceedings of 32nd Annual General Meeting\nDate: 27.09.2026\nRef: Brilliant Portfolios Limited\n"
+            "The meeting was held on Sunday, September 27, 2026 at 11:30 A.M. through Video Conferencing.\n"
+            "Yours faithfully,\nAshish\nASHISH\n"),
+        (2, "The Company Secretary welcomed the members and informed them that all possible steps were taken.\n"),
+        (3, "Ordinary\nOrdinary\nSpecial\nOrdinary\nSpecial\n"),
+        (4, "Place: New Delhi\nDate: September 27, 2026\nAshish\nCompany Secretary\n"),
+    ]
+    assert not ospeaker.is_call_document(minutes)
+    rows = [_statement(2, "The Company Secretary welcomed the members and informed them that all possible steps "
+                          "were taken.", speaker="Company Secretary")]
+    stats = ospeaker.attach_statement_speakers(rows, minutes, "BRIPORT", ["Brilliant Portfolios Limited"])
+    assert rows[0]["status"] == "unverified" and "not_a_call" in rows[0]["status_reason"]
+    assert stats["not_a_call"] == 1
+
+
+def test_auto_transcript_timestamps_count_as_call_labels():
+    # Pakka: the transcript prints the timestamp before the name ("0:05 Ved Krishna:", "[1:33] Pranay Pasricha:")
+    # or after it ("Sachin Srivastava 0:10"); the timestamp is metadata, the label is still a call turn.
+    before = [(2, "0:05 Ved Krishna: Sachin, can you mute everyone?\n"
+                  "0:20 Pranay Pasricha: Good morning, everyone.\n"
+                  "0:29 Sonia Keswani: (Audio unclear)\n")]
+    bracket = [(2, "[1:33] Pranay Pasricha: Good evening everyone.\n"
+                   "[2:16] Satish ChamyVelumani: He is the business head.\n"
+                   "[5:43] Pranay Pasricha: Thank you for watching.\n")]
+    after = [(2, "Sachin Srivastava 0:10\nMove.\nPranay Pasricha 0:14\nGood evening everyone.\n"
+                 "Ved Krishna 6:12\nYou're muted.\n")]
+    for pages in (before, bracket, after):
+        assert ospeaker.is_call_document(pages)
+    # A numbered list or a date line is not a timestamp label.
+    assert not ospeaker.is_call_document([(1, "1. Revenue from operations\n2. Finance costs\n3. Profit after tax\n")])
+
+
+def test_role_and_acronym_turn_labels_count_as_a_call():
+    # HINDCOPPER: the call prints role labels ("CS:", "CMD:", "Analyst:") rather than full names on every turn.
+    hind = [(2, "CS:\nGood evening, everyone, I am the Company Secretary.\n"
+                "CMD:\nLet me explain what we have planned.\n"
+                "Analyst:\nWhat is the production target?\n"
+                "CMD:\nWe target 3 million tons by 2030-31.\n")]
+    assert ospeaker.is_call_document(hind)
 
 
 def test_a_slide_or_table_heading_is_never_a_speaker():
