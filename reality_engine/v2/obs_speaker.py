@@ -47,6 +47,20 @@ T-242 statement pass (used by the observations read path and ``--reparse``, not 
 company-name / first-name / initials label to one full management name, marks the row
 unverified (``speaker_unresolved:``) or a referentless short reply (``no_referent:``), and fills
 an empty ``question_context`` with the analyst's printed question (``preceding_question``).
+
+T-242 surprise-audit rules (25 Nov 2026)
+----------------------------------------
+1. A document typed ``transcript`` is a call only when it prints at least 3 call turns
+   (``Name:`` / ``Name - Designation:`` / a repeated or role speaker label) across its pages
+   (``is_call_document``); every statement of a document without them is unverified
+   (``not_a_call:``) and ``observations.transcript_pages`` skips the document.  A label that is a
+   slide or table heading (all financial words, e.g. ``Profit After Tax``) or carries digits is
+   never a speaker (``speaker_not_a_person:``).
+2. A statement whose speaker is the moderator/operator is never a management statement
+   (``speaker_moderator:``); it is unverified, not dropped.
+3. A passage of at most 8 words with no figure and no named entity is dropped when it is only
+   generic praise, a pointer to another speaker/question, or a sentence that refers back with no
+   referent in ``question_context`` (``short_remark_reason``).
 """
 from __future__ import annotations
 
@@ -112,6 +126,8 @@ _NON_SPEAKER_WORDS = {
     # T-242: section headings and discourse markers read as "Name:" labels on a prepared-remarks page
     "asset", "quality", "deposits", "mobility", "geographical", "diversification", "initiative", "agency",
     "supply", "government", "internally", "first", "second", "third", "firstly", "finally",
+    "good", "morning", "afternoon", "evening", "ladies", "gentlemen", "so",
+    "place", "location",
 }
 
 _PAGE_HEADER_LINE = re.compile(r"^\s*Page\s+\d+\s+of\s+\d+\s*$", re.I)
@@ -247,6 +263,140 @@ def _name_matches_list(speaker: str, candidates: list[str], *, allow_single_toke
     return False
 
 
+# T-242 (25 Nov, surprise audit W): a slide or table heading read as "Name:" is not a speaker.  A label is a heading
+# when at least one word is a financial term and every other word is a financial term or a heading stop word.
+_FINANCIAL_TERMS = frozenset({
+    "profit", "profits", "loss", "losses", "pbt", "pat", "ebit", "ebitda", "tax", "income", "expense",
+    "expenses", "revenue", "revenues", "margin", "margins", "capex", "debt", "cash", "dividend", "eps",
+    "turnover", "sales", "growth", "order", "orders", "book", "borrowings", "receivables", "payables",
+    "inventory", "npa", "gnpa", "nnpa", "aum", "nim", "roa", "roe", "roce", "net", "gross", "total",
+    "operations", "operating", "expenditure", "flow", "flows", "earnings", "interest", "taxes", "cost", "costs",
+})
+_HEADING_STOP = frozenset({
+    "after", "before", "from", "and", "or", "of", "the", "in", "on", "for", "to", "per", "at", "by",
+    "vs", "statement", "statements", "sheet", "account", "accounts", "highlights", "summary",
+    "overview", "performance", "update", "updates", "outlook", "guidance",
+})
+# Letter / metadata labels ("Date:", "Place:", "Location:") read as speakers on notice and deck pages.
+_LABEL_FIELD_WORDS = frozenset({
+    "date", "time", "place", "location", "venue", "mode", "link", "webcast", "event", "purpose",
+    "details", "detail", "particulars", "agenda", "subject", "sub", "ref", "reference", "regarding",
+    "participant", "participants", "dial-in", "dialin", "passcode", "access", "packet", "transcription",
+})
+
+
+def _is_heading_label(name: str) -> bool:
+    """True when ``name`` is a slide/table heading ("Profit After Tax", "Net Revenue", "EPS") not a person."""
+    toks = [t.strip(".:;,'’\"“”()").lower() for t in (name or "").split()]
+    toks = [t for t in toks if t]
+    return bool(toks) and any(t in _FINANCIAL_TERMS for t in toks) \
+        and all(t in _FINANCIAL_TERMS or t in _HEADING_STOP for t in toks)
+
+
+def is_person_speaker(speaker: str) -> bool:
+    """T-242: a speaker label that can be a person: a person's short name, not a slide/table heading.
+
+    A label may carry the designation after the name ("Mr. Alexander Gerding, Managing Director",
+    "Mr. Sanjay Wadhwa - Chief Financial Officer, 360 ONE WAM Limited:"): the name before the first separator is what
+    must be a person, and only that name is checked for digits (the company in the designation may hold one).  A
+    slide or table heading is rejected whole.
+    """
+    s = " ".join((speaker or "").split()).strip().rstrip(":").strip()
+    if not s or len(s) > 90 or _is_heading_label(s):
+        return False
+    head = _LABEL_SPLIT_RE.split(s, maxsplit=1)[0].strip()
+    if not head or _is_heading_label(head) or any(ch.isdigit() for ch in head):
+        return False
+    toks = head.split()
+    if not 1 <= len(toks) <= 5:
+        return False
+    return _norm_name(head) not in _LABEL_FIELD_WORDS
+
+
+def call_label_lines(pages: Iterable[tuple[int, str]]) -> int:
+    """T-242: how many call turns a document prints.
+
+    A colon/designation turn (``Name:``, ``Name - Designation:``, ``Analyst:``) counts as extracted.  A name printed
+    on its own line, with or without a dash/designation/parenthesised role and without a colon (``Vaidehi Sharma -
+    Moderator``, ``SHIVANG BAGLA (HOST- EMKAY)``), counts only when it is a role word or the same name recurs: unique
+    slide headings never add up to a call.  An auto-transcript timestamp before or after the name (``0:05 Ved
+    Krishna:``, ``[1:33] Pranay Pasricha:``, ``Sachin Srivastava 0:10``) is metadata, not part of the speaker, and
+    makes the line a label whichever side it sits on (PAKKA).
+
+    Only the label part is checked for digits: "Ramesh Iyer: revenue grew 12%" is a turn, "Date: 27.09.2026" is not.
+    """
+    page_list = [(int(pg), str(txt or "")) for pg, txt in pages]
+    strict = 0
+    for pg, txt in page_list:
+        for turn in extract_turns(txt, pg, allow_standalone=False):
+            norm = _norm_name(turn.name)
+            if norm in _CALL_ROLE_WORDS or 2 <= len(norm.split()) <= 5:
+                strict += 1
+    if strict >= 3:
+        return strict
+    strong = 0
+    standalone: list[tuple[str, bool]] = []
+    for _pg, txt in page_list:
+        for line in txt.splitlines():
+            got = _call_label_line(line)
+            if got is None:
+                continue
+            norm, has_colon, timestamped = got
+            role = norm in _CALL_ROLE_WORDS or bool(_CALL_ROLE_IN_LINE_RE.search(line))
+            if has_colon or timestamped:
+                if timestamped or role or len(norm.split()) >= 2:
+                    strong += 1
+            elif role or len(norm.split()) >= 2:
+                standalone.append((norm, role))
+    names = Counter(n for n, _role in standalone)
+    return strict + strong + sum(1 for n, role in standalone if role or names[n] >= 2)
+
+
+# T-242 (25 Nov, surprise audit J): a transcript label may carry an auto-transcript timestamp before or after the name.
+_TS_PREFIX_RE = re.compile(r"^\[?\d{1,2}:\d{2}(?::\d{2})?\]?[ \t]+")
+_TS_SUFFIX_RE = re.compile(r"[ \t]+\[?\d{1,2}:\d{2}(?::\d{2})?\]?[ \t]*$")
+_LABEL_SPLIT_RE = re.compile(r"\s*[:–—]\s*|\s+-\s+|[(\[,]")
+# Role labels are call turns too: "CS:", "CMD:", "Analyst:", "MD - Finance:".
+_CALL_ROLE_WORDS = frozenset(_ROLE_WORDS | {"analyst", "analysts", "cs", "cmd", "md", "cfo", "ceo", "coo",
+                                            "cto", "ed", "ir", "investor relations", "company secretary"})
+_CALL_ROLE_IN_LINE_RE = re.compile(
+    r"\b(?:moderator|operator|host|coordinator|participant|management|analyst|cs|cmd|md|cfo|ceo|coo|cto|ed|ir)\b",
+    re.I)
+
+
+def _call_label_line(line: str) -> tuple[str, bool, bool] | None:
+    """(normalised label, printed with a colon, timestamped) for one call-turn line, else None."""
+    s = re.sub(r"^[^0-9A-Za-z]+", "", line).strip()
+    if not s:
+        return None
+    timestamped = False
+    m = _TS_PREFIX_RE.match(s)
+    if m:
+        s, timestamped = s[m.end():].strip(), True
+    m = _TS_SUFFIX_RE.search(s)
+    if m:
+        s, timestamped = s[:m.start()].strip(), True
+    if not s:
+        return None
+    has_colon = ":" in s
+    head = s.split(":", 1)[0] if has_colon else s
+    if any(ch.isdigit() for ch in head):       # the label, never the speech after its colon, must be digit-free
+        return None
+    name = _LABEL_SPLIT_RE.split(head, maxsplit=1)[0].strip()
+    if not name:
+        return None
+    cleaned = _is_valid_speaker_name(name, allow_all_caps_name=True)
+    if cleaned:
+        return _norm_name(cleaned), has_colon, timestamped
+    role = _norm_name(name)
+    return (role, has_colon, timestamped) if role in _CALL_ROLE_WORDS else None
+
+
+def is_call_document(pages: Iterable[tuple[int, str]]) -> bool:
+    """T-242: a transcript is a call only when it prints at least 3 call turns across its pages."""
+    return call_label_lines(pages) >= 3
+
+
 def _is_valid_speaker_name(
     raw_name: str,
     *,
@@ -258,6 +408,8 @@ def _is_valid_speaker_name(
     if not cleaned or len(cleaned) > 60 or any(ch.isdigit() for ch in cleaned):
         return None
     if re.search(r"\bPage\s+\d+", cleaned, re.I) or "," in cleaned:
+        return None
+    if _is_heading_label(cleaned):
         return None
     tokens = cleaned.split()
     if not tokens or len(tokens) > 5:
@@ -323,6 +475,7 @@ def extract_turns(
         hint = m.group(2).strip()
         if (
             any(ch.isdigit() for ch in raw_name)
+            or any(ch.isdigit() for ch in hint)   # T-242: "Sunday, September 27, 2026 at 11:30" is a date line
             or re.search(r"^\d|\b(?:Page\s+\d+|tel\.?|fax|phone|email|www)\b", hint, re.I)
         ):
             continue
@@ -1131,6 +1284,69 @@ def greeting_only(statement: str) -> bool:
         or _closing_remarks_passage(sentences)
 
 
+# T-242 (25 Nov, surprise audit J): a short figure-free remark that carries no statement.
+_SHORT_REMARK_MAX_WORDS = 8
+_GENERIC_ASSESSMENT_RE = re.compile(
+    r"^(?:(?:so|and|yes|yeah|well|okay|ok)[,\s]+)?"
+    r"(?:we\s+have\s+done\s+well|we\s+did\s+well|that(?:'s|’s|\s+is)\s+(?:a\s+)?(?:(?:very|really|quite|pretty)\s+)?"
+    r"(?:good|great|fair|valid|interesting|pertinent|important|nice)\s+(?:point|question)"
+    r"|good\s+(?:point|question)|fair\s+(?:point|enough))\b[^.!?]*[.!?]?$",
+    re.I,
+)
+# A pointer to what someone else asked rather than an answer: "Kedar, I think his question was on products."
+_POINTER_REMARK_RE = re.compile(
+    r"\b(?:his|her|their|your)\s+(?:question|query)\b"
+    r"|\b(?:question|query)\s+(?:was|is)\s+(?:on|about|around)\b"
+    r"|\b(?:i\s+(?:think|believe|guess)|he|she|they)\s+(?:was\s+|is\s+|were\s+)?(?:asking|asked)\b"
+    r"|\b(?:over|hand\s+over|pass\s+it\s+over)\s+to\s+(?:you|him|her|them)\b", re.I)
+# A sentence whose subject is only a demonstrative: "So that's a meaningful swing", "That is the reason".
+_REFER_BACK_RE = re.compile(
+    r"^(?:(?:so|and|yes|yeah|well|okay|ok|but)[,\s]+)?"
+    r"(?:that|this|it|which)(?:'s|’s|\s+is|\s+was|\s+means|\s+would\s+be|\s+will\s+be)\s+(?!for\b)", re.I)
+_CONTENT_WORD_RE = re.compile(r"[A-Za-z]{4,}")
+_CONTENT_STOP = frozenset({
+    "that", "this", "with", "have", "been", "will", "would", "could", "should", "which", "there",
+    "their", "about", "into", "from", "over", "very", "much", "more", "most", "what", "when",
+    "where", "well", "good", "great", "meaning", "really", "quite", "just", "like", "also",
+})
+
+
+def _names_like_entity(text: str) -> bool:
+    """A capitalised word after the first that is not "I": a product, person or place names substance."""
+    for idx, tok in enumerate(text.split()):
+        word = tok.strip(".,;:!?()[]\"'“”’")
+        if idx > 0 and len(word) >= 2 and word[0].isupper() and word.lower() != "i":
+            return True
+    return False
+
+
+def short_remark_reason(statement: str, question_context: str = "") -> str:
+    """T-242 (25 Nov): '' unless ``statement`` is a short content-free remark that must be dropped.
+
+    At most 8 words, no figure, no substantive clause and no named entity/product.  It is (a) generic praise or
+    assessment ("We have done well", "That's a good point"), (b) a pointer to another speaker or question
+    ("I think his question was on products") or (c) a sentence that only refers back ("So that's a meaningful
+    swing") when ``question_context`` is empty or shares none of its content words.
+    """
+    text = " ".join(_normalise_ligatures(statement).split())
+    if not text or len(text.split()) > _SHORT_REMARK_MAX_WORDS or _has_figure(text):
+        return ""
+    if _SUBSTANTIVE_CLAUSE_RE.search(text):
+        return ""
+    if _names_like_entity(text):
+        return ""
+    if _GENERIC_ASSESSMENT_RE.match(text):
+        return "short_generic: a figure-free generic assessment"
+    if _POINTER_REMARK_RE.search(text):
+        return "short_pointer: a pointer to another speaker or question, not an answer"
+    if _REFER_BACK_RE.match(text):
+        fragment = {w.lower() for w in _CONTENT_WORD_RE.findall(text)} - _CONTENT_STOP
+        context = {w.lower() for w in _CONTENT_WORD_RE.findall(question_context)}
+        if not fragment & context:
+            return "short_refer_back: a sentence that only refers back, with no referent stored with it"
+    return ""
+
+
 _COURTESY_OR_TAG_QUESTION_RE = re.compile(
     r"(?:(?:^|,\s*)(?:right|isn['’]t\s+it|no)"
     r"|\b(?:is\s+that\s+helpful"
@@ -1326,18 +1542,21 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
     never re-attributed to a nearby label -- and a short yes/no reply is marked unverified ``no_referent``.  An empty
     ``question_context`` is filled from ``preceding_question``; a model-written one is never replaced.
     """
-    stats = {"statements": 0, "carried": 0, "resolved": 0, "empty": 0, "unverified": 0, "question_filled": 0}
+    stats = {"statements": 0, "carried": 0, "resolved": 0, "empty": 0, "unverified": 0, "question_filled": 0,
+             "not_a_call": 0, "moderator": 0, "not_a_person": 0, "short_remarks": 0}
     indexes = [i for i, row in enumerate(rows) if str(row.get("record_type") or "") == "statement"]
     if not indexes:
         return stats
     page_list = [(int(p), str(t or "")) for p, t in pages]
+    doc_is_call = is_call_document(page_list)
     pool = management_pool(page_list)
     try:                                    # Eagle, v3 ckpt_0001 W (AMTECH p9): an analyst's name on an answer
         doc_ctx = build_doc_context(page_list)
         analysts = [n for n in doc_ctx.analyst_names if not _name_matches_list(n, pool)]
         questioners = list(doc_ctx.analyst_names) + list(doc_ctx.moderator_names)
+        moderator_names = list(doc_ctx.moderator_names)
     except Exception:                       # noqa: BLE001 -- no roster: in-page cues only, as before
-        analysts, questioners = [], []
+        analysts, questioners, moderator_names = [], [], []
     company_keys = {_company_key(name) for name in company_names if name}
     if symbol:
         company_keys.add(_company_key(symbol))
@@ -1388,6 +1607,20 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
                         and not _name_matches_list(speaker, [_norm_name(label)]) \
                         and not _name_matches_list(label, [_norm_name(speaker)]):
                     reasons.append(f"speaker_label_conflict: the last printed label before this passage is {label!r}")
+        cleared_heading = False
+        if speaker:
+            norm_sp = _norm_name(speaker)
+            if norm_sp in _MODERATOR_NAMES or "moderator" in norm_sp or "operator" in norm_sp \
+                    or _name_matches_list(speaker, moderator_names, allow_single_token=False):
+                reasons.append(f"speaker_moderator: {speaker!r} is the call moderator/operator, not management")
+                stats["moderator"] += 1
+            elif not is_person_speaker(speaker):
+                # T-242 surprise audit W: "Profit After Tax" is a slide heading, not a person; never a speaker
+                reasons.append(f"speaker_not_a_person: {speaker!r} is a heading or a line with digits, not a person")
+                row["speaker"] = ""
+                speaker = ""
+                cleared_heading = True
+                stats["not_a_person"] += 1
         if speaker:
             name, reason = resolve_speaker_name(speaker, pool, company_keys)
             if name != speaker:
@@ -1397,9 +1630,13 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
                 reasons.append(reason)
             elif analysts and not _name_matches_list(name, pool) and _name_matches_list(name, analysts):
                 reasons.append(f"speaker_is_analyst: {name!r} asks questions on this call; a statement needs management")
-        else:
+        elif not cleared_heading:
             stats["empty"] += 1
             reasons.append("speaker_unresolved: no speaker label on this page or an earlier one; speaker_generic: empty speaker")
+        if not doc_is_call:
+            # T-242 surprise audit J (AGM minutes typed as a transcript): no call turns -> no management statement
+            reasons.append("not_a_call: the document prints fewer than 3 speaker-label lines, so it is not a call")
+            stats["not_a_call"] += 1
         # T-242: an empty question_context is filled with the analyst's printed question; the model's is never replaced
         if not str(row.get("question_context") or "").strip():
             question = preceding_question(str(row.get("statement") or ""), page_list,
@@ -1407,6 +1644,11 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
             if question:
                 row["question_context"] = question
                 stats["question_filled"] += 1
+        # T-242 surprise audit J: a short figure-free remark carries no statement (praise, a hand-over pointer, or a
+        # sentence whose only referent sits in the previous sentence and is not stored with the row)
+        if short_remark_reason(str(row.get("statement") or ""), str(row.get("question_context") or "")):
+            row["_drop"] = True
+            stats["short_remarks"] += 1
         # fy27_v3 r2 re-grade (25 Nov): all 39 no_referent demotions had the matching question in question_context
         no_ref = "" if str(row.get("question_context") or "").strip() \
             else no_referent_reason(str(row.get("statement") or ""))

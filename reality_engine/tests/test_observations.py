@@ -2001,10 +2001,16 @@ def test_stage_m_transcript_pages_are_selected_from_doc_page_not_routes():
     con.execute("CREATE TABLE doc (doc_key TEXT, title TEXT, symbol TEXT, known_at TEXT, doc_type TEXT)")
     con.execute("CREATE TABLE doc_page (doc_key TEXT, page INTEGER, text TEXT)")
     con.execute("INSERT INTO doc VALUES (?,?,?,?,?)", ("t1", "call", "SOMANYCERA", KNOWN_AT, "transcript"))
-    con.execute("INSERT INTO doc_page VALUES (?,?,?)", ("t1", 1, "Management said demand is improving."))
-    con.execute("INSERT INTO doc_page VALUES (?,?,?)", ("t1", 2, "Notes to Financial Statements. "
-                                                               "We expect 10-12% growth in FY27."))
+    con.execute("INSERT INTO doc_page VALUES (?,?,?)", ("t1", 1, "Moderator: Welcome to the SOMANYCERA call.\n"
+                                                               "Management said demand is improving."))
+    con.execute("INSERT INTO doc_page VALUES (?,?,?)", ("t1", 2, "Ramesh Iyer: Notes to Financial Statements.\n"
+                                                               "Anil Kumar: We expect 10-12% growth in FY27."))
     con.execute("INSERT INTO doc_page VALUES (?,?,?)", ("t1", 3, ""))
+    # T-242: an AGM notice typed as a transcript prints no call turns and is never read
+    con.execute("INSERT INTO doc VALUES (?,?,?,?,?)", ("t2", "agm", "SOMANYCERA", KNOWN_AT, "transcript"))
+    con.execute("INSERT INTO doc_page VALUES (?,?,?)", ("t2", 1, "PROCEEDINGS OF THE ANNUAL GENERAL MEETING.\n"
+                                                               "The Company Secretary welcomed the members."))
+    con.execute("INSERT INTO doc_page VALUES (?,?,?)", ("t2", 2, "The Shareholders were informed of the appointment."))
     con.commit()
     con.close()
     try:

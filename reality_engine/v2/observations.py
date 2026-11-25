@@ -6291,8 +6291,12 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
     stats: dict[str, Any] = {"pages": 0, "no_store": 0, "not_transcript": 0, "unselected": 0,
                              "rows_before": 0, "rows_after": 0, "v2_pages": 0, "ar_pages": 0,
                              "speaker_carried": 0, "speaker_resolved": 0, "speaker_empty": 0,
-                             "speaker_unverified": 0}
+                             "speaker_unverified": 0, "speaker_not_a_call": 0, "speaker_moderator": 0,
+                             "speaker_not_a_person": 0, "short_remarks": 0, "transcript_docs": 0,
+                             "not_call_docs": 0}
     doc_speaker_ctx: dict[tuple[str, str], tuple[list[str], list[str]]] = {}
+    transcript_docs: set[str] = set()
+    not_call_docs: set[str] = set()
     company_names: dict[str, list[str]] = {}
     for sym, full in companies.values():
         company_names.setdefault(sym, [])
@@ -6355,6 +6359,9 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
                     doc_pages = obs_speaker.load_pages(store_db, doc_key)
                 except sqlite3.Error:
                     doc_pages = []
+                transcript_docs.add(doc_key_now)
+                if doc_pages and not obs_speaker.is_call_document(doc_pages):
+                    not_call_docs.add(doc_key_now)
             if ctx_key not in doc_speaker_ctx:
                 try:
                     dctx = obs_speaker.build_doc_context(doc_pages)
@@ -6379,6 +6386,10 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
                 stats["speaker_resolved"] += fixed["resolved"]
                 stats["speaker_empty"] += fixed["empty"]
                 stats["speaker_unverified"] += fixed["unverified"]
+                stats["speaker_not_a_call"] += fixed.get("not_a_call", 0)
+                stats["speaker_moderator"] += fixed.get("moderator", 0)
+                stats["speaker_not_a_person"] += fixed.get("not_a_person", 0)
+                stats["short_remarks"] += fixed.get("short_remarks", 0)
         stats["rows_before"] += int(con.execute("SELECT COUNT(*) FROM observation WHERE doc_key=? AND page=?",
                                                 (doc_key, int(page))).fetchone()[0])
         con.execute("DELETE FROM observation WHERE doc_key=? AND page=?", (doc_key, int(page)))
@@ -6389,6 +6400,8 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
         stats["pages"] += 1
         stats["v2_pages"] += int(v2)
         stats["rows_after"] += len(rows)
+    stats["transcript_docs"] = len(transcript_docs)
+    stats["not_call_docs"] = len(not_call_docs)
     return stats
 
 
@@ -7015,25 +7028,31 @@ def filter_ar_section_pages(pages: list[dict[str, Any]], texts: dict[tuple[str, 
 
 
 def transcript_pages(store_db: str | Path) -> list[dict[str, Any]]:
-    """T-238 stage M: every routed or unrouted page of the store's call transcripts that prints text."""
+    """T-238 stage M: every routed or unrouted page of the store's call transcripts that prints text.
+
+    T-242 (25 Nov): a document typed ``transcript`` that prints fewer than 3 speaker-label lines is not a call (AGM
+    minutes, a deck) and is skipped, so the reader never turns its prose or slide headings into statements.
+    """
     try:
         con = connect_ro(store_db, timeout_s=60)
     except Exception:
         return []
-    rows: list[Any] = []
+    by_doc: dict[str, list[tuple[int, str]]] = {}
     try:
         _cur = con.execute(
-            "SELECT p.doc_key, p.page FROM doc_page p JOIN doc d ON d.doc_key = p.doc_key "
+            "SELECT p.doc_key, p.page, p.text FROM doc_page p JOIN doc d ON d.doc_key = p.doc_key "
             "WHERE LOWER(d.doc_type) = 'transcript' AND COALESCE(p.text, '') <> '' "
             "ORDER BY p.doc_key, p.page")
         fetched = _cur.fetchall() if _cur is not None else None
-        rows = [row for row in (fetched or [])]
+        for doc_key, page, text in (fetched or []):
+            by_doc.setdefault(str(doc_key), []).append((int(page), str(text or "")))
     except sqlite3.Error:
         return []
     finally:
         con.close()
-    return [{"store": str(store_db), "doc_key": str(row[0]), "page": int(row[1]), "doc_type": "transcript"}
-            for row in rows]
+    return [{"store": str(store_db), "doc_key": doc_key, "page": page, "doc_type": "transcript"}
+            for doc_key, doc_pages in by_doc.items() if obs_speaker.is_call_document(doc_pages)
+            for page, _text in doc_pages]
 
 
 @lru_cache(maxsize=256)
