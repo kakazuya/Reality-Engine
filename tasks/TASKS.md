@@ -19,6 +19,7 @@ One row per line, kept in its section.
 - T-224 | OPEN Eagle | P1 | Model router: read OpenCode Go account-1 usage % (rolling 24 h) and send coding to agy Hydrogen high when DeepSeek is in peak hours or usage >10%; dsh start_worker reports the route | accept: Shivam: router reads the Go usage % with no manual step | from: Shivam 17 Nov | opened 2026-11-17
 - T-233 | OPEN Wolf | P1 | Fast fix loop: golden regression sets from every hand read + selector-scoped re-runs for observations, filing events and claims | accept: Shivam | from: Shivam 21 Nov | opened 2026-11-21
 - T-243 | DOING Wolf | P1 | Skills catalog + rule hooks: repeatable workflows as project skills; standing rules enforced by a PreToolUse hook | accept: python -m pytest -q reality_engine/tests/test_rule_guard.py | from: Shivam 25 Nov 21:20 | opened 2026-11-25
+- T-244 | OPEN | P2 | dsh launcher: heartbeat control channel fails to bind at start (exit 126) | accept: python -m pytest plugins/dsh-worker/tests -q -k control_bind | from: manual | opened 2026-11-26
 
 ## Data
 
