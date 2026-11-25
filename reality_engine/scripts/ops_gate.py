@@ -90,8 +90,28 @@ def hy4_outputs(rules: dict[str, Any], cmds: list[str]) -> set[str]:
     return {Path(o).as_posix() for o in outs}
 
 
+AGY_JOBS = Path(__file__).resolve().parents[2] / "plugins" / "agy-worker" / "runtime" / "jobs"
+
+
 def running_agy() -> int:
-    return sum(1 for line in job_watch.agy_lines() if line.startswith("RUNNING agy"))
+    """Running agy jobs that hold a code slot.
+
+    26 Nov (Eagle): agy has no permission flag, so a grader's brief says ``permission: read-only``; such a job writes no
+    code and, as in the dsh start gate, holds no code slot.
+    """
+    n = 0
+    for line in job_watch.agy_lines():
+        if not line.startswith("RUNNING agy"):
+            continue
+        m = re.search(r"(\d{8}T\d{6}Z-[0-9a-f]{8})", line)
+        brief = AGY_JOBS / m.group(1) / "brief.md" if m else None
+        try:
+            if brief and re.search(r"permission:\s*read-only", brief.read_text(encoding="utf-8")[:2000], re.I):
+                continue
+        except OSError:
+            pass
+        n += 1
+    return n
 
 
 def quota_lines(rules: dict[str, Any], now: dt.datetime) -> list[str]:
