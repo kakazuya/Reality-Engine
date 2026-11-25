@@ -9,17 +9,17 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD (`--start/--max-workers`), Zen rotates Nemotron VL / DeepSeek Flash by speed.
 - 26 Nov tx statement window (Eagle, 0e8b95f3): sentence snap + referent widen, page-local; recheck dedupes exact repeats.
 - 26 Nov AR gates r4: jv/associate scopes (unnamed never verified), subsidiary/parent need a printed name, junk ordinals/tenures dropped; deck untied chart values unverified.
+- 26 Nov deck junk gate r5: decorative slide numbers dropped (0/118 graded R hit; 27/30 OCR J).
 - 26 Nov `gate_not_company`: industry/country/peer/customer rows never verified (read + recheck); recheck keeps not_company/subsidiary_unnamed.
-- 26 Nov bulk hy4 reads: one Drive fetch per doc (`raw_store.shared_cache`).
+- Bulk hy4 reads: one Drive fetch per doc (`raw_store.shared_cache`).
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 26 Nov 03:20 (Eagle) events: Shivam switched order_win/fund_raise to hy4 model + script check; merged (agy c858aea0, fp 546696b94a21): fresh5-7 graded W/J 69/70 fixed or unverified, R kept 92%. VERIFIED_KINDS empty until a fresh8 60-row grade per kind (Eagle).
-00000. 26 Nov deck-wide read DONE (9,632 pages incl. 1,204 OCR, ckpt 1-4 pass); loads via loader SUPPLEMENTS (page-disjoint, +3,381 pages); OCR rows graded before load.
+00000. 26 Nov deck-wide read DONE (9,632 pages incl. 1,204 OCR, ckpt 1-4 pass); loads via loader SUPPLEMENTS (page-disjoint, +3,381 pages); OCR grade1 FAIL 17R/12P/1W/30J (verified 13R1P) -> junk gate r5 merged; recheck copy + regrade, then load.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
 1. T-214/T-218 Telegram build: plan `tasks/handoff/T-214_TG_BUILD_PLAN.md`, queue `D:/RealityEngine/tg_build/build_queue.csv`, stores `tg_build/measure10/c01..c91`; repair notes `tasks/store_repair/INDEX.md`, grid `reports/store_repair_grid.xlsx`.
 
 ## Recipes
 Store copy: checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE`. Merge: grader row first; merge_worker; drop root PROGRESS_NOTES.md; tests per file; docs; remove worktree; log in worker_reviews.jsonl. Store diff: `reality_engine.scripts.store_diff`.
-- 25 Nov AR re-grade gates merged (Hydrogen, T-242): 5(c) unnamed-sub 184 unverified, 535 reset to company, 0 R changed. Next: --recheck AR copy, non-author grade, then load.
 - 26 Nov: tx recheck waits for 0e8b95f3 (referent window + dedupe) (Eagle)
 26 Nov 01:40 NEXT (Wolf): fix 5 merged (15R/16); audit 6; review dsh 69650793 (OCR AIMD+Zen rotation), 437c0e4f (PDF cache); AR ar_r3 grade; deck swap; pack-up EOD.
