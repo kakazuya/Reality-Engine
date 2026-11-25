@@ -917,6 +917,7 @@ _LOGISTICS_SENTENCE_RE = re.compile(
     r"|\b(?:audio\s+recording|transcripts?|webcast|recording|presentation)\b[^.]{0,80}\b(?:uploaded|available)\b"
     r"|\b(?:uploaded|available)\b[^.]{0,80}\b(?:website|stock\s+exchanges?)\b"
     r"|^looking\s+forward\s+to\b"
+    r"|^(?:have\s+a\s+(?:good|great|nice|wonderful)\s+(?:night|evening|day|weekend)|good\s*night)\b"  # BAJAJ-AUTO p24
     r"|\bstay\s+(?:healthy|safe|well)\b"
     r"|^i\s+hope\s+you\b", re.I)
 
@@ -954,6 +955,12 @@ _COURTESY_OR_TAG_QUESTION_RE = re.compile(
 )
 
 
+_CONFIRMATION_QUESTION_RE = re.compile(
+    r"\b(?:is\s+(?:that|this|it)\s+(?:correct|right|the\s+right\s+understanding)"
+    r"|is\s+my\s+understanding\s+(?:correct|right)|am\s+i\s+(?:correct|right)\s+in\s+(?:understanding|assuming))"
+    r"\s*\??[\"')”’]*$", re.I)
+
+
 def _ends_in_question(text: str) -> bool:
     return str(text or "").rstrip().rstrip("\"')”’").endswith("?")
 
@@ -970,8 +977,8 @@ def question_passage(statement: str) -> bool:
     if not _ends_in_question(text):
         return False
     sentences = _sentences(text)
-    if len(sentences) <= 2:
-        return True
+    if len(sentences) <= 2 or _CONFIRMATION_QUESTION_RE.search(sentences[-1]):
+        return True                     # an analyst checking his reading: "..., is that correct?" (Wolf, 394 80805)
     last_idx = len(sentences) - 1
     q_count = sum(
         1 for idx, sent in enumerate(sentences)

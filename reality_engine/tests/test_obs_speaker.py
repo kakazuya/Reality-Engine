@@ -558,3 +558,11 @@ def test_question_passage_keeps_answers_with_courtesy_or_tag_and_flags_questions
     assert question_passage("But how do we mitigate the risk?")
     assert question_passage("Gopal, you want to take up, saying high ROCE?")
     assert question_passage("Sir, on margins. What is the outlook? And will capex rise?")
+
+
+def test_confirmation_question_and_good_night():
+    from reality_engine.v2.obs_speaker import greeting_only, question_passage
+    assert question_passage("Sir, the order book is 5,000 crores. And margin guidance stays 18%. Is that correct?")
+    assert not question_passage("So margins stay at 18%. Capex is 500 crores. Does that answer your question?")
+    assert greeting_only("Thank you, everyone. Have a good night.")
+    assert not greeting_only("Have a good night. Our order book is 5,000 crores.")
