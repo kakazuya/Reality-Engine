@@ -347,7 +347,7 @@ def test_ar_ckpt_0001_non_figures_and_outside_entities_are_unverified():
             row(measure="NEW:top_10_customers_share", value=42.0, unit="%", entity_scope="customer"),
             row(measure="NEW:dividends_paid_past_3_years", value=12.5, unit="Rs crore",
                 printed_label="Dividend paid in the past 3 years")]
-    obs.apply_ar_row_gates(rows, "", "")
+    obs.apply_ar_row_gates(rows, "FY2025-26", "")
     assert [r["status"] for r in rows] == ["unverified"] * 4 + ["verified"] * 4
     assert rows[0]["status_reason"].startswith("ar_not_a_figure")
     assert rows[3]["status_reason"].startswith("ar_outside_entity")
@@ -390,7 +390,7 @@ def test_ar_duration_echo_variants_and_target_year_are_unverified():
             printed_label="Dividend paid in the past 3 years"),
     ]
     all_rows = unverified_rows + kept_rows
-    obs.apply_ar_row_gates(all_rows, "(Amount in Lakh)", "")
+    obs.apply_ar_row_gates(all_rows, "(Amount in Lakh) FY2025-26", "")
     assert [r["status"] for r in unverified_rows] == ["unverified"] * len(unverified_rows)
     assert all(r["status_reason"].startswith("ar_not_a_figure") for r in unverified_rows)
     assert [r["status"] for r in kept_rows] == ["verified"] * len(kept_rows)
@@ -533,4 +533,171 @@ def test_ar_row_gate_never_replaces_a_stated_basis_with_the_previous_pages():
                     basis="standalone")
     obs.apply_ar_row_gates([row], "Unquoted equity 1,704.09", "", previous_text=CONSOLIDATED_HEAD)
     assert (row["basis"], row.get("basis_source", "")) == ("standalone", "")
+
+
+def test_ar_ckpt2_period_printed_and_relative_fy_resolved():
+    """T-242 AR ckpt_0002: unprinted years (#46 AFSL, #49 63MOONS) go unverified; relative periods resolve to AR FY."""
+    afsl = _gate_row(measure="count.shares", printed_label="Nirbhay Vassa", value_text="166,667",
+                     unit="No. of shares", period="December 2019")
+    moons = _gate_row(measure="shareholding_pct", printed_label="IEPF", value_text="0.23", unit="%",
+                      period="March 2022")
+    aiaeng = _gate_row(measure="NEW:total_differently_abled_employees_female",
+                       printed_label="Total differently abled employees (D + E)", value_text="0",
+                       period="end of Financial Year")
+    during = _gate_row(measure="NEW:csr_amount_required", printed_label="CSR required", value_text="17.94",
+                       period="during the year")
+    beg = _gate_row(measure="shareholding_pct", printed_label="Promoter", value_text="50.0", unit="%",
+                    period="beginning of the year")
+    py_row = _gate_row(measure="count.shares", printed_label="Shares", value_text="100", period="P.Y.")
+    non_cal = _gate_row(measure="capex", printed_label="Phase I capex", value_text="500", period="Phase I")
+    kept = _gate_row(measure="shareholding_pct", printed_label="IEPF", value_text="0.23", unit="%",
+                     period="As at 31 March 2026")
+    qtr_fy = _gate_row(measure="NEW:orders", printed_label="Orders", value_text="410", period="Q4FY26")
+    obs.apply_ar_row_gates([afsl, moons, aiaeng, during, beg, py_row, non_cal, kept, qtr_fy],
+                           "Annual Report 2025-26 Shareholding Pattern As at 31 March 2026 Q4FY26", "")
+    assert afsl["status"] == "unverified" and "period_not_printed" in afsl["status_reason"]
+    assert moons["status"] == "unverified" and "period_not_printed" in moons["status_reason"]
+    assert aiaeng["status"] == "verified" and aiaeng["period"] == "31 March 2026"
+    assert during["status"] == "verified" and during["period"] == "FY2025-26"
+    assert beg["status"] == "verified" and beg["period"] == "1 April 2025"
+    assert py_row["status"] == "verified" and py_row["period"] == "FY2024-25"
+    assert all(r["period_source"] == "ar_report_year" for r in (aiaeng, during, beg, py_row))
+    assert non_cal["status"] == "verified" and non_cal["period"] == "Phase I"
+    assert kept["status"] == "verified" and qtr_fy["status"] == "verified"
+
+    # Without a discoverable split-year or year-ended date (single-year title), period and status stay unchanged
+    single_rel = _gate_row(measure="NEW:csr", printed_label="CSR", value_text="10", period="during the year")
+    no_fy_noncal = _gate_row(measure="NEW:energy", printed_label="Energy", value_text="10",
+                             period="180-day monitoring period")
+    obs.apply_ar_row_gates([single_rel, no_fy_noncal], "Annual Report 2025 plain text without year-end", "")
+    assert single_rel["status"] == "verified" and single_rel["period"] == "during the year"
+    assert single_rel.get("period_source", "") == ""
+    assert no_fy_noncal["status"] == "verified" and no_fy_noncal["period"] == "180-day monitoring period"
+
+    # ABB-style Jan-Dec AR (year ended 31 December 2025) resolves to CY2025 / 31 December 2025 / 1 January 2025
+    abb_curr = _gate_row(measure="capex", printed_label="Capitalised", value_text="100", period="during the year")
+    abb_end = _gate_row(measure="employees", printed_label="Employees", value_text="500",
+                        period="end of Financial Year")
+    abb_beg = _gate_row(measure="employees", printed_label="Employees", value_text="480",
+                        period="beginning of the year")
+    abb_prev = _gate_row(measure="capex", printed_label="Capitalised", value_text="90", period="P.Y.")
+    obs.apply_ar_row_gates([abb_curr, abb_end, abb_beg, abb_prev],
+                           "ABB India Limited\nFinancial year ended December 31, 2025", "")
+    assert abb_curr["period"] == "CY2025" and abb_curr["status"] == "verified"
+    assert abb_end["period"] == "31 December 2025" and abb_end["period_kind"] == "instant"
+    assert abb_beg["period"] == "1 January 2025" and abb_beg["period_kind"] == "instant"
+    assert abb_prev["period"] == "CY2024"
+    assert all(r["period_source"] == "ar_report_year" for r in (abb_curr, abb_end, abb_beg, abb_prev))
+
+    # Non-March non-December year end (e.g. Oct-Sep SIEMENS) resolves to that year end
+    sep_curr = _gate_row(measure="capex", printed_label="Capex", value_text="50", period="during the year")
+    sep_beg = _gate_row(measure="employees", printed_label="Employees", value_text="50",
+                        period="beginning of the year")
+    obs.apply_ar_row_gates([sep_curr, sep_beg], "Financial year ended 30 September 2025", "")
+    assert sep_curr["period"] == "Year ended 30 September 2025"
+    assert sep_beg["period"] == "1 October 2024" and sep_beg["period_kind"] == "instant"
+
+
+def test_ar_ckpt2_previous_page_year_carries_over_and_instant_resolves():
+    """T-242 AR ckpt_0002 counter-tests: previous page's year keeps row verified; instant label resolves no-year."""
+    carried = _gate_row(measure="count.shares", printed_label="Shares", value_text="500",
+                        period="Year ended March 31, 2025")
+    obs.apply_ar_row_gates([carried], "Continuation table Shares 500", "",
+                           previous_text="Statement for the Year ended March 31, 2025")
+    assert carried["status"] == "verified"
+    # Instant/label rule resolves 'end of Financial Year' to a printed date before apply_ar_row_gates runs
+    built = obs.build_observations(
+        symbol="TESTCO", doc_key="D:/x/annual_report/a.pdf", page=10, known_at="2026-08-10T10:00:00",
+        page_text="Closing as on 31st March 2026 100",
+        reply_rows=[_ar_reply(measure="count.shares", printed_label="Closing as on 31st March 2026",
+                              printed_axis="", value_text="100", unit="shares",
+                              period="end of Financial Year")],
+    )
+    obs.apply_number_gates(built, "annual_report", page_text="Closing as on 31st March 2026 100")
+    assert built[0]["period"] == "March 2026" and built[0]["status"] == "verified"
+
+
+def test_ar_ckpt2_date_as_value_is_dropped():
+    """T-242 AR ckpt_0002: a number row whose value_text parses as a date is dropped whatever the measure."""
+    rows = [
+        _gate_row(measure="NEW:director_term_effective_date", printed_label="with effect from",
+                  value_text="December 01, 2026", value=1.0, period="December 01, 2026"),
+        _gate_row(measure="NEW:appointment_date", printed_label="Appointed on",
+                  value_text="23.10.2024", value=23.10, period="2024-25"),
+        _gate_row(measure="NEW:cutoff_date", printed_label="Cut-off",
+                  value_text="31/03/2026", value=31.0, period="31/03/2026"),
+        _gate_row(measure="NEW:effective_date", printed_label="Effective",
+                  value_text="2026-03-31", value=2026.0, period="2026-03-31"),
+        _gate_row(measure="count.shares", printed_label="Shares",
+                  value_text="166,667", value=166667.0, period="As at 31 March 2026"),
+    ]
+    obs.apply_ar_row_gates(rows, "As at 31 March 2026 23.10.2024 31/03/2026 2026-03-31", "")
+    assert len(rows) == 1 and rows[0]["value_text"] == "166,667"
+
+
+def test_ar_ckpt2_prose_consolidated_basis_cleared_and_headings_kept():
+    """T-242 AR ckpt_0002: consolidated from running prose (#39 5PAISA) is cleared; headings/titles stay."""
+    prose = _gate_row(measure="count.shares", printed_label="Rights entitlement on 376 equity shares",
+                      series_title="R. DETAILS OF UNCLAIMED SHARES OF THE COMPANY",
+                      value_text="376", unit="equity shares", period="FY26", basis="consolidated")
+    obs.apply_ar_row_gates([prose],
+                           "S. DETAILS OF UNCLAIMED FRACTIONAL SHARES\n"
+                           "However, 12,707 equity shares arose as fractional entitlements, which were consolidated, "
+                           "sold in the market. FY26", "")
+    assert prose["basis"] == "" and prose["basis_source"] == ""
+
+    headed = _gate_row(measure="count.shares", printed_label="Shares", value_text="100",
+                       period="FY26", basis="consolidated")
+    obs.apply_ar_row_gates([headed],
+                           "NOTES TO THE CONSOLIDATED FINANCIAL STATEMENTS\nFY26 Shares 100", "")
+    assert headed["basis"] == "consolidated"
+
+    wrapped_head = _gate_row(measure="count.shares", printed_label="Shares", value_text="100",
+                             period="FY26", basis="consolidated")
+    obs.apply_ar_row_gates([wrapped_head],
+                           "NOTES TO ACCOUNTS FORMING PART OF CONSOLIDATED STATEMENT OF PROFIT AND LOSS\nFY26 Shares 100", "")
+    assert wrapped_head["basis"] == "consolidated"
+
+    stmt_head = _gate_row(measure="count.shares", printed_label="Shares", value_text="100",
+                          series_title="Statement of Consolidated Profit and Loss", period="FY26",
+                          basis="consolidated")
+    obs.apply_ar_row_gates([stmt_head], "Statement of Consolidated Profit and Loss\nFY26 Shares 100", "")
+    assert stmt_head["basis"] == "consolidated"
+
+    titled = _gate_row(measure="count.shares", printed_label="Shares", value_text="100",
+                       series_title="Consolidated Financial Highlights", period="FY26", basis="consolidated")
+    obs.apply_ar_row_gates([titled], "FY26 Shares 100\nWhich were consolidated earlier.", "")
+    assert titled["basis"] == "consolidated"
+
+
+def test_ar_ckpt2_consolidated_subsidiary_scope_resets_when_label_names_none():
+    """T-242 AR ckpt_0002: plain consolidated items reset to company; NCI/stake/Schedule III/entities stay."""
+    bkt = _gate_row(measure="NEW:currency_sensitivity_strengthening_weakening_percentage",
+                    printed_label="USD", series_title="Sensitivity analysis", value_text="3%", unit="%",
+                    period="31st March, 2025", basis="consolidated", entity_scope="subsidiary")
+    cash = _gate_row(measure="cash_and_cash_equivalents", printed_label="Cash and cash equivalents",
+                     value_text="100", unit="Rs crore", period="31st March, 2025", basis="consolidated",
+                     entity_scope="subsidiary")
+    sub = _gate_row(measure="shareholding_pct", printed_label="Asian Paints (Vanuatu) Limited",
+                    value_text="60.00", unit="%", period="31st March, 2025", basis="consolidated",
+                    entity_scope="subsidiary")
+    nci = _gate_row(measure="NEW:nci", printed_label="Non-controlling interest percentage",
+                    value_text="25.0", unit="%", period="31st March, 2025", basis="consolidated",
+                    entity_scope="subsidiary")
+    stake = _gate_row(measure="shareholding_pct", printed_label="previously held 49.9% stake in BAIHAG",
+                      value_text="49.9", unit="%", period="31st March, 2025", basis="consolidated",
+                      entity_scope="subsidiary")
+    fze = _gate_row(measure="revenue", printed_label="Accelya Middle East FZE",
+                    value_text="50", unit="Rs crore", period="31st March, 2025", basis="consolidated",
+                    entity_scope="subsidiary")
+    sched3 = _gate_row(measure="net_worth", printed_label="Parent",
+                       series_title="Additional Information to Consolidated Financial Statements",
+                       value_text="1000", unit="Rs crore", period="31st March, 2025", basis="consolidated",
+                       entity_scope="subsidiary")
+    obs.apply_ar_row_gates([bkt, cash, sub, nci, stake, fze, sched3],
+                           "Notes forming part of the Consolidated Financial Statements\nAs at 31st March, 2025",
+                           "Balkrishna Industries Limited")
+    assert bkt["entity_scope"] == "company"
+    assert cash["entity_scope"] == "company"
+    assert all(r["entity_scope"] == "subsidiary" for r in (sub, nci, stake, fze, sched3))
 
