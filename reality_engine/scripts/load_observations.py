@@ -22,6 +22,16 @@ OBS_SOURCES = [
     ("transcript_394_v3", "D:/RealityEngine/hy4_out/obs_transcripts_394_v3.db", "transcript"),
     ("transcript", "D:/RealityEngine/t238/obs_transcripts_91o.db", "transcript"),
 ]
+# T-242 (25 Nov, Eagle): a SUPPLEMENT is loaded BESIDE its source's primary db, never instead of it. hy4 read the deck
+# pages twice: obs_decks_fy27.db read every page whose text layer parsed, obs_decks_wide.db re-read the few-figure and
+# jumbled-text pages (text_source='text_layer_jumbled'), and the wide page set holds every fy27 page (4,185 of 7,566),
+# so only its remaining pages are added. A supplement row keeps source='deck' (the tools filter by it), carries its db
+# in `reader` (the row's read provenance, e.g. "hy4-flash-free [obs_decks_wide]") and gets observation_id offset by
+# 10,000,000: both dbs number from 1, so the offset keeps ids unique in obs_fact and names the wide rows in the tools'
+# provenance.row_id.  (key, db, source, id offset)
+SUPPLEMENTS = [
+    ("deck_wide", "D:/RealityEngine/hy4_out/obs_decks_wide.db", "deck", 10_000_000),
+]
 EVENTS_DB = "D:/RealityEngine/t231/events.db"            # the last fallback
 # T-242 filing_events, round 7 (25 Nov); same first-db-with-rows rule per symbol.  Whatever a db says, a row is
 # loaded `verified` only when its kind is in the CURRENT filing_events.VERIFIED_KINDS (see _gate_event_rows), so an
@@ -129,6 +139,23 @@ def _create_tables(con, obs_cols):
             con.execute(f'ALTER TABLE filing_event ADD COLUMN "{c}"')
 
 
+def _obs_vals(rows, source: str, checks: dict[int, tuple], id_pos: int | None, id_offset: int = 0,
+              reader_pos: int | None = None, reader_mark: str = "") -> list[list]:
+    """obs_fact insert values: the source row, source/doc_type, and the check verdict of its ORIGINAL id."""
+    none = (None,) * len(CHECK_COLS)
+    out: list[list] = []
+    for r in rows:
+        r = list(r)
+        ck = none
+        if id_pos is not None and r[id_pos] is not None:
+            ck = checks.get(int(r[id_pos]), none)
+            r[id_pos] = int(r[id_pos]) + id_offset
+        if reader_pos is not None and reader_mark:
+            r[reader_pos] = f"{r[reader_pos] or ''}{reader_mark}".strip()
+        out.append(r + [source, DOC_TYPE[source]] + list(ck))
+    return out
+
+
 def _load_store(store_path: Path, symbol: str | None = None) -> dict:
     con = sqlite3.connect(str(store_path))
     con.execute("PRAGMA journal_mode=WAL")
@@ -175,9 +202,7 @@ def _load_store(store_path: Path, symbol: str | None = None) -> dict:
             done_sources.add(source)
             stats.setdefault("obs_db", {})[source] = db_path
             checks = load_checks(db_path) if id_pos is not None else {}
-            none = (None,) * len(CHECK_COLS)
-            vals = [list(r) + [source, DOC_TYPE[source]]
-                    + list(checks.get(int(r[id_pos]), none) if r[id_pos] is not None else none) for r in rows]
+            vals = _obs_vals(rows, source, checks, id_pos)
             if vals:
                 con.executemany(insert_sql, vals)
             stats["obs"][source] = len(vals)
@@ -185,6 +210,35 @@ def _load_store(store_path: Path, symbol: str | None = None) -> dict:
             dt = time.perf_counter() - t0
             stats["timings"][source] = dt
             print(f"{symbol} {source}: {len(vals)} rows in {dt:.3f}s", flush=True)
+
+        # T-242 supplements: page-disjoint, so add only the pages the primary source supplied no row for
+        dk = obs_cols.index("doc_key") if "doc_key" in obs_cols else None
+        pg = obs_cols.index("page") if "page" in obs_cols else None
+        reader_pos = obs_cols.index("reader") if "reader" in obs_cols else None
+        for sup_key, sup_db, source, id_offset in SUPPLEMENTS:
+            if not Path(sup_db).is_file():
+                continue
+            t0 = time.perf_counter()
+            src_con = _ro(sup_db)
+            rows = src_con.execute(
+                f"SELECT {placeholders} FROM observation WHERE symbol=? AND status IN ('verified','unverified')",
+                (symbol,)).fetchall()
+            src_con.close()
+            # drop this supplement's own rows from an earlier load, then keep the pages any db of the source supplied
+            con.execute("DELETE FROM obs_fact WHERE symbol=? AND source=? AND observation_id>=?",
+                        (symbol, source, id_offset))
+            have = set(con.execute("SELECT doc_key, page FROM obs_fact WHERE symbol=? AND source=?",
+                                   (symbol, source)).fetchall()) if dk is not None and pg is not None else set()
+            rows = [r for r in rows if dk is None or pg is None or (r[dk], r[pg]) not in have]
+            checks = load_checks(sup_db) if id_pos is not None else {}
+            vals = _obs_vals(rows, source, checks, id_pos, id_offset=id_offset, reader_pos=reader_pos,
+                             reader_mark=f" [{Path(sup_db).stem}]")
+            if vals:
+                con.executemany(insert_sql, vals)
+            stats.setdefault("obs_db", {})[sup_key] = sup_db
+            stats["obs"][sup_key] = len(vals)
+            stats["timings"][sup_key] = time.perf_counter() - t0
+            print(f"{symbol} {sup_key}: {len(vals)} rows in {stats['timings'][sup_key]:.3f}s", flush=True)
 
         # obs_measure_new: idempotent (delete then insert union)
         t0 = time.perf_counter()
