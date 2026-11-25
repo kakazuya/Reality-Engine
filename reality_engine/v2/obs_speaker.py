@@ -961,6 +961,14 @@ _CONFIRMATION_QUESTION_RE = re.compile(
     r"\s*\??[\"')”’]*$", re.I)
 
 
+# "So is the margin going to be 20%, right?" asks: an inverted or wh- start is a question whatever its tail
+_INTERROGATIVE_START_RE = re.compile(
+    r"^(?:(?:so|and|but|okay|ok|now|then|sir)[,\s]+)*"
+    r"(?:is|are|was|were|will|would|can|could|do|does|did|should|shall|has|have|had|may|might|what|how|why|when"
+    r"|which|where|who)\b", re.I)
+_TAG_TAIL_RE = re.compile(r"[\s,]+(?:right|okay|ok|no|isn['’]t\s+it)\s*\?[\"')”’]*$", re.I)
+
+
 def _ends_in_question(text: str) -> bool:
     return str(text or "").rstrip().rstrip("\"')”’").endswith("?")
 
@@ -977,7 +985,17 @@ def question_passage(statement: str) -> bool:
     if not _ends_in_question(text):
         return False
     sentences = _sentences(text)
-    if len(sentences) <= 2 or _CONFIRMATION_QUESTION_RE.search(sentences[-1]):
+    if _CONFIRMATION_QUESTION_RE.search(sentences[-1]):
+        return True
+    # fy27_v3 r2 re-grade (25 Nov): "... order book is INR610 crores, right?" and "Okay? So ... CAPEX ... right?"
+    # are managers' answers with a tag tail; a declarative of 8+ words before the tag is a statement (Wolf)
+    tail = _TAG_TAIL_RE.search(sentences[-1])
+    if tail and len(sentences[-1][:tail.start()].split()) >= 8 \
+            and not _INTERROGATIVE_START_RE.match(sentences[-1]):
+        return False
+    if len(sentences) == 2 and _is_courtesy_or_tag_question(sentences[-1]) and not _ends_in_question(sentences[0]):
+        return False
+    if len(sentences) <= 2:
         return True                     # an analyst checking his reading: "..., is that correct?" (Wolf, 394 80805)
     last_idx = len(sentences) - 1
     q_count = sum(
@@ -1137,7 +1155,9 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
         else:
             stats["empty"] += 1
             reasons.append("speaker_unresolved: no speaker label on this page or an earlier one")
-        no_ref = no_referent_reason(str(row.get("statement") or ""))
+        # fy27_v3 r2 re-grade (25 Nov): all 39 no_referent demotions had the matching question in question_context
+        no_ref = "" if str(row.get("question_context") or "").strip() \
+            else no_referent_reason(str(row.get("statement") or ""))
         if no_ref:
             reasons.append(no_ref)
         if question_passage(str(row.get("statement") or "")):
