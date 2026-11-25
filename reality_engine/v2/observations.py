@@ -3892,7 +3892,7 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
         unit = norm_space(row.get("unit"))
         cues = " ".join(norm_space(row.get(key)) for key in
                         ("measure", "printed_label", "printed_axis", "series_title"))
-        if not unit and note:
+        if not unit and note and not _is_target_year(row):
             note_unit, note_family, note_scale = note
             measure_family = ar_measure_family(row)
             fits = (family_ok(measure_family, note_family)
@@ -3928,6 +3928,8 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             reason = f"ar_not_a_figure: {measure!r} is a reference number (page, clause, note, section), not a figure"
         elif _label_duration_echo(row):
             reason = f"ar_not_a_figure: {row.get('value')!r} is the label's own duration ({label!r})"
+        elif _is_target_year(row):
+            reason = f"ar_not_a_figure: {row.get('value')!r} is a target year ({label!r}), not a figure"
         elif str(row.get("entity_scope") or "") in AR_OUTSIDE_SCOPES:
             reason = f"ar_outside_entity: entity_scope {row.get('entity_scope')!r} is not the company's own figure"
         if not reason and headline and AR_BUCKET_LABEL_RE.search(label) \
@@ -3959,19 +3961,51 @@ AR_REFERENCE_MEASURE_RE = re.compile(
     r"(?<![a-z])(?:page_ref\w*|page_no|page_number|clause\w*|serial_no|sr_no|note_no|note_number|section_number"
     r"|regulation_number|reference_number|folio_no)(?![a-z])", re.I)
 AR_OUTSIDE_SCOPES = ("industry", "country", "peer")     # "customer" left alone: often the company's own split
-AR_DURATION_RE = re.compile(r"\b(?:past|last|preceding|previous|next)\s+(\w+)\s+(?:financial\s+)?years?\b", re.I)
-_NUMBER_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "ten": 10}
+AR_DURATION_RE = re.compile(
+    r"\b(?:past|last|preceding|previous|next|period\s+of)\s+(?P<n1>\w+)\s+(?:financial\s+)?years?\b"
+    r"|\b(?P<n2>\w+)\s+(?:financial\s+)?years?\s+(?:immediately\s+)?(?:preceding|before|prior|ago)\b",
+    re.I,
+)
+_NUMBER_WORDS = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+}
+AR_TARGET_YEAR_CUE_RE = re.compile(r"\b(?:targets?|by|goals?|net[\s-]*zero|years?)\b", re.I)
 
 
 def _label_duration_echo(row: dict[str, Any]) -> bool:
     """The value only repeats the duration printed in its own label ("ceased ... in the past 3 years" -> 3)."""
-    cue = " ".join(norm_space(row.get(key)) for key in ("printed_label", "period", "measure"))
-    match = AR_DURATION_RE.search(cue)
-    if not match or row.get("value") is None:
+    if row.get("value") is None:
         return False
-    word = match.group(1).lower()
-    number = _NUMBER_WORDS.get(word) or (int(word) if word.isdigit() else None)
-    return number is not None and float(row["value"]) == float(number)
+    try:
+        value = float(row["value"])
+    except (TypeError, ValueError):
+        return False
+    cue = " ".join(norm_space(row.get(key)).replace("_", " ") for key in ("printed_label", "period", "measure"))
+    for match in AR_DURATION_RE.finditer(cue):
+        word = (match.group("n1") or match.group("n2") or "").lower()
+        number = _NUMBER_WORDS.get(word) or (int(word) if word.isdigit() else None)
+        if number is not None and value == float(number):
+            return True
+    return False
+
+
+def _is_target_year(row: dict[str, Any]) -> bool:
+    """A whole calendar year (1990-2100) with no unit (or unit 'year') and a target/year cue is not a figure."""
+    val = row.get("value")
+    if val is None:
+        return False
+    try:
+        num = float(val)
+    except (TypeError, ValueError):
+        return False
+    if not (1990 <= num <= 2100 and num.is_integer()):
+        return False
+    unit_clean = re.sub(r"[()]", "", norm_space(row.get("unit"))).strip().lower()
+    if unit_clean not in ("", "year", "years"):
+        return False
+    cue = " ".join(norm_space(row.get(key)).replace("_", " ") for key in ("printed_label", "measure"))
+    return bool(AR_TARGET_YEAR_CUE_RE.search(cue))
 
 
 def _measure_names_qualifier(measure: str, label: str) -> bool:
