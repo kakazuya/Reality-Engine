@@ -2620,29 +2620,39 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   unquarantined metadata `NEW:conference_call_period` and `NEW:office_number`), `20/20` quarantined junk rows truly
   junk. Tests: `reality_engine/tests/test_obs_measure_map.py` (**3 passed**).
 
-- **T-242: Nemotron 3.5 Super VL OCR fill for the image-only deck pages (`scripts/ocr_fill.py`, 25 Nov 2026).**
+- **T-242: free vision-model OCR fill for the image-only deck pages (`scripts/ocr_fill.py`, 25-26 Nov 2026).**
   Selects every universe store's `routes.csv` row with `doc_type=deck`, `route=needs_ocr` and a reason starting
   `text layer none` (1,363 pages across 136 stores in `C:/RealityEngine/tg_build/universe_fy27`; `--symbols`,
   `--limit`, `--seed` narrow it), resolves the PDF through the store's `doc.source_key` and `raw_store` (Drive-only
   copies are prefetched for the run and deleted), renders a 150 dpi PNG (PyMuPDF), reads it with the bake-off prompt,
-  and writes one `ocr_page` row with `method='ocr_nemotron_vl'`, `ocr_conf` NULL, `n_boxes` = line count and
-  `words_json` one pseudo-word per line `[0, i*12, len(line), i*12+10, line]` (the model returns text, not boxes;
-  `page_words.ocr_words` reads that shape, and `page_words.OCR_METHOD_PRIORITY` now ranks `ocr_nemotron_vl` below
-  `ocr_textrec`/`ocr_rapid`). Rows go to `<out-dir>/<stem>_ocr.db` with `--out-dir` and beside the live store
-  otherwise; `--resume` skips pages this method already read, and a page held under another method is never
-  overwritten. Free-only: only the ids in `FREE_ROUTES` can be called (`kilo` over HTTP with `KILO_API_KEY`; `zen`
-  through `opencode run --standalone`), and a non-zero `step_finish` cost stops the run; keys come from
-  `resource_watchdog.user_env()` and are never printed. Two sandbox limits were measured 25 Nov: Zen's HTTP endpoint
-  answers every free model with `FreeUsageLimitError` ("Free models work in OpenCode"), and the `opencode` CLI cannot
-  open its log under `%USERPROFILE%\.local\share\opencode` inside the dsh sandbox (EPERM), so a sandboxed pilot runs
-  `--routes kilo --workers N`; outside the sandbox both routes run one worker each with adaptive 429 back-off.
-  Python 3.14's `tempfile.mkdtemp` gives the folder a 0o700 DACL the restricted token cannot write into, so
-  `_shared_acl_tempdirs()` creates `raw_store`'s prefetch folders with the parent's permissions for the run (a
-  `raw_store` helper would be the general fix). Pilot (40 pages, seed 1125, `--routes kilo --workers 4`,
-  `.tmp/ocr_pilot`): **40/40 written, 0 errors**, 32 stores, 578.1 s total, 14.5 s/page mean / 10.7 s median,
-  **6 pages with >= 4 figures**; per-page log `ocr_fill.jsonl`, 10 outputs `samples.txt`. Nothing was written
-  beside a live store. Test: `python -m pytest -q reality_engine/tests/test_ocr_fill.py
-  reality_engine/tests/test_v2_page_words.py` (**12 passed**; the brief's `test_page_words.py` is
+  and writes one `ocr_page` row per page whose `method` is the reading model's (`ocr_nemotron_vl` or, from 26 Nov,
+  `ocr_deepseek_flash_vl`), `ocr_conf` NULL, `n_boxes` = line count and `words_json` one pseudo-word per line
+  `[0, i*12, len(line), i*12+10, line]` (the model returns text, not boxes; `page_words.ocr_words` reads that shape,
+  and `page_words.OCR_METHOD_PRIORITY` ranks both fills below `ocr_textrec`/`ocr_rapid`, nemotron ahead of deepseek).
+  Rows go to `<out-dir>/<stem>_ocr.db` with `--out-dir` and beside the live store otherwise; `--resume` skips pages
+  any ocr_fill model already read, and a page held under another method is never overwritten.
+  Free-only: only the ids in `FREE_ROUTES` can be called (`kilo` over HTTP with `KILO_API_KEY` and
+  `nvidia/nemotron-3.5-super-vl:free`; `zen` through `opencode run --standalone`, quality order
+  `nemotron-3.5-super-vl-free` then `deepseek-v4.1-flash-free`), the paid `mimo`/`hy4-flash` ids are refused by name,
+  and a non-zero `step_finish` cost stops the run; keys come from `resource_watchdog.user_env()` and are never
+  printed. Model choice per call is the route's model with the lowest EWMA seconds/page (alpha 0.3) among the models
+  not cooling down; unmeasured models are tried first in quality order and every 8th call on a route probes its
+  least-recently-used model; a throttle cools that model alone (30 s, doubling to 600 s) and requeues the page.
+  Concurrency is per route (AIMD): each route starts at `--start-workers` (6) calls in flight, gains one after 20
+  successes in a row, loses 30% (floor one) on a throttle and is capped by `--max-workers` (24); threads = the sum of
+  the caps, a thread holds a route slot for its call, and every change prints `limit <route> <old>-><new> (<reason>)`.
+  The summary JSON adds `models` (per model: `ok`, `err`, `throttled`, `median_s`) and `limits` (final limit per
+  route); the page line is `ok   <route>:<short model> <symbol> p<page> <s>s <chars> chars`, and `ocr_fill.jsonl`
+  carries `route` and `model`. Two sandbox limits were measured 25 Nov: Zen's HTTP endpoint answers every free model
+  with `FreeUsageLimitError` ("Free models work in OpenCode"), and the `opencode` CLI cannot open its log under
+  `%USERPROFILE%\.local\share\opencode` inside the dsh sandbox (EPERM), so a sandboxed pilot runs `--routes kilo`;
+  outside the sandbox both routes run. Python 3.14's `tempfile.mkdtemp` gives the folder a 0o700 DACL the restricted
+  token cannot write into, so `_shared_acl_tempdirs()` creates `raw_store`'s prefetch folders with the parent's
+  permissions for the run (a `raw_store` helper would be the general fix). Pilot (25 Nov, 40 pages, seed 1125,
+  `--routes kilo`, `.tmp/ocr_pilot`): **40/40 written, 0 errors**, 32 stores, 578.1 s total, 14.5 s/page mean /
+  10.7 s median, **6 pages with >= 4 figures**; per-page log `ocr_fill.jsonl`, 10 outputs `samples.txt`. Nothing was
+  written beside a live store. Test: `python -m pytest -q reality_engine/tests/test_ocr_fill.py
+  reality_engine/tests/test_v2_page_words.py` (**20 passed**: 15 + 5; the brief's `test_page_words.py` is
   `test_v2_page_words.py`). The bulk run waits for the 60-row grade.
 
 ## Modular store repair (T-218, 16 Nov 2026)

@@ -26,9 +26,9 @@ from reality_engine.v2 import page_layout
 
 Word = tuple[float, float, float, float, str]
 
-# Lower wins when an ocr.db holds more than one reading of a page.  T-242: the Nemotron fill (ocr_nemotron_vl)
-# only transcribes lines, so it is the fallback under the two box-accurate readers.
-OCR_METHOD_PRIORITY = {"ocr_textrec": 0, "ocr_rapid": 1, "ocr_nemotron_vl": 2}
+# Lower wins when an ocr.db holds more than one reading of a page.  T-242: the line-only fills (ocr_nemotron_vl,
+# ocr_deepseek_flash_vl) are fallbacks under the two box-accurate readers, nemotron ahead of deepseek (higher recall).
+OCR_METHOD_PRIORITY = {"ocr_textrec": 0, "ocr_rapid": 1, "ocr_nemotron_vl": 2, "ocr_deepseek_flash_vl": 3}
 
 _OPEN: OrderedDict[str, Any] = OrderedDict()
 
