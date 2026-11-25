@@ -17,6 +17,8 @@ This folder is about running the machines, not about the Reality Engine itself. 
   `D:/RealityEngine/hy4_out/<loop>.pid`.
 - `stop` ends every matched instance and reader by PID, re-checks, and lists any survivors.
 - `adopt` records the PID of a loop that was started without the script.
+- To hold one job for a store swap without stopping reading, create `D:/RealityEngine/hy4_out/<db>.hold`. The
+  transcript loop then skips that job; delete the file to resume. This only works in `.tmp/hy4_always.sh`, since 26 Nov.
 - A loop at an ungraded checkpoint keeps running and rechecks every 10 minutes; it never exits.
 
 | File | What it covers |
