@@ -75,6 +75,17 @@
    "evidence": "C:/RealityEngine/t242/ar_grade_fresh2/grades.csv",
    "note": "AR after statement gate + row gates (a7891a8e/c00856ee): 60 fresh verified rows incl. 20 basis-switched, 57/0/3/0 (95% R, 5.0% W+J, at bar); W: net-cash sign, demand-order date as period, subsidiary FS inside parent AR. Bulk held until #10/#57 rules merge (Wolf).",
    "at": "2026-11-24 22:13"
+  },
+  {
+   "doc_type": "results",
+   "fingerprint": "e6d289ddd672",
+   "verdict": "pass",
+   "reviewer": "Eagle (non-author; grader DeepSeek 20261125T183550Z-348a9b96, strict)",
+   "author": "T-230 general PROMPT + Wolf-briefed results gates 0bb304f6",
+   "rows": 60,
+   "evidence": "D:/RealityEngine/t242/grades/results_r5_regrade_348a9b96.md",
+   "note": "48/11/1/0 on 60 fresh rows of results_r5.db; first pilot grade failed 33/12/6/9",
+   "at": "2026-11-26 00:24"
   }
  ]
 }
