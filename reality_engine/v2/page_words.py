@@ -26,6 +26,10 @@ from reality_engine.v2 import page_layout
 
 Word = tuple[float, float, float, float, str]
 
+# Lower wins when an ocr.db holds more than one reading of a page.  T-242: the Nemotron fill (ocr_nemotron_vl)
+# only transcribes lines, so it is the fallback under the two box-accurate readers.
+OCR_METHOD_PRIORITY = {"ocr_textrec": 0, "ocr_rapid": 1, "ocr_nemotron_vl": 2}
+
 _OPEN: OrderedDict[str, Any] = OrderedDict()
 
 # Quality thresholds (T-175 will tune).
@@ -224,7 +228,7 @@ def _ocr_method(ocr_dbs: Iterable[Any], doc_key: str, page_no: int) -> str:
         finally:
             if close:
                 con.close()
-    priority = {"ocr_textrec": 0, "ocr_rapid": 1}
+    priority = OCR_METHOD_PRIORITY
     if not methods:
         return "ocr_rapid"
     methods.sort(key=lambda m: priority.get(m, 2))
@@ -257,7 +261,7 @@ def ocr_words(ocr_dbs: Iterable[Any], doc_key: str, page_no: int) -> list[Word]:
                 con.close()
     if not rows:
         return []
-    priority = {"ocr_textrec": 0, "ocr_rapid": 1}
+    priority = OCR_METHOD_PRIORITY
     rows.sort(key=lambda r: priority.get(r[1], 2))
     wj, _method = rows[0]
     try:
