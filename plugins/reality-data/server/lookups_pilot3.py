@@ -1954,8 +1954,18 @@ def _scope_rank(row: dict[str, Any]) -> int:
 
 
 def _scope_label(row: dict[str, Any]) -> str | None:
-    """How an alternative says it is another scope's figure ('scope: industry figure'), None for the company's."""
-    return _SCOPE_LABELS.get(str(row.get("entity_scope") or "").strip().lower())
+    """How an alternative says whose figure it is ('industry figure', 'subsidiary figure (Unicommerce)'), None for the
+    company's own.
+
+    A subsidiary's row is a part of the group, never the company's own total (T-242 fix 7c: ACEVECTOR's 16.7 crore
+    H1 FY27 'adjusted EBITDA' is Unicommerce's, deck p11 FAQ Q10; the group's consolidated figure is -26.9 crore, p4),
+    so it says so when it is shown as an alternative.  The name the row carries (a segment / product column) says which
+    part it is; a row without one still says it is a subsidiary's."""
+    scope = str(row.get("entity_scope") or "").strip().lower()
+    if scope == "subsidiary":
+        part = str(row.get("segment") or row.get("product") or "").strip()
+        return f"subsidiary figure ({part})" if part else "subsidiary figure"
+    return _SCOPE_LABELS.get(scope)
 
 
 def _component_scope(row: dict[str, Any]) -> bool:

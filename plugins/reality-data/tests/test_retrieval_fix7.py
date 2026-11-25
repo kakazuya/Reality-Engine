@@ -1,7 +1,8 @@
 """T-242 retrieval fix 7: the company's own figure first (an industry / country / peer / customer figure is never the
 answer), the asked period and unit family decide a number, a component's margin is not the company's, a paraphrased
 question reaches the call's own sentence, guidance elects the group's full-year target over a WOS approval, and a
-stem-only match never earns the rare ask word's weight (fix 7b).
+stem-only match never earns the rare ask word's weight (fix 7b).  Fix 7c: a subsidiary's figure is never the company's
+answer either, and when it is shown as an alternative the reply says whose figure it is.
 
     python -m pytest -q plugins/reality-data/tests/test_retrieval_fix7.py
 
@@ -75,6 +76,13 @@ def store() -> Iterator[Path]:
     add("obs_fact", symbol=SYM, measure="capex", record_type="number", status="verified", period="FY26",
         period_kind="actual", entity_scope="country", value=999.0, unit="Crore", scale=1.0, doc_type="deck",
         doc_key=DECK_DOC, page=13, known_at="2026-11-12T12:00:00", observation_id=8)
+    # 1b. a subsidiary's figure whose printed label carries the asked words itself (ACEVECTOR's deck p11 "while
+    # Adjusted EBITDA was 16.7 crore" is Unicommerce's): the evidence order likes it, yet a component never answers
+    # for the company, and its alternative says whose figure it is (T-242 fix 7c).
+    add("obs_fact", symbol=SYM, measure="capex", record_type="number", status="verified", period="Q2 FY27",
+        period_kind="actual", entity_scope="subsidiary", segment="Uniware", value=16.7, unit="Crore", scale=1.0,
+        printed_label="while capex was", doc_type="deck", doc_key=DECK_DOC, page=14,
+        known_at="2026-11-12T12:00:00", observation_id=9)
     # 2. AUM is money: the deck also prints the AUM growth percentage as an aum.value row
     add("obs_fact", symbol=SYM, measure="aum.value", record_type="number", status="verified", period="Q2 FY27",
         period_kind="actual", entity_scope="company", value=108377.0, unit="Rs. Crores", scale=1.0, doc_type="deck",
@@ -151,6 +159,19 @@ def test_a_lone_industry_figure_is_an_alternative_never_the_answer(store: Path) 
     assert reply["found"] is False, reply
     alts = reply.get("alternatives") or []
     assert any(alt.get("value") == 999.0 and alt.get("scope") == "country figure" for alt in alts), alts
+
+
+def test_a_subsidiary_figure_is_never_the_answer_and_its_alternative_says_whose_it_is(store: Path) -> None:
+    # T-242 fix 7c (ACEVECTOR audit-6 row 6): 16.7 crore H1 FY27 "adjusted EBITDA" is Unicommerce's, deck p11 FAQ
+    # Q10, and the group's consolidated figure is -26.9 crore, deck p4.  The subsidiary row's printed label even
+    # carries the asked words, and it is still never the company's answer; shown as an alternative, it is named.
+    reply = p3.fact(SYM, "capex", period="Q2 FY27")
+    assert reply["found"], reply
+    assert reply["answer"]["value"] == 252.7, reply["answer"]
+    alts = reply.get("alternatives") or []
+    sub = [alt for alt in alts if alt.get("value") == 16.7]
+    assert sub, alts
+    assert sub[0].get("scope") == "subsidiary figure (Uniware)", sub[0]
 
 
 def test_aum_serves_money_not_the_growth_percentage(store: Path) -> None:
