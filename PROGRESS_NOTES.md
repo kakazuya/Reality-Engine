@@ -262,3 +262,4 @@ T-242 deck value guards: code+tests done (test_deck_guards 13 passed), pilot mea
 
 
 
+- 25 Nov, T-242 grade pack (DeepSeek): `reality_engine/scripts/grade_pack.py` + `reality_engine/tests/test_grade_pack.py` (4 passed); rubrics `docs/grading/{statement,number}_rubric.md`; DEVELOPER_GUIDE section P + STATE updated. Next: commit/merge.
