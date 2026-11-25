@@ -11,6 +11,8 @@ Files:
   neighbouring page. Row ids are the line numbers 1-60.
 - You are read-only: write and commit no files. Your FINAL ANSWER carries the results.
 
+Evidence: first grade C:/RealityEngine/t242/ar_grade_ckpt2/grades.csv (53/3/3/1: invented periods, date as value, subsidiary tag on a consolidated table); the fix is in docs/DEVELOPER_GUIDE.md (AR row gates, 25 Nov).
+
 Steps:
 1. Grade each row R / P / W / J strictly. Name the row label and the column header the value sits under.
    - The value is printed in that row, under that column. The column's period matches `period`.
