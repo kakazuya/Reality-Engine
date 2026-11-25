@@ -321,6 +321,7 @@ def test_statement_company_name_is_kept_and_marked_unresolved():
             "MANAGEMENT: MR. PARESH MEHTA - CHIEF FINANCIAL OFFICER\n"
             "Paresh Mehta: PAT stood at INR620 crores, growth of 269%.\n"),
         (2, "Ashoka Buildcon Limited\nPage 2 of 3\nPAT stood at INR620 crores, growth of 269%.\n"),
+        (3, "Moderator: Thank you.\nOperator: Please proceed.\nAnil Kumar: We will begin.\n"),
     ]
     rows = [_statement(1, "PAT stood at INR620 crores, growth of 269%.", speaker="Ashoka Buildcon Limited"),
             _statement(2, "PAT stood at INR620 crores, growth of 269%.", speaker="ASHOKA")]
@@ -333,7 +334,8 @@ def test_statement_company_name_is_kept_and_marked_unresolved():
 
 
 def test_statement_company_name_without_any_label_is_marked_unresolved():
-    pages = [(1, "Ashoka Buildcon Limited\nPage 1 of 2\nPAT stood at INR620 crores, growth of 269%.\n")]
+    pages = [(1, "Ashoka Buildcon Limited\nPage 1 of 2\nPAT stood at INR620 crores, growth of 269%.\n"),
+             (2, "Moderator: Thank you.\nOperator: Please proceed.\nAnil Kumar: We will begin.\n")]
     rows = [_statement(1, "PAT stood at INR620 crores, growth of 269%.", speaker="Ashoka Buildcon Limited")]
     ospeaker.attach_statement_speakers(rows, pages, "ASHOKA", ["Ashoka Buildcon Limited"])
     assert rows[0]["speaker"] == "Ashoka Buildcon Limited" and rows[0]["status"] == "unverified"
@@ -365,7 +367,7 @@ def test_statement_first_name_and_initials_resolve_to_one_management_name():
 
 
 def test_statement_short_yes_no_reply_needs_its_question():
-    pages = [(2, "Ravi Viswanathan: Yes, the model is similar.")]
+    pages = [(2, "Moderator: Welcome.\nOperator: Please proceed.\nRavi Viswanathan: Yes, the model is similar.")]
     rows = [_statement(2, "Yes, the model is similar.", speaker="Ravi Viswanathan"),
             _statement(2, "Yes, the model is similar and we will keep it so across the year.",
                        speaker="Ravi Viswanathan")]
@@ -378,7 +380,8 @@ def test_statement_short_yes_no_reply_needs_its_question():
 def test_statement_without_any_label_is_marked_unverified():
     pages = [(1, "Hindustan Zinc Limited\nPage 1 of 2\nSensitivity: Public (C4)\n"),
              (2, "Hindustan Zinc Limited\nPage 2 of 2\n"
-                 "Profitability was strengthened by a lower cost of production.\n")]
+                 "Profitability was strengthened by a lower cost of production.\n"),
+             (3, "Moderator: Thank you.\nOperator: Please proceed.\nAnil Kumar: We will begin.\n")]
     rows = [_statement(2, "Profitability was strengthened by a lower cost of production.")]
     ospeaker.attach_statement_speakers(rows, pages, "HINDZINC", ["Hindustan Zinc Limited"])
     assert rows[0]["speaker"] == "" and rows[0]["status"] == "unverified"
@@ -400,7 +403,8 @@ def test_statement_carried_analyst_label_is_refused():
 
 def test_question_ending_statement_is_unverified_and_rhetorical_kept():
     from reality_engine.v2 import obs_speaker as osp
-    pages = [(1, "Ravi Kumar: Why? Because demand was strong. Is margin 20%?")]
+    pages = [(1, "Ravi Kumar: Why? Because demand was strong. Is margin 20%?"),
+             (2, "Moderator: Thank you.\nOperator: Please proceed.\nAnil Kumar: We will begin.\n")]
     rows = [{"record_type": "statement", "doc_key": "d", "page": 1, "speaker": "Ravi Kumar", "status": "verified",
              "statement": "Why? Because demand was strong."},
             {"record_type": "statement", "doc_key": "d", "page": 1, "speaker": "Ravi Kumar", "status": "verified",
@@ -412,7 +416,8 @@ def test_question_ending_statement_is_unverified_and_rhetorical_kept():
 
 def test_duplicate_statements_on_one_page_are_dropped():
     from reality_engine.v2 import obs_speaker as osp
-    pages = [(1, "Ravi Kumar: We added two plants.")]
+    pages = [(1, "Ravi Kumar: We added two plants."),
+             (2, "Moderator: Thank you.\nOperator: Please proceed.\nAnil Kumar: We will begin.\n")]
     row = {"record_type": "statement", "doc_key": "d", "page": 1, "speaker": "Ravi Kumar", "status": "verified",
            "statement": "We added two plants."}
     rows = [dict(row), dict(row, statement="We  added two plants."), {"record_type": "number", "page": 1}]
@@ -436,7 +441,8 @@ def test_statement_by_an_analyst_on_the_roster_is_unverified():
 
 def test_filing_letter_line_on_page_one_is_dropped_but_secretary_remarks_stay():
     from reality_engine.v2 import obs_speaker as osp
-    pages = [(1, "Company Secretary & Compliance Officer: This is for your information and record.")]
+    pages = [(1, "Company Secretary & Compliance Officer: This is for your information and record."),
+             (2, "Moderator: Thank you.\nOperator: Please proceed.\nAnil Kumar: We will begin.\n")]
     letter = {"record_type": "statement", "doc_key": "d", "page": 1, "status": "verified",
               "speaker": "Company Secretary & Compliance Officer",
               "statement": "This is for your information and record."}
@@ -467,7 +473,8 @@ def test_handover_label_corrects_a_carried_manager_and_greetings_are_dropped():
 
 def test_handover_to_another_person_unverifies_without_a_roster():
     from reality_engine.v2 import obs_speaker as osp
-    pages = [(5, "Thank you for all your support. Over to you, Shashi.\nRevenue for FY27 will grow 20%.")]
+    pages = [(5, "Thank you for all your support. Over to you, Shashi.\nRevenue for FY27 will grow 20%."),
+             (6, "Moderator: Thank you.\nOperator: Please proceed.\nAnil Kumar: We will begin.\n")]
     row = {"record_type": "statement", "doc_key": "d", "page": 5, "speaker": "Sampath Ravinarayanan",
            "status": "verified", "statement": "Revenue for FY27 will grow 20%."}
     nick = dict(row, speaker="Shashidhar Kumar", statement="Revenue for FY27 will grow 20%.")
@@ -615,7 +622,8 @@ def test_question_context_filled_from_the_analyst_turn_on_the_previous_page():
 def test_question_context_empty_in_opening_remarks():
     # An unlisted speaker's opening remarks carry a question cue but no analyst has been given the floor yet.
     pages = [(1, "Synth Corp Limited\nPage 1 of 3\n"
-                 "Mr. Anil Kumar: Can everyone hear me? This is our founder speaking. We had a good year.")]
+                 "Mr. Anil Kumar: Can everyone hear me? This is our founder speaking. We had a good year."),
+             (2, "Moderator: Thank you.\nOperator: Please proceed.\n")]
     rows = [dict(_statement(1, "We had a good year."), speaker="Anil Kumar")]
     stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
     assert rows[0]["question_context"] == ""
@@ -721,7 +729,8 @@ def test_closing_or_deferral_with_a_figure_or_substance_is_kept():
 
 def test_closing_deferral_row_is_dropped_by_attach_statement_speakers():
     deferral = "Regarding your question on FY23, maybe we'll be able to get back to you post this call."
-    pages = [(2, "Synth Corp Limited\nRamesh Iyer: " + deferral + "\n")]
+    pages = [(2, "Synth Corp Limited\nRamesh Iyer: " + deferral + "\n"),
+             (3, "Moderator: Thank you.\nOperator: Please proceed.\nAnil Kumar: We will begin.\n")]
     rows = [_statement(2, deferral, speaker="Ramesh Iyer")]
     ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
     assert rows == []
@@ -729,7 +738,8 @@ def test_closing_deferral_row_is_dropped_by_attach_statement_speakers():
 
 def test_ligature_normalisation_never_mutates_stored_statement():
     raw_kept = "Our revenue o\u01afset cost \ufb02uctua\u019fons by 12%."
-    pages = [(2, f"Synth Corp Limited\nRamesh Iyer: Very \ufb01ne ques\u019fon, Ashok.\n{raw_kept}\n")]
+    pages = [(2, f"Synth Corp Limited\nRamesh Iyer: Very \ufb01ne ques\u019fon, Ashok.\n{raw_kept}\n"),
+             (3, "Moderator: Thank you.\nOperator: Please proceed.\nAnil Kumar: We will begin.\n")]
     rows = [
         _statement(2, "Very \ufb01ne ques\u019fon, Ashok.", speaker="Ramesh Iyer"),
         _statement(2, raw_kept, speaker="Ramesh Iyer"),
@@ -744,6 +754,7 @@ def test_generic_empty_and_bare_designation_speakers_are_unverified():
     pages = [
         (1, "Synth Corp Limited\nMANAGEMENT:\nMr. Ramesh Iyer - Chief Financial Officer\n"),
         (2, "Synth Corp Limited\nNo turn label on this page.\n"),
+        (3, "Moderator: Thank you.\nOperator: Please proceed.\nAnil Kumar: We will begin.\n"),
     ]
     rows = [
         _statement(2, "Revenue grew strongly in the core segment.", speaker=""),
@@ -762,3 +773,108 @@ def test_generic_empty_and_bare_designation_speakers_are_unverified():
     # Full management name (printed or resolved) stays verified
     assert rows[6]["status"] == "verified"
     assert rows[7]["speaker"] == "Ramesh Iyer" and rows[7]["status"] == "verified"
+
+
+# --------------------------------------- T-242 surprise audit (25 Nov): non-call docs, headings, moderator, short remarks
+
+_CALL_HEAD = "Synth Corp Limited\nModerator: Welcome to the call.\nOperator: Please proceed.\n"
+_CALL_TAIL = "Anil Kumar: We will begin.\n"
+
+
+def test_a_document_without_call_turns_is_not_a_call_and_its_statements_are_unverified():
+    agm = [
+        (1, "PROCEEDINGS OF THE 32ND ANNUAL GENERAL MEETING OF BRILLIANT PORTFOLIOS LIMITED\n"
+            "The Company Secretary welcomed the members and informed them that the Company had taken all possible steps."),
+        (2, "The Shareholders were informed that the Company has appointed Mr. Ravi Jain as Chairperson."),
+    ]
+    assert not ospeaker.is_call_document(agm)
+    statement = "The Shareholders were informed that the Company has appointed Mr. Ravi Jain as Chairperson."
+    rows = [_statement(2, statement, speaker="Company Secretary")]
+    stats = ospeaker.attach_statement_speakers(rows, agm, "BRIPORT", ["Brilliant Portfolios Limited"])
+    assert rows[0]["status"] == "unverified"
+    assert "not_a_call" in rows[0]["status_reason"]
+    assert stats["not_a_call"] == 1
+
+
+def test_a_real_call_with_labels_on_only_some_pages_stays_a_call():
+    pages = [
+        (1, _CALL_HEAD),
+        (2, "Ramesh Iyer: Revenue grew 12%.\n" + _CALL_TAIL),
+        (3, "Continuing from the previous page, capex is INR200 crores.\n"),
+    ]
+    assert ospeaker.is_call_document(pages)
+    rows = [_statement(3, "Continuing from the previous page, capex is INR200 crores.", speaker="Anil Kumar")]
+    ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["status"] == "verified"
+    assert "not_a_call" not in rows[0]["status_reason"]
+
+
+def test_call_detection_reads_bullet_designation_and_no_colon_label_styles():
+    # Canara Bank: a PDF font bullet (U+F02D) before "Mr. X - MD, Bank:" labels.
+    canara = [(2, "\uf02d Moderator: \nGood afternoon, everyone.\n"
+                  "\uf02d Mr. K Satyanarayana Raju – MD, Canara Bank: \nOur advances grew 10%.\n"
+                  "\uf02d Moderator: \nThe next question is from the line of Anil.\n"
+                  "\uf02d Mr. K Satyanarayana Raju – MD, Canara Bank: \nYes, 14%.\n")]
+    assert ospeaker.is_call_document(canara)
+    # Bharti Airtel: standalone names, the designation on the same line after a dash.
+    bharti = [(3, "Mr. Gopal Vittal\nExecutive Vice Chairman, Bharti Airtel Limited\n"
+                  "Vaidehi Sharma – Moderator\nGood afternoon, ladies and gentlemen.\n"
+                  "Gopal Vittal – Executive Vice Chairman, Bharti Airtel Limited\nThank you, Vaidehi.\n")]
+    assert ospeaker.is_call_document(bharti)
+    # A deck typed as a transcript has only unique slide headings and financial labels, never 3 call turns.
+    deck = [(1, "KEY HIGHLIGHTS\n"), (2, "Profit After Tax:\nRs 697 Lakhs\n"),
+            (3, "Revenue from Operations:\nRs 11,767 Lakhs\n")]
+    assert not ospeaker.is_call_document(deck)
+
+
+def test_a_slide_or_table_heading_is_never_a_speaker():
+    assert not ospeaker.is_person_speaker("Profit After Tax")
+    assert not ospeaker.is_person_speaker("Revenue from Operations")
+    assert not ospeaker.is_person_speaker("Segment 1")
+    assert ospeaker.is_person_speaker("Ramesh Iyer") and ospeaker.is_person_speaker("Pat Cummings")
+    pages = [(1, _CALL_HEAD), (2, "Profit After Tax: New customer acquisition - order book of Rs.12,716 Lakhs.\n" + _CALL_TAIL)]
+    rows = [_statement(2, "New customer acquisition - order book of Rs.12,716 Lakhs.", speaker="Profit After Tax")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "AFFORDABLE", ["Affordable Robotic Limited"])
+    assert rows[0]["speaker"] == "" and rows[0]["status"] == "unverified"
+    assert "speaker_not_a_person" in rows[0]["status_reason"]
+    assert stats["not_a_person"] == 1
+
+
+def test_a_moderator_speaker_is_never_a_management_statement():
+    pages = [(1, _CALL_HEAD), (2, "Moderator: This company was incorporated in 2001 and makes biopharmaceutical products.\n"
+                                  + _CALL_TAIL)]
+    statement = "This company was incorporated in 2001 and makes biopharmaceutical products."
+    rows = [_statement(2, statement, speaker="Moderator")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "BIOCON", ["Biocon Limited"])
+    assert rows[0]["status"] == "unverified" and "speaker_moderator" in rows[0]["status_reason"]
+    assert stats["moderator"] == 1
+    # A named moderator from the roster is the moderator too.
+    named = [(1, "Synth Corp Limited\nModerator: Ms. Anita Rao - Alpha Broking\nMANAGEMENT:\n"
+                 "Mr. Ramesh Iyer - Managing Director\n"),
+             (2, "Anita Rao: Biocon makes biopharmaceutical products and insulins.\n")] + [(3, _CALL_TAIL)]
+    rows = [_statement(2, "Biocon makes biopharmaceutical products and insulins.", speaker="Anita Rao")]
+    ospeaker.attach_statement_speakers(rows, named, "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["status"] == "unverified" and "speaker_moderator" in rows[0]["status_reason"]
+
+
+def test_short_content_free_remarks_are_dropped():
+    for remark in ("We have done well.", "That's a good point.", "Kedar, I think his question was on products.",
+                   "So that's a meaningful swing.", "That is the reason."):
+        pages = [(1, _CALL_HEAD + _CALL_TAIL), (2, "Ramesh Iyer: " + remark)]
+        rows = [_statement(2, remark, speaker="Ramesh Iyer")]
+        stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+        assert rows == [], (remark, rows)
+        assert stats["short_remarks"] == 1
+
+
+def test_short_answer_with_a_figure_product_or_referent_stays():
+    # The short-remark rule never touches a figure, a named product or a stored referent.
+    assert ospeaker.short_remark_reason("Yes, 14% for the year.", "") == ""
+    assert ospeaker.short_remark_reason("The new Servotech inverter is selling well.", "") == ""
+    assert ospeaker.short_remark_reason(
+        "That is the reason.", "Q (Rahul): What is the reason for the margin drop?") == ""
+    pages = [(1, _CALL_HEAD + _CALL_TAIL), (2, "Ramesh Iyer: Yes, 14% for the year.")]
+    rows = [_statement(2, "Yes, 14% for the year.", speaker="Ramesh Iyer")]
+    rows[0]["question_context"] = "What was the FY27 growth?"
+    ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows and rows[0]["status"] == "verified"
