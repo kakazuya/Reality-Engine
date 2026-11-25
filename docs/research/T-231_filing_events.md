@@ -8,7 +8,7 @@ split. The factor study needs dated, quantified corporate events, one row per fi
 extractor over calls and annual reports restated facts across documents and stored parent-company facts under a
 subsidiary.
 
-Code `reality_engine/research/filing_events.py`; tests `reality_engine/tests/test_filing_events.py` (104 tests, no
+Code `reality_engine/research/filing_events.py`; tests `reality_engine/tests/test_filing_events.py` (112 tests, no
 network: stage-A real excerpts, stage-B/C/T-242 excerpts from the graded filings, and synthetic traps; every real
 excerpt quotes its `doc_key`). Output DB `--out`, default `.tmp/t231/events.db`; stores are read with `connect_ro`
 (`mode=ro`) and never written.
@@ -273,9 +273,55 @@ Measured on the same stores into new DBs (cache `C:/RealityEngine/t242/events_ca
   `test_t242_r3_fix4_l1_and_loss_reduction_are_awards` now expects the L1 half `unverified`/`l1_only`. 107 passed.
 * **Deliberate ceilings.** The scope test is document-level, not sentence-level: an order the issuer *received
   from* its own subsidiary would be labelled `subsidiary` too (rare; the related-party crop is small). A subsidiary
-  whose parent is named rather than "the Company" is rejected as a name-before-marker match and recovered by the
-  marker-before-name shape where the filing prints one; where it does not, the row stays `company`. No company name
-  is in the code (patterns only).
+  whose parent is named rather than "the Company" is recovered where an order-receiving verb follows (or via the
+  marker-before-name shape where the filing prints one), while third-party customer subsidiaries remain `company`. No
+  company name is in the code (patterns only).
+
+## 3f. T-242 round 7 (25 Nov 2026): customer, subsidiary, JV/past-order value and press-release folds
+
+After `order_win` failed its strict 60-row grade on 40 untuned stores (`C:/RealityEngine/t242/audit_orderwin_fresh5/`,
+round 6: **39 R / 5 P / 14 W / 2 J**), `VERIFIED_KINDS` remained empty (`frozenset()`) and four structural rule groups
+were added to `reality_engine/research/filing_events.py` (no `fund_raise` logic and no `VERIFIED_KINDS` change):
+
+1. **Customer (`_clean_party`, `_ANNEXURE_AWARDER`, `_ANNEXURE_TARGET_AWARDER`, `_ANNEXURE_LABEL_STRIP`,
+   `_BAD_CUSTOMER`, `order_fields`, `_loose_order_record`).** `order_fields` prefers annexure awarders over
+   title/body `loose_order_v1` guesses, `_ANNEXURE_AWARDER` stops before `Whether the acquisitions` / `Objects and
+   effects` / `Indicative time period` / `Total cost`, `_ANNEXURE_TARGET_AWARDER` reads `Name of the target entity`
+   when the prescribed awarder label is absent (#1, #15, #19, #21, #23), and `_ANNEXURE_LABEL_STRIP` strips
+   `/Redevelopment(s)` and `/Letter of Intent|Acceptance|Award` (#47, #60). `_clean_party` rejects single generic
+   words (`_SINGLE_GENERIC_CUSTOMERS`: Public, Office, Government, Department, Client, ...), own-segment prefixes
+   (`_OWN_PARTY_PREFIX`: `our`/`its`/`their`/`the Company's`, #9, #12), bare countries/regions (`_COUNTRIES_AND_REGIONS`,
+   #31), `<Day> <Month>` datelines (`_HEADLINE_CUSTOMER`, `_HEADLINE_PLACE`, #32), and leading table-header words
+   (`_HEADER_PARTY_PREFIX`); `_BAD_CUSTOMER` narrows `promoter` to `whether the promoter` / `promoter/group` instead of
+   bare `promoter` (fixing `Yucca Promoters LLP`, #43) and matches `customers` plural and `same client` (#13, #14).
+2. **Subsidiary (`_SUB_*`, `_valid_sub_name`, `_subsidiary_names_from_span`, `_subsidiary_name`).** Accepts quoted names
+   (#30, #55 `“KRN HVAC Products Private Limited”`), strips `(formerly known as ...)` before `_SUB_JUNK` (#60), adds
+   `GmbH` to `_SUB_SUFFIX`, supports plural `subsidiaries` and multi-name lists joined by `'; '` before or after the
+   marker (#14, #49), allows parent-named clauses when followed by an active order-receiving verb while still rejecting
+   customer-side third-party subsidiaries, and rejects digits, capacity/unit tokens (`_SUB_UNIT_TOKEN`: `MW`/`MWp`/
+   `kW`/`GW`/`DC`/`AC`/..., fixing #60 `'MW DC'`), bare countries, and single-word non-suffix acronyms (`Sweden)`,
+   `KSPL)`).
+3. **Order value (`_consortium_share`, `_strip_past_order_values`, `_ORDER_ROLLUP`).**
+   - `_consortium_share` matches full-rupee share spans (`_CONSORTIUM_AMOUNT_FULL`), named `<Issuer>'s order value` /
+     `share of <Issuer>` / `holds X% partnership stake` gated to the issuer (`_issuer_tokens`, `_matches_issuer`), so
+     JV gross values store the company's share and note the gross value in `detail` (#23: `16.4743` cr, `70%`, gross
+     `23.5347` cr; `CAPACITE` `e8953bba` uses its `40%` share `153.888` cr rather than the lead partner's `60%`).
+   - `_strip_past_order_values` masks clauses/phrases introduced by `delivered` / `executed & delivered` / `earlier` /
+     `previous` / `prior` order before `order_wins.parse`, `_loose_order_record`, and `_order_value_from_text` (#28:
+     `0.415` -> `0.89` cr).
+   - `_ORDER_ROLLUP` widens to `secures/receives ... orders worth/aggregating to ... in Q2 FY 2027` / `in the
+     <Month-Month> quarter` (#18 vetoed).
+4. **Duplicates (`_fold_same_order`) & `build()`/`_finish_scope()`.** A press/media release within 10 days of an order
+   with the same value (within 0.5%) folds into it with an `amend` link when customers do not conflict (treating empty
+   and `Not disclosed`/`Confidential` as unnamed; #13 -> #27, #20 -> #38), while never folding a valued press release
+   into an empty earlier row. `_finish_scope` still stamps `l1_only` while `VERIFIED_KINDS` is empty, and `build()`'s
+   `covered` check replaces `amount not filled by script` rows whenever the model fills a non-quarantined printed-unit
+   value regardless of `VERIFIED_KINDS`.
+
+Measured against the round-6 DBs with copied caches (0 new model requests; `.tmp/events_r7c_fresh{5,4,3}.db`):
+* **21/21 fresh5 W/P/J rows fixed**: all 11 customer failures (#1, #9, #12, #15, #17, #19, #21, #31, #32, #43, #47), all 5 subsidiary failures (#14, #30, #49, #55, #60), all 3 value failures (#18 vetoed, #23 `16.4743` cr / 70%, #28 `0.89` cr), and both duplicate press releases (#13 -> #27, #20 -> #38; #32 also folded into `60b37559`).
+* **Graded R rows**: `events_grade_fresh3` 25/25 unchanged; `fresh5` 37/39 unchanged (#10 and #11 VEERHEALTH press releases folded into the previous day's identical Reg 30 filings `19b7b74e` and `f5a69454`); `audit_orderwin_r5` 51/52 and `events_grade_fresh4` 45/46 unchanged (`CAPACITE e8953bba` moved from gross `384.72` cr to its 40% JV share `153.888` cr, computed `unverified`).
+* **Set diffs (`r6 -> r7`)**: `fresh5` 74/267 (27.7%, mostly MSECL annexure customers filled), `fresh4` 10/199 (5.0%, under 15% stop), `fresh3` 3/209 (1.4%, under 15% stop). **Tests**: 112 passed in `test_filing_events.py`.
 
 ## 4. Model fallback
 
@@ -355,7 +401,7 @@ Recall (30 random order/contract/allot titled filings, seed 9, pool 914): 10 sho
 ## 7. Checks
 
 ```bash
-python -m pytest -q reality_engine/tests/test_filing_events.py   # 107 passed (T-242 round 6)
+python -m pytest -q reality_engine/tests/test_filing_events.py   # 112 passed (T-242 round 7)
 python plugins/code-tools/ct.py typecheck reality_engine/research/filing_events.py \
   reality_engine/tests/test_filing_events.py                     # 2 pre-existing sys.stdout.reconfigure errors
 ```

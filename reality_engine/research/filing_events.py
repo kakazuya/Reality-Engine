@@ -312,8 +312,12 @@ _ORDER_ROLLUP = re.compile(
     r"(?:quarter|year|financial\s+year|half[\s-]?year|first\s+half|nine\s+months|Q[1-4]|H[12]|FY\s?\d{2,4})\b"
     r"|\b(?:during|in)\s+(?:Q[1-4](?:\s*FY\s?\d{2,4})?|H[12](?:\s*FY\s?\d{2,4})?|the\s+(?:quarter|first\s+half|second\s+half|half\s+year|nine\s+months))"
     r"[^.]{0,60}\b(?:secured|won|received|bagged)\s+(?:new\s+|multiple\s+|significant\s+|three\s+)?orders?\b"
-    r"|\b(?:awarded|received|secured|won|bagged)\s+(?:orders?|contracts?)\s+(?:worth|aggregating|valued\s+at"
-    r"|amounting\s+to)\b[^.]{0,60}?\b(?:in|during|for)\s+(?:FY\s?\d{2,4}|(?:the\s+|this\s+)?"
+    r"|\b(?:awarded|received|secured|secures|won|wins|bagged|bags|receives)\s+"
+    r"(?:new\s+|multiple\s+|significant\s+)?(?:orders?|contracts?)\s+"
+    r"(?:worth|aggregating(?:\s+to)?|valued\s+at|amounting\s+to)\b[^.]{0,80}?\b(?:in|during|for)\s+"
+    r"(?:Q[1-4](?:\s*FY\s?\d{2,4})?|H[12](?:\s*FY\s?\d{2,4})?|FY\s?\d{2,4}"
+    r"|(?:the\s+|this\s+)?(?:(?:January|February|March|April|May|June|July|August|September|October|November|December)"
+    r"\s*[-\u2013\u2014]\s*(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+)?"
     r"(?:year|quarter|half[\s-]?year|nine\s+months))\b"
     r"|\bconsolidated\s+order\s+wins?\s+for\s+(?:Q[1-4]|H[12]|FY)\b"
     r"|\beach\s+of\s+the\s+above\s+orders?\s+has\s+already\s+been\s+individually\s+intimated\b",
@@ -398,11 +402,20 @@ _AMEND_FROM_TO_LENIENT = re.compile(
     + _CS_GAP + r"\bto\b" + _CS_GAP + r"(?:Rs\.?|INR|₹)\s*(?P<b>[\d,]+(?:\.\d+)?)\s*[A-Za-z]{4,9}", re.I)
 # a printed consortium/JV share of the award: the company's event value is its share, not the total.
 _CONSORTIUM = re.compile(r"\b(?:consortium|joint\s+venture|\bJV\b|equity\s+share)\b", re.I)
+_CONSORTIUM_LEAD = (
+    r"(?:(?:the\s+)?company['’]?s?|our|[A-Z][A-Za-z0-9&.'’\-]{2,30}['’]s?)\s+"
+    r"(?:share|order\s+value|contract\s+value|portion|stake)"
+    r"|share\s+of\s+(?:the\s+)?(?:company|[A-Z][A-Za-z0-9&.'’\-]{2,30})"
+)
 _CONSORTIUM_AMOUNT = re.compile(
-    r"(?:company'?s?|our)\s+share[^.]{0,180}?(?:Rs\.?|INR|₹)\s*(?P<v>[\d,]+(?:\.\d+)?)\s*"
+    r"(?:" + _CONSORTIUM_LEAD + r")[^.]{0,180}?(?:Rs\.?|INR|₹)\s*(?P<v>[\d,]+(?:\.\d+)?)\s*"
     r"(?P<u>crores?|cr\.?|lakhs?|lacs?|million|mn|billions?|bn)", re.I)
+_CONSORTIUM_AMOUNT_FULL = re.compile(
+    r"(?:" + _CONSORTIUM_LEAD + r")[^.]{0,180}?(?:Rs\.?|INR|₹)\s*(?P<v>\d[\d,]{6,})(?:\s*/-)?", re.I)
 _CONSORTIUM_PCT = re.compile(
-    r"(?:company'?s?|our)\s+share[^.]{0,80}?(?P<p>\d+(?:\.\d+)?)\s*%"
+    r"(?:(?:the\s+)?company['’]?s?|our)\s+share[^.]{0,80}?(?P<p>\d+(?:\.\d+)?)\s*%"
+    r"|share\s+of\s+(?:the\s+)?(?:company|[A-Z][A-Za-z0-9&.'’\-]{2,30})\s+(?:is|at|being)\s+(?P<p3>\d+(?:\.\d+)?)\s*%"
+    r"|(?:holds?|holding)\s+(?:a\s+)?(?P<p4>\d+(?:\.\d+)?)\s*%\s*(?:partnership\s+|equity\s+|jv\s+|consortium\s+)?(?:stake|share|interest)"
     r"|(?:equity\s+)?share\s+of\s+(?P<p2>\d+(?:\.\d+)?)\s*%", re.I)
 _ANNUAL_CUE = re.compile(r"\b(?:annual(?:ly)?|yearly|per\s+annum|per\s+year|p\.\s?a\.)\b", re.I)
 _ORDER_UPDATE = re.compile(r"\border\s+book\b|\border\s+intake\b|\border\s+inflow\b|\bbacklog\b", re.I)
@@ -448,19 +461,19 @@ _PARENT_SCOPE = re.compile(r"\bparent\s+company\b|\bultimate\s+holding\s+company
 # scope.  The printed name is captured, never inferred; a bare "a subsidiary" leaves the scope company.
 _SUB_QUALITY = (r"(?:wholly[-\s]?owned|material|step[-\s]?down|unlisted|listed|direct|indirect|foreign|overseas"
                 r"|US[-\s]?based|UK[-\s]?based)")
-_SUB_WORD = r"subs(?:idi|di)ary"          # subsidiary / the printed "subsdiary" typo
+_SUB_WORD = r"subs(?:idi|di)ar(?:y|ies)"          # subsidiary / subsidiaries / the printed "subsdiary" typo
 _SUB_NAME = (r"(?P<name>(?-i:[A-Z])[A-Za-z0-9&.'’()\-]*"
              r"(?:\s+(?:(?-i:[A-Z0-9])[A-Za-z0-9&.'’()\-]*|of|the|and"
-             r"|(?i:private|pvt|limited|ltd|llp|inc|llc|corp|corporation|company))){0,6})")
+             r"|(?i:private|pvt|limited|ltd|llp|inc|llc|gmbh|corp|corporation|company))){0,6})")
 # "<Name>, a wholly owned subsidiary of the Company, has received" / "<Name> (wholly owned subsidiary)".
 _SUB_AFTER_NAME = re.compile(
-    _SUB_NAME + r"\s*(?:,\s*|\s*\(\s*|\s+)\s*(?:a|an|the|our|its|their)?\s*"
+    _SUB_NAME + r"[\"'”’]?(?:\s*\([A-Z]{2,8}\))?\s*(?:,\s*(?:both\s+)?|\s*\(\s*|\s*[-\u2013\u2014]\s*|\s+)\s*(?:a|an|the|our|its|their|both)?\s*"
     r"(?:(?:" + _SUB_QUALITY + r")\s+){0,3}" + _SUB_WORD + r"\b", re.I)
 # "our subsidiary <Name>" / "material subsidiary, <Name>" / "subsidiary of <Parent>, <Name>".
 _SUB_BEFORE_NAME = re.compile(
     r"(?:(?i:the\s+Company'?s?|our|its|their)\s+)?(?:(?:" + _SUB_QUALITY + r")\s+){0,3}" + _SUB_WORD
     + r"\s*(?:company\s*)?"
-    r"(?:[-\u2013\u2014:]\s*|of\s+(?-i:[A-Z])[^,.;]{2,60},\s*|,\s*(?:i\.e\.,?\s*)?|\s+)"
+    r"(?:[-\u2013\u2014:]\s*|of\s+(?-i:[A-Z])[^,.;]{2,60},\s*|,\s*(?:i\.e\.,?\s*)?|\s+)[\"'“‘]?"
     + _SUB_NAME, re.I)
 _SUB_NAME_STOP = re.compile(
     r"\s+(?i:has|have|had|having|received|receives|receipt|secured|secures|won|wins|bagged|bags|awarded"
@@ -468,12 +481,18 @@ _SUB_NAME_STOP = re.compile(
     r"|purchase|work|respectively|dear|sirs?|madams?|ma['’]?ams?|we|our|its|their|the\s+company)\b")
 _SUB_GENERIC = re.compile(
     r"(?i)^(?:the\s+)?(?:our|its|their|wholly[-\s]?owned|material|step[-\s]?down|unlisted|listed|direct|indirect"
-    r"|foreign|overseas|us[-\s]?based|uk[-\s]?based|company|subsidiary)(?:\s+(?:wholly[-\s]?owned|material"
+    r"|foreign|overseas|us[-\s]?based|uk[-\s]?based|company|subsidiar(?:y|ies))(?:\s+(?:wholly[-\s]?owned|material"
     r"|step[-\s]?down|unlisted|listed|direct|indirect|foreign|overseas|us[-\s]?based|uk[-\s]?based|company))?$")
 _SUB_HOLDER = re.compile(r"(?i)\b(?:vide|its|their|our)\b")
 # boilerplate that can precede the marker in a title ("EQ Subject <Parent>'s Wholly Owned Subsidiary") is not a name.
 _SUB_JUNK = re.compile(r"(?i)\b(?:wholly|owned|formerly|known|subject|exchange|stock|bombay|bse|nse|entity|name)\b")
-_SUB_SUFFIX = re.compile(r"(?i)\b(?:limited|ltd|llp|inc|llc|corp(?:oration)?|pvt|private)\b")
+_SUB_SUFFIX = re.compile(r"(?i)\b(?:limited|ltd|llp|inc|llc|gmbh|corp(?:oration)?|pvt|private)\b")
+_SUB_UNIT_TOKEN = re.compile(r"\b(?:MWp?|kWp?|GWp?|MVA|kVA|MTPA|MMTPA|TPD|TPA|DC|AC)\b", re.I)
+_SUB_COMPANY_ITEM = re.compile(
+    r"(?P<item>(?!(?i:limited|ltd|llp|inc|llc|gmbh)\b)(?-i:[A-Z])[A-Za-z0-9&.'’\-]*"
+    r"(?:\s+(?!(?i:limited|ltd|llp|inc|llc|gmbh)\b)(?:(?-i:[A-Z0-9])[A-Za-z0-9&.'’\-]*|of|the|and|for)){0,8}"
+    r"\s+(?i:Private\s+Limited|Private\s+Ltd\.?|Pvt\.?\s+Ltd\.?|Limited|Ltd\.?|LLP|Inc\.?|GmbH|LLC|Corp(?:oration)?\.?))"
+)
 _ORDER_BOOK = re.compile(r"\border\s+book\b|\border\s+intake\b|\border\s+inflow\b|\bbacklog\b", re.I)
 _DATE_DMY = re.compile(r"\bdated?\s+(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})\b", re.I)
 _DATE_MD = re.compile(
@@ -849,21 +868,65 @@ def _why(kind: str, title: str, text: str) -> str:
 
 
 _BAD_CUSTOMER = re.compile(
-    r"contract\(?s?\)?|contact\(?s?\)?|international\s+client|^i\s+|^name\b|^n/?a$|^none$|^details?"
-    r"|date\s+of\s+issue|letter\s+of\s+(?:acceptance|award)|work\s+order|order\(?s?\)"
-    r"|the\s+company|interest\s+in\s+the\s+entity|promoter|related\s+party|thereof"
+    r"contract\s*\(\s*s\s*\)|contact\s*\(\s*s\s*\)|international\s+client|^i\s+|^name\b|^n/?a$|^none$|^details?"
+    r"|date\s+of\s+issue|letter\s+of\s+(?:acceptance|award)|work\s+order|order\s*\(\s*s\s*\)"
+    r"|\b(?:received|multiple|new|repeat)\s+orders?\b|\border(?:\(\s*s\s*\)|s)?\s+from\b"
+    r"|the\s+company|interest\s+in\s+the\s+entity|\bwhether\s+(?:the\s+)?promoter\b|\bpromoter\s*(?:/|group)\b"
+    r"|related\s+party|thereof"
     r"|\b(?:rs\.?|inr|worth|crores?|lakhs?|lacs?)\b|₹"
     r"|our\s+valued\s+customer|valued\s+customer|\ba\s+leading\b|\ba\s+renowned\b|\ba\s+renowed\b"
     r"|\ba\s+reputed\b|\ba\s+prominent\b|\ba\s+listed\s+company\b|\bone\s+of\s+the\b"
-    r"|\bcustomer\b|\bclient\s+firm\b|\btraders\s+to\b"
+    r"|\bcustomers?\b|\bclient\s+firm\b|\bsame\s+client\b|\btraders\s+to\b"
     r"|\bbased\s+(?:renow[ne]d|reputed|prominent|at\s+(?:ahmedabad|gujarat|maharashtra|india))\b", re.I)
-# T-242 round 6: a press-release headline is not the awarder ("BSNL to Power India's Telecom Future
-# BANGALORE - January 01"): a headline verb, a place + date, or a month with a day rejects the value.
+# T-242 round 6/7: a press-release headline or dateline is not the awarder ("BSNL to Power India's Telecom Future
+# BANGALORE - January 01", "Top US Institutional Supplier Mumbai - 17th May").
+_MONTH_NAME_RX = (
+    r"(?:january|february|march|april|may|june|july|august|september|october|november|december)"
+)
 _HEADLINE_CUSTOMER = re.compile(
     r"\bto\s+(?:power|build|transform|shape|drive|accelerate|unlock|energi[sz]e|revolutioni[sz]e|lead|light)\b"
-    r"|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}\b",
+    r"|\b" + _MONTH_NAME_RX + r"\s+\d{1,2}\b"
+    r"|\b\d{1,2}(?:st|nd|rd|th)?\s+" + _MONTH_NAME_RX + r"\b",
     re.I)
-_HEADLINE_PLACE = re.compile(r"\b[A-Z]{4,}\s*[-\u2013\u2014]\s*[A-Z0-9]")
+_HEADLINE_PLACE = re.compile(
+    r"\b[A-Z]{4,}\s*[-\u2013\u2014]\s*[A-Z0-9]"
+    r"|\b[A-Z][A-Za-z/]{2,}\s*[-\u2013\u2014|,]\s*(?:\d{1,2}(?:st|nd|rd|th)?\s+(?i:" + _MONTH_NAME_RX
+    + r")|(?i:" + _MONTH_NAME_RX + r")\s+\d{1,2})\b"
+)
+_SINGLE_GENERIC_CUSTOMERS = frozenset({
+    "public", "office", "government", "department", "client", "customer", "entity", "company",
+    "authority", "ministry", "board", "corporation", "division", "party", "vendor", "supplier",
+    "bank", "railway", "railways", "metro", "state", "central", "domestic", "international",
+    "same", "order", "orders", "contract", "contracts", "project", "work",
+})
+_OWN_PARTY_PREFIX = re.compile(r"^(?:our|its|their|(?:the\s+)?company['’]s)\b", re.I)
+_HEADER_PARTY_PREFIX = re.compile(
+    r"^(?:redevelopment(?:\s*\(\s*s?\s*\))?|letter\s+of\s+(?:intent|acceptance|award)|particulars|details"
+    r"|description|nature\s+of|significant\s+terms|broad\s+(?:commercial\s+)?consideration|time\s+period"
+    r"|whether\b|sr\.?\s*no\.?|s\.?\s*no\.?|works?\s+to\s+be\b"
+    r"|(?:appointment|engagement|supply|construction|preparation|carrying|providing|execution|consultancy)\s+of)\b",
+    re.I,
+)
+_COUNTRIES_AND_REGIONS = frozenset({
+    "afghanistan", "algeria", "argentina", "australia", "austria", "bahrain", "bangladesh", "belgium",
+    "bhutan", "brazil", "bulgaria", "cambodia", "canada", "chile", "china", "colombia", "croatia",
+    "cyprus", "czech republic", "czechia", "denmark", "egypt", "estonia", "ethiopia", "finland",
+    "france", "germany", "ghana", "greece", "hong kong", "hungary", "iceland", "india", "indonesia",
+    "iran", "iraq", "ireland", "israel", "italy", "japan", "jordan", "kazakhstan", "kenya", "korea",
+    "south korea", "kuwait", "laos", "latvia", "lebanon", "libya", "lithuania", "luxembourg",
+    "malaysia", "maldives", "mauritius", "mexico", "mongolia", "morocco", "myanmar", "nepal",
+    "netherlands", "new zealand", "nigeria", "norway", "oman", "pakistan", "peru", "philippines",
+    "poland", "portugal", "qatar", "romania", "russia", "rwanda", "saudi arabia", "senegal",
+    "serbia", "singapore", "slovakia", "slovenia", "south africa", "spain", "sri lanka", "sudan",
+    "sweden", "switzerland", "taiwan", "tanzania", "thailand", "tunisia", "turkey", "turkiye",
+    "uganda", "uk", "united kingdom", "ukraine", "uae", "united arab emirates", "usa",
+    "united states", "united states of america", "uzbekistan", "vietnam", "yemen", "zambia",
+    "zimbabwe",
+    "africa", "african", "americas", "apac", "asia", "east asia", "emea", "europe",
+    "european union", "gulf", "gcc", "latin america", "middle east", "north africa",
+    "north america", "south america", "south asia", "southeast asia", "south east asia",
+    "abroad", "overseas",
+})
 _CUSTOMER_CUTS = re.compile(
     r"(?:,?\s+for\s+|\s+amounting\b|\s+as\s+per\b|\s+worth\b|\s+signif\w*\b|\s+towards\b"
     r"|\s+Ref\.?(?:\s*:|\s*$)|\s+(?:on\s+\d|dated\s|of\s+worth|having\s))", re.I)
@@ -890,16 +953,26 @@ _FROM_ENTITY = re.compile(
 _ANNEXURE_AWARDER = re.compile(
     r"\bname\s*(?:\(\s*s?\s*\))?\s*of\s+(?:the\s+)?(?:entity|entities|customer|client|party)"
     r"[^:;]{0,140}?\s*(?P<cust>(?<!\w).+?)"
-    r"(?=\s*(?:\b[b-k]\s*[.)]?\s*(?:significant|nature|whether|time|broad|details|date)"
-    r"|\b[2-9]\s*[.)]?\s*(?:significant|nature|whether|time|broad|details|date)"
+    r"(?=\s*(?:\b[b-k]\s*[.)]?\s*(?:significant|nature|whether|time|broad|details|date|objects|indicative|total)"
+    r"|\b[2-9]\s*[.)]?\s*(?:significant|nature|whether|time|broad|details|date|objects|indicative|total)"
     r"|\bsignificant\s+terms|\bnature\s+of\s+(?:the\s+)?(?:o\S{0,2}der|contract)"
     r"|\b(?:enhancement\s+in\s+)?size\s+of\s+(?:the\s+)?(?:o\S{0,2}der|contract)"
-    r"|\bwhether\s+(?:the\s+)?(?:o\S{0,2}der|contract|domestic|promoter)"
+    r"|\bwhether\s+(?:the\s+)?(?:o\S{0,2}der|contract|domestic|promoter|acquisitions?)"
+    r"|\bobjects?\s+and\s+effects|\bindicative\s+time\s+period|\btotal\s+cost"
     r"|\btime\s+period\s+by\s+which|\bbroad\s+(?:commercial\s+)?consideration|$))",
     re.I)
+_ANNEXURE_TARGET_AWARDER = re.compile(
+    r"\bname\s+of\s+(?:the\s+)?target\s+entity(?:\s+details\s+in\s+brief[^:;\n]{0,60}?etc\.?)?"
+    r"[^:;]{0,40}?\s*(?P<cust>(?<!\w).+?)"
+    r"(?=\s*(?:\bwhether\s+(?:the\s+)?(?:acquisitions?|o\S{0,2}der|contract|domestic|promoter)"
+    r"|\bobjects?\s+and\s+effects|\bindicative\s+time\s+period|\btotal\s+cost|$))",
+    re.I,
+)
 _ANNEXURE_LABEL_STRIP = re.compile(
     r"\b(?:to\s+which|from\s+which)\b[^:;\n]{0,50}?\bawarded\b"
     r"|\bawarding\s+(?:the\s+)?"
+    r"|/?\s*redevelopment(?:\s*[\[\(]\s*s?\s*[\)\]])?"
+    r"|/?\s*letter\s+of\s+(?:intent|acceptance|award)\b"
     r"|\bo\S{0,2}der\s*(?:[\[\(]\s*s?\s*[\)\]]\s*)?(?:\s*(?:/|or|and|&)\s*)?con\S{1,8}?ct"
     r"\s*(?:[\[\(]\s*s?\s*[\)\]]\s*)?"
     r"|\/\s*con\S{1,8}?ct\s*(?:[\[\(]\s*s?\s*[\)\]]\s*)?"
@@ -908,18 +981,20 @@ _ANNEXURE_LABEL_STRIP = re.compile(
     re.I)
 
 
-
 def _annexure_awarders(text: str) -> list[str]:
     """Extract customer names from Reg 30 annexure rows ('Name of the entity ... awarding ...')."""
     out: list[str] = []
     flat = _flat(text)
-    for match in _ANNEXURE_AWARDER.finditer(flat):
-        raw = _ANNEXURE_LABEL_STRIP.sub(" ", match.group("cust"))
-        raw = re.sub(r"\s+", " ", raw).strip(" ;:,.-|")
-        raw = re.sub(r"^(?:details?|particulars|contract|order|entity|party|name)\b[\s:;-]*",
-                     "", raw, flags=re.I)
-        if raw:
-            out.append(raw)
+    for rx, strip_label in ((_ANNEXURE_AWARDER, True), (_ANNEXURE_TARGET_AWARDER, False)):
+        for match in rx.finditer(flat):
+            raw = _ANNEXURE_LABEL_STRIP.sub(" ", match.group("cust")) if strip_label else match.group("cust")
+            raw = re.sub(r"\s+", " ", raw).strip(" ;:,.-|/")
+            raw = re.sub(r"^(?:details?|particulars|contract|order|entity|party|name)\b[\s:;-]*",
+                         "", raw, flags=re.I)
+            if raw:
+                out.append(raw)
+        if out:
+            break
     return out
 
 
@@ -975,8 +1050,15 @@ def _clean_party(text: Any, *, from_annexure: bool = False) -> str | None:
     value = re.sub(r"^(?:[—–\-•]+\s*)*(?:the|m/s\.?|messrs\.?)\s+", "", value, flags=re.I)
     value = re.sub(r"\s+Ref\.?(?:\s*:.*)?$", "", value)
     value = re.sub(r"\s+[1-9]$", "", value)
-    value = value.strip(" ;:,.-—–")
+    value = value.strip(" ;:,.-—–/")
     if _HEADLINE_CUSTOMER.search(value) or _HEADLINE_PLACE.search(value):
+        return None
+    if _OWN_PARTY_PREFIX.search(value) or _HEADER_PARTY_PREFIX.search(value):
+        return None
+    low = value.lower()
+    if (len(value.split()) == 1 and low in _SINGLE_GENERIC_CUSTOMERS) \
+            or low in _COUNTRIES_AND_REGIONS \
+            or re.sub(r"\s+region$", "", low).strip(" ,.-") in _COUNTRIES_AND_REGIONS:
         return None
     if not value or len(value) < 3 or len(value) > (120 if from_annexure else 80) \
             or _BAD_CUSTOMER.search(value):
@@ -988,29 +1070,83 @@ def _clean_party(text: Any, *, from_annexure: bool = False) -> str | None:
     return value
 
 
+def _valid_sub_name(raw: str) -> str | None:
+    name = _SUB_NAME_STOP.split(raw)[0]
+    name = re.sub(r"\s*\(?\s*(?:formerly|earlier|now)\s+known\s+as\b.*$", "", name, flags=re.I)
+    name = re.sub(r"\s+", " ", name).strip(" ;:,.-—–\"'“”‘’")
+    if ")" in name and "(" not in name:
+        name = name.rstrip(") ").strip()
+    if "(" in name and ")" not in name:
+        name = name.split("(", 1)[0].strip()
+    if re.search(r"['’]s$", name, re.I):      # "<Parent>'s Subsidiary" names the parent, not the child
+        return None
+    # "Provigil Surveillance Limited. Bombay Stock Exchange Limited" runs past the sentence end.
+    name = re.sub(r"\.\s+(?!(?i:ltd|limited|pvt|private|llp|inc|llc|gmbh|corp|corporation)\b).*$", "", name).strip()
+    if len(name) < 4 or len(name) > 60 or not name[0].isupper() \
+            or name.lower() in _COUNTRIES_AND_REGIONS \
+            or re.search(r"(?i)subsidiar", name) or _SUB_GENERIC.match(name) \
+            or _SUB_HOLDER.search(name) or re.search(r"['’]s\b", name) or _SUB_JUNK.search(name) \
+            or re.search(r"\d", name) or _SUB_UNIT_TOKEN.search(name) \
+            or (not _SUB_SUFFIX.search(name) and (len(name.split()) == 1 or len(name.split()) > 3)) \
+            or re.fullmatch(r"(?i)(?:the\s+)?(?:company|listed\s+company|parent)", name):
+        return None
+    return name
+
+
+def _subsidiary_names_from_span(span: str) -> list[str]:
+    """Extract consecutive company names separated by commas/'and' from a subsidiary list span."""
+    names: list[str] = []
+    for item in _SUB_COMPANY_ITEM.finditer(span):
+        cleaned = _valid_sub_name(item.group("item"))
+        if cleaned and cleaned not in names:
+            names.append(cleaned)
+    return names
+
+
 def _subsidiary_name(title: str, text: str) -> str | None:
-    """The printed name of the subsidiary that received the order, or None for a bare "a subsidiary"."""
+    """The printed name(s) of the subsidiary receiving the order, or None for a bare 'a subsidiary'."""
     body = _flat(f"{title} {(text or '')[:2500]}")
     for rx, name_first in ((_SUB_AFTER_NAME, True), (_SUB_BEFORE_NAME, False)):
         for match in rx.finditer(body):
+            before = body[max(0, match.start() - 40): match.start()]
             if name_first:
-                # "X, a subsidiary of Raymond Limited" is a third party's subsidiary, not the issuer's.
-                tail = body[match.end(): match.end() + 90]
-                if re.match(r"\s*of\s+", tail) \
-                        and not re.match(r"\s*of\s+(?:the\s+|our\s+)?(?i:company|listed\s+company)\b", tail):
+                # "X, a subsidiary of Raymond Limited" is a third party's subsidiary unless X itself is receiving.
+                tail = body[match.end(): match.end() + 140]
+                if re.search(r"\b(?:from|awarded\s+by)\s+(?:M/s\.?\s+)?$", before, re.I):
                     continue
-            name = _SUB_NAME_STOP.split(match.group("name"))[0]
-            name = re.sub(r"\s+", " ", name).strip(" ;:,.-—–")
-            if re.search(r"['’]s$", name, re.I):      # "<Parent>'s Subsidiary" names the parent, not the child
-                continue
-            # "Provigil Surveillance Limited. Bombay Stock Exchange Limited" runs past the sentence end.
-            name = re.sub(r"\.\s+(?!(?i:ltd|limited|pvt|private|llp|inc|llc|corp|corporation)\b).*$", "", name).strip()
-            if len(name) < 4 or len(name) > 60 or not name[0].isupper() \
-                    or re.search(r"(?i)subsidiar", name) or _SUB_GENERIC.match(name) \
-                    or _SUB_HOLDER.search(name) or re.search(r"['’]s\b", name) or _SUB_JUNK.search(name) \
-                    or re.search(r"\d", name) \
-                    or (not _SUB_SUFFIX.search(name) and len(name.split()) > 3) \
-                    or re.fullmatch(r"(?i)(?:the\s+)?(?:company|listed\s+company|parent)", name):
+                if re.match(r"\s*of\s+", tail) \
+                        and not re.match(r"\s*of\s+(?:the\s+|our\s+)?(?i:company|listed\s+company)\b", tail) \
+                        and not re.search(
+                            r"\b(?:has|have)\b[^.]{0,50}?\b(?:received|secured|won|bagged|awarded)\b", tail, re.I):
+                    continue
+                # Check for a multi-subsidiary list preceding the marker ("A Pvt Ltd, B Pvt Ltd and C Pvt Ltd — Subsidiaries").
+                pre_start = max(0, match.start() - 280)
+                pre_chunk = body[pre_start: match.start() + len(match.group("name"))]
+                clause_split = re.split(r"(?:(?<=\bthat)|(?<=\bnamely)|(?<=\bas)|[:;])\s+", pre_chunk, flags=re.I)
+                list_span = clause_split[-1] if clause_split else pre_chunk
+                if re.search(r"\b(?:from|awarded\s+by)\s+(?:M/s\.?\s+)?$",
+                             body[max(0, match.start() - len(list_span) - 35): match.start()], re.I):
+                    continue
+                multi = _subsidiary_names_from_span(list_span) if (
+                    "subsidiaries" in match.group(0).lower() or re.search(r"(?:,|and)\s*$", body[pre_start:match.start()])
+                ) else []
+                if len(multi) >= 2:
+                    window = body[:600] + body[max(0, match.start() - 240): match.end() + 180]
+                    if re.search(r"(?i)\b(?:receiv|receipt|secur|bagg|won|order|contract|loa|loi|award)", window):
+                        return "; ".join(multi)
+            else:
+                if re.search(r"\b(?:from|awarded\s+by)\s+(?:M/s\.?\s+)?$", before, re.I):
+                    continue
+                if "subsidiaries" in match.group(0).lower():
+                    name_start = match.start("name")
+                    after_span = _SUB_NAME_STOP.split(body[name_start: name_start + 320])[0]
+                    multi = _subsidiary_names_from_span(after_span)
+                    if len(multi) >= 2:
+                        window = body[:600] + body[max(0, match.start() - 180): match.end() + 260]
+                        if re.search(r"(?i)\b(?:receiv|receipt|secur|bagg|won|order|contract|loa|loi|award)", window):
+                            return "; ".join(multi)
+            name = _valid_sub_name(match.group("name"))
+            if not name:
                 continue
             # the subsidiary must sit in an order sentence, not a passing mention of the group structure.
             window = body[:600] + body[max(0, match.start() - 180): match.end() + 180]
@@ -1043,9 +1179,43 @@ def _is_buyer_side(title: str, text: str) -> bool:
     return bool(_ORDER_BUYER.search(body) and not _WIN_FROM.search(body))
 
 
+_PAST_ORDER_CLAUSE = re.compile(
+    r"\b(?:(?:has|have|had)\s+(?:already\s+)?(?:been\s+)?(?:executed\s*(?:&|and)\s*delivered|delivered"
+    r"|already\s+executed|previously\s+executed)"
+    r"|(?:earlier|previous|prior)\s+(?:export\s+|purchase\s+|work\s+)?orders?)\b",
+    re.I,
+)
+_NEW_ORDER_WIN_VERB = re.compile(
+    r"\b(?:received|receives|secured|secures|bagged|bags|won|wins|awarded|additional\s+(?:\w+\s+)?order"
+    r"|new\s+(?:\w+\s+)?order)\b",
+    re.I,
+)
+_PAST_ORDER_PHRASE = re.compile(
+    r"\b(?:(?:has|have|had)\s+(?:already\s+)?)?(?:executed\s*(?:&|and)\s*delivered|delivered"
+    r"|already\s+executed|previously\s+executed)\b[^.;]{0,90}?\b(?:order|valued|worth)\b[^.;]{0,90}?"
+    r"(?:Rs\.?|INR|₹|US\s?\$|\$)\s*[\d,]+(?:\.\d+)?(?:\s*(?:crores?|cr\.?|lakhs?|lacs?|million|mn|billions?|bn))?"
+    r"|\b(?:earlier|previous|prior)\s+(?:export\s+|purchase\s+|work\s+)?orders?\b[^.;]{0,90}?"
+    r"(?:Rs\.?|INR|₹|US\s?\$|\$)\s*[\d,]+(?:\.\d+)?(?:\s*(?:crores?|cr\.?|lakhs?|lacs?|million|mn|billions?|bn))?",
+    re.I,
+)
+
+
+def _strip_past_order_values(text: str) -> str:
+    """Remove past delivered/executed/earlier/previous order values so they cannot be picked as the new order."""
+    if not text or not _PAST_ORDER_CLAUSE.search(text):
+        return text
+    kept: list[str] = []
+    for clause in _clauses(text):
+        if _PAST_ORDER_CLAUSE.search(clause) and not _NEW_ORDER_WIN_VERB.search(clause):
+            continue
+        kept.append(_PAST_ORDER_PHRASE.sub(" ", clause))
+    return " ".join(kept)
+
+
 def _loose_order_record(title: str, text: str) -> dict[str, Any] | None:
     """A free-form order letter (no prescribed table): a win sentence plus a printed "(e) Value" row."""
-    body = _flat(f"{title} {text[:2500]}")
+    clean_text = _strip_past_order_values(text[:2500])
+    body = _flat(f"{title} {clean_text}")
     if _ORDER_VETO.search(body) or _is_buyer_side(title, text):
         return None
     win_in_title = bool(_WIN_VERB.search(title) and _ORDER_WORD.search(title))
@@ -1072,10 +1242,12 @@ def _loose_order_record(title: str, text: str) -> dict[str, Any] | None:
                     "quote": _flat(text)[:400], "extractor_rule": "loose_order_v1"}
         amount, value_text = fallback
     customer = None
-    named = re.search(r"(?:contract\s+agreement|order|contract)\s+(?:with|from|awarded\s+by)\s+([A-Z][^.;]{3,120})",
-                      body)
-    if named:
-        customer = _flat(named.group(1))[:200]
+    for source in (_flat(clean_text), _flat(title)):
+        named = re.search(r"(?:contract\s+agreement|order|contract)\s+(?:with|from|awarded\s+by)\s+([A-Z][^.;]{3,120})",
+                          source)
+        if named:
+            customer = _flat(named.group(1))[:200]
+            break
     return {"seq": 1, "awarder": customer, "value_cr": amount, "value_usd_mn": None, "value_text": value_text,
             "duration_months": order_wins.months(text), "title_value_cr": None, "title_mismatch": 0,
             "quote": _flat(text)[:400], "extractor_rule": "loose_order_v1"}
@@ -1139,25 +1311,63 @@ def _tenure_years(text: str, execution_months: float | None) -> float | None:
     return None
 
 
-def _consortium_share(text: str, symbol: str) -> tuple[float | None, float | None]:
-    """(printed share %, printed share amount in crore) when the filing states the company's consortium share."""
+def _issuer_tokens(text: str, symbol: str) -> set[str]:
+    tokens: set[str] = set()
+    if symbol and len(symbol) >= 3:
+        tokens.add(symbol.upper()[:4])
+    for m in re.finditer(
+        r"\b(?:For(?:\s+and\s+on\s+behalf\s+of)?|The)\s+(?:M/s\.?\s+)?([A-Z][A-Za-z0-9&.'’\-]{3,})\b",
+        text,
+    ):
+        word = m.group(1).upper().rstrip(".")
+        if word not in {"COMPANY", "LIMITED", "INDIA", "PRIVATE", "BOARD", "EXCHANGE", "LISTING", "STOCK"}:
+            tokens.add(word[:6] if len(word) >= 6 else word)
+    return tokens
+
+
+def _matches_issuer(span: str, tokens: set[str]) -> bool:
+    up = span.upper()
+    if re.search(r"\b(?:THE\s+)?COMPANY\b|\bOUR\b", up):
+        return True
+    return any(tok in up for tok in tokens)
+
+
+def _consortium_share(text: str, symbol: str) -> tuple[float | None, float | None, str | None]:
+    """(printed share %, printed share amount in crore, span) when the filing states the company's consortium share."""
     if not _CONSORTIUM.search(text):
-        return None, None
-    amount_match = _CONSORTIUM_AMOUNT.search(text)
-    if amount_match:
-        amount = _sane_cr(_to_cr(amount_match.group("v"), amount_match.group("u")))
-        pct_match = re.search(r"(\d+(?:\.\d+)?)\s*%", amount_match.group(0))
-        return (float(pct_match.group(1)) if pct_match else None), amount
-    token = symbol.upper()[:4]
+        return None, None, None
+    tokens = _issuer_tokens(text, symbol)
+    pct_val: float | None = None
     for match in _CONSORTIUM_PCT.finditer(text):
-        pct = match.group("p") or match.group("p2")
+        pct = match.group("p") or match.group("p3") or match.group("p4") or match.group("p2")
         if not pct:
             continue
         before = text[max(0, match.start() - 60): match.start()]
-        if match.group("p2") and token and token not in before.upper():
+        subject = f"{before} {match.group(0)}"
+        if not match.group("p") and tokens and not _matches_issuer(subject, tokens):
             continue
-        return float(pct), None
-    return None, None
+        pct_val = float(pct)
+        break
+    for match in _CONSORTIUM_AMOUNT.finditer(text):
+        if tokens and not _matches_issuer(match.group(0), tokens):
+            continue
+        amount = _sane_cr(_to_cr(match.group("v"), match.group("u")))
+        if pct_val is None:
+            pct_m = re.search(r"(\d+(?:\.\d+)?)\s*%", match.group(0))
+            if pct_m:
+                pct_val = float(pct_m.group(1))
+        return pct_val, amount, _flat(match.group(0))
+    for match in _CONSORTIUM_AMOUNT_FULL.finditer(text):
+        if tokens and not _matches_issuer(match.group(0), tokens):
+            continue
+        amount = _sane_cr(round(_digits(match.group("v")) / 1e7, 4))
+        if pct_val is None:
+            pct_m = re.search(r"(\d+(?:\.\d+)?)\s*%", match.group(0))
+            if pct_m:
+                pct_val = float(pct_m.group(1))
+        rs_m = _RS_FULL.search(match.group(0))
+        return pct_val, amount, _flat(rs_m.group(0) if rs_m else match.group(0))
+    return pct_val, None, None
 
 
 _FILING_TOTAL = re.compile(
@@ -1188,12 +1398,13 @@ def order_fields(title: str, text: str, symbol: str = "",
                  allow_body_customer: bool = True,
                  filing_total_cr: float | None = None) -> dict[str, Any] | None:
     """One order event: the size, customer and execution period, with annual/consortium handling."""
+    clean_text = _strip_past_order_values(text)
     if records_override is not None:
         records = records_override
     else:
         if _ORDER_VETO.search(_flat(f"{title} {text}")) or _is_buyer_side(title, text):
             return None
-        records = order_wins.parse(_flat(title), _flat(text))
+        records = order_wins.parse(_flat(title), _flat(clean_text))
         if not records:
             loose = _loose_order_record(title, text)
             if loose is None:
@@ -1221,7 +1432,7 @@ def order_fields(title: str, text: str, symbol: str = "",
     elif len(usd) == len(records):
         usd_mn = round(sum(usd), 4)
     if amount is None and usd_mn is None:
-        fallback = _order_value_from_text(_flat(text))
+        fallback = _order_value_from_text(_flat(clean_text))
         if fallback:
             amount, value_text = fallback
             derived = 0
@@ -1231,7 +1442,10 @@ def order_fields(title: str, text: str, symbol: str = "",
         if match:
             quote = _around(_flat(text), match)
     customers = []
+    # Prefer the annexure's 'Name of the entity awarding' over title/body guesses (T-242 round 7).
     for record in records:
+        if record.get("extractor_rule") == "loose_order_v1":
+            continue
         awarder = _clean_party(record.get("awarder"), from_annexure=True)
         if awarder:
             customers.append(awarder)
@@ -1240,18 +1454,25 @@ def order_fields(title: str, text: str, symbol: str = "",
             awarder = _clean_party(raw, from_annexure=True)
             if awarder:
                 customers.append(awarder)
+    if not customers:
+        for record in records:
+            if record.get("extractor_rule") != "loose_order_v1":
+                continue
+            awarder = _clean_party(record.get("awarder"), from_annexure=False)
+            if awarder:
+                customers.append(awarder)
     if not customers and allow_body_customer:
         named = re.search(
             r"(?:(?:work\s+order|order|contract|letter\s+of\s+award)"
             r"[^.;|]{0,140}?\bfrom|(?:sub-?\s*contract|contract\s+agreement)[^.;|]{0,40}?\bwith)\s+"
             r"(?:M/s\.?\s+)?([A-Z](?:[^.;,|]|\.(?=[A-Za-z0-9])|(?<=\b[A-Z])\.(?=\s+(?:\(|towards|for|worth|amounting|dated|on))){2,100})",
-            _flat(text), re.I)
+            _flat(clean_text), re.I)
         if named:
             awarder = _clean_party(named.group(1), from_annexure=False)
             if awarder:
                 customers.append(awarder)
     if not customers and allow_body_customer:
-        for match in _FROM_ENTITY.finditer(_flat(text)):
+        for match in _FROM_ENTITY.finditer(_flat(clean_text)):
             awarder = _clean_party(match.group("name"), from_annexure=False)
             if awarder:
                 customers.append(awarder)
@@ -1280,12 +1501,15 @@ def order_fields(title: str, text: str, symbol: str = "",
                 match = _RS_AMOUNT.search(title or "")
                 value_text = match.group(0) if match else value_text
                 detail = "title aggregate; the table prints one item of it"
-        share_pct, share_amount = _consortium_share(value_words, symbol)
+        share_pct, share_amount, share_span = _consortium_share(value_words, symbol)
         if share_amount is not None:
-            value_total, amount = amount, share_amount
-            share_match = _CONSORTIUM_AMOUNT.search(value_words)
-            if share_match:
-                value_text = _flat(share_match.group(0))
+            if abs(amount - share_amount) > 0.005 * max(1.0, share_amount):
+                value_total, amount = amount, share_amount
+            if share_span:
+                value_text = share_span
+            pct_note = f"{share_pct:g}% " if share_pct is not None else ""
+            gross_note = f" (gross value Rs. {value_total:g} cr)" if value_total and value_total > amount else ""
+            detail = f"JV/consortium {pct_note}share{gross_note}"
         elif share_pct is not None:
             value_total, amount, derived = amount, round(amount * share_pct / 100.0, 4), 1
             detail = f"consortium share {share_pct:g}% of the printed total"
@@ -1386,11 +1610,13 @@ def order_rows(title: str, text: str, symbol: str = "",
             or _ORDER_ROLLUP.search(veto_text) or _ORDER_INFLOW_TITLE.search(title) \
             or _is_buyer_side(title, head or text):
         return []
-    records = order_wins.parse(_flat(title), _flat(text))
-    prose = _prose_order_records(title, text)
+    clean_text = _strip_past_order_values(text)
+    clean_head = _strip_past_order_values(head) if head is not None else clean_text
+    records = order_wins.parse(_flat(title), _flat(clean_text))
+    prose = _prose_order_records(title, clean_text)
     if len(prose) > len(records):
         records = prose
-    loose = _loose_order_record(title, head or text)
+    loose = _loose_order_record(title, clean_head)
     if not records or (not any(r.get("value_cr") is not None or r.get("value_usd_mn") is not None
                                for r in records) and loose is not None):
         records = [loose] if loose else records
@@ -2238,7 +2464,9 @@ def _gate_status(row: dict[str, Any]) -> None:
 
 def _finish_scope(row: dict[str, Any], title: str, head: str) -> dict[str, Any]:
     """T-242 round 6: label a subsidiary's order and unverify an L1-only row before it leaves the builder."""
-    if row["kind"] == "order_win" and row["status"] == "verified" and _l1_only(title, head):
+    if row["kind"] == "order_win" and row["status"] != "quarantined" \
+            and not str(row.get("detail") or "").startswith("amount not filled by script") \
+            and _l1_only(title, head):
         row["status"] = "unverified"
         row["why"] = "l1_only"
         note = "l1_only (lowest bidder stated, no award received)"
@@ -2412,6 +2640,15 @@ def _date_named(text: str, iso: str) -> bool:
     return any(form.lower() in low for form in forms)
 
 
+_PRESS_RELEASE_ORDER = re.compile(r"\b(?:press|media)\s+release\b", re.I)
+_UNDISCLOSED_CUSTOMER = re.compile(r"^[•●\-\u2013\u2014\s]*(?:not\s+disclosed|undisclosed|confidential)\b", re.I)
+
+
+def _named_customer(row: dict[str, Any]) -> str:
+    cust = _flat(row.get("customer"))
+    return "" if not cust or _UNDISCLOSED_CUSTOMER.match(cust) else cust
+
+
 def _fold_same_order(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """B2: the same order filed twice (Reg 30 + press release) is one event at the earlier ``known_at``."""
     kept: list[dict[str, Any]] = []
@@ -2419,14 +2656,27 @@ def _fold_same_order(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -
     for row in sorted((r for r in rows if r["kind"] == "order_win"),
                       key=lambda r: (str(r.get("known_at") or ""), str(r.get("doc_key") or ""))):
         match = None
+        row_is_pr = bool(_PRESS_RELEASE_ORDER.search(f"{row.get('title') or ''} {(row.get('_text') or '')[:800]}"))
         for prior in kept:
-            if prior["doc_key"] == row["doc_key"] or prior["symbol"] != row["symbol"] \
-                    or not _customer_compatible(prior, row):
+            if prior["doc_key"] == row["doc_key"] or prior["symbol"] != row["symbol"]:
                 continue
             try:
                 gap = abs((date.fromisoformat(str(row["filing_date"]))
                            - date.fromisoformat(str(prior["filing_date"]))).days)
             except (TypeError, ValueError):
+                continue
+            prior_is_pr = bool(
+                _PRESS_RELEASE_ORDER.search(f"{prior.get('title') or ''} {(prior.get('_text') or '')[:800]}"))
+            if (row_is_pr or prior_is_pr) and gap <= 10:
+                left_c, right_c = _named_customer(prior), _named_customer(row)
+                both_named = bool(left_c and right_c)
+                same_cust = _same_customer(prior, row) if both_named else False
+                p_vals, r_vals = _event_values(prior), _event_values(row)
+                same_val = _same_value(prior, row, tolerance=0.005)
+                if (same_val and (same_cust or not both_named)) or (same_cust and not p_vals and not r_vals):
+                    match = prior
+                    break
+            if not _customer_compatible(prior, row):
                 continue
             if gap <= 7 and _same_value(prior, row, tolerance=0.005):
                 match = prior
@@ -3064,10 +3314,17 @@ def build(stores: list[str] | None = None, limit: int | None = None, use_model: 
                            f"({len(pending)}/{classified})")
     elif pending and use_model:
         modelled, stats = run_model(pending, workers, cache)
-        covered = {row["doc_key"] for row in modelled if row["status"] != "unverified"}
+        def _has_val(r: dict[str, Any]) -> bool:
+            return any(r.get(k) is not None
+                       for k in ("amount_inr_cr", "amount_usd_mn", "value_annual", "capacity_value"))
+
+        covered = {(row["doc_key"], row["kind"]) for row in modelled
+                   if row["status"] != "quarantined" and _has_val(row)
+                   and "amount unit not printed" not in str(row.get("detail") or "")
+                   and "model filled no amount" not in str(row.get("detail") or "")}
         # a model row replaces the script row of the same (doc_key, kind)
-        rows = [row for row in rows if not (row["doc_key"] in covered and row["method"] == "script"
-                                            and row["detail"] == "amount not filled by script")]
+        rows = [row for row in rows if not ((row["doc_key"], row["kind"]) in covered and row["method"] == "script"
+                                            and str(row.get("detail") or "").startswith("amount not filled by script"))]
         rows.extend(modelled)
         meta["model_rows"] = stats["rows"]
         meta["model_requests"] = stats["requests"]
