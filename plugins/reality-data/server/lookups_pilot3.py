@@ -271,6 +271,21 @@ def _day(value: str | None, field: str) -> str | None:
         raise DataError("bad_date", f"{field} must be YYYY-MM-DD, got {value!r}")
 
 
+def _day_span(day: str, days: int = 3) -> tuple[str, str]:
+    """The window ``days`` either side of a named call date (T-242 fix 4): a transcript's printed call date and the
+    document's filing date can differ by a few days (called 2026-08-10, filed 2026-08-13)."""
+    at = dt.date.fromisoformat(day)
+    return (at - dt.timedelta(days=days)).isoformat(), (at + dt.timedelta(days=days)).isoformat()
+
+
+def _near_day(day: str, want: dt.date, days: int = 3) -> bool:
+    """Is ``day`` within ``days`` of ``want``?  A malformed or absent day is never near."""
+    try:
+        return abs((dt.date.fromisoformat(str(day)[:10]) - want).days) <= days
+    except ValueError:
+        return False
+
+
 def _fy2(text: str) -> str:
     return text[-2:]
 
@@ -429,6 +444,8 @@ COVERAGE_DOCUMENTS = 40           # documents listed when a caller passes no lim
 DOCUMENTS_PER_ITEM = 3            # coverage.documents lists at most max(limit*3, 10) documents by default
 DOCUMENTS_MIN = 10
 REPLY_BYTES = 19_000              # every text reply is trimmed below this (the hard cap is 20 kB)
+NAMED_REPLY_BYTES = 27_000        # a named call's 25 statement window: one statement per turn, quote cut to the
+                                  # 240 characters around the match, so the window arrives whole (T-242 fix 4)
 _DOC_LABELS = {"transcript": "calls", "deck": "decks", "annual_report": "annual reports", "results": "results",
                "press_release": "filings", "announcement": "filings", "audio_link": "audio links"}
 _TEXT_STORES = ("transcript_statement (tagged statements)", "doc_page (every held document's dated page text)")
@@ -594,6 +611,22 @@ def _trim(text: str | None, n: int = QUOTE_CHARS) -> str | None:
         return None
     text = re.sub(r"[ \t]+", " ", text).strip()
     return text if len(text) <= n else text[:n].rstrip() + " …"
+
+
+def _trim_around(text: str | None, words: list[str], n: int) -> str | None:
+    """The ``n``-character window around the first asked word, so trimming a long quote keeps the match (T-242)."""
+    if text is None:
+        return None
+    text = re.sub(r"[ \t]+", " ", text).strip()
+    if len(text) <= n:
+        return text
+    low = text.lower()
+    at = min((h for h in (low.find(w.lower()) for w in words if w) if h >= 0), default=-1)
+    if at < 0:
+        return text[:n].rstrip() + " …"
+    start = max(0, at - n // 3)
+    piece = text[start:start + n].strip()
+    return ("… " if start else "") + piece.rstrip() + " …"
 
 
 def _prov(table: str, source: str, known_at: str | None, **extra: Any) -> dict[str, Any]:
@@ -2372,8 +2405,10 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     free ``terms`` (all words must appear), call-date window, role (ceo / cfo / md / mgmt).
 
     For a question about one call ('In the 2026-05-27 call, what did management say about X?'), pass that call's
-    date as ``date_from`` and ``date_to`` (both YYYY-MM-DD): only that call's statements are then served, best
-    match first, and the window is 25 statements instead of 10.
+    date as ``date_from`` and ``date_to`` (both YYYY-MM-DD): only that call's statements are then served -- matched
+    by the transcript's own printed call date or by the document's filing date within 3 days, so a call printed on
+    2026-08-10 and filed on 2026-08-13 is the same call -- one statement per answer turn, best match first, and the
+    window is 25 statements instead of 10.
 
     ``period`` (Q4FY26 / FY26) and ``rank_terms`` (the question's own words) rank the rows: a statement of the
     period asked, carrying more of the question's words, comes first; the newest call breaks a tie.  ``latest``
@@ -2415,6 +2450,16 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     if to_day:
         where.append("t.call_date <= ?")
         args.append(to_day)
+    # T-242 fix 4: a named call is served from its own document only, matched by the transcript's PRINTED call date
+    # or by the document's filing date within 3 days (a call on 2026-08-10 filed 2026-08-13 is that call).  Rows of
+    # every other call are dropped, not merely ranked lower: audit 4 found 85 of 240 served rows from another call.
+    named_day = from_day if from_day and from_day == to_day else None
+    named_lo, named_hi = _day_span(named_day) if named_day else (None, None)
+    named_sql, named_args = "", []
+    if named_day:
+        named_sql = (" AND (t.call_date BETWEEN ? AND ? OR (d.filing_date IS NOT NULL "
+                     "AND d.filing_date BETWEEN ? AND ?))")
+        named_args = [named_lo, named_hi, named_lo, named_hi]
     extra, eargs = _asof(as_of, "t.known_at")
     _kind, label = norm_period(period)
     period_sql, period_args = "1", []
@@ -2428,11 +2473,14 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     score_sql, score_args = _term_hits("t.statement", words[:8])
     # T-242 fix 3: one named call is a bounded set, so its window is 25 remarks (the quote on a long call is
     # often past the tenth); any other question keeps the 10-statement window.
-    cap, start = _window(limit, offset, 25 if from_day and from_day == to_day else 10)
+    cap, start = _window(limit, offset, 25 if named_day else 10)
     want = cap + start
     # whole_turn: `limit` counts answer turns, not sentences, so fetch enough rows to find the turns the page needs
     # (T-164 r7: limit=20 used to return 188 rows because the LIMIT bounded matched sentences before expansion)
-    row_cap = want * 50 if whole_turn else want
+    # T-242 fix 4: within a named call ONE statement per answer turn is served, so the 25-turn window arrives as 25
+    # rows instead of the 123 sentences the whole-turn expansion made, which the 19 kB reply then trimmed to 15.
+    one_per_turn = bool(named_day)
+    row_cap = want * 50 if (whole_turn or one_per_turn) else want
     rows = _q(f"SELECT t.id, t.call_date, t.call_period, t.page, t.speaker, t.role, t.section, t.topics, "
               f"t.period_discussed, t.quote, t.is_fragment, t.entities, t.answer_turn, t.known_at, t.doc_key, "
               f"d.title, d.doc_type, "
@@ -2440,10 +2488,10 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
               f"(CASE WHEN {period_sql} THEN 0 ELSE 1 END) AS period_rank, ({score_sql}) AS term_score "
               f"FROM transcript_statement t "
               f"LEFT JOIN doc d ON d.doc_key=COALESCE((SELECT a.doc_key FROM doc_alias a WHERE a.symbol=t.symbol "
-              f"AND a.alias_key=t.doc_key), t.doc_key) WHERE {core_where}{extra} "
+              f"AND a.alias_key=t.doc_key), t.doc_key) WHERE {core_where}{extra}{named_sql} "
               f"ORDER BY topic_rank, period_rank, term_score DESC, t.is_fragment, t.call_date DESC, t.seq LIMIT ?",
               # the SELECT-list placeholders bind before the WHERE ones
-              (*topic_args, *period_args, *score_args, *core_args, *eargs, row_cap))
+              (*topic_args, *period_args, *score_args, *core_args, *eargs, *named_args, row_cap))
     # one item per answer turn: the whole turn is expanded below, so `limit` counts turns (or rows when
     # whole_turn=False) and the reply pages over turns/hits, never over sentences.
     turn_rows: dict[tuple, list[sqlite3.Row]] = {}
@@ -2453,10 +2501,11 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
         if key not in turn_rows:
             if len(order) >= want:
                 continue
-            turn_rows[key] = []
+            turn_rows[key] = [r] if one_per_turn else []
             order.append(key)
-        turn_rows[key].append(r)
-    if whole_turn and turn_rows:
+        if not one_per_turn:
+            turn_rows[key].append(r)
+    if whole_turn and not one_per_turn and turn_rows:
         # expand each matched row to all sentences of its answer turn, keyed by (document, turn): answer-turn ids
         # collide across calls and prepared remarks carry negative ids, so a bare id mixed two calls and swept
         # prepared remarks in (T-164 r8).  A prepared-remarks turn expands only when it was itself selected.
@@ -2518,9 +2567,11 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
                 deduped_tagged.append(kept_group)
         tagged = deduped_tagged
     # the same phrase-first matcher over every document type, not only calls: a deck table, an annual report or a
-    # filing body answers what no transcript tag carries (T-197 step 2).
+    # filing body answers what no transcript tag carries (T-197 step 2).  A named call widens its filing window by
+    # the same 3 days, because the call's own document is often filed a few days after the date printed in it.
     ask = " ".join(x for x in (topic, terms, rank_terms) if x)
-    hits = _call_page_hits(sym, ask, None, None, date_from, date_to, as_of, latest, want) if ask else []
+    page_from, page_to = (named_lo, named_hi) if named_day else (date_from, date_to)
+    hits = _call_page_hits(sym, ask, None, None, page_from, page_to, as_of, latest, want) if ask else []
     page_items = [{"call_date": r["filing_date"], "call_period": None, "speaker": None, "role": None,
                    "section": None, "topics": None, "entities": None, "period_discussed": None,
                    "answer_turn": None, "match": "text", "page": r["page"], "doc_key": r["doc_key"],
@@ -2557,6 +2608,16 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
         items = [[item] for item in page_items] + merged_stmts
     page_groups = items[start:start + cap]
     out = [item for group in page_groups for item in group]
+    if named_day:
+        # T-242 fix 4: a named call serves one document, so its path and title repeated on every row is exactly the
+        # weight the 19 kB reply cannot afford; the row keeps its doc_key and page and coverage.documents names the
+        # document, while provenance keeps table, source page, known_at and row id.
+        for row in out:
+            prov = row.get("provenance")
+            if isinstance(prov, dict):
+                prov.pop("title", None)
+                if row.get("page") not in (None, ""):
+                    prov["source"] = f"p{row['page']}"
     fallback = "doc_page_bm25" if (topic and tagged_match is False and not obs_v and page_items) else None
     matched_total = len(merged_stmts) + len(page_items)    # items (answer turns, obs statements and page hits)
     shown_items = len(page_groups)
@@ -2568,18 +2629,28 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
                        parts=f"{len(tagged)} tagged statement turn(s) + {len(page_items)} page-text "
                              f"match(es), {len(out)} sentence(s)")
     outside: list[dict[str, Any]] = []
-    if from_day or to_day:
+    if named_day:
+        # T-242 fix 4: outside a named call is outside its 3-day window, by the call date or the filing date.
+        outside_sql = ("NOT (t.call_date BETWEEN ? AND ? OR (d.filing_date IS NOT NULL "
+                       "AND d.filing_date BETWEEN ? AND ?))")
+        outside_args: list[Any] = [named_lo, named_hi, named_lo, named_hi]
+    elif from_day or to_day:
         excluded = []
         if from_day:
             excluded.append(("t.call_date < ?", from_day))
         if to_day:
             excluded.append(("t.call_date > ?", to_day))
+        outside_sql = " OR ".join(x[0] for x in excluded)
+        outside_args = [x[1] for x in excluded]
+    else:
+        outside_sql, outside_args = "", []
+    if outside_sql:
         rows_out = _q(f"SELECT t.call_date, COUNT(*) c, d.doc_type FROM transcript_statement t "
                       f"LEFT JOIN doc d ON d.doc_key=COALESCE((SELECT a.doc_key FROM doc_alias a "
                       f"WHERE a.symbol=t.symbol AND a.alias_key=t.doc_key), t.doc_key) "
-                      f"WHERE {core_where}{extra} AND ({' OR '.join(x[0] for x in excluded)}) "
+                      f"WHERE {core_where}{extra} AND ({outside_sql}) "
                       f"GROUP BY 1, 3 ORDER BY 1 DESC LIMIT 20",
-                      (*core_args, *eargs, *[x[1] for x in excluded]))
+                      (*core_args, *eargs, *outside_args))
         outside = [{"date": r["call_date"], "doc_type": r["doc_type"], "count": r["c"]} for r in rows_out]
     hidden = _hidden_documents(sym, _day(as_of, "as_of"))
     read_next = (_read_next(out) + _related_pages([w for w in re.findall(r"[\w₹%&\-\.]+", ask) if len(w) > 2],
@@ -2605,13 +2676,25 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
         for row in out:
             row["quote"] = _trim(row.get("quote"), width)
 
+    def quotes_around(width: int) -> None:
+        # T-242 fix 4: the ask's words stay inside a shortened quote, so ranking and the reader's check survive
+        for row in out:
+            row["quote"] = _trim_around(row.get("quote"), ask_words, width)
+
     def row_cut(keep: int) -> None:
         removed = len(out) - keep
         if removed > 0:
             del out[keep:]
             reply["coverage"]["rows_cut"] = removed     # a turn stays whole only while the reply fits its cap
 
-    reply = _shrink(reply, [
+    ask_words = [w for w in re.findall(r"[\w₹%&\-\.]+", " ".join(x for x in (topic, terms, rank_terms) if x))
+                 if len(w) > 2]
+    cuts: list[tuple[str, Any]] = []
+    if named_day:
+        # a named call trims each quote to the window around the ask before it drops any statement: the matched
+        # words are what the call is asked about, and 25 short rows fit where 25 long ones did not (T-242 fix 4)
+        cuts.append(("quotes cut to 240 characters around the match", lambda: quotes_around(240)))
+    cuts += [
         ("quotes cut to 300 characters", lambda: quotes(300)),
         ("sentences cut to the first 120", lambda: row_cut(120)),
         ("quotes cut to 160 characters", lambda: quotes(160)),
@@ -2619,7 +2702,8 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
         ("quotes cut to 110 characters", lambda: quotes(110)),
         ("sentences cut to the first 30", lambda: row_cut(30)),
         ("sentences cut to the first 15", lambda: row_cut(15)),
-    ])
+    ]
+    reply = _shrink(reply, cuts, cap=NAMED_REPLY_BYTES if named_day else REPLY_BYTES)
     reply["n"] = len(out)
     return reply
 
@@ -3884,7 +3968,15 @@ def _fact_route(key: str, symbol: str, period: str | None = None) -> tuple[str |
     allnames = {"ratio_panel": rall, "fin": list(dict.fromkeys(qall + aall + pall)),
                 "kpi_series": kall, "obs_fact": oall}
     if key in _FACT_SHARES:
-        return "shares", found, allnames
+        # T-242 fix 4: a label asked WITH a period ("Share Capital" as of Mar-25) is a printed line, not the latest
+        # share count -- APEX Mar-25 is 313.0 Rs Mn while the share-count route answered 31,250,000 shares of
+        # 2026-09-30.  The shares route answers only when no held table prints this label for that period; fact()
+        # falls back to it when the printed-line election comes back empty.
+        printed = (key == "share_capital" and bool(period)
+                   and (bool(fnames) or (bool(knames) and _kpi_covers(symbol, knames, period))
+                        or (bool(onames) and _obs_covers(symbol, onames, period))))
+        if not printed:
+            return "shares", found, allnames
     # T-242: route a filed shp_category only for a question about who holds the shares ("promoter holding",
     # "FPI stake", "retail shareholders"), never for a line whose word merely shares a category name
     # ("retail deposits"): that is a P&L / balance line, not the shareholding pattern.
@@ -4459,6 +4551,12 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
         replies["kpi"] = reply
         if rows:
             used = "kpi"
+    if not rows and key in _FACT_SHARES:
+        # T-242 fix 4: the printed line the period named is not held, so the share count is the answer, said plainly.
+        rows, reply = _fact_rows("shares", sym, key, period, bas, day, 5)
+        replies["shares"] = reply
+        if rows:
+            used = "shares"
     if not rows:
         from_cells = _fact_cells(sym, metric, period, day)
         if not from_cells and key in _MEASURE_ALIASES:
@@ -4688,6 +4786,13 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
     else:
         where.append("o.status IN ('verified','unverified')")
     extra, eargs = _asof(as_of, "o.known_at")
+    # T-242 fix 4: a named call (date_from == date_to) is served from its own document only.  The transcript's
+    # printed call date is held on transcript_statement, not on doc, so it is read per document here; a document
+    # matches when that call date OR its filing date is within 3 days of the day named.
+    named_day = date_from if date_from and date_to and date_from == date_to else None
+    named_at = dt.date.fromisoformat(named_day) if named_day else None
+    if named_day:
+        date_from, date_to = _day_span(named_day)
     if latest:
         where.append(f"substr(COALESCE(o.known_at,''),1,10)=(SELECT MAX(substr(COALESCE(o2.known_at,''),1,10)) "
                      f"FROM obs_fact o2 WHERE o2.symbol=? AND o2.record_type='statement'{extra.replace('o.', 'o2.')})")
@@ -4696,6 +4801,10 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
                 "WHERE a.symbol=o.symbol AND a.alias_key=o.doc_key), o.doc_key)") if _has_table("doc") else ""
     doc_sel = (", d.title AS doc_title, d.filing_date AS doc_filing_date"
                if _has_table("doc") else ", '' AS doc_title, '' AS doc_filing_date")
+    call_sel = (", (SELECT MAX(t.call_date) FROM transcript_statement t WHERE t.symbol=o.symbol "
+                "AND t.doc_key=d.doc_key) AS doc_call_date")
+    if not (_has_table("doc") and _has_table("transcript_statement")):
+        call_sel = ", '' AS doc_call_date"
     # T-242: a call-date window names the transcript's filing date (the reply's ``call_date``), so filter on the
     # document date and fall back to known_at only when the document holds none.
     doc_day = f"COALESCE(d.filing_date, substr(COALESCE(o.known_at,''),1,10))" if _has_table("doc") \
@@ -4713,7 +4822,7 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
         clause, term_args, _used = _word_groups(term_words, [f"o.{c}" for c in text_cols])
         where.append(f"({clause})")
         args.extend(term_args)
-    rows = _q(f"SELECT o.*{doc_sel} FROM obs_fact o {doc_join} WHERE {' AND '.join(where)}{extra} "
+    rows = _q(f"SELECT o.*{doc_sel}{call_sel} FROM obs_fact o {doc_join} WHERE {' AND '.join(where)}{extra} "
               f"ORDER BY (o.status='verified') DESC, o.known_at DESC LIMIT 500", (*args, *eargs))
     # T-242: when the question or the arguments name a call date, rank the rows of the call nearest that date
     # first; with no date the newest call stays first.
@@ -4744,6 +4853,15 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
             continue
         if plan is not None and not _topic_hit(plan, stmt, g("measure")):
             continue
+        if named_at is not None:
+            # T-242 fix 4: drop a statement of another call; the call date and the filing date both count, 3 days.
+            call_day = str(g("doc_call_date") or "")[:10]
+            filed_day = str(g("doc_filing_date") or "")[:10]
+            if call_day or filed_day:
+                if not (_near_day(call_day, named_at) or _near_day(filed_day, named_at)):
+                    continue
+            elif not _near_day(str(g("known_at") or "")[:10], named_at):
+                continue
         say_blob = " ".join(str(x or "") for x in (stmt, g("question_context"))).lower()
         measure_blob = " ".join(str(x or "") for x in (g("measure"), g("printed_label"))).lower()
         say_score = sum(1 for alts in qword_alts if any(a in say_blob for a in alts)) if qword_alts else 0
