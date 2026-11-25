@@ -16,7 +16,7 @@ REALITY_RAW_FETCH=0 python -m reality_engine.v2.observations --recheck --doc-typ
 ## 2. Verify before swap
 Counts by status and status_reason, before vs after; the changes must match what the fix measured (e.g. deck gates: ~81 bound + 11 combined-label unverified, 242 heading basis). 0 rows of the latest passing grade's R set may change status.
 ## 3. Swap
-Back up the live DB (`<db>_before_<fix>_<date>.db`), confirm nothing writes it (no hy4 loop on that output), move the copy in.
+Back up the live DB (`<db>_before_<fix>_<date>.db`), confirm nothing writes it (no hy4 loop on that output), move the copy in. To pause one loop job without stopping the loop: create `D:/RealityEngine/hy4_out/<db>.hold` (the loop skips that job; delete it to resume; machines/README.md). Before swapping, carry over any rows the live DB gained after the copy was taken (compare max observation_id and page_read counts).
 ## 4. Load only touched symbols
 ```
 python .tmp/load_symbols.py --from-db D:/RealityEngine/hy4_out/<db>.db     # or SYM1 SYM2 ... ; log C:/RealityEngine/t242/load_symbols.log
