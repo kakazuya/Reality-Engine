@@ -6186,7 +6186,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                              "unit_family_fixed": 0, "is_total_rows": 0, "parts_sum_restored": 0,
                              "basis_header": 0, "period_header": 0, "generic_labels": 0,
                              "parts_degenerate": 0, "comparative_periods": 0, "instant_periods": 0,
-                             "basis_page": 0, "ar_statement_rows": 0}
+                             "basis_page": 0, "ar_statement_rows": 0, "no_store": 0}
     pages = list(con.execute("SELECT DISTINCT doc_key, page FROM observation ORDER BY doc_key, page"))
     if only is not None:                      # T-233: a scoped recheck touches only the selected pages
         pages = [p for p in pages if only.page(doc_store.get(str(p[0])), str(p[0]), int(p[1]))]
@@ -6195,6 +6195,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
     for doc_key, page in _kept_pages(pages):
         store_db = doc_store.get(str(doc_key))
         if not store_db:
+            stats["no_store"] += 1
             continue
         stats["pages"] += 1
         try:
@@ -6808,9 +6809,9 @@ def main(argv: list[str] | None = None) -> int:
 
     store_dbs: list[str] = []
     doc_types = [t for t in args.doc_types.split(",") if t]
-    if args.stores_root and args.reparse:
-        # T-242 (Eagle): a re-parse must find every page's store; --sample (default 5) left 197 of 200 AR pages
-        # as no_store.  Every cNN/cNN.db under the root, no sampling.
+    if args.stores_root and (args.reparse or args.recheck):
+        # T-242 (Eagle/Wolf): a re-parse or recheck must find every page's store; --sample (default 5) left
+        # most stores out and recheck_db silently skipped their pages.  Every cNN/cNN.db under the root.
         root = Path(args.stores_root)
         store_dbs = [str(p / f"{p.name}.db") for p in sorted(root.iterdir())
                      if p.is_dir() and (p / f"{p.name}.db").is_file()]
