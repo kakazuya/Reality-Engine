@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-25 10:20 IST (dsh)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-25 11:55 IST (dsh)
 History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -8,6 +8,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
 - 24 Nov (deck, merged): per-period footnote basis (56 rows changed; deck fp unchanged).
 - 24 Nov T-242 (`observations.py`): empty page in a parsed window is `page_read` `no_rows`, not a failure; share = failures / attempted.
+- 25 Nov T-242: question_context fills 385/8,597 (obs_speaker).
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 25 Nov 10:25 (Wolf merged dsh 81c60cde): AR basis carried from the previous page's heading onto continuation pages (181 rows on 9 pages, 0 conflicts). AR year/duration non-figures unverified (agy 87999d39, Eagle merged: 92 of 13,521 live verified; recheck to apply).

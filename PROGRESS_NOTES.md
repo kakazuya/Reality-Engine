@@ -262,3 +262,4 @@ T-242 deck value guards: code+tests done (test_deck_guards 13 passed), pilot mea
 
 
 
+T-242 (25 Nov): obs_speaker.preceding_question fills an empty question_context from the printed analyst turn; measured 385/8,597 empty verified statements (4.5%), 30-row seed-11 sample all match; scoped --reparse writes it (CAPACITE p5, 9 rows). 5 tests added; 27/30 pass here, 3 blocked by the sandbox tmp_path ACL. v3 fp 2fae7ddac53e unchanged.

@@ -44,8 +44,9 @@ Every transcript observation with a non-empty ``speaker`` is classified into:
 T-242 statement pass (used by the observations read path and ``--reparse``, not by ``run``)
 -------------------------------------------------------------------------------------------
 ``attach_statement_speakers`` carries a statement's speaker across a page break, resolves a
-company-name / first-name / initials label to one full management name, and marks the row
-unverified (``speaker_unresolved:``) or a referentless short reply (``no_referent:``).
+company-name / first-name / initials label to one full management name, marks the row
+unverified (``speaker_unresolved:``) or a referentless short reply (``no_referent:``), and fills
+an empty ``question_context`` with the analyst's printed question (``preceding_question``).
 """
 from __future__ import annotations
 
@@ -501,9 +502,10 @@ def _flex_regex(text: str, *, digit_bounds: bool = False) -> re.Pattern[str] | N
         return None
     parts = [re.escape(p) for p in s.split()]
     pat = r"\s+".join(parts)
-    # Normalize curly vs straight quotes if present
-    pat = pat.replace("'", "['’]").replace("’", "['’]")
-    pat = pat.replace('"', '["“”]').replace("“", '["“”]').replace("”", '["“”]')
+    # Normalize curly vs straight quotes if present.  One substitution per quote char: chaining two .replace() calls
+    # nested a class inside the first one ("['['’]]") and a statement holding "FY '26" then never matched (T-242).
+    pat = re.sub(r"['\u2019]", "['\u2019]", pat)
+    pat = re.sub(r'["\u201c\u201d]', '["\u201c\u201d]', pat)
     if digit_bounds:
         if s[0].isdigit():
             pat = r"(?<!\d)" + pat
@@ -1072,6 +1074,63 @@ def last_label_before(statement: str, page_list: list[tuple[int, str]], page: in
     return ""
 
 
+_QA_ANNOUNCE_RE = re.compile(
+    r"\b(?:next|first|last|one\s+more)\s+question\s+(?:is\s+)?from"
+    r"|\btake\s+(?:a|one)\s+question\s+from"
+    r"|\bline\s+of\b", re.I)
+
+
+def preceding_question(statement: str, page_list: list[tuple[int, str]], page: int,
+                       analysts: Iterable[str], pool: Iterable[str]) -> str:
+    """T-242: the analyst's printed question a statement answers, as ``Q (<name>): <text>``; '' when none.
+
+    The statement is found on its page (the same flexible match as ``find_observation_pos``) and the printed labels
+    before it are walked back at most two pages, nearest first.  The turn that holds the passage (its own management
+    label on a page break, or the analyst label when the answer is unlabelled) is skipped; the turn BEFORE it must be
+    a questioner -- an analyst on the doc roster, or a speaker the moderator has just announced -- else the passage is
+    opening remarks or answers a manager and gets nothing.  Its text must carry a question cue and is trimmed to 300
+    characters.
+    """
+    texts = dict(page_list)
+    here = str(texts.get(int(page), "") or "")
+    pos = find_observation_pos(here, "", "", statement) if here else None
+    if pos is None:
+        return ""
+    analyst_list = [_norm_name(a) for a in analysts if a]
+    pool_list = [_norm_name(p) for p in pool if p]
+    known = set(analyst_list) | set(pool_list)
+    seq: list[tuple[str, str]] = []          # printed turns before the passage, nearest first
+    for pg in range(int(page), int(page) - 3, -1):
+        text = str(texts.get(pg, "") or "")
+        if not text:
+            continue
+        upto = text[:pos] if pg == int(page) else text
+        turns = extract_turns(upto, pg, known_names=known)
+        for idx in range(len(turns) - 1, -1, -1):
+            end = turns[idx + 1].start if idx + 1 < len(turns) else len(upto)
+            seq.append((turns[idx].name, " ".join(upto[turns[idx].end:end].split())))
+        if len(seq) >= 3:
+            break
+    if not seq:
+        return ""
+    own = _norm_name(seq[0][0])
+    if own in _ROLE_WORDS and own not in _MODERATOR_NAMES:
+        return ""                            # a generic "Management:" label carries no question
+    idx = 1 if _name_matches_list(seq[0][0], pool_list) else 0
+    if idx >= len(seq):
+        return ""
+    name, body = seq[idx]
+    if _name_matches_list(name, pool_list):
+        return ""                            # a management turn sits between the passage and any question
+    if not _name_matches_list(name, analyst_list):
+        announced = seq[idx + 1][1] if idx + 1 < len(seq) else ""
+        if not _QA_ANNOUNCE_RE.search(announced):
+            return ""                        # opening remarks: no questioner was given the floor yet
+    if len(body) < 8 or not _QUESTION_CUE_RE.search(body):
+        return ""
+    return f"Q ({name}): {body[:300]}"
+
+
 def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int, str]],
                               symbol: str = "", company_names: Iterable[str] = ()) -> dict[str, int]:
     """T-242: carry a page-break speaker, resolve/flag a junk label and a referentless reply, in place.
@@ -1079,9 +1138,10 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
     A statement with no speaker is re-attributed from this doc's pages (last label before it on the page, else the
     last label of an earlier page); a carried analyst or moderator label is refused.  What remains is resolved to
     one full management name or marked unverified ``speaker_unresolved`` -- a company name is not a person and is
-    never re-attributed to a nearby label -- and a short yes/no reply is marked unverified ``no_referent``.
+    never re-attributed to a nearby label -- and a short yes/no reply is marked unverified ``no_referent``.  An empty
+    ``question_context`` is filled from ``preceding_question``; a model-written one is never replaced.
     """
-    stats = {"statements": 0, "carried": 0, "resolved": 0, "empty": 0, "unverified": 0}
+    stats = {"statements": 0, "carried": 0, "resolved": 0, "empty": 0, "unverified": 0, "question_filled": 0}
     indexes = [i for i, row in enumerate(rows) if str(row.get("record_type") or "") == "statement"]
     if not indexes:
         return stats
@@ -1155,6 +1215,13 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
         else:
             stats["empty"] += 1
             reasons.append("speaker_unresolved: no speaker label on this page or an earlier one")
+        # T-242: an empty question_context is filled with the analyst's printed question; the model's is never replaced
+        if not str(row.get("question_context") or "").strip():
+            question = preceding_question(str(row.get("statement") or ""), page_list,
+                                          int(row.get("page") or 0), analysts, pool)
+            if question:
+                row["question_context"] = question
+                stats["question_filled"] += 1
         # fy27_v3 r2 re-grade (25 Nov): all 39 no_referent demotions had the matching question in question_context
         no_ref = "" if str(row.get("question_context") or "").strip() \
             else no_referent_reason(str(row.get("statement") or ""))

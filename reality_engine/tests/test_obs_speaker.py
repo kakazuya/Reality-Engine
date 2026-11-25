@@ -295,7 +295,7 @@ def test_roster_edge_cases_and_non_speaker_labels():
 
 def _statement(page: int, text: str, speaker: str = "", status: str = "verified") -> dict[str, Any]:
     return {"record_type": "statement", "page": page, "statement": text, "speaker": speaker,
-            "status": status, "status_reason": ""}
+            "status": status, "status_reason": "", "question_context": ""}
 
 
 def test_statement_speaker_carries_across_a_page_break():
@@ -576,3 +576,73 @@ def test_r2_regrade_tag_tails_and_question_context():
     assert question_passage("So margins are 18%, right?")                         # short: still a question
     assert question_passage("We understand the plant runs at 70% utilisation now. Is that correct?")
     assert question_passage("What is the capex plan for FY27?")
+
+
+# --------------------------------------- T-242 question_context fill from the printed analyst question
+
+_ROSTER = "Synth Corp Limited\nPage 1 of 3\nMANAGEMENT: MR. RAMESH IYER - MANAGING DIRECTOR\n"
+_ANNOUNCE = ("Moderator: Thank you. The next question is from the line of Pritesh Chheda from Lucky Investment.\n")
+_QUESTION = "Sir, for that INR1,500 crores revenue, what capex is planned?"
+_ANSWER = "We plan INR200 crores of capex for the year."
+
+
+def test_question_context_filled_from_the_analyst_turn_on_the_same_page():
+    pages = [
+        (1, _ROSTER),
+        (2, "Synth Corp Limited\nPage 2 of 3\n" + _ANNOUNCE
+            + f"Pritesh Chheda: {_QUESTION}\n{_ANSWER}\n"),          # unlabelled answer, as mid-call prose
+    ]
+    rows = [dict(_statement(2, _ANSWER), speaker="Ramesh Iyer")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["question_context"] == f"Q (Pritesh Chheda): {_QUESTION}"
+    assert stats["question_filled"] == 1
+
+
+def test_question_context_filled_from_the_analyst_turn_on_the_previous_page():
+    pages = [
+        (1, _ROSTER),
+        (2, "Synth Corp Limited\nPage 2 of 3\n" + _ANNOUNCE
+            + "Pritesh Chheda: How much capex is planned for FY27?"),
+        (3, "Synth Corp Limited\nPage 3 of 3\nThe capex stays at INR200 crores for the year.\n"),
+    ]
+    rows = [dict(_statement(3, "The capex stays at INR200 crores for the year."), speaker="Ramesh Iyer")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["question_context"] == "Q (Pritesh Chheda): How much capex is planned for FY27?"
+    assert stats["question_filled"] == 1
+
+
+def test_question_context_empty_in_opening_remarks():
+    # An unlisted speaker's opening remarks carry a question cue but no analyst has been given the floor yet.
+    pages = [(1, "Synth Corp Limited\nPage 1 of 3\n"
+                 "Mr. Anil Kumar: Can everyone hear me? This is our founder speaking. We had a good year.")]
+    rows = [dict(_statement(1, "We had a good year."), speaker="Anil Kumar")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["question_context"] == ""
+    assert stats["question_filled"] == 0
+
+
+def test_question_context_empty_when_a_management_label_intervenes():
+    # The passage sits in the CFO's turn; the turn before his is another manager's answer, not a question.
+    pages = [
+        (1, "Synth Corp Limited\nPage 1 of 3\nMANAGEMENT:\n"
+            "Mr. Ramesh Iyer - Managing Director\nMr. Anil Kumar - Chief Financial Officer\n"),
+        (2, "Synth Corp Limited\nPage 2 of 3\n" + _ANNOUNCE
+            + f"Pritesh Chheda: {_QUESTION}\nRamesh Iyer: {_ANSWER}\n"
+            + "Anil Kumar: The balance is spread over the next two quarters.\n"),
+    ]
+    rows = [dict(_statement(2, "The balance is spread over the next two quarters."), speaker="Anil Kumar")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["question_context"] == ""
+    assert stats["question_filled"] == 0
+
+
+def test_question_context_never_replaces_the_models_question():
+    pages = [
+        (1, _ROSTER),
+        (2, "Synth Corp Limited\nPage 2 of 3\n" + _ANNOUNCE
+            + f"Pritesh Chheda: {_QUESTION}\n{_ANSWER}\n"),
+    ]
+    rows = [dict(_statement(2, _ANSWER), speaker="Ramesh Iyer", question_context="capex plan for FY27")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["question_context"] == "capex plan for FY27"
+    assert stats["question_filled"] == 0
