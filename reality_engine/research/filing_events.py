@@ -353,6 +353,50 @@ _ORDER_ROLLUP = re.compile(
 _ORDER_INFLOW_TITLE = re.compile(
     r"\border\s+(?:inflow|intake)\b[^.]{0,40}\bfor\s+(?:FY\s?\d{2,4}|(?:the\s+)?(?:year|quarter|half[\s-]?year"
     r"|nine\s+months))\b", re.I)
+# T-242 round 8: an "order" a tax office, tribunal or regulator issues TO the company is not a customer order,
+# and neither is a regulator's approval to launch a product.  The cue is the authority or the order's own nature
+# (assessment, penalty, refund, compounding ...), never the bare words GST/tax: "excluding GST" is printed on
+# every genuine order value.
+_AUTHORITY_ORDER_STRONG = re.compile(
+    r"\b(?:compounding|assessment|reassessment|demand|penalty|refund|remand(?:-|\s*)back|adjudication|rectification"
+    r"|warning|prosecution|acceptance\s+of\s+reply)\b[^.;]{0,24}?\border\b"
+    r"|\border\s+(?:of|for)\s+(?:assessment|reassessment|demand|penalty|refund|compounding|remand(?:-|\s*)back"
+    r"|adjudication|rectification|acceptance\s+of\s+reply)\b"
+    r"|\b(?:sebi|irdai|rbi|trai|pfrda|nclt|nclat|itat|cestat|tribunal|high\s+court|supreme\s+court)\b"
+    r"[^.;]{0,60}?\b(?:issued|passed|imposed|warned|directed)\b[^.;]{0,40}?\border\b",
+    re.I)
+_AUTHORITY_OFFICE = re.compile(
+    r"\bfrom\s+(?:the\s+)?office\s+of\s+(?:the\s+)?[^.;]{0,80}?"
+    r"\b(?:commissioner|inspector|superintendent|metrology|adjudicating|regulatory)\b", re.I)
+_REGULATOR_APPROVAL = re.compile(
+    r"\b(?:received|obtained|granted|grants?)\b[^.;]{0,40}?\b(?:approval|permission)\b[^.;]{0,120}?"
+    r"\b(?:sebi|securities\s+and\s+exchange\s+board|irdai|insurance\s+regulatory|rbi|reserve\s+bank|trai|pfrda)\b"
+    r"[^.;]{0,80}?\b(?:to\s+)?(?:launch|introduce|commence|offer|sell)\b"
+    r"|\b(?:sebi|securities\s+and\s+exchange\s+board|irdai|insurance\s+regulatory|rbi|reserve\s+bank|trai|pfrda)\b"
+    r"[^.;]{0,100}?\b(?:approval|approve[ds]?|permission)\b[^.;]{0,60}?\b(?:launch|introduce|commence|offer|sell)\b",
+    re.I)
+# a real order names its award noun; an authority's letter that merely says "order" does not.
+_AWARD_NOUN = re.compile(
+    r"\b(?:work\s+order|purchase\s+order|supply\s+order|letter\s+of\s+(?:award|acceptance|intent)|LOA|LOI"
+    r"|contract\s+for|order\s+for\s+(?:supply|design|execution|construction|installation))\b", re.I)
+_BOARD_OR_APPOINTMENT = re.compile(
+    r"\boutcome\s+of\s+(?:the\s+)?(?:board|meeting\s+of\s+the\s+board)\b|\bboard\s+meeting\b"
+    r"|\b(?:assumed?|assumption\s+of)\s+(?:the\s+)?charge\b"
+    r"|\bappointment\s+of\s+(?:a\s+|an\s+)?(?:director|managing\s+director|chairman|cmd|company\s+secretary|chief)\b"
+    r"|\b(?:cessation|resignation)\s+of\b|\bchange\s+in\s+(?:the\s+)?(?:board|directors?)\b", re.I)
+# the escape hatch for a board outcome or an appointment letter: it quotes an award (a value, or a named awarder).
+_AWARD_QUOTED = re.compile(
+    r"\b(?:received|receives|secured|secures|bagged|bags|won|wins|awarded|obtained)\b[^.;]{0,80}?"
+    r"\b(?:orders?|contracts?|LOAs?|LOIs?|letters?\s+of\s+(?:award|acceptance)|work\s+order|purchase\s+order)\b"
+    r"[^.;]{0,160}?(?:(?:Rs\.?|INR|₹|US\s?\$|\$|USD)\s*[\d,]|\bfrom\s+(?-i:[A-Z])|\bworth\b|\bvalued\s+at\b)",
+    re.I)
+# an LOI/LoA to set up the company's OWN outlet, dealership or showroom is a territory appointment, not an order.
+_SELF_SETUP = re.compile(
+    r"\b(?:letters?\s+of\s+intent|LOIs?|letters?\s+of\s+award|LOAs?)\b[^.;]{0,140}?"
+    r"\b(?:to\s+(?:establish|set\s+up|open|launch|operate)|for\s+setting\s+up)\b[^.;]{0,140}?"
+    r"\b(?:outlets?|dealerships?|showrooms?|experience\s+cent(?:re|er)s?|service\s+cent(?:re|er)s?"
+    r"|3S\s+facilit(?:y|ies)|(?-i:[A-Z])[A-Za-z]{2,}\s+facilit(?:y|ies))\b", re.I)
+_CAPACITY_TOKEN = re.compile(r"\b\d+(?:\.\d+)?\s*(?:MW|kW|GW|MWh|kWh|MTPA|TPD|TPA|MLD|KL)\b")
 _FINANCIAL_METRIC = re.compile(
     r"\b(?:revenues?|ebitda|pat|net\s+profit|profit\s+after\s+tax|total\s+income|turnover)\b", re.I)
 _RESULTS_ACTION = re.compile(r"\b(?:approved|approves|awarded|sanctioned)\b", re.I)
@@ -407,9 +451,14 @@ _CAPACITY_APPROVED = re.compile(r"\b(?:approved|approves|proposed|setting\s+up|t
 _ORDER_WORD = re.compile(
     r"\b(?:order|orders|purchase\s+order|work\s+order|contract|contracts|LOA|LOI|letter\s+of\s+award"
     r"|letter\s+of\s+acceptance|letter\s+of\s+variation)\b", re.I)
-# T-242 round 6: an L1-only intimation stays unverified unless an award is ALSO stated as received.
+# T-242 round 6: an L1-only intimation stays unverified unless an award is ALSO stated as received.  Round 8:
+# the award verb must be followed by the order noun itself ("received a Letter of Acceptance"), so the table
+# label "Name of the entity awarding the order(s)" is never read as an award.
 _AWARD_RECEIVED = re.compile(
-    r"\b(?:receiv(?:ed|es)?|receipt|bagged|secured|won|obtained|awarded)\b[^.;]{0,80}?" + _ORDER_WORD.pattern,
+    r"\b(?:receiv(?:ed|es)?|receipt(?:\s+of)?|bagged|bags|secured|secures|won|wins|obtained|been\s+awarded)\b"
+    r"\s*(?:an?\s+|the\s+|new\s+|fresh\s+|another\s+|additional\s+)?"
+    r"\b(?:orders?|contracts?|LOAs?|LOIs?|letters?\s+of\s+(?:award|acceptance|intent)|work\s+orders?"
+    r"|purchase\s+orders?|work\s+order\s*/\s*LOI)\b",
     re.I)
 _CS_GAP = r"[^;]{0,240}?"      # "USD 762,860.08" and "ie." must not end the gap
 _AMEND_FROM_TO = re.compile(
@@ -457,6 +506,28 @@ _ORDER_VALUE_ROW = re.compile(
     r"|order\s+size|contract\s+price|estimated\s+value|annual\s+revenue)\b[^.;]{0,30}?"
     r"(?:Rs\.?|INR|₹)\s*(?P<v>[\d,]+(?:\.\d+)?)\s*(?P<u>crores?|cr\.?|lakhs?|lacs?|million|mn|billions?|bn)\b",
     re.I)
+# T-242 round 8: a GDV, a project cost, an order-book target or the company's own investment is not the order's
+# size (#39, #48, #54).  The label must sit beside the figure: a genuine value next to an "order intake" headline
+# keeps its number (r5 #39 TRANSRAILL "fresh orders worth Rs 534 crore; order intake crosses ...").
+_NOT_ORDER_SIZE_BEFORE = re.compile(
+    r"\b(?:order[-\s]?book(?:\s+target)?|order\s+(?:intake|inflow)|backlog)\b", re.I)
+_NOT_ORDER_SIZE_NEAR = re.compile(
+    r"\b(?:GDV|gross\s+develop(?:ment)?\s+value|project\s+cost|project\s+value|guidance|target(?:ing|ed)?"
+    r"|ambition|cumulative\s+investment|investment|capex|capital\s+expenditure)\b", re.I)
+# a label printed AFTER the figure only disqualifies a project metric ("Rs 400 Cr GDV Project"); a Capex/Opex
+# component note after a genuine contract value does not ("Rs 3002.99 crore [Capex ...]").
+_NOT_ORDER_SIZE_AFTER = re.compile(r"\b(?:GDV|gross\s+develop(?:ment)?\s+value)\b", re.I)
+# the size a free-form release states in words ("supply and commissioning of an approximately INR 400 crore ...").
+_ORDER_SIZE_SENTENCE = re.compile(
+    r"\b(?:supply(?:\s+and\s+commissioning)?|commissioning|execution|contract|order|project)s?\b[^.;]{0,60}?"
+    r"\b(?:approximately|approx\.?|about|around)\s+(?:Rs\.?|INR|₹)\s*"
+    r"(?P<v>[\d,]+(?:\.\d+)?)\s*(?P<u>crores?|cr\.?|lakhs?|lacs?|million|mn|billions?|bn)\b", re.I)
+# a non-INR, non-USD value stays as printed in value_text; never convert it without a printed rate (#13, #51).
+_FOREIGN_VALUE = re.compile(
+    r"\b(?P<v>[\d,]+(?:\.\d+)?)\s*(?P<u>million|mn|billion|bn|crores?|lakhs?|lacs?)?\s*"
+    r"(?P<cur>euros?|eur|gbp|pounds?|jpy|yen|chf|francs?|aed|dirhams?|sgd|aud|cad)\b"
+    r"|\b(?P<cur2>euros?|eur|gbp|pounds?|jpy|yen|chf|aed|sgd|aud|cad)\s*(?P<v2>[\d,]+(?:\.\d+)?)"
+    r"\s*(?P<u2>million|mn|billion|bn|crores?|lakhs?|lacs?)?\b", re.I)
 _PRICE = re.compile(
     r"(?:issue\s+price|price\s+per\s+(?:equity\s+)?share|price\s+of|at\s+(?:an?\s+)?price\s+of"
     r"|at)\s*(?:Rs\.?|INR|₹)\s*(?P<v>[\d,]+(?:\.\d+)?)(?:\s*/-)?(?:\s*(?:per|each)\s+(?:equity\s+)?share)?", re.I)
@@ -488,19 +559,30 @@ _PARENT_SCOPE = re.compile(r"\bparent\s+company\b|\bultimate\s+holding\s+company
 _SUB_QUALITY = (r"(?:wholly[-\s]?owned|material|step[-\s]?down|unlisted|listed|direct|indirect|foreign|overseas"
                 r"|US[-\s]?based|UK[-\s]?based)")
 _SUB_WORD = r"subs(?:idi|di)ar(?:y|ies)"          # subsidiary / subsidiaries / the printed "subsdiary" typo
-_SUB_NAME = (r"(?P<name>(?-i:[A-Z])[A-Za-z0-9&.'’()\-]*"
-             r"(?:\s+(?:(?-i:[A-Z0-9])[A-Za-z0-9&.'’()\-]*|of|the|and"
+_SUB_NAME = (r"(?P<name>(?-i:[A-Z])[A-Za-z0-9\u00c0-\u024f&.'’()\-]*"
+             r"(?:\s+(?:(?-i:[A-Z0-9])[A-Za-z0-9\u00c0-\u024f&.'’()\-]*|\([A-Za-z0-9\u00c0-\u024f&.'’\-]{1,25}\)"
+             r"|of|the|and|i|och|van|der|la|el|di|da|du|de"
              r"|(?i:private|pvt|limited|ltd|llp|inc|llc|gmbh|corp|corporation|company))){0,6})")
-# "<Name>, a wholly owned subsidiary of the Company, has received" / "<Name> (wholly owned subsidiary)".
+# "<Name>, a wholly owned subsidiary of the Company, has received" / "<Name> (wholly owned subsidiary)" /
+# "<Name> which is the Material Subsidiary of the Company has received".  Round 8 adds the "which is" form.
 _SUB_AFTER_NAME = re.compile(
-    _SUB_NAME + r"[\"'”’]?(?:\s*\([A-Z]{2,8}\))?\s*(?:,\s*(?:both\s+)?|\s*\(\s*|\s*[-\u2013\u2014]\s*|\s+)\s*(?:a|an|the|our|its|their|both)?\s*"
+    _SUB_NAME + r"[\"'”’]?(?:\s*\([A-Z]{2,8}\))?\s*(?:,\s*(?:both\s+)?|\s*\(\s*|\s*[-\u2013\u2014]\s*"
+    r"|\s+which\s+(?:is|are)\s+|\s+)\s*(?:a|an|the|our|its|their|both)?\s*"
     r"(?:(?:" + _SUB_QUALITY + r")\s+){0,3}" + _SUB_WORD + r"\b", re.I)
-# "our subsidiary <Name>" / "material subsidiary, <Name>" / "subsidiary of <Parent>, <Name>".
+# "our subsidiary <Name>" / "material subsidiary, <Name>" / "subsidiary of <Parent>, <Name>" /
+# "Material Subsidiary of the Company, M/s <Name>" / "<subsidiary> Company i.e. <Name>" (round 8).
 _SUB_BEFORE_NAME = re.compile(
     r"(?:(?i:the\s+Company'?s?|our|its|their)\s+)?(?:(?:" + _SUB_QUALITY + r")\s+){0,3}" + _SUB_WORD
     + r"\s*(?:company\s*)?"
-    r"(?:[-\u2013\u2014:]\s*|of\s+(?-i:[A-Z])[^,.;]{2,60},\s*|,\s*(?:i\.e\.,?\s*)?|\s+)[\"'“‘]?"
-    + _SUB_NAME, re.I)
+    r"(?:[-\u2013\u2014:]\s*|of\s+(?:the\s+)?company\s*,?\s*|\s*i\.e\.?,?\s+|of\s+(?-i:[A-Z])[^,.;]{2,60},\s*"
+    r"|\s*,\s*(?:i\.e\.?,?\s*)?|\s+which\s+(?:is|are)\s+|\s+)"
+    r"(?:M/s\.?\s+|Messrs\.?\s+)?[\"'“‘]?" + _SUB_NAME, re.I)
+_SUB_STOP = frozenset({
+    "company", "the", "and", "its", "their", "our", "material", "wholly", "owned", "step", "down",
+    "subsidiary", "subsidiaries", "a", "an", "of", "i.e",
+})
+# a bare legal form as the first word is the tail of a longer name, never the name ("AB (Sweden)").
+_SUB_LEGAL_LEAD = frozenset({"ab", "as", "asa", "oy", "oyj", "ag", "sa", "sas", "nv", "bv", "pl", "spa", "pte"})
 _SUB_NAME_STOP = re.compile(
     r"\s+(?i:has|have|had|having|received|receives|receipt|secured|secures|won|wins|bagged|bags|awarded"
     r"|is|are|was|were|will|would|continues?|through|by|from|for|to|with|order|orders|contract|loa|loi"
@@ -512,7 +594,8 @@ _SUB_GENERIC = re.compile(
 _SUB_HOLDER = re.compile(r"(?i)\b(?:vide|its|their|our)\b")
 # boilerplate that can precede the marker in a title ("EQ Subject <Parent>'s Wholly Owned Subsidiary") is not a name.
 _SUB_JUNK = re.compile(r"(?i)\b(?:wholly|owned|formerly|known|subject|exchange|stock|bombay|bse|nse|entity|name)\b")
-_SUB_SUFFIX = re.compile(r"(?i)\b(?:limited|ltd|llp|inc|llc|gmbh|corp(?:oration)?|pvt|private)\b")
+_SUB_SUFFIX = re.compile(r"(?i)\b(?:limited|ltd|llp|inc|llc|gmbh|corp(?:oration)?|pvt|private"
+                         r"|ab|asa?|oyj?|ag|sas?|nv|bv|pl|spa)\b")
 _SUB_UNIT_TOKEN = re.compile(r"\b(?:MWp?|kWp?|GWp?|MVA|kVA|MTPA|MMTPA|TPD|TPA|DC|AC)\b", re.I)
 _SUB_COMPANY_ITEM = re.compile(
     r"(?P<item>(?!(?i:limited|ltd|llp|inc|llc|gmbh)\b)(?-i:[A-Z])[A-Za-z0-9&.'’\-]*"
@@ -854,7 +937,8 @@ def classify(title: str, head: str, filing_date: str | None = None, text: str | 
             found.append("order_win")            # one fresh LOA and one variation in the same letter (MICEL 463)
     elif not is_results and not is_rollup \
             and (order_wins.parse(_flat(title), _flat(head)) or _loose_order_record(title, head)) \
-            and not _ORDER_VETO.search(body) and not _is_buyer_side(title, head):
+            and not _ORDER_VETO.search(body) and not _is_buyer_side(title, head) \
+            and not _not_an_order(title, head):
         found.append("order_win")
 
     # capex: one clause approves a named spend with the amount printed; an unquantified "approved a plan"
@@ -919,7 +1003,7 @@ _HEADLINE_CUSTOMER = re.compile(
     r"|\b\d{1,2}(?:st|nd|rd|th)?\s+" + _MONTH_NAME_RX + r"\b",
     re.I)
 _HEADLINE_PLACE = re.compile(
-    r"\b[A-Z]{4,}\s*[-\u2013\u2014]\s*[A-Z0-9]"
+    r"\b[A-Z]{4,}\s+[-\u2013\u2014]\s*[A-Z0-9]"
     r"|\b[A-Z][A-Za-z/]{2,}\s*[-\u2013\u2014|,]\s*(?:\d{1,2}(?:st|nd|rd|th)?\s+(?i:" + _MONTH_NAME_RX
     + r")|(?i:" + _MONTH_NAME_RX + r")\s+\d{1,2})\b"
 )
@@ -1061,11 +1145,26 @@ _UNDISCLOSED_CUSTOMER = re.compile(
 )
 
 
+def _strip_unbalanced_brackets(value: str) -> str:
+    """Drop an edge bracket with no partner ("( Hindustan Aeronautics Limited"); a balanced "(AVS Group)" stays."""
+    for opener, closer in (("(", ")"), ("[", "]"), ("{", "}")):
+        while value.startswith(opener) and value.count(opener) > value.count(closer):
+            value = value[1:].lstrip(_PARTY_EDGE_PUNCT + " \t")
+        while value.endswith(closer) and value.count(closer) > value.count(opener):
+            value = value[:-1].rstrip(_PARTY_EDGE_PUNCT + " \t")
+    return value
+
+
 def _strip_party_junk(text: Any) -> str:
     """Strip OCR bullets, single-letter list markers and edge punctuation around a customer name."""
     value = re.sub(r"[\ue000-\uf8ff|]", " ", _flat(text))
+    # OCR wraps a long word across a line ("AVS Hous- ing and Construction"): join it.  An all-caps run
+    # keeps its hyphen without the space ("BHEL- TRSL" -> "BHEL-TRSL").
+    value = re.sub(r"(?<=[a-z])-\s+(?=[a-z])", "", value)
+    value = re.sub(r"(?<=[A-Z])-\s+(?=[A-Z])", "-", value)
     value = re.sub(r"\s+", " ", value).strip(_PARTY_EDGE_PUNCT)
     value = _LEADING_PARTY_JUNK.sub("", value)
+    value = _strip_unbalanced_brackets(value.strip(_PARTY_EDGE_PUNCT))
     return re.sub(r"\s+", " ", value).strip(_PARTY_EDGE_PUNCT)
 
 
@@ -1089,6 +1188,8 @@ def _split_customer(row: dict[str, Any]) -> None:
         if _UNDISCLOSED_CUSTOMER.search(cleaned):
             undisclosed = True
             continue
+        if _names_subsidiary(cleaned, row.get("_subsidiary")):
+            continue                  # a subsidiary's name is the issuer's scope, never the awarder (#53)
         parts.append(cleaned)
     if not parts:
         row["customer"] = None
@@ -1172,6 +1273,7 @@ def _clean_party(text: Any, *, from_annexure: bool = False) -> str | None:
 
 def _valid_sub_name(raw: str) -> str | None:
     name = _SUB_NAME_STOP.split(raw)[0]
+    name = re.sub(r"^(?:M/s\.?|Messrs\.?)\s+", "", name, flags=re.I)
     name = re.sub(r"\s*\(?\s*(?:formerly|earlier|now)\s+known\s+as\b.*$", "", name, flags=re.I)
     name = re.sub(r"\s+", " ", name).strip(" ;:,.-—–\"'“”‘’")
     if ")" in name and "(" not in name:
@@ -1188,7 +1290,9 @@ def _valid_sub_name(raw: str) -> str | None:
             or _SUB_HOLDER.search(name) or re.search(r"['’]s\b", name) or _SUB_JUNK.search(name) \
             or re.search(r"\d", name) or _SUB_UNIT_TOKEN.search(name) \
             or (not _SUB_SUFFIX.search(name) and (len(name.split()) == 1 or len(name.split()) > 3)) \
-            or re.fullmatch(r"(?i)(?:the\s+)?(?:company|listed\s+company|parent)", name):
+            or re.fullmatch(r"(?i)(?:the\s+)?(?:company|listed\s+company|parent)", name) \
+            or name.split()[0].strip(".,").lower() in _SUB_LEGAL_LEAD \
+            or all(word.strip(".,;:").lower() in _SUB_STOP for word in name.split()):
         return None
     return name
 
@@ -1205,7 +1309,7 @@ def _subsidiary_names_from_span(span: str) -> list[str]:
 
 def _subsidiary_name(title: str, text: str) -> str | None:
     """The printed name(s) of the subsidiary receiving the order, or None for a bare 'a subsidiary'."""
-    body = _flat(f"{title} {(text or '')[:2500]}")
+    body = re.sub(r"\b(?:M/s\.?|Messrs\.?)\s+", "", _flat(f"{title} {(text or '')[:2500]}"), flags=re.I)
     for rx, name_first in ((_SUB_AFTER_NAME, True), (_SUB_BEFORE_NAME, False)):
         for match in rx.finditer(body):
             before = body[max(0, match.start() - 40): match.start()]
@@ -1257,19 +1361,133 @@ def _subsidiary_name(title: str, text: str) -> str | None:
 
 
 def _l1_only(title: str, text: str) -> bool:
-    """A lowest-bidder/L1 intimation with no award stated as received is not an order win yet."""
-    body = _flat(f"{title} {(text or '')[:600]}")
+    """A lowest-bidder/L1 intimation with no award stated as received is not an order win yet.
+
+    T-242 round 8: the L1 phrase sits in the annexure table past the first 600 characters (#5 "has issued a letter
+    intimating ... as the L1 bidder"), and the title's "Receipt of Order" is not the award the rule asks for.
+    """
+    body = _flat(f"{title} {(text or '')[:2600]}")
     if not _LOWEST_BIDDER.search(body):
         return False
-    return not _AWARD_RECEIVED.search(body)
+    return not _AWARD_RECEIVED.search(_flat((text or "")[:2600]))
+
+
+def _self_setup_loi(clause: str) -> bool:
+    """An LOI/LoA to set up the company's own outlet, dealership or showroom is not an order won (#28, #46, #54).
+
+    A capacity project ("set up a 250 MW solar facility") stays an order: the capacity token disqualifies the
+    brand-facility wording.
+    """
+    for match in _SELF_SETUP.finditer(clause or ""):
+        tail = match.group(0).lower()
+        if _CAPACITY_TOKEN.search(clause) and "facilit" in tail \
+                and not re.search(r"outlet|dealership|showroom|3s", tail):
+            continue
+        return True
+    return False
+
+
+def _not_an_order(title: str, head: str) -> str | None:
+    """Why this filing's "order" is not a customer order (T-242 round 8), or None when it is one.
+
+    The company (or a named subsidiary) must RECEIVE or BE AWARDED a contract, LoA, LoI, work or purchase order
+    from a counter-party.  An order issued BY an authority, a regulator's approval to launch a product, a
+    board-meeting outcome or appointment, and an LOI to set up the company's own outlet are all vetoed here.
+    """
+    if _l1_only(title, head):
+        return "l1_only: lowest bidder stated, no award received"
+    for clause in [title, *_clauses(head)[:60]]:
+        flat_clause = _flat(clause)
+        if not flat_clause:
+            continue
+        if _REGULATOR_APPROVAL.search(flat_clause):
+            return "regulator approval, not a customer order"
+        if _AUTHORITY_ORDER_STRONG.search(flat_clause) or (
+                _AUTHORITY_OFFICE.search(flat_clause) and not _AWARD_NOUN.search(flat_clause)):
+            return "authority order, not a customer order"
+        if _self_setup_loi(flat_clause):
+            return "LOI/LoA to set up the company's own outlet, not an order"
+    opening = _flat(f"{title} {head[:600]}")
+    if _BOARD_OR_APPOINTMENT.search(opening) and not _AWARD_QUOTED.search(_flat(head)):
+        return "board outcome or appointment, not an order"
+    return None
+
+
+_JOINT_RECEIVER = re.compile(
+    r"\b(?:the\s+)?company\b[^.;]{0,100}?\band\b[^.;]{0,160}?"
+    r"\b(?:subsidiar(?:y|ies)|step[-\s]?down\s+subsidiar(?:y|ies))\b[^.;]{0,120}?"
+    r"\b(?:has|have)\s+(?:also\s+)?(?:received|secured|been\s+awarded)\b"
+    r"|\b(?:the\s+)?(?:wholly[-\s]?owned|material|step[-\s]?down)\s+subsidiar(?:y|ies)\b[^.;]{0,120}?"
+    r"\band\s+(?:the\s+)?company\b", re.I)
+# "<Company> ... and ... subsidiary ... Rs A ... and ... Rs B ... respectively": A is the company's printed share.
+_JOINT_SHARE = re.compile(
+    r"\b(?:the\s+)?company\b[^;]{0,160}?\band\b[^;]{0,220}?"
+    r"\b(?:subsidiar(?:y|ies)|step[-\s]?down)\b[^;]{0,200}?"
+    r"\b(?:Rs\.?|INR|₹)\s*(?P<v>[\d,]+(?:\.\d+)?)\s*(?P<u>crores?|cr\.?|lakhs?|lacs?)"
+    r"[^;]{0,100}?\band\b[^;]{0,80}?\b(?:Rs\.?|INR|₹)\s*(?P<v2>[\d,]+(?:\.\d+)?)"
+    r"\s*(?P<u2>crores?|cr\.?|lakhs?|lacs?)", re.I)
+
+
+def _joint_receiver(title: str, text: str) -> bool:
+    """Does the company AND a subsidiary receive the order together (one joint group award)?"""
+    return bool(_JOINT_RECEIVER.search(_flat(f"{title} {(text or '')[:2500]}")))
+
+
+def _joint_share(title: str, text: str) -> tuple[float, str] | None:
+    """The company's own printed share of a joint company + subsidiary award, when the filing splits the two."""
+    match = _JOINT_SHARE.search(_flat(f"{title} {(text or '')[:2500]}"))
+    if not match:
+        return None
+    amount = _to_cr(match.group("v"), match.group("u"))
+    if amount is None:
+        return None
+    return amount, match.group(0)
+
+
+def _names_subsidiary(value: Any, subsidiary: str | None) -> bool:
+    """Is this printed awarder actually the group's subsidiary?  A subsidiary name is never the customer."""
+    if not value or not subsidiary:
+        return False
+    left = set(_customer_key(value).split())
+    right = [word for word in _customer_key(subsidiary).split() if len(word) >= 4]
+    return bool(right) and all(word in left for word in right)
+
+
+def _not_order_size(span: str | None, *sources: str) -> bool:
+    """True when the printed amount sits beside a GDV/project-cost/target/guidance label (#39, #48, #54)."""
+    needle = _flat(span)
+    if not needle:
+        return False
+    for source in sources:
+        flat = _flat(source)
+        pos = flat.find(needle)
+        if pos < 0:
+            continue
+        before = flat[max(0, pos - 60): pos]
+        after = flat[pos + len(needle): pos + len(needle) + 40]
+        first_digit = next((i for i, ch in enumerate(needle) if ch.isdigit()), len(needle))
+        lead_in = needle[:first_digit]
+        if _NOT_ORDER_SIZE_BEFORE.search(before) or _NOT_ORDER_SIZE_NEAR.search(f"{before} {lead_in}") \
+                or _NOT_ORDER_SIZE_AFTER.search(f"{needle} {after}"):
+            return True
+    return False
+
+
+def _foreign_value(*sources: str) -> str | None:
+    """The printed value of an order in a currency we do not convert (EUR/GBP/JPY ...), exactly as printed."""
+    for source in sources:
+        match = _FOREIGN_VALUE.search(_flat(source))
+        if match:
+            return _flat(match.group(0))
+    return None
 
 
 def _order_value_from_text(text: str) -> tuple[float, str] | None:
     """A printed order/contract value row the prescribed table did not carry (a scanned or free-form letter)."""
-    for rx in (_ORDER_VALUE_ROW, _ORDER_VALUE_LABEL):
+    for rx in (_ORDER_SIZE_SENTENCE, _ORDER_VALUE_ROW, _ORDER_VALUE_LABEL):
         for match in rx.finditer(text or ""):
             value = _to_cr(match.group("v"), match.group("u"))
-            if value is not None:
+            if value is not None and not _not_order_size(match.group(0), text):
                 return value, match.group(0)
     return None
 
@@ -1502,7 +1720,8 @@ def order_fields(title: str, text: str, symbol: str = "",
     if records_override is not None:
         records = records_override
     else:
-        if _ORDER_VETO.search(_flat(f"{title} {text}")) or _is_buyer_side(title, text):
+        if _ORDER_VETO.search(_flat(f"{title} {text}")) or _is_buyer_side(title, text) \
+                or _not_an_order(title, text):
             return None
         records = order_wins.parse(_flat(title), _flat(clean_text))
         if not records:
@@ -1517,6 +1736,7 @@ def order_fields(title: str, text: str, symbol: str = "",
     usd = [r["value_usd_mn"] for r in records if r.get("value_usd_mn") is not None]
     amount: float | None = None
     usd_mn: float | None = None
+    detail = ""
     value_text = "; ".join(str(r.get("value_text") or "") for r in valued if r.get("value_text")) or None
     derived = 0
     if len(records) == 1:
@@ -1536,31 +1756,43 @@ def order_fields(title: str, text: str, symbol: str = "",
         if fallback:
             amount, value_text = fallback
             derived = 0
+    # T-242 round 8: a GDV, project cost, order-book target or guidance figure is never the order's size.
+    if (amount is not None or usd_mn is not None) and _not_order_size(value_text, title, text):
+        amount = usd_mn = None
+        derived = 0
+        fallback = _order_value_from_text(_flat(clean_text))
+        if fallback:
+            amount, value_text = fallback
     quote = _flat(records[0].get("quote")) or _flat(value_text) or ""
     if value_text and _flat(value_text) in _flat(text):
         match = re.search(re.escape(_flat(value_text)), _flat(text))
         if match:
             quote = _around(_flat(text), match)
-    customers = []
+    if amount is None and usd_mn is None:
+        foreign = _foreign_value(str(records[0].get("value_text") or ""), _flat(value_text), _flat(clean_text))
+        if foreign:
+            value_text = foreign
+            detail = f"printed in a non-INR/non-USD currency ({foreign}); not converted without a printed rate"
+    subsidiary = _subsidiary_name(title, text)
+    customers: list[str] = []
+
+    def add_customer(value: str | None) -> None:
+        if value and not _names_subsidiary(value, subsidiary):
+            customers.append(value)
+
     # Prefer the annexure's 'Name of the entity awarding' over title/body guesses (T-242 round 7).
     for record in records:
         if record.get("extractor_rule") == "loose_order_v1":
             continue
-        awarder = _clean_party(record.get("awarder"), from_annexure=True)
-        if awarder:
-            customers.append(awarder)
+        add_customer(_clean_party(record.get("awarder"), from_annexure=True))
     if not customers and allow_body_customer:
         for raw in _annexure_awarders(text):
-            awarder = _clean_party(raw, from_annexure=True)
-            if awarder:
-                customers.append(awarder)
+            add_customer(_clean_party(raw, from_annexure=True))
     if not customers:
         for record in records:
             if record.get("extractor_rule") != "loose_order_v1":
                 continue
-            awarder = _clean_party(record.get("awarder"), from_annexure=False)
-            if awarder:
-                customers.append(awarder)
+            add_customer(_clean_party(record.get("awarder"), from_annexure=False))
     if not customers and allow_body_customer:
         named = re.search(
             r"(?:(?:work\s+order|order|contract|letter\s+of\s+award)"
@@ -1568,15 +1800,19 @@ def order_fields(title: str, text: str, symbol: str = "",
             r"(?:M/s\.?\s+)?([A-Z](?:[^.;,|]|\.(?=[A-Za-z0-9])|(?<=\b[A-Z])\.(?=\s+(?:\(|towards|for|worth|amounting|dated|on))){2,100})",
             _flat(clean_text), re.I)
         if named:
-            awarder = _clean_party(named.group(1), from_annexure=False)
-            if awarder:
-                customers.append(awarder)
+            add_customer(_clean_party(named.group(1), from_annexure=False))
     if not customers and allow_body_customer:
         for match in _FROM_ENTITY.finditer(_flat(clean_text)):
-            awarder = _clean_party(match.group("name"), from_annexure=False)
-            if awarder:
-                customers.append(awarder)
+            add_customer(_clean_party(match.group("name"), from_annexure=False))
+            if customers:
                 break
+    if not customers and allow_body_customer:
+        # "the order ... is to be supplied to the <X> consortium" names the awarder in prose, not in a row.
+        consortium = re.search(
+            r"\b(?:to\s+be\s+)?(?:supplied|supply|delivered|delivery|executed|exported)\s+to\s+(?:the\s+)?"
+            r"(?P<name>[A-Z][^;.]{2,90}?\bconsortium)\b", _flat(clean_text))
+        if consortium:
+            add_customer(_clean_party(consortium.group("name"), from_annexure=False))
     months = {r["duration_months"] for r in records if r.get("duration_months") is not None}
     execution_months = months.pop() if len(months) == 1 else None
     if execution_months is None:
@@ -1588,8 +1824,15 @@ def order_fields(title: str, text: str, symbol: str = "",
     value_annual: float | None = None
     value_total: float | None = filing_total_cr
     share_pct: float | None = None
-    detail = ""
     if amount is not None:
+        # T-242 round 8: a company AND a subsidiary awarded together is a joint group order; when the filing
+        # splits the printed amounts ("Company ... Rs 300 cr and NPC ... Rs 700 cr respectively"), the event is
+        # the company's own share, never the group total (#44).
+        if _joint_receiver(title, text):
+            joint = _joint_share(title, text)
+            if joint is not None and abs(joint[0] - amount) > 0.005 * max(1.0, amount):
+                value_total, amount, value_text = amount, joint[0], joint[1]
+                detail = "joint company + subsidiary order; the company's printed share"
         # T-242: the title prints the aggregate and the table prints one item of it ("secures 214.27 crore from
         # TPSODL & TPWODL", table 115.0194 + 99.2543): the event is the printed aggregate, not one item.
         aggregate = _sane_cr(records[0].get("title_value_cr")) if len(records) == 1 else None
@@ -1708,7 +1951,7 @@ def order_rows(title: str, text: str, symbol: str = "",
     veto_text = _flat(f"{title} {head if head is not None else text}")
     if _ORDER_VETO.search(veto_text) or _RESULTS_RELEASE.search(_flat(f"{title} {(head or text)[:1500]}")) \
             or _ORDER_ROLLUP.search(veto_text) or _ORDER_INFLOW_TITLE.search(title) \
-            or _is_buyer_side(title, head or text):
+            or _is_buyer_side(title, head or text) or _not_an_order(title, head or text):
         return []
     clean_text = _strip_past_order_values(text)
     clean_head = _strip_past_order_values(head) if head is not None else clean_text
@@ -2774,12 +3017,15 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
 def blank_row(doc: dict[str, Any], kind: str) -> dict[str, Any]:
     title, text = doc.get("title") or "", doc.get("text") or ""
     parent = bool(_PARENT_SCOPE.search(_flat(f"{title} {text[:1500]}")))
-    subsidiary = None if parent or kind != "order_win" else _subsidiary_name(title, doc.get("head") or text)
+    head = doc.get("head") or text
+    subsidiary = None if parent or kind != "order_win" else _subsidiary_name(title, head)
+    joint = bool(kind == "order_win" and not parent and _joint_receiver(title, head))
     row: dict[str, Any] = {column: None for column in COLUMNS}
     row.update({
         "store": doc["store"], "symbol": doc.get("symbol"), "isin": doc.get("isin"),
         "doc_key": doc.get("doc_key"), "kind": kind, "method": "script", "status": "unverified",
-        "entity_scope": ("parent" if parent else ("subsidiary" if subsidiary else "company")),
+        "entity_scope": ("parent" if parent else "joint" if joint
+                         else ("subsidiary" if subsidiary else "company")),
         "_subsidiary": subsidiary,
         "title": doc.get("title"), "filing_date": doc.get("filing_date"), "known_at": doc.get("known_at"),
         "page": 1, "seq": 1, "detail": "", "why": "", "_text": _flat(f"{title} {doc.get('head') or ''}"),
@@ -2891,6 +3137,9 @@ def _finish_scope(row: dict[str, Any], title: str, head: str) -> dict[str, Any]:
     if row["entity_scope"] == "subsidiary" and row.get("_subsidiary"):
         note = f"subsidiary: {row['_subsidiary']}"
         row["detail"] = f"{row['detail']}; {note}" if row.get("detail") else note
+    if row["entity_scope"] == "joint":
+        note = "joint: company and subsidiary awarded together"
+        row["detail"] = f"{row['detail']}; {note}" if row.get("detail") else note
     if row.pop("_undisclosed_customer", False):
         note = "customer not disclosed"
         row["detail"] = f"{row['detail']}; {note}" if row.get("detail") else note
@@ -2917,7 +3166,8 @@ def _assemble_row(doc: dict[str, Any], kind: str, fields: dict[str, Any],
     required = (row.get("amount_inr_cr") is not None or row.get("amount_usd_mn") is not None
                 if kind != "capacity_commissioned" else row.get("capacity_value") is not None)
     if not required:
-        row["detail"] = "amount not filled by script"
+        note = "amount not filled by script"
+        row["detail"] = f"{note}; {row['detail']}" if row.get("detail") else note
         if not row.get("quote"):
             row["quote"] = _flat(text)[:MAX_QUOTE]
         return _finish_scope(row, title, head), True
@@ -3092,7 +3342,10 @@ def _fold_same_order(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -
                 same_cust = _same_customer(prior, row) if both_named else False
                 p_vals, r_vals = _event_values(prior), _event_values(row)
                 same_val = _same_value(prior, row, tolerance=0.005)
-                if (same_val and (same_cust or not both_named)) or (same_cust and not p_vals and not r_vals):
+                same_title = bool(_customer_key(row.get("title"))) \
+                    and _customer_key(row.get("title")) == _customer_key(prior.get("title"))
+                if (same_val and (same_cust or not both_named)) or (same_cust and not p_vals and not r_vals) \
+                        or (same_title and bool(p_vals) != bool(r_vals)):
                     match = prior
                     break
             if not _customer_compatible(prior, row):
@@ -3110,6 +3363,11 @@ def _fold_same_order(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -
         if match is None:
             kept.append(row)
             continue
+        if not _event_values(match) and _event_values(row):
+            # the unvalued cover letter was known earlier: keep its known_at, take the twin's printed figures.
+            for field in ("amount_inr_cr", "amount_usd_mn", "value_text", "value_total", "value_annual"):
+                match[field] = row.get(field)
+            match["detail"] = "amount and value taken from the twin filing of the same order"
         dropped.add(id(row))
         amends.append({
             "doc_key": row["doc_key"], "symbol": row["symbol"], "amends": match["doc_key"],
@@ -3493,6 +3751,11 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str) -> list[dict[str
         _split_customer(row)
         if kind == "order_win" and not row.get("order_kind"):
             row["order_kind"] = "new_order"
+        size_note = ""
+        if kind == "order_win" and (row.get("amount_inr_cr") is not None or row.get("amount_usd_mn") is not None) \
+                and _not_order_size(row.get("value_text"), row.get("value_text") or "", doc.get("text") or ""):
+            row["amount_inr_cr"] = row["amount_usd_mn"] = None
+            size_note = "amount sits beside a GDV/project-cost/target label, not the order size (model)"
         if kind == "order_win" and row.get("amount_inr_cr") is not None \
                 and _ANNUAL_CUE.search(row.get("value_text") or ""):
             row["value_annual"] = row["amount_inr_cr"]
@@ -3509,7 +3772,7 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str) -> list[dict[str
                     else row.get("amount_inr_cr") or row.get("amount_usd_mn") or row.get("value_annual"))
         if not required:
             row["status"] = "unverified"
-            row["detail"] = "model filled no amount"
+            row["detail"] = size_note or "model filled no amount"
         elif not _model_unit_printed(row) and row.get("value_annual") is None:
             row["status"] = "unverified"
             row["detail"] = "amount unit not printed in the quoted text (model)"
