@@ -4,7 +4,7 @@ Ticket: T-242
 
 Goal: restore 9 graded R rows broken by round 7 without losing its fresh5 fixes.
 
-Files: reality_engine/research/filing_events.py (fund_raise paths only), reality_engine/tests/test_filing_events.py, docs/research/T-231_filing_events.md, docs/DEVELOPER_GUIDE.md. Your worktree starts from round 7 (branch dsh/20261125T052722Z-749d4e61) merged with current main (order_win round 7 is merged there; keep it).
+Files: reality_engine/research/filing_events.py (fund_raise paths only), reality_engine/tests/test_filing_events.py, docs/research/T-231_filing_events.md, docs/DEVELOPER_GUIDE.md. Your worktree starts from round 7 (branch dsh/20261125T052722Z-749d4e61). FIRST run `git merge main` (order_win round 7 is merged on main; on a conflict keep main's order_win code and round 7's fund_raise code) and run the tests before any change.
 
 Evidence: round 7 (branch dsh/20261125T052722Z-749d4e61) fixes 22/22 W and 6/6 P on fresh5, but on the ROUND-5 grade set
 (C:/RealityEngine/t242/events_grade_fundraise/pack.jsonl + grades.csv, stores fresh4/fresh3) it breaks 9 rows that
@@ -34,6 +34,6 @@ Steps:
 3. Update the round-7 docs section with the corrected numbers.
 
 Accept: all 9 rows back to their graded value; fresh5 still at least 18/22 W fixed and 0 R broken; order_win
-215/132/179 unchanged; test_filing_events.py passes.
+rows identical to C:/RealityEngine/t242/orderwin_r7d/events_r7d_fresh{5,4,3}.db; test_filing_events.py passes.
 Stop if: a fix for one of these rows re-breaks a fresh5 fix twice. Report it, don't trade.
 Budget: about 2 hours; worktree only.
