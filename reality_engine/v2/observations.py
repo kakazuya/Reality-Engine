@@ -4076,9 +4076,10 @@ def _narrative_change_label(label: str) -> bool:
 
 
 # T-242: three script-catchable deck number gates from the 60-row surprise audit (C:/RealityEngine/t242/audit_deck1).
+# Rule 1 keeps only true floors/bounds (not approximations like '~', 'nearly', 'approx').
 DECK_BOUND_TOKEN_PAT = (
-    r"(?:>=|<=|[><\u2265\u2264~]"
-    r"|\b(?:over|more\s+than|less\s+than|above|below|up\s*to|upto|nearly|approx(?:imately)?\b\.?))"
+    r"(?:>=|<=|[><\u2265\u2264]"
+    r"|\b(?:over|more\s+than|less\s+than|above|below|up\s*to|upto|at\s+least|exceeding)\b)"
 )
 _DECK_CURR_PAT = r"(?:(?:rs\.?|inr|\u20b9|\$|usd|us\$)\s*)?"
 DECK_BOUND_BEFORE_NUM_RE = re.compile(
@@ -4094,16 +4095,6 @@ DECK_BOUND_IGNORE_TAIL_RE = re.compile(
     re.I,
 )
 
-DECK_COMBINED_STOP_WORDS = frozenset({
-    "a", "an", "the", "of", "in", "on", "at", "to", "for", "from", "by", "with", "as", "per",
-    "and", "or", "is", "are", "was", "were", "be", "been", "being", "add", "less",
-    "total", "net", "gross", "its", "their", "our", "all", "etc", "including", "incl", "excl",
-})
-DECK_COMBINED_ABBREV: dict[str, str] = {
-    "liab": "liabilities", "amort": "amortisation", "dep": "depreciation",
-    "int": "interest", "inv": "inventories", "rec": "receivables",
-    "pay": "payables", "assoc": "associate", "eq": "equivalents", "equiv": "equivalents",
-}
 DECK_SINGLE_TERM_ALLOWLIST_RE = re.compile(
     r"\b(?:"
     r"profit\s*(?:&|and)\s*loss"
@@ -4130,13 +4121,6 @@ DECK_SINGLE_TERM_ALLOWLIST_RE = re.compile(
     r"|sg\s*&\s*a"
     r"|mergers?\s*(?:&|and)\s*acquisitions?"
     r"|m\s*&\s*a"
-    r"|finished\s+goods,?\s*work[\s-]*in[\s-]*progress\s*(?:&|and)\s*stock[\s-]*in[\s-]*trade"
-    r"|inventory\s*(?:&|and)\s*work[\s-]*in[\s-]*progress"
-    r"|inventories\s+of\s+finished\s+goods\s*(?:&|and)\s*work[\s-]*in[\s-]*progress"
-    r"|micro(?:\s+enterprises)?\s*(?:&|and)\s*small\s+enterprises"
-    r"|loan\s+loss(?:es)?\s*(?:&|and)\s*provisions?"
-    r"|provisions?\s*(?:&|and)\s*contingencies"
-    r"|other\s+balances\s+with\s+banks\s*(?:&|and)\s*deposits"
     r")\b",
     re.I,
 )
@@ -4146,27 +4130,58 @@ DECK_COMBINED_QUALIFIER_TAIL_RE = re.compile(
 )
 DECK_COMBINED_SPLIT_RE = re.compile(r"\s*(?:\+|&|\band\b)\s*", re.I)
 
+# Rule 2 financial-measure vocabulary: each entry is (concept_id, label_pattern, measure_tokens).
+# A combined label fires only when BOTH sides of '&'/'and'/'+' match a concept here and ``measure`` names only one.
+DECK_COMBINED_CONCEPTS: tuple[tuple[str, re.Pattern[str], tuple[str, ...]], ...] = (
+    ("other_income", re.compile(r"\bother\s+income\b", re.I), ("other_income",)),
+    ("share_of_associate",
+     re.compile(r"\b(?:share\s+of\s+(?:profit(?:/\(loss\))?\s+(?:of|from)\s+)?(?:jv|joint\s+ventures?|associates?)"
+                r"|associates?|jv)\b", re.I),
+     ("share_of_profit", "associate", "associates", "jv")),
+    ("cash_recyclers", re.compile(r"\bcash\s+recyclers?\b", re.I), ("cash_recycler", "cash_recyclers", "recycler")),
+    ("ebitda", re.compile(r"\bebitda\b", re.I), ("ebitda", "ebidta")),
+    ("ebit", re.compile(r"\bebit\b", re.I), ("ebit",)),
+    ("pbt", re.compile(r"\b(?:pbt|profit\s+before\s+tax)\b", re.I), ("pbt", "profit_before_tax")),
+    ("pat", re.compile(r"\b(?:pat|profit\s+after\s+tax|net\s+profit)\b", re.I), ("pat", "profit_after_tax", "net_profit")),
+    ("revenue_sales", re.compile(r"\b(?:revenue|sales)\b", re.I), ("revenue", "sales")),
+    ("income", re.compile(r"\bincome\b", re.I), ("income",)),
+    ("profit", re.compile(r"\bprofits?\b", re.I), ("profit", "pat", "pbt", "ebitda", "ebit")),
+    ("margin", re.compile(r"\bmargins?\b", re.I), ("margin",)),
+    ("gnpa", re.compile(r"\bgnpa\b", re.I), ("gnpa",)),
+    ("nnpa", re.compile(r"\bnnpa\b", re.I), ("nnpa",)),
+    ("goodwill", re.compile(r"\bgoodwill\b", re.I), ("goodwill",)),
+    ("intangibles", re.compile(r"\bintangibles?(?:\s+assets?)?\b", re.I), ("intangible", "intangibles")),
+    ("atms", re.compile(r"\batms?\b", re.I), ("atm", "atms")),
+    ("branches", re.compile(r"\bbranch(?:es)?\b", re.I), ("branch", "branches")),
+    ("deposits", re.compile(r"\bdeposits?\b", re.I), ("deposit", "deposits")),
+    ("advances", re.compile(r"\badvances?\b", re.I), ("advance", "advances", "loans")),
+    ("aum", re.compile(r"\baum\b", re.I), ("aum",)),
+    ("opex", re.compile(r"\b(?:opex|operating\s+expenses?)\b", re.I), ("opex", "operating_expenses", "other_expenses")),
+    ("capex", re.compile(r"\b(?:capex|capital\s+expenditure)\b", re.I), ("capex",)),
+)
 
-def _deck_stem_words(words: Iterable[str]) -> set[str]:
-    out: set[str] = set()
-    for word in words:
-        word = DECK_COMBINED_ABBREV.get(word, word)
-        out.add(word)
-        if word.endswith("s") and len(word) >= 3:
-            out.add(word[:-1])
-        if word.endswith("ies") and len(word) > 4:
-            out.add(word[:-3] + "y")
-        out.add(word.replace("z", "s"))
-    return out
+
+def _deck_part_concepts(part: str) -> set[str]:
+    """Financial-measure concepts named in one side of a joined printed_label."""
+    text = part
+    found: set[str] = set()
+    for cid, rx, _tokens in DECK_COMBINED_CONCEPTS:
+        if rx.search(text):
+            found.add(cid)
+            text = rx.sub(" ", text)     # consume multi-word matches ('other income' -> don't also match 'income')
+    return found
 
 
-def _deck_content_words(text: str) -> set[str]:
-    return {w for w in re.findall(r"[a-z]+", text.lower())
-            if len(w) >= 2 and w not in DECK_COMBINED_STOP_WORDS}
+def _deck_measure_has_concept(measure_norm: str, concept_id: str) -> bool:
+    for cid, _rx, tokens in DECK_COMBINED_CONCEPTS:
+        if cid == concept_id:
+            parts = set(re.split(r"[._]+", measure_norm))
+            return any(tok in parts or tok in measure_norm for tok in tokens)
+    return False
 
 
 def deck_bound_reason(row: dict[str, Any]) -> str:
-    """Return a status reason when ``value_text`` or ``printed_label`` puts a floor/bound/approx right before the number."""
+    """Return a status reason when ``value_text`` or ``printed_label`` puts a floor/bound right before the number."""
     vt = norm_space(row.get("value_text"))
     label = norm_space(row.get("printed_label"))
     match = DECK_BOUND_BEFORE_NUM_RE.search(vt)
@@ -4193,7 +4208,7 @@ def deck_bound_reason(row: dict[str, Any]) -> str:
 
 
 def deck_combined_label_reason(row: dict[str, Any]) -> str:
-    """Return a status reason when ``printed_label`` joins two measures ('&', 'and', '+') and ``measure`` names only one."""
+    """Return a reason when ``printed_label`` joins two financial measures ('&', 'and', '+') and ``measure`` names one."""
     label = norm_space(row.get("printed_label"))
     measure = norm_space(row.get("measure"))
     if not label or not measure or len(label.split()) > 12:
@@ -4204,18 +4219,23 @@ def deck_combined_label_reason(row: dict[str, Any]) -> str:
     cleaned = re.sub(r"(\d[a-zA-Z]*)\+", r"\1", cleaned)
     cleaned = DECK_COMBINED_QUALIFIER_TAIL_RE.sub("", cleaned).strip()
     cleaned = DECK_SINGLE_TERM_ALLOWLIST_RE.sub(" ", cleaned)
+    if len(_numbers_in(cleaned)) >= 2:
+        return ""        # prose listing two separate figures ('35.0% Gross Margin & 13.0% EBITDA Margin')
     parts = [part.strip() for part in DECK_COMBINED_SPLIT_RE.split(cleaned) if part.strip()]
     if len(parts) < 2:
         return ""
-    raw_measure = measure[len(NEW_PREFIX):] if measure.startswith(NEW_PREFIX) else measure
-    measure_words = _deck_stem_words(_deck_content_words(re.sub(r"[._]", " ", raw_measure)))
-    part_words = [_deck_stem_words(_deck_content_words(part)) for part in parts]
-    non_empty = [pw for pw in part_words if pw]
-    if len(non_empty) < 2:
+    part_concepts = [_deck_part_concepts(part) for part in parts]
+    # Every non-empty joined side (at least 2) must carry a financial-measure concept from the vocabulary.
+    matched_parts = [c for c in part_concepts if c]
+    if len(matched_parts) < 2:
         return ""
-    matched = [bool(pw & measure_words) for pw in non_empty]
-    if any(matched) and not all(matched):
-        return f"deck_combined_label: {label!r} joins multiple terms while measure is {measure!r}"
+    all_concepts = set().union(*matched_parts)
+    if len(all_concepts) < 2:
+        return ""
+    measure_norm = (measure[len(NEW_PREFIX):] if measure.startswith(NEW_PREFIX) else measure).lower()
+    in_measure = {cid for cid in all_concepts if _deck_measure_has_concept(measure_norm, cid)}
+    if in_measure and len(in_measure) < len(all_concepts):
+        return f"deck_combined_label: {label!r} joins multiple measures while stored measure is {measure!r}"
     return ""
 
 

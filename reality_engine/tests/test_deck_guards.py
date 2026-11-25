@@ -193,50 +193,73 @@ def test_deck_bound_gates_floors_and_bounds_but_keeps_exact_values():
     lbl_bound = _deck_row(measure="count.atms", printed_label=">10,000 ATMs and Cash Recyclers",
                           value=10000.0, value_text="10,000", unit="ATMs")
     for tok_row in (
-        _deck_row(value_text="~12%", value=12.0, unit="%"),
-        _deck_row(value_text="approx. 500", value=500.0),
         _deck_row(value_text="≤ 5%", value=5.0, unit="%"),
         _deck_row(value_text="≥10", value=10.0),
+        _deck_row(value_text=">=10", value=10.0),
+        _deck_row(value_text="<=5%", value=5.0, unit="%"),
+        _deck_row(value_text="<5%", value=5.0, unit="%"),
         _deck_row(value_text="up to 25%", value=25.0, unit="%"),
-        _deck_row(printed_label="Installed capacity of nearly", value_text="90,000", value=90000.0),
+        _deck_row(value_text="upto 25%", value=25.0, unit="%"),
         _deck_row(printed_label="Order book of over", value_text="Rs. 350", value=350.0),
         _deck_row(printed_label="EBITDA margin stayed below", value_text="15%", value=15.0, unit="%"),
         _deck_row(printed_label="Sales less than", value_text="100", value=100.0),
+        _deck_row(printed_label="Sales more than", value_text="100", value=100.0),
         _deck_row(printed_label="Margin above", value_text="20%", value=20.0, unit="%"),
+        _deck_row(printed_label="Revenue at least", value_text="500", value=500.0),
+        _deck_row(printed_label="Revenue exceeding", value_text="500", value=500.0),
     ):
         assert obs.deck_bound_reason(tok_row).startswith("deck_bound_not_exact:"), tok_row
     rows = [atms, yoy, lbl_bound]
     obs.apply_number_gates(rows, "deck")
     assert all(r["status"] == "unverified" and "deck_bound_not_exact:" in r["status_reason"] for r in rows)
 
-    # Negative cases that must stay verified
+    # Negative cases that must stay verified (including '~', 'nearly', 'approx' approximations)
     exact = _deck_row(measure="revenue.value", printed_label="Revenue", value=1234.0, value_text="1,234")
+    tilde_exp = _deck_row(measure="NEW:cumulative_positive_outcomes_exposure",
+                          printed_label="Cumulative Exposure", value=61348.0, value_text="~₹61,348")
+    tilde_nw = _deck_row(measure="total_equity", printed_label="net worth",
+                         value=14727.8, value_text="~Rs. 14,727.8 Cr")
+    nearly_row = _deck_row(measure="NEW:operating_profit_growth_yoy",
+                           printed_label="Decorative business delivered nearly 20% growth in operating profit",
+                           value=20.0, value_text="20%", unit="%")
+    approx_row = _deck_row(printed_label="Installed capacity of approx.", value_text="500", value=500.0)
     other_above = _deck_row(measure="other_bank_balances",
                             printed_label="(iii) Bank balances other than (ii) above",
                             value=707.0, value_text="707")
     bucket = _deck_row(measure="NEW:asset_liability_maturity_outflow", printed_label="<3 Months",
                        value=1406.0, value_text="1,406")
     other_num = _deck_row(measure="count.schools",
-                          printed_label="school science labs equipped, benefiting ~5,000 students",
+                          printed_label="school science labs equipped, benefiting >5,000 students",
                           value=7.0, value_text="7", unit="schools")
-    neg_rows = [exact, other_above, bucket, other_num]
+    neg_rows = [exact, tilde_exp, tilde_nw, nearly_row, approx_row, other_above, bucket, other_num]
     obs.apply_number_gates(neg_rows, "deck")
-    assert all(r["status"] == "verified" for r in neg_rows)
+    assert all(r["status"] == "verified" for r in neg_rows), [(r["value_text"], r["status_reason"]) for r in neg_rows]
 
 
 def test_deck_combined_label_gates_split_measures_and_keeps_allowlist():
-    # Positive audit cases: AXISCADES 'Other income & share of associate' and BANKBARODA 'ATMs and Cash Recyclers'
-    assoc = _deck_row(measure="share_of_profit_of_jv_and_associates",
-                      printed_label="Other income & share of associate", value=8.4, value_text="8.4")
-    atms = _deck_row(measure="count.atms", printed_label="ATMs and Cash Recyclers",
-                     value=10000.0, value_text="10,000", unit="ATMs")
-    plus = _deck_row(measure="total_comprehensive_income",
-                     printed_label="Revenue + Other Comprehensive Income", value=500.0, value_text="500")
-    rows = [assoc, atms, plus]
-    obs.apply_number_gates(rows, "deck")
-    assert all(r["status"] == "unverified" and "deck_combined_label:" in r["status_reason"] for r in rows)
+    # Positive catches named in review + audit:
+    right_catches = [
+        _deck_row(measure="share_of_profit_of_jv_and_associates",
+                  printed_label="Other income & share of associate", value=8.4, value_text="8.4"),
+        _deck_row(measure="count.atms", printed_label="ATMs and Cash Recyclers",
+                  value=10000.0, value_text="10,000", unit="ATMs"),
+        _deck_row(measure="goodwill", printed_label="Goodwill & Intangibles",
+                  value=15175.0, value_text="15,175"),
+        _deck_row(measure="gnpa_pct", printed_label="GNPA & NNPA stood at",
+                  value=0.29, value_text="0.29%", unit="%"),
+        _deck_row(measure="pat_margin", printed_label="EBITDA and PAT margins",
+                  value=10.5, value_text="10.5%", unit="%"),
+        _deck_row(measure="ebit_growth_yoy", printed_label="EBIT and PBT grew",
+                  value=14.1, value_text="14.1%", unit="%"),
+        _deck_row(measure="total_comprehensive_income",
+                  printed_label="Revenue + Other Comprehensive Income", value=500.0, value_text="500"),
+    ]
+    obs.apply_number_gates(right_catches, "deck")
+    assert all(r["status"] == "unverified" and "deck_combined_label:" in r["status_reason"] for r in right_catches), [
+        (r["printed_label"], r["status"], r["status_reason"]) for r in right_catches
+    ]
 
-    # Negative cases & standard single-term allowlist that must stay verified
+    # Negative cases, single-term allowlist, and all wrongly caught labels from Wolf's review (must stay verified)
     kept = [
         _deck_row(measure="revenue.value", printed_label="Revenue", value=1234.0, value_text="1,234"),
         _deck_row(measure="NEW:rd_spend", printed_label="R&D spend", value=45.0, value_text="45"),
@@ -250,6 +273,30 @@ def test_deck_combined_label_gates_split_measures_and_keeps_allowlist():
                   printed_label="Total equity and liabilities", value=500.0, value_text="500"),
         _deck_row(measure="NEW:instagram_followers",
                   printed_label="Digital Milestone: 1M+ Instagram Followers", value=1000000.0, value_text="1M"),
+        _deck_row(measure="changes_in_inventories",
+                  printed_label="Change in inventories of Finished goods, W.I.P. and stock-in-trade",
+                  value=-1822.0, value_text="(1,822)"),
+        _deck_row(measure="other_expenses", printed_label="Admin and Other Costs", value=118.0, value_text="118"),
+        _deck_row(measure="NEW:industry_npa", printed_label="Basic Metals & Metal Industry",
+                  value=437.0, value_text="437"),
+        _deck_row(measure="count.employees",
+                  printed_label="Employees Dedicated to Design, Engineering & Development",
+                  value=66.0, value_text="66"),
+        _deck_row(measure="NEW:child_care_units_supported",
+                  printed_label="Child Care Units supported with education and livelihood programs",
+                  value=27.0, value_text="27"),
+        _deck_row(measure="changes_in_payables",
+                  printed_label="Change in Payables and Other Liabilities", value=-25.0, value_text="(25)"),
+        _deck_row(measure="count.states", printed_label="Branches across 18 states and 3 UTs",
+                  value=18.0, value_text="18"),
+        _deck_row(measure="count.stores", printed_label="Stores in Bihar + Jharkhand + UP",
+                  value=207.0, value_text="207"),
+        _deck_row(measure="ebitda_margin",
+                  printed_label="Healthy Revenue Growth with 35.0% Gross Margin & 13.0% EBITDA Margin",
+                  value=13.0, value_text="13.0%", unit="%"),
+        _deck_row(measure="profit_before_exceptional_items_and_tax",
+                  printed_label="Profit before tax and share of profit/(loss) from JV and exceptional items",
+                  value=466.0, value_text="466"),
     ]
     obs.apply_number_gates(kept, "deck")
     assert all(r["status"] == "verified" for r in kept), [(r["printed_label"], r["status_reason"]) for r in kept]
