@@ -565,13 +565,37 @@ def test_ar_ckpt2_period_printed_and_relative_fy_resolved():
     assert non_cal["status"] == "verified" and non_cal["period"] == "Phase I"
     assert kept["status"] == "verified" and qtr_fy["status"] == "verified"
 
-    # Without a discoverable AR FY, relative periods go unverified period_no_year while non-calendar phrases stay
-    no_fy_rel = _gate_row(measure="NEW:csr", printed_label="CSR", value_text="10", period="during the year")
+    # Without a discoverable split-year or year-ended date (single-year title), period and status stay unchanged
+    single_rel = _gate_row(measure="NEW:csr", printed_label="CSR", value_text="10", period="during the year")
     no_fy_noncal = _gate_row(measure="NEW:energy", printed_label="Energy", value_text="10",
                              period="180-day monitoring period")
-    obs.apply_ar_row_gates([no_fy_rel, no_fy_noncal], "Plain text without any fiscal year", "")
-    assert no_fy_rel["status"] == "unverified" and "period_no_year" in no_fy_rel["status_reason"]
+    obs.apply_ar_row_gates([single_rel, no_fy_noncal], "Annual Report 2025 plain text without year-end", "")
+    assert single_rel["status"] == "verified" and single_rel["period"] == "during the year"
+    assert single_rel.get("period_source", "") == ""
     assert no_fy_noncal["status"] == "verified" and no_fy_noncal["period"] == "180-day monitoring period"
+
+    # ABB-style Jan-Dec AR (year ended 31 December 2025) resolves to CY2025 / 31 December 2025 / 1 January 2025
+    abb_curr = _gate_row(measure="capex", printed_label="Capitalised", value_text="100", period="during the year")
+    abb_end = _gate_row(measure="employees", printed_label="Employees", value_text="500",
+                        period="end of Financial Year")
+    abb_beg = _gate_row(measure="employees", printed_label="Employees", value_text="480",
+                        period="beginning of the year")
+    abb_prev = _gate_row(measure="capex", printed_label="Capitalised", value_text="90", period="P.Y.")
+    obs.apply_ar_row_gates([abb_curr, abb_end, abb_beg, abb_prev],
+                           "ABB India Limited\nFinancial year ended December 31, 2025", "")
+    assert abb_curr["period"] == "CY2025" and abb_curr["status"] == "verified"
+    assert abb_end["period"] == "31 December 2025" and abb_end["period_kind"] == "instant"
+    assert abb_beg["period"] == "1 January 2025" and abb_beg["period_kind"] == "instant"
+    assert abb_prev["period"] == "CY2024"
+    assert all(r["period_source"] == "ar_report_year" for r in (abb_curr, abb_end, abb_beg, abb_prev))
+
+    # Non-March non-December year end (e.g. Oct-Sep SIEMENS) resolves to that year end
+    sep_curr = _gate_row(measure="capex", printed_label="Capex", value_text="50", period="during the year")
+    sep_beg = _gate_row(measure="employees", printed_label="Employees", value_text="50",
+                        period="beginning of the year")
+    obs.apply_ar_row_gates([sep_curr, sep_beg], "Financial year ended 30 September 2025", "")
+    assert sep_curr["period"] == "Year ended 30 September 2025"
+    assert sep_beg["period"] == "1 October 2024" and sep_beg["period_kind"] == "instant"
 
 
 def test_ar_ckpt2_previous_page_year_carries_over_and_instant_resolves():

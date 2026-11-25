@@ -77,6 +77,7 @@ import statistics
 import sys
 import threading
 import time
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
@@ -3884,19 +3885,34 @@ AR_ACRONYM_PLAIN = frozenset({
 })
 AR_PROPER_ENTITY_ACRONYM_RE = re.compile(r"\b([A-Z]{4,}(?:-[A-Z]{2,})?)\b")
 
-# T-242 Eagle review: AR fiscal-year resolution for relative periods ('during the year', 'end of Financial Year',
-# 'beginning of the year', 'P.Y.').  Non-calendar phrases ('Phase I', 'last 3 years') are left alone.
-AR_FY_TITLE_RE = re.compile(
+# T-242 Eagle/Wolf review: AR fiscal-year resolution for relative periods ('during the year',
+# 'end of Financial Year', 'beginning of the year', 'P.Y.').  Resolves April-March FY only on an explicit
+# split year or March year-end, resolves non-March year-ends (e.g. Jan-Dec CY2025) to that year end, and
+# leaves single-year titles without year-end text and non-calendar phrases untouched (never period_no_year).
+_AR_FY_MONTH_NUM = {
+    "january": 1, "jan": 1, "february": 2, "feb": 2, "march": 3, "mar": 3, "april": 4, "apr": 4,
+    "may": 5, "june": 6, "jun": 6, "july": 7, "jul": 7, "august": 8, "aug": 8,
+    "september": 9, "sep": 9, "sept": 9, "october": 10, "oct": 10, "november": 11, "nov": 11,
+    "december": 12, "dec": 12,
+}
+AR_YEAR_ENDED_RE = re.compile(
+    rf"(?:(?:financial|fiscal)\s+)?year\s+ended\s+(?:on\s+|as\s+(?:at|on)\s+)?(?:the\s+)?"
+    rf"(?:(?P<d1>\d{{1,2}})(?:st|nd|rd|th)?\s+(?P<m1>{_AR_MONTH_RE})|(?P<m2>{_AR_MONTH_RE})\s+(?P<d2>\d{{1,2}})(?:st|nd|rd|th)?)"
+    rf",?\s*(?P<y>20\d{{2}})\b",
+    re.I,
+)
+AR_SPLIT_FY_RE = re.compile(
     r"(?:annual\s+report|integrated\s+(?:annual\s+)?report|financial\s+year|fiscal\s+year|\bFY\b)"
     r"[^.\n]{0,60}?(20\d{2})\s*[-\u2013/\s]\s*(20\d{2}|\d{2})\b|"
     r"(?<![A-Za-z])FY\s*['\u2019-]?\s*(20\d{2})\s*[-\u2013/]\s*(20\d{2}|\d{2})\b|"
     r"(?<![A-Za-z])FY\s*['\u2019-]?\s*(\d{2})\s*[-\u2013/]\s*(\d{2})\b|"
-    r"(?:annual\s+report|integrated\s+(?:annual\s+)?report)[^.\n]{0,40}?(?:-\s*)?"
-    r"(?:\bFY\s*['\u2019-]?\s*(\d{2,4})\b|(20\d{2})\b)|"
-    r"(?:year\s+ended|ended\s+on)\s+(?:31st?\s+)?March,?\s*(20\d{2})\b|"
-    r"\b(20\d{2})\s*[-\u2013]\s*(20\d{2}|\d{2})\s*(?:annual\s+report|integrated\s+report)",
+    r"(?:annual\s+report|integrated\s+(?:annual\s+)?report)[^.\n]{0,40}?\bFY\s*['\u2019-]?\s*(\d{2})(?!\d)|"
+    r"\b(20\d{2})\s*[-\u2013]\s*(20\d{2}|\d{2})\s*(?:annual\s+report|integrated\s+report)|"
+    r"\bFY\s*['\u2019-]?\s*(\d{2})(?!\d)\s*(?:annual\s+report|integrated\s+report)",
     re.I,
 )
+AR_CY_SPEC_RE = re.compile(r"^CY\s*(20\d{2})$", re.I)
+AR_FY_SPEC_RE = re.compile(r"^FY\s*(20\d{2})\s*-\s*(\d{2})$", re.I)
 AR_REL_END_FY_RE = re.compile(
     r"^(?:(?:as\s+(?:at|on)\s+)?(?:the\s+)?end\s+of\s+(?:the\s+)?(?:financial\s+year|year|reporting\s+(?:period|year))|"
     r"(?:at\s+(?:the\s+)?)?(?:year[\s-]+end|end\s+of\s+(?:the\s+)?(?:financial\s+year|year))|"
@@ -3928,14 +3944,39 @@ AR_REL_CURR_FY_RE = re.compile(
 AR_SHORT_SPAN_RE = re.compile(r"^(\d{2})\s*[-\u2013/]\s*(\d{2})$")
 
 
-def _parse_ar_fy(text: str) -> tuple[int, int] | None:
-    """Extract ``(start_year, end_year)`` of an annual report's fiscal year from a title/cover/header string."""
+def _parse_ar_fy_spec(text: str) -> tuple[int, int] | None:
+    """Return ``(end_month, end_year)`` for an AR fiscal-year string or text, else ``None``.
+
+    Only an explicit split year (``2025-26``, ``FY26``, ``FY 2025-26``) or an explicit ``year ended <date>``
+    matches; a bare single year such as ``Annual Report 2025`` returns ``None``.
+    """
     t = norm_space(text)
     if not t:
         return None
+    m_cy = AR_CY_SPEC_RE.match(t)
+    if m_cy:
+        return (12, int(m_cy.group(1)))
+    m_fy = AR_FY_SPEC_RE.match(t)
+    if m_fy:
+        s, e2 = int(m_fy.group(1)), int(m_fy.group(2))
+        e = 2000 + e2
+        if e == s + 1 and 2000 <= s <= 2035:
+            return (3, e)
     t_dense = re.sub(r"(?<=\b[A-Za-z0-9])\s+(?=[A-Za-z0-9]\b)", "", t)
+    ye_hits: list[tuple[int, int]] = []
     for src in (t, t_dense):
-        m = AR_FY_TITLE_RE.search(src)
+        for m in AR_YEAR_ENDED_RE.finditer(src):
+            mon_s = (m.group("m1") or m.group("m2") or "").lower()
+            mon = _AR_FY_MONTH_NUM.get(mon_s)
+            yr = int(m.group("y"))
+            if mon and 2000 <= yr <= 2036:
+                ye_hits.append((mon, yr))
+    if ye_hits:
+        best_mon = Counter(m for m, _y in ye_hits).most_common(1)[0][0]
+        best_yr = max(y for m, y in ye_hits if m == best_mon)
+        return (best_mon, best_yr)
+    for src in (t, t_dense):
+        m = AR_SPLIT_FY_RE.search(src)
         if not m:
             continue
         g = m.groups()
@@ -3951,34 +3992,42 @@ def _parse_ar_fy(text: str) -> tuple[int, int] | None:
         elif g[4] and g[5]:
             pair = (2000 + int(g[4]), 2000 + int(g[5]))
         elif g[6]:
-            y = int(g[6]) if len(g[6]) == 4 else 2000 + int(g[6])
+            y = 2000 + int(g[6])
             pair = (y - 1, y)
-        elif g[7]:
-            y = int(g[7])
-            pair = (y - 1, y)
-        elif g[8]:
-            y = int(g[8])
-            pair = (y - 1, y)
-        elif g[9] and g[10]:
-            s = int(g[9])
-            e = int(g[10]) if len(g[10]) == 4 else 2000 + int(g[10])
+        elif g[7] and g[8]:
+            s = int(g[7])
+            e = int(g[8]) if len(g[8]) == 4 else 2000 + int(g[8])
             pair = (s, e)
+        elif g[9]:
+            y = 2000 + int(g[9])
+            pair = (y - 1, y)
         if pair and 2000 <= pair[0] <= 2035 and pair[1] == pair[0] + 1:
-            return pair
+            return (3, pair[1])
     return None
 
 
+def _format_ar_fy_spec(spec: tuple[int, int]) -> str:
+    import calendar
+    end_month, end_year = spec
+    if end_month == 3:
+        return f"FY{end_year - 1}-{end_year % 100:02d}"
+    if end_month == 12:
+        return f"CY{end_year}"
+    eday = calendar.monthrange(end_year, end_month)[1]
+    return f"Year ended {eday} {calendar.month_name[end_month]} {end_year}"
+
+
 def ar_report_fy_from_text(*texts: str) -> str:
-    """Return ``'FY2025-26'`` from the first AR title/header string naming a fiscal year, else ``''``."""
+    """Return canonical AR FY (``'FY2025-26'``, ``'CY2025'``, or ``'Year ended ...'``) from text, else ``''``."""
     for text in texts:
-        pair = _parse_ar_fy(text)
-        if pair:
-            return f"FY{pair[0]}-{pair[1] % 100:02d}"
+        spec = _parse_ar_fy_spec(text)
+        if spec:
+            return _format_ar_fy_spec(spec)
     return ""
 
 
 def ar_report_fy(store_db: str | Path, doc_key: str, page_text: str = "", previous_text: str = "") -> str:
-    """The annual report's own fiscal year (``'FY2025-26'``) from ``doc.title``, cover pages 1-6, or page heads."""
+    """The annual report's fiscal year from ``year ended`` headers (pages 1-10) or split-year title/cover."""
     title = ""
     pages: list[str] = []
     try:
@@ -3987,7 +4036,7 @@ def ar_report_fy(store_db: str | Path, doc_key: str, page_text: str = "", previo
             _cur = con.execute("SELECT title FROM doc WHERE doc_key=?", (doc_key,))
             row = _cur.fetchone() if _cur is not None else None
             title = str(row[0] or "") if row else ""
-            _cur = con.execute("SELECT text FROM doc_page WHERE doc_key=? AND page BETWEEN 1 AND 6 ORDER BY page",
+            _cur = con.execute("SELECT text FROM doc_page WHERE doc_key=? AND page BETWEEN 1 AND 10 ORDER BY page",
                                (doc_key,))
             if _cur is not None:
                 pages = [str(r[0] or "") for r in _cur if r is not None]
@@ -3995,15 +4044,28 @@ def ar_report_fy(store_db: str | Path, doc_key: str, page_text: str = "", previo
             con.close()
     except Exception:
         pass
+    # Prefer an explicit 'year ended <date>' (so Jan-Dec CY2025 or Jun-end FY is never overridden by 'FY 2025-26')
+    ye_hits: list[tuple[int, int]] = []
+    for txt in [title] + pages:
+        t = norm_space(txt)
+        for m in AR_YEAR_ENDED_RE.finditer(t):
+            mon = _AR_FY_MONTH_NUM.get((m.group("m1") or m.group("m2") or "").lower())
+            yr = int(m.group("y"))
+            if mon and 2000 <= yr <= 2036:
+                ye_hits.append((mon, yr))
+    if ye_hits:
+        best_mon = Counter(m for m, _y in ye_hits).most_common(1)[0][0]
+        best_yr = max(y for m, y in ye_hits if m == best_mon)
+        return _format_ar_fy_spec((best_mon, best_yr))
     got = ar_report_fy_from_text(title)
     if got:
         return got
-    for txt in pages:
+    for txt in pages[:6]:
         if not FILING_LETTER_RE.search(txt):
             got = ar_report_fy_from_text(txt)
             if got:
                 return got
-    for txt in pages:
+    for txt in pages[:6]:
         got = ar_report_fy_from_text(txt)
         if got:
             return got
@@ -4042,14 +4104,14 @@ def _ar_has_year(period_s: str) -> bool:
 
 
 def _ar_period_reason(row: dict[str, Any], page_text: str, previous_text: str,
-                      report_fy_pair: tuple[int, int] | None) -> str:
-    """Resolve relative AR periods to the report's FY (``period_source='ar_report_year'``), or gate missing years."""
+                      report_fy_spec: tuple[int, int] | None) -> str:
+    """Resolve relative AR periods when the report's year-end or split FY is known; never ``period_no_year``."""
+    import calendar
     period_s = norm_space(row.get("period"))
     if not period_s:
         return ""
     if not _ar_has_year(period_s):
         kind = ""
-        resolved = ""
         if AR_REL_END_FY_RE.match(period_s):
             kind = "end"
         elif AR_REL_BEG_FY_RE.match(period_s):
@@ -4058,24 +4120,43 @@ def _ar_period_reason(row: dict[str, Any], page_text: str, previous_text: str,
             kind = "prev"
         elif AR_REL_CURR_FY_RE.match(period_s):
             kind = "curr"
-        if not kind:
-            return ""          # non-calendar phrase ('Phase I', '180-day monitoring period', 'last 3 years')
-        if report_fy_pair is None:
-            return f"period_no_year: {period_s!r} names no year"
-        start, end = report_fy_pair
-        if kind == "end":
-            resolved = f"31 March {end}"
-            row["period_kind"] = "instant"
-        elif kind == "beg":
-            resolved = f"1 April {start}"
-            row["period_kind"] = "instant"
-        elif kind == "prev":
-            resolved = f"FY{start - 1}-{start % 100:02d}"
-            row["period_kind"] = "actual"
+        if not kind or report_fy_spec is None:
+            return ""
+        end_month, end_year = report_fy_spec
+        if end_month == 3:
+            start = end_year - 1
+            if kind == "end":
+                row["period"], row["period_kind"] = f"31 March {end_year}", "instant"
+            elif kind == "beg":
+                row["period"], row["period_kind"] = f"1 April {start}", "instant"
+            elif kind == "prev":
+                row["period"], row["period_kind"] = f"FY{start - 1}-{start % 100:02d}", "actual"
+            else:
+                row["period"], row["period_kind"] = f"FY{start}-{end_year % 100:02d}", "actual"
+        elif end_month == 12:
+            if kind == "end":
+                row["period"], row["period_kind"] = f"31 December {end_year}", "instant"
+            elif kind == "beg":
+                row["period"], row["period_kind"] = f"1 January {end_year}", "instant"
+            elif kind == "prev":
+                row["period"], row["period_kind"] = f"CY{end_year - 1}", "actual"
+            else:
+                row["period"], row["period_kind"] = f"CY{end_year}", "actual"
         else:
-            resolved = f"FY{start}-{end % 100:02d}"
-            row["period_kind"] = "actual"
-        row["period"] = resolved
+            mname = calendar.month_name[end_month]
+            beg_month = (end_month % 12) + 1
+            beg_mname = calendar.month_name[beg_month]
+            if kind == "end":
+                eday = calendar.monthrange(end_year, end_month)[1]
+                row["period"], row["period_kind"] = f"{eday} {mname} {end_year}", "instant"
+            elif kind == "beg":
+                row["period"], row["period_kind"] = f"1 {beg_mname} {end_year - 1}", "instant"
+            elif kind == "prev":
+                pday = calendar.monthrange(end_year - 1, end_month)[1]
+                row["period"], row["period_kind"] = f"Year ended {pday} {mname} {end_year - 1}", "actual"
+            else:
+                eday = calendar.monthrange(end_year, end_month)[1]
+                row["period"], row["period_kind"] = f"Year ended {eday} {mname} {end_year}", "actual"
         row["period_source"] = "ar_report_year"
         return ""
     dense = re.sub(r"(?<=\d)\s+(?=\d)", "", period_s)
@@ -4239,7 +4320,8 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             other_entity = norm_space(entity_match.group(1)).strip(" .,;|")
     cons_group_head = bool(AR_CONS_GROUP_HEAD_RE.search(text[:300]))
     has_prose_consolidated = bool(CONSOLIDATED_RE.search(page_text) or CONSOLIDATED_PAGE_RE.search(page_text))
-    fy_pair = _parse_ar_fy(report_fy) if report_fy else _parse_ar_fy(ar_report_fy_from_text(page_text, previous_text))
+    fy_spec = _parse_ar_fy_spec(report_fy) if report_fy else _parse_ar_fy_spec(
+        ar_report_fy_from_text(page_text, previous_text))
     kept: list[dict[str, Any]] = []
     for row in rows:
         if norm_space(row.get("record_type") or "number") != "number":
@@ -4259,7 +4341,7 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
         if str(row.get("entity_scope") or "") == "subsidiary" and cons_group_head \
                 and not _ar_keep_subsidiary_scope(row, page_text, company):
             row["entity_scope"] = "company"
-        period_reason = _ar_period_reason(row, page_text, previous_text, fy_pair)
+        period_reason = _ar_period_reason(row, page_text, previous_text, fy_spec)
         unit = norm_space(row.get("unit"))
         cues = " ".join(norm_space(row.get(key)) for key in
                         ("measure", "printed_label", "printed_axis", "series_title"))
