@@ -1,0 +1,1 @@
+T-242 r7 (2026-11-25 11:54): structural fund_raise rules written (issuer veto, step amount, stage, instrument-scoped size); tests 121 pass; 60/60 graded pack rows OK; fresh5 order_win 215 unchanged, fresh4 132, fresh3 179; fund_raise moved 36%/32%/20.6%. Docs updated (T-231 3f, DEVELOPER_GUIDE, STATE). Next: final typecheck/report.

@@ -2145,3 +2145,90 @@ def test_t242_r6_a_press_release_headline_is_not_the_customer() -> None:
     assert row["customer"] == "Bharat Sanchar Nigam Limited (BSNL)"
     assert row["entity_scope"] == "subsidiary"
     assert "Lineage Power" in (row["detail"] or "")
+
+
+# ---- T-242 round 7: the step's own amount, the issuer, and the stage on unseen filings ----------------
+R7_AMOUNTS = {
+    # the green shoe is inside the printed "up to X including" total, never added (fresh5 #2)
+    "green_shoe": (
+        "The Finance Committee has approved the issuance of 1,87,500 secured redeemable non-convertible debentures "
+        "of face value of Rs. 1,00,000 each for an amount aggregating up to Rs. 1,875 crores including a green shoe "
+        "option of Rs. 500 crores, through private placement.", 1875.0),
+    # the premium and accrued interest figures are components; the printed total is the step (fresh5 #7)
+    "premium_total": (
+        "The Committee has approved allotment of 3,00,000 non-convertible debentures of face value of Rs. 1,00,000 "
+        "each with base issue of Rs. 2,500 crores and premium amounting to Rs. 1,00,62,500, total aggregating to "
+        "Rs. 3,002,10,46,600.", 3002.10466),
+    # the converted CCD count x the CCD issue price is the step, not the resulting post-split shares (fresh5 #23)
+    "ccd_conversion": (
+        "The Board has approved the conversion of 1,45,010 compulsorily convertible debentures of face value of "
+        "Rs. 1,00,000 each and thereupon allotment of 10,32,09,960 equity shares at a conversion price of Rs. 140.50 "
+        "per equity share. The CCDs were issued at an issue price of Rs. 1,00,000 per CCD.", 1450.1),
+    # a cumulative count and the 75% balance receipt are not the step; the shares it allots x price are
+    # (fresh5 #17, #19, #21, #31, #41)
+    "allotted_only": (
+        "Allotment of 75,000 Equity shares upon conversion of warrants pursuant to preferential issue. Out of "
+        "remaining 75% amount, 2 allottees have deposited Rs. 1,67,06,250/- in aggregate and have exercised their "
+        "right to convert total 75,000 warrants into 75,000 equity shares at an issue price of Rs. 297 per warrant. "
+        "The Company had allotted 41,30,000 convertible warrants on 23.12.2023.", 2.2275),
+}
+
+
+@pytest.mark.parametrize("case", list(R7_AMOUNTS))
+def test_t242_r7_raise_step_amount_shapes(case: str) -> None:
+    text, expected = R7_AMOUNTS[case]
+    amount, how = fe.raise_step_amount(text)
+    assert amount == pytest.approx(expected), (case, amount, how)
+    assert how, case
+
+
+@pytest.mark.parametrize("title,text", [
+    # the listed company subscribes to its subsidiary's rights issue: another entity's securities (fresh5 #10)
+    ("Outcome of the Board meeting",
+     "The Board approved the subscription to Rights issue of a wholly owned subsidiary for an amount not exceeding "
+     "INR 100 Crores, which would be utilised by the subsidiary for repayment of a loan."),
+    # the listed company acquires another company's shares: an investment, not its own issue (fresh5 #14)
+    ("Outcome of the board meeting",
+     "To make strategic investment by acquisition of 9,375 equity shares of a subsidiary from its existing founders "
+     "for a total consideration not exceeding INR 21,63,46,875."),
+    # an associate allots its preference shares TO the listed company (fresh5 #24)
+    ("Intimation under Regulation 30",
+     "The Board of Directors of an associate company has allotted 10,50,000 OCRPS of face value Rs. 10 each, "
+     "aggregating to Rs. 1,05,00,000, to the Company by way of a rights issue."),
+    # the company lends to its subsidiary: no security is issued (fresh5 #33)
+    ("Disclosure under Regulation 30 for Granting of loan to Wholly Owned Subsidiary",
+     "The Company has entered into a loan agreement with its wholly owned subsidiary to grant an unsecured loan "
+     "amount of Rs. 11,00,00,000 for working capital requirements."),
+    # the company sells a stake paid in the buyer's paper: a divestment (fresh5 #29)
+    ("Intimation of Press Release",
+     "The Company has successfully divested its stake in a gaming platform. The transaction, valued at INR 104.33 "
+     "crore, will be executed through the issuance of the buyer's Compulsory Convertible Preference Shares."),
+    # the company invests in a subsidiary's CCPS: an investment, not its own issue (fresh5 #38, #50)
+    ("Update on proposed investment",
+     "The Company has invested INR 39,99,93,608 in Aurora Bio Private Limited, a subsidiary of the Company, and "
+     "has the right to invest up to an additional amount of Rs. 35 Cr."),
+])
+def test_t242_r7_not_the_listed_company_as_issuer(title: str, text: str) -> None:
+    assert not [row for row in fe.event_rows(_doc(title, text))[0] if row["kind"] == "fund_raise"]
+
+
+@pytest.mark.parametrize("title,text,expected", [
+    # a board recommendation to seek members' approval is proposed (fresh5 #11)
+    ("Outcome of Board meeting",
+     "The Board recommended seeking approval of shareholders to offer, issue and allot secured or unsecured "
+     "non-convertible debentures or bonds on private placement basis up to Rs. 500 crore.", "proposed"),
+    # the AGM's own business (a resolution to be passed) is proposed (fresh5 #45, #47)
+    ("Prior Intimation of Special Resolution for approval to offer and allot non-convertible debentures",
+     "Members of the Company in the ensuing Annual General Meeting will inter alia consider Special Resolutions to "
+     "authorize the Board to offer, issue and allot non-convertible debentures up to Rs. 500 crore.", "proposed"),
+    # a press release that says the issue completed reports an allotment, not a proposal (fresh5 #55)
+    ("Press Release",
+     "The Company successfully concluded its capital raise of INR 6,437 Crores (USD 771 Mn approx.) through a "
+     "Qualified Institutions Placement (QIP). The issue closed on September 20, 2024.", "allotment"),
+    # a board approval subject to the EGM is approval, not allotment (fresh5 #22, #51)
+    ("Outcome of the Board Meeting",
+     "The Board has, subject to the approval of members, considered and approved the issue and allotment of "
+     "2,00,00,000 fully convertible warrants on a preferential basis aggregating up to Rs. 80,00,00,000.", "approval"),
+])
+def test_t242_r7_raise_stage_shapes(title: str, text: str, expected: str) -> None:
+    assert _row(fe.event_rows(_doc(title, text))[0], "fund_raise")["raise_stage"] == expected
