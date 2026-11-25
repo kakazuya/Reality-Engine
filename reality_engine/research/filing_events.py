@@ -244,6 +244,39 @@ _RAISE_AGREEMENT_VETO = re.compile(
     r"\b(?:wholly[-\s]owned|subsidiary|joint\s+venture|associate)s?\b"
     r"|\bsubscri(?:be|bed|ption)\b[^.]{0,60}\b(?:shares|equity)\b[^.]{0,20}\b(?:of|in)\b",
     re.I)
+# T-242 round 5: the amount is THIS step's, never a sum of the angles it is printed from.  A clause that
+# records an earlier step, a component of this step's consideration (the 25% upfront and the 75% balance of a
+# warrant) or the capital before/after the issue is not this step (fresh4/fresh3 #10, #12, #13, #20, #32, #54,
+# #57).  The prior-step and capital cues cut the clause at the cue (a genuine total often prints before them);
+# a component cue rejects the clause whole (the component is usually printed before its own 25%/75% mark).
+_RAISE_PRIOR_STEP = re.compile(
+    r"\bhad\s+(?:already\s+)?(?:been\s+)?allotted\b|\bhad\s+raised\b"
+    r"|\b(?:already|previously)\s+(?:allotted|raised|issued)\b"
+    r"|\b(?:in|since)\s+the\s+FY\s?\d{2,4}\b|\b(?:in|during|since)\s+(?:the\s+)?(?:financial\s+)?year\s+\d{4}\b"
+    r"|\b(?:past|earlier|previous)\s+(?:year|issue|allotment|qip|round)\b", re.I)
+_RAISE_COMPONENT = re.compile(
+    r"\b(?:25|75)\s*(?:%|per\s*cent\b|percent\b)"
+    r"|\bequivalent\s+amount\s+to\b|\bremaining\s+(?:exercise\s+price|consideration|amount|payment)\b"
+    r"|\b(?:upfront|up-front)\s+(?:payment|consideration|amount|portion)\b", re.I)
+# OCR splits a printed count ("1,27,93, 102"); join it so the share count and its total read whole
+_RAISE_OCR_SPACE = re.compile(r"(?<=\d),\s+(?=\d{3}\b)")
+_RAISE_CAPITAL = re.compile(
+    r"\bpaid[-\s]?up\b[^.]{0,60}\b(?:share\s+)?capital\b|\bpre[-\s]?issue\b|\bpost[-\s]?issue\b"
+    r"|\bauthori[sz]ed\s+(?:share\s+)?capital\b", re.I)
+# a subsidiary's own allotment is not the listed company's issuance (fresh4 #19)
+_RAISE_SUBSIDIARY_VETO = re.compile(
+    r"\bsubsidiar(?:y|ies)\b[^.]{0,220}?\b(?:has|have|had)\b[^.]{0,80}?\ballotted\b", re.I)
+# an exchange advisory or lock-in letter about an earlier issue is not an issuance (fresh4 #21)
+_RAISE_ADVISORY_VETO = re.compile(
+    r"\badvisory\s+(?:letter|note)\b|\b(?:warning|cautionary|observation)\s+letter\b"
+    r"|\b(?:has|have)\s+received\s+an?\s+(?:advisory|warning|cautionary|observation)\b"
+    r"|\badvised\s+(?:the\s+)?company\s+to\b|\block[-\s]?in\s+letter\b", re.I)
+# "fund raising through debt" names no security: nothing was issued (fresh4 #43)
+_RAISE_GENERIC_CUE = re.compile(r"\bfund\s*[- ]?rais\w*|\braising\s+of\s+funds\b", re.I)
+_RAISE_SECURITY = re.compile(
+    r"\bequity\b|\bshares?\b|\bQIP\b|qualified\s+institutions?|preferential|\brights\b|\bwarrants?\b|\bNCDs?\b"
+    r"|non[-\s]?convertible|\bbonds?\b|debentures?|\bcommercial\s+paper\b|\bCPs?\b|\bconvertibles?\b"
+    r"|\b(?:issuance|issue)\s+of\s+(?:[\w%]+\s+){0,3}securities\b", re.I)
 _MARKET_CAP_CUE = re.compile(r"\bmarket\s+capitali[sz]ation\b|\bmarket\s+cap\b", re.I)
 # A regulator's or a court's "order" is not a customer order.  The test is an order-shaped phrase, never the
 # bare words GST/customs/tax: "excluding GST" is printed on every genuine order value (it cost BLKASHYAP 910 cr
@@ -1712,6 +1745,11 @@ def _shares_in(sentence: str) -> tuple[float | None, str | None]:
     return total, span
 
 
+def _raise_component_near(sentence: str, start: int, end: int) -> bool:
+    """Do the words around a printed figure name a component of the step's consideration (25%/75%, balance)?"""
+    return bool(_RAISE_COMPONENT.search(sentence[max(0, start - 90):min(len(sentence), end + 90)]))
+
+
 def _raise_size(sentence: str, body: str) -> tuple[float | None, str | None, int]:
     """(size in crore, printed span, computed?) of one raise clause: aggregate, else shares x printed price."""
     for size_match in _SIZE_CUE.finditer(sentence):
@@ -1719,12 +1757,12 @@ def _raise_size(sentence: str, body: str) -> tuple[float | None, str | None, int
         if _MARKET_CAP_CUE.search(prefix):
             continue
         value = _to_cr(size_match.group("v"), size_match.group("u"))
-        if value is not None:
+        if value is not None and not _raise_component_near(sentence, size_match.start(), size_match.end()):
             return value, size_match.group(0), 0
     for full in re.finditer(r"(?:aggregat\w*|amount|issue\s+size|size)[^.;]{0,50}?(?:Rs\.?|INR|₹)\s*"
                             r"(?P<v>\d[\d,]{6,})(?:\s*/-)?", sentence, re.I):
         prefix = sentence[max(0, full.start() - 60):full.start()]
-        if _MARKET_CAP_CUE.search(prefix):
+        if _MARKET_CAP_CUE.search(prefix) or _raise_component_near(sentence, full.start(), full.end()):
             continue
         return round(_digits(full.group("v")) / 1e7, 4), full.group(0), 0
     amounts = []
@@ -1734,6 +1772,8 @@ def _raise_size(sentence: str, body: str) -> tuple[float | None, str | None, int
             continue
         if re.search(r"issue\s+price|price\s+of|price\s+per|face\s+value|nominal\s+value|premium"
                      r"|at\s+(?:a\s+)?price", prefix, re.I):
+            continue
+        if _raise_component_near(sentence, start, start + len(span)):
             continue
         amounts.append((value, span))
     if amounts:
@@ -1749,16 +1789,22 @@ def _raise_size(sentence: str, body: str) -> tuple[float | None, str | None, int
     return None, None, 0
 
 
-_RAISE_STAGE_RANK = {"allotment": 5, "completion": 4, "approval": 3, "listing": 2, "proposed": 1, "intimation": 1}
+_RAISE_STAGE_RANK = {"allotment": 5, "completion": 4, "approval": 3, "listing": 2, "proposed": 1}
 # T-242: only a completed allotment is ``allotment``; a board meeting that approves an issue is ``approval``
 # even when the annexure prints "allotment" in a future sense ("allotment of up to", "date of allotment") (#29,
 # #46, #60).  "allotted" alone is not enough: "to be allotted"/"assumed to be allotted" state a plan.
+# Round 5: a committee that "allotted 300 NCDs" or "considered and approved the allotment of 1,19,99,847
+# Equity Shares" completed the allotment whatever the title of the letter says (#1, #5, #23, #25, #40, #46,
+# #49); a bare "allotted" stays excluded when it is a plan ("to be allotted", "will be allotted").
 _ALLOTMENT_DONE = re.compile(
     r"\b(?:issue|issuance)\s+and\s+allotment\b"
-    r"|\b(?:has|have|had)\s+(?:been\s+)?allotted\b"
-    r"|\b(?:shares?|warrants?|debentures?|securities)\s+(?:have|has|were|was)\s+been\s+allotted\b"
-    r"|\ballotment\s+of\s+[\d,]{3,}\s+(?:equity\s+)?(?:shares?|warrants?|debentures?)\b"
+    r"|\b(?:has|have|had)\s+(?:today\s+|also\s+)?(?:been\s+)?allotted\b"
+    r"|\b(?:shares?|warrants?|debentures?|securities|NCDs?)\s+(?:have|has|were|was)\s+been\s+allotted\b"
+    r"|\ballotment\s+of\s+[\d,]{3,}\s*(?:\([^)]{0,140}\)\s*)?(?:equity\s+)?(?:shares?|warrants?|debentures?"
+    r"|NCDs?|securities)\b"
+    r"|\b(?:considered\s+and\s+)?approved[^;]{0,160}?\b(?:the\s+)?allotment\s+of\s+[\d,]{3,}"
     r"|\ballotted\s+(?:on|today|pursuant)\b"
+    r"|\b(?<!\bbe\s)(?<!\bbeen\s)allotted\s+[\d,]"
     r"|\bbasis\s+of\s+allotment\b", re.I)
 _APPROVAL_ONLY = re.compile(
     r"\bapproved\s+(?:the\s+)?(?:issuance|issue)\b"
@@ -1773,57 +1819,78 @@ _SEBI_TEMPLATE_LINE = re.compile(
 )
 
 
+# T-242 round 5: a postal-ballot or EGM notice asks for the approval; a board that approved only a draft
+# notice has not raised anything yet (#31, #51, #53).  The notice must name itself in the subject line: a board
+# outcome that merely lists "the notice of the EGM" among its resolutions approved the issue (#6, #33).
+_RAISE_NOTICE = re.compile(
+    r"\bnotice\s+of\s+(?:the\s+)?(?:postal\s+ballot|extra[-\s]?ordinary\s+general\s+meeting|egm"
+    r"|annual\s+general\s+meeting|agm)\b"
+    r"|\bpostal\s+ballot\s+notice\b|\b(?:egm|agm)\s+to\s+be\s+held\b", re.I)
+_RAISE_NOTICE_DONE = re.compile(
+    r"\b(?:voting|scrutini[sz]er'?s?)\s+results?\b|\bresults?\s+of\s+(?:the\s+)?(?:postal\s+ballot|egm|agm)\b"
+    r"|\bsummary\s+of\s+proceedings\b|\boutcome\s+of\s+(?:the\s+)?(?:egm|agm|postal\s+ballot)\b"
+    r"|\b(?:members?|shareholders?)\s+(?:have\s+)?(?:passed|approved)\b", re.I)
+_RAISE_DRAFT_ONLY = re.compile(
+    r"\b(?:approved|approving|considered)\b[^.]{0,120}\bdraft\b[\s\S]{0,220}?"
+    r"(?:QIP|qualified\s+institutions?|preferential|rights\s+issue|raising\s+(?:of\s+)?(?:funds|capital)"
+    r"|issue\s+of\s+[\w\s]{0,30}(?:shares|securities)|Rs\.?\s*[\d,]|₹\s*[\d,])", re.I)
+# an exchange in-principle approval clears the issue; a listing/trading approval is the step after the allotment
+_RAISE_IN_PRINCIPLE = re.compile(r"\bin[-\s]?principle\s+approval\b|\binprinciple\s+approval\b", re.I)
+_RAISE_LISTING = re.compile(
+    r"\blisting\s+approval\b|\btrading\s+approval\b|\bapproval\s+for\s+(?:listing|trading)\b"
+    r"|\b(?:shares?|securities)\s+(?:have\s+been|are|were)\s+listed\b|\bcommencement\s+of\s+(?:trading|listing)\b"
+    r"|\badmitted\s+to\s+dealings\b", re.I)
+_RAISE_COMPLETION = re.compile(
+    r"\bissue\s+(?:fully\s+)?(?:opened|closed|subscribed)\b|\b(?:successfully\s+)?(?:raised|raises)\b[^.]{0,40}"
+    r"\b(?:the\s+)?(?:issue|QIP|placement|funds?)\b|\bcompleted\s+the\s+(?:issue|placement)\b", re.I)
+
+
 def _raise_stage(title: str, head: str) -> str:
+    """The stage this filing reports: allotment, notice, draft-only notice, approval, in-principle, listing.
+
+    T-242 round 5: ``intimation`` is not a stage -- every filing is mapped by what it states, in this order
+    (fresh4/fresh3 #1, #5, #6, #7, #23, #25, #31, #33, #40, #46, #49, #51, #53).
+    """
     title_low = _flat(title).lower()
     heading = _SEBI_TEMPLATE_LINE.sub(" ", _flat(head)).lower()
-    combined = title_low + " " + heading[:2500]
-    if re.search(r"\b(?:draft\s+letter\s+of\s+offer|\bdlof\b|addendum\s+to\s+(?:the\s+)?(?:dlof|draft\s+letter\s+of\s+offer|letter\s+of\s+offer))\b", combined):
-        return "proposed"
-    if re.search(r"\bnotice\s+of\s+(?:the\s+)?(?:extra[-\s]?ordinary\s+general\s+meeting|egm|annual\s+general\s+meeting|agm)\b"
-                 r"|\b(?:egm|agm)\s+to\s+be\s+held\b", combined) \
-            and not re.search(r"\bsummary\s+of\s+proceedings|\boutcome\s+of\s+(?:the\s+)?(?:egm|agm)\b", combined):
-        return "proposed"
     stage_text = title_low + " " + heading
+    opening = title_low + " " + heading[:300]          # a notice names itself in the subject line
+    if re.search(r"\b(?:draft\s+letter\s+of\s+offer|\bdlof\b|addendum\s+to\s+(?:the\s+)?(?:dlof|draft\s+letter\s+of\s+offer|letter\s+of\s+offer))\b", stage_text):
+        return "proposed"
     if _ALLOTMENT_DONE.search(stage_text):
         return "allotment"
     if re.search(r"\bpost[-\s]?allotment\b", stage_text) and not _APPROVAL_ONLY.search(stage_text):
         return "allotment"              # an outcome-of-subscription table prints the completed allotment
-    if re.search(r"listing\s+approval|trading\s+approval|in[-\s]?principle\s+approval|admitted to dealings",
-                 title_low):
+    if _RAISE_DRAFT_ONLY.search(stage_text):
+        return "proposed"               # a board that approved only the draft notice has not raised anything yet
+    if _RAISE_NOTICE.search(opening) and not _RAISE_NOTICE_DONE.search(opening):
+        return "proposed"
+    if _RAISE_IN_PRINCIPLE.search(stage_text):
+        return "approval"               # an exchange in-principle approval is not the listing
+    if _RAISE_LISTING.search(title_low):
         return "listing"
     if _APPROVAL_ONLY.search(stage_text):
         return "approval"
     if re.search(r"\bnot\s+exceeding\b|postal ballot|approved|approval|shareholders.{0,30}approved|key terms", heading):
         return "approval"
-    if re.search(r"issue (?:opened|closed)|completed the issue|proceeds of the (?:issue|rights)", heading):
+    if _RAISE_COMPLETION.search(stage_text):
         return "completion"
-    if re.search(r"listing\s+approval|trading\s+approval|in[-\s]?principle\s+approval", heading):
+    if _RAISE_LISTING.search(heading):
         return "listing"
-    return "intimation"
+    return "proposed"
 
 
-def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
-    """The raise size, issue price, share count and instrument a fund-raise filing prints.
+def _raise_step_sizes(title: str, head: str, text: str) -> tuple[list[tuple[float, str | None, int]], list[str]]:
+    """(the distinct sizes THIS step prints, the clauses they were printed in).
 
-    A bundled outcome can carry several raises (a preferential issue and warrants): each clause gives its own
-    printed size, the filing is one event, and distinct printed sizes are summed (computed -> unverified).
+    T-242 round 5: a clause that records an earlier step is cut at that cue, a clause that states the capital
+    before/after the issue is cut at the capital phrase, and a clause that quotes a component of this step's
+    consideration (the 25% upfront or the 75% balance of a warrant) is skipped whole: the step's value is never
+    a sum of those angles (fresh4/fresh3 #10, #12, #13, #20, #32, #54, #57).  A bundled outcome still carries
+    one printed size per instrument, and those add (a preferential issue and warrants, #15).
     """
-    if _RAISE_VETO.search(_flat(f"{title} {head}")) or not _RAISE_CUE.search(_flat(f"{title} {head}")):
-        return None                 # a note deep in a financial statement is not the company's raise
-    opening = re.split(r"\bAnnexure\b", head, maxsplit=1, flags=re.I)[0][:1200]
-    flat_opening = _flat(f"{title} {opening}")
-    if _RAISE_AGREEMENT_VETO.search(_flat(f"{title} {head}")) \
-            and not _OWN_ISSUE_TITLE.search(_flat(title)):
-        return None                 # a facility/loan revision, warrant lapse or stake purchase is not an issuance
-    if _RAISE_DEBT_VETO.search(flat_opening):
-        return None
-    if _RAISE_OUTBOUND_VETO.search(flat_opening) and not re.search(
-        r"\braising\s+of\s+funds\b|\bfund\s*[- ]?rais|\bQIP\b|\brights\s+issue\b|\bpreferential\s+(?:issue|allotment)\b"
-        r"|\bnon[-\s]?convertible\b|\bNCDs?\b",
-        flat_opening, re.I,
-    ):
-        return None
     is_results = bool(_RESULTS_RELEASE.search(_flat(f"{title} {head[:1500]}")))
+    text = _RAISE_OCR_SPACE.sub(",", text)
     body = _flat(f"{title} {text}")
     sentences = [title] + _clauses(text)
     sizes: list[tuple[float, str | None, int]] = []
@@ -1831,6 +1898,15 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
     continuation = False
     for sentence in sentences:
         if _RAISE_DEBT_VETO.search(sentence) or _RAISE_OUTBOUND_VETO.search(sentence):
+            continuation = False
+            continue
+        cut = len(sentence)
+        for cue in (_RAISE_PRIOR_STEP, _RAISE_CAPITAL):
+            match = cue.search(sentence)
+            if match:
+                cut = min(cut, match.start())
+        sentence = sentence[:cut].strip()
+        if not sentence:
             continuation = False
             continue
         if is_results and _FINANCIAL_METRIC.search(sentence):
@@ -1874,8 +1950,58 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
             merged.append((value, span, computed))
     if any(not computed for _value, _span, computed in merged):
         merged = [item for item in merged if not item[2]]
+    return merged, winners
+
+
+def raise_step_amount(text: str) -> tuple[float | None, str | None]:
+    """(amount in crore, how it was read) of the step a fund-raise filing reports -- never a sum of angles.
+
+    The step's own value is one printed total ("aggregating to Rs X"), or the shares it issued times the issue
+    price.  The 25% upfront and the 75% balance of a warrant, an earlier step's aggregate, a past year's figure
+    and the capital before or after the issue are not this step: a filing that prints 8,00,000 shares at Rs 124
+    and a Rs 4,65,00,000 receipt of the earlier warrant subscription is worth Rs 9,92,00,000, not both.
+    """
+    merged, _winners = _raise_step_sizes("", _flat(text), _flat(text))
+    if not merged:
+        return None, None
+    amount = round(sum(value for value, _span, _computed in merged), 4)
+    how = "; ".join(dict.fromkeys(span for _value, span, _computed in merged if span))
+    return amount, how or "shares x issue price"
+
+
+def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
+    """The raise size, issue price, share count and instrument a fund-raise filing prints.
+
+    A bundled outcome can carry several raises (a preferential issue and warrants): each clause gives its own
+    printed size, the filing is one event, and distinct printed sizes are summed (computed -> unverified).
+    """
+    if _RAISE_VETO.search(_flat(f"{title} {head}")) or not _RAISE_CUE.search(_flat(f"{title} {head}")):
+        return None                 # a note deep in a financial statement is not the company's raise
+    opening = re.split(r"\bAnnexure\b", head, maxsplit=1, flags=re.I)[0][:1200]
+    flat_opening = _flat(f"{title} {opening}")
+    whole = _flat(f"{title} {head}")
+    if _RAISE_AGREEMENT_VETO.search(whole) \
+            and not _OWN_ISSUE_TITLE.search(_flat(title)):
+        return None                 # a facility/loan revision, warrant lapse or stake purchase is not an issuance
+    if _RAISE_DEBT_VETO.search(flat_opening):
+        return None
+    if _RAISE_SUBSIDIARY_VETO.search(_flat(f"{title} {head[:1500]}")) \
+            and not _OWN_ISSUE_TITLE.search(_flat(title)):
+        return None                 # the subsidiary allotted its own shares: the listed company issued nothing
+    if _RAISE_ADVISORY_VETO.search(whole):
+        return None                 # an exchange advisory or lock-in letter about an earlier issue is not one
+    if _RAISE_GENERIC_CUE.search(whole) and not _RAISE_SECURITY.search(whole):
+        return None                 # "fund raising through debt" names no security: nothing was issued
+    if _RAISE_OUTBOUND_VETO.search(flat_opening) and not re.search(
+        r"\braising\s+of\s+funds\b|\bfund\s*[- ]?rais|\bQIP\b|\brights\s+issue\b|\bpreferential\s+(?:issue|allotment)\b"
+        r"|\bnon[-\s]?convertible\b|\bNCDs?\b",
+        flat_opening, re.I,
+    ):
+        return None
+    merged, winners = _raise_step_sizes(title, head, text)
     if not merged:
         return None                      # procedural filing: no size and no shares x price on the held pages
+    body = _flat(f"{title} {text}")
     amount = round(sum(value for value, _span, _computed in merged), 4)
     derived = 1 if len(merged) > 1 or any(computed for _value, _span, computed in merged) else 0
     price_match = next((m for m in (_PRICE.search(s) for s in winners) if m), None) or _PRICE.search(body)
@@ -2326,6 +2452,65 @@ def _assign_raise_ids(rows: list[dict[str, Any]]) -> None:
         best = min(top, key=lambda r: (str(r.get("known_at") or ""), str(r.get("doc_key") or ""),
                                        int(r.get("seq") or 1)))
         best["raise_primary"] = 1
+
+
+def _fold_same_raise(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """C1/T-242 round 5: a press release, errata or second letter repeating a raise step already filed is one
+    event.
+
+    Same company, an amount within 0.5% or the same printed share count, within 10 days: the restating row names
+    the step it repeats in ``amends`` (fresh4 #9, #29, #48, #60).  Two letters filed the same day about one step
+    keep the more advanced stage (a QIP allotment over the board's allocation letter); a step *after* the earlier
+    one, a notice (a postal-ballot or EGM notice is its own dated step) and an earlier-stage row that is not the
+    same day are never folded.
+    """
+    kept: list[dict[str, Any]] = []
+    dropped: set[int] = set()
+    raises = sorted((r for r in rows if r["kind"] == "fund_raise"),
+                    key=lambda r: (str(r.get("known_at") or ""), str(r.get("doc_key") or "")))
+    for row in raises:
+        match = None
+        for prior in kept:
+            if prior["symbol"] != row["symbol"] or prior.get("doc_key") == row.get("doc_key"):
+                continue
+            try:
+                gap = abs((date.fromisoformat(str(row.get("filing_date")))
+                           - date.fromisoformat(str(prior.get("filing_date")))).days)
+            except (TypeError, ValueError):
+                continue
+            if gap > 10:
+                continue
+            same_amount = _same_value(prior, row, tolerance=0.005)
+            same_shares = (prior.get("shares") is not None and row.get("shares") is not None
+                           and abs(float(prior["shares"]) - float(row["shares"])) < 1e-6)
+            if not (same_amount or same_shares) or _RAISE_NOTICE.search(_flat(row.get("title"))):
+                continue
+            rank = _RAISE_STAGE_RANK.get(str(row.get("raise_stage")), 0)
+            prior_rank = _RAISE_STAGE_RANK.get(str(prior.get("raise_stage")), 0)
+            same_day = str(row.get("filing_date")) == str(prior.get("filing_date"))
+            if not same_day and rank > prior_rank:
+                continue            # a later stage is a new dated step of the same raise
+            match = prior
+            break
+        if match is None:
+            kept.append(row)
+            continue
+        rank = _RAISE_STAGE_RANK.get(str(row.get("raise_stage")), 0)
+        prior_rank = _RAISE_STAGE_RANK.get(str(match.get("raise_stage")), 0)
+        if rank > prior_rank:
+            winner, loser = row, match               # the completed step stands, the earlier letter is the repeat
+            kept[kept.index(match)] = row
+            dropped.add(id(match))
+        else:
+            winner, loser = match, row
+            dropped.add(id(row))
+        amends.append({
+            "doc_key": loser["doc_key"], "symbol": loser["symbol"], "amends": winner["doc_key"],
+            "filing_date": loser.get("filing_date"), "known_at": loser.get("known_at"),
+            "why": "same raise step: same stage or a restatement, amount within 0.5% or the same share count, "
+                   "within 10 days; the completed step and its earlier known_at are kept",
+        })
+    return [row for row in rows if id(row) not in dropped]
 
 
 def _drop_restated_capacity(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -2789,6 +2974,7 @@ def build(stores: list[str] | None = None, limit: int | None = None, use_model: 
         meta["stopped"] = "model pass disabled (--no-model)"
 
     rows = _fold_same_order(rows, amends)
+    rows = _fold_same_raise(rows, amends)
     amends = list({item["doc_key"]: item for item in amends}.values())
     _link_amendments(rows)
     _assign_raise_ids(rows)

@@ -8,7 +8,7 @@ split. The factor study needs dated, quantified corporate events, one row per fi
 extractor over calls and annual reports restated facts across documents and stored parent-company facts under a
 subsidiary.
 
-Code `reality_engine/research/filing_events.py`; tests `reality_engine/tests/test_filing_events.py` (85 tests, no
+Code `reality_engine/research/filing_events.py`; tests `reality_engine/tests/test_filing_events.py` (104 tests, no
 network: stage-A real excerpts, stage-B/C/T-242 excerpts from the graded filings, and synthetic traps; every real
 excerpt quotes its `doc_key`). Output DB `--out`, default `.tmp/t231/events.db`; stores are read with `connect_ro`
 (`mode=ro`) and never written.
@@ -67,8 +67,11 @@ source in stage A).
   `completion` is the printed completion phrase.
 * **Capacity** is the capacity added ("to 174 mtpa from 170 mtpa" -> 4 mtpa delta, `unverified`); "100 MT/M" keeps
   `mt_per_month`; `plant` comes only from a printed "at/in <Name>".
-* **Fund raise** is the size, issue price, share count and instrument. A bundled outcome with several raises sums
-  the distinct printed sizes (computed -> `unverified`); a size printed only as shares x price is computed. Stage B
+* **Fund raise** is the size, issue price, share count and instrument of **this step only** (`raise_step_amount`,
+  round 5): one printed total for the step ("aggregating to Rs X") or the shares it issued x the issue price; a
+  bundled outcome with two instruments sums their two printed totals (computed -> `unverified`). The 25% upfront and
+  the 75% balance of a warrant, an earlier step's aggregate, a past year's figure and the paid-up capital before or
+  after the issue are never added (round 5 fixed 7 wrong amounts). Stage B
   fixed the wrong-item case (SHREEPUSHK: the 350 cr capex is capex, the raise is 7,36,196 warrants x 407.5 = 30 cr,
   computed; SPMLINFRA: preferential 5.75 + warrants 177.43 + shares 7.16 = 190.34 cr, computed).
 * Every figure carries the exact printed span (`value_text`), its page (0 = the exchange headline) and the sentence
@@ -85,10 +88,14 @@ stores: 251 events, 0 quarantined, no non-order row verified.
 
 ## 3b. Stage C rules
 
-* **C1 fund-raise stage.** `raise_stage` is `intimation`, `approval`, `allotment`, `listing` or `completion`, read
-  from the title/opening. `_assign_raise_ids` groups rows into one raise by symbol, instrument family, size within
+* **C1 fund-raise stage.** `raise_stage` is `proposed`, `approval`, `allotment`, `listing` or `completion`, read
+  from the title/subject and opening, applied in this order (round 5): a completed allotment -> `allotment`; a
+  postal-ballot or EGM notice -> `proposed`; a board that approved only a draft notice -> `proposed`; a board or
+  shareholder approval of an issue -> `approval`; an exchange in-principle approval -> `approval`; a listing/trading
+  approval -> `listing`; an issue opened/closed/fully subscribed -> `completion`. `intimation` is not a stage.
+  `_assign_raise_ids` groups rows into one raise by symbol, instrument family, size within
   5% (a same-day 2x print is the same raise) and 365 days; `raise_id` is the same across stages and exactly one row
-  per id has `raise_primary=1` (allotment > completion > approval > listing > intimation; earliest on a tie).
+  per id has `raise_primary=1` (allotment > completion > approval > listing > proposed; earliest on a tie).
   Factors select `raise_primary=1`. This run: 157 raise ids, 157 primaries; the JYOTISTRUC 500 cr rights has five
   dated rows (approval Nov 2024, allotment Mar 2025) under one id and one primary.
 * **C2 recap fold.** The same order 8-120 days later (press release recapping an earlier disclosure) folds only
@@ -154,6 +161,65 @@ asserted by a test in `test_filing_events.py`.
    or status**. On the 20 fresh3 stores the round-3 result is unchanged: 251 events, `order_win` verified 193, 0
    rows lost vs `events_round3.db`, only customer clean-ups changed.
 
+## 3d. T-242 round 5 (24 Nov 2026): this step's amount, the stage map, duplicates, vetoes
+
+Third fresh strict 60-row grade of `fund_raise` alone, on 45 stores neither earlier round was tuned on
+(`C:/RealityEngine/t242/events_grade_fundraise/grades.csv` + `pack.jsonl`; DeepSeek a8f57918: 30 R / 16 P / 10 W /
+4 J). Eight script fixes, each asserted by a test in `test_filing_events.py`. `VERIFIED_KINDS` and the `order_win`
+logic are untouched: `fund_raise` is still stored `unverified` (`kind_not_gated`).
+
+1. **The step's own amount** (`raise_step_amount(text) -> (amount_cr, how)`, pure; the shared clause reader is
+   `_raise_step_sizes`). The event amount is what THIS step printed: its one total ("aggregating to Rs X", also when
+   the OCR dropped the currency mark and the figure is Indian-grouped) or the shares it issued x the issue price.
+   Before: 1,140.2161 cr on a QIP that printed 1,85,49,99,790 (the paid-up share count was also multiplied by the
+   price). After: 185.5.
+2. **Components are never added** (`_RAISE_COMPONENT` window around a printed figure: 25%/75%, the remaining
+   exercise price, an equivalent amount). A warrant conversion that printed 8,00,000 shares at Rs 124 and the
+   Rs 4,65,00,000 25% receipt of the earlier subscription is Rs 9.92 cr, not 14.57 (#12, #20, #57: 7.0 and 4.0);
+   the 75% balance is the component of #13's 3,52,941 x 425 = 15.00 cr, not the 500 cr of the December warrant
+   allotment.
+3. **Earlier steps and capital are cut, not summed** (`_RAISE_PRIOR_STEP`: `had allotted`, an earlier/previous
+   issue, `in the FY 2014-15`; `_RAISE_CAPITAL`: paid-up capital before/after the issue, pre/post-issue). The clause
+   is cut at the cue so a genuine total printed before it survives: #32 stores the Rs 500 crore enabling resolution
+   (not 850), #54 the 10,000.00 million QIP (not +602.83 million of pre-issue capital), #10 185.5.
+4. **Vetoes** (`_RAISE_SUBSIDIARY_VETO`, `_RAISE_ADVISORY_VETO`, `_RAISE_GENERIC_CUE` without `_RAISE_SECURITY`):
+   a subsidiary that "has allotted" its own rights shares (the listed company issued nothing), an exchange advisory
+   or lock-in letter about an earlier issue, and "fund raising through debt" with no security named are not
+   issuances (#19, #21, #43 gone).
+5. **Stage map** (`_raise_stage`, `_ALLOTMENT_DONE`, `_RAISE_NOTICE`, `_RAISE_NOTICE_DONE`, `_RAISE_DRAFT_ONLY`,
+   `_RAISE_IN_PRINCIPLE`, `_RAISE_LISTING`, `_RAISE_COMPLETION`): a committee that "allotted 300 NCDs" or "considered
+   and approved the allotment of 1,19,99,847 Equity Shares" completed the allotment; a postal-ballot or EGM notice
+   subject line -> `proposed` (a board outcome that merely lists the EGM notice among its resolutions approved the
+   issue); "approved the draft Postal Ballot Notice" alone -> `proposed`; an exchange in-principle approval ->
+   `approval`, never `listing`; `intimation` is gone. 13/13 stage rows right (#1, #5, #6, #7, #23, #25, #31, #33,
+   #40, #46, #49, #51, #53).
+6. **Duplicates** (`_fold_same_raise`, wired into `build` after `_fold_same_order`): a press release, errata or
+   second letter repeating a step is one event — same company, an amount within 0.5% or the same printed share
+   count, within 10 days — and the repeat names the kept row in `amend` (#9, #29, #48, #60). Two letters filed the
+   same day about one step keep the more advanced stage (the QIP allotment over the board's allocation letter); a
+   notice, and a later stage on a later day, are never folded.
+7. **Tests**: `test_t242_r5_raise_step_amount_is_this_step_only` (six quoted shapes: the QIP total without its
+   currency mark, the 25% receipt, a part conversion, the 75% balance, the millions figure, the enabling
+   resolution), `test_t242_r5_a_bundled_board_approval_still_adds_its_two_instruments`,
+   `test_t242_r5_raise_stage_map` (six stages), `test_t242_r5_not_an_issuance` (three vetoes),
+   `test_t242_r5_a_press_release_repeating_an_allotment_folds`,
+   `test_t242_r5_a_notice_and_a_later_step_do_not_fold`; `test_stage_c_ballot_is_not_an_allotment` now expects
+   `proposed`. 104 passed (86 before).
+8. **Measured** (cache `C:/RealityEngine/t242/events_cache.db` copied to `.tmp/events_cache.db`, 0 new model
+   requests). On the 25 fresh4 stores: 301 -> 290 events, `fund_raise` 86 -> 75 rows (all `unverified`),
+   `amend` links 27 -> 63 (36 raise folds), `order_win` verified 132 (96 script + 36 model) unchanged. On the 20
+   fresh3 stores: 251 -> 249 events, `fund_raise` 36 -> 34, `amend` 30 -> 39, `order_win` verified 193 unchanged.
+   Across the 60 graded rows: 30/30 R rows unchanged in amount, stage and status; 7/7 amount W fixed, 3/3
+   not-an-issuance W gone; 4/4 J folded with an `amend` link; 13/13 stage P right. A few ungraded rows also moved
+   (intended): a subsidiary's cessation notice, an exchange advisory and a limit-revision letter were folded or
+   dropped, and 23 stage labels changed with the map. DBs `.tmp/events_r5_fresh4.db`, `.tmp/events_r5_fresh3.db`;
+   reports `.tmp/events_r5_fresh{4,3}_report.md`.
+9. **Deliberate ceilings.** The component rule keys on a percentage or the remaining-exercise-price wording near
+   the figure, so a filing that prints only the 75% balance and no percentage keeps the printed balance (#22, #41,
+   #45 are the graded R rows and stay at 3.6806, 3.9 and 5.7647 cr). The fold needs the same amount within 0.5% (or
+   the same share count), so a repeat whose number was read differently stays two rows; it never merges an approval
+   with its later allotment.
+
 ## 4. Model fallback
 
 Only a classified **order win** whose printed value the script could not fill is sent, once, to `hy4-flash-free`
@@ -179,6 +245,11 @@ run made 0 new requests (the cache held the earlier replies) and produced 14 ver
 * The exchange feed files the same document twice (BSE + NSE): same symbol, filing date, kind and value/capacity is
   kept once. This is feed dedupe, not cross-filing dedupe: a raise approval and its later allotment remain two dated
   rows, as the brief asks.
+* **B4 same raise step filed twice** (round 5, `_fold_same_raise`): same symbol, `fund_raise`, an amount within 0.5%
+  (or the same printed share count), filing dates within 10 days: the repeat (a press release, an errata, a second
+  letter) names the kept step in `amend` and is dropped. Two letters filed the same day about one step keep the more
+  advanced stage; a notice and a later stage on a later day are never folded (an approval and its allotment stay two
+  rows). 36 folds on the 25 fresh4 stores, 9 on the 20 fresh3 stores.
 
 ## 6. Run (91 stores, 21 Nov 2026)
 
@@ -227,18 +298,20 @@ Recall (30 random order/contract/allot titled filings, seed 9, pool 914): 10 sho
 ## 7. Checks
 
 ```bash
-python -m pytest -q reality_engine/tests/test_filing_events.py   # 85 passed (T-242 round 4)
+python -m pytest -q reality_engine/tests/test_filing_events.py   # 104 passed (T-242 round 5)
 python plugins/code-tools/ct.py typecheck reality_engine/research/filing_events.py \
   reality_engine/tests/test_filing_events.py                     # 2 pre-existing sys.stdout.reconfigure errors
 ```
 
 ## 8. Limitations / not built
 
-* Cross-filing folding is order-only for the duplicated filing (B2/C2); a capex approval and its later press release
-  with a slightly different value can still be two rows (IRMENERGY 337.04 cr on 6/7 Aug 2026 is the known case).
-* A filing that prints a total and a component amount (YASHHV 504: total 151 cr, equity tranche 91 cr) is summed to
-  242 cr; the `raise_id` is right and only the primary row is used, but the size is high. The same pass reads a
-  plain 2x share print as the same raise.
+* Cross-filing folding is order-only for the duplicated filing (B2/C2/C4) and raise-step-only for a raise (B4); a
+  capex approval and its later press release with a slightly different value can still be two rows (IRMENERGY
+  337.04 cr on 6/7 Aug 2026 is the known case).
+* A raise that prints a total and a 25%/75% component is no longer summed (round 5: YASHHV 504 stores the printed
+  total 151 cr, was 242 cr). A filing that prints only a component and never a percentage keeps the printed
+  component (the graded #22/#41/#45 rows are the 75% balance the page prints). The same pass reads a plain 2x
+  share print as the same raise.
 * Recall is counted at event level: a repeat filed under two doc_keys can leave the sampled doc_key without a row
   while the event exists on the twin (SAKAR, KROSS in the seed-21 sample).
 * The model sees only the first two pages; an amount printed deeper is not recovered (it stays `unverified`).

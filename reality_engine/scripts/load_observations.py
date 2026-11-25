@@ -25,8 +25,8 @@ OBS_SOURCES = [
 EVENTS_DB = "D:/RealityEngine/t231/events.db"            # the last fallback
 # T-242 filing_events round 4 (only order_win verified); same first-db-with-rows rule per symbol.
 EVENTS_PRIORITY = [
-    "C:/RealityEngine/t242/events_round4_fresh4.db",
-    "C:/RealityEngine/t242/events_round4_fresh3.db",
+    "C:/RealityEngine/t242/events_r5_fresh4.db",     # round 5 (fund_raise fixes), 25 Nov
+    "C:/RealityEngine/t242/events_r5_fresh3.db",
 ]
 
 DOC_TYPE = {"deck": "deck", "annual_report": "annual_report", "transcript": "transcript"}
