@@ -701,3 +701,103 @@ def test_ar_ckpt2_consolidated_subsidiary_scope_resets_when_label_names_none():
     assert cash["entity_scope"] == "company"
     assert all(r["entity_scope"] == "subsidiary" for r in (sub, nci, stake, fze, sched3))
 
+
+def test_ar_ckpt2_regrade_row_gates_and_negatives():
+    """T-242 AR ckpt_0002 re-grade: rows 14, 18, 36, 37, 46, 48, 40, 57 gated/fixed; valid negatives stay."""
+    # Row 14: ASIANHOTNR p184 'Notes annexed to and forming part of the Consolidated Financial Statements' keeps basis
+    row14 = _gate_row(measure="NEW:contract_labour_and_services", printed_label="Contract labour and services",
+                      series_title="29 Employee Benefit Expenses and Payment to Contractors",
+                      value_text="1,396.99", unit="₹ in Lakhs", period="2024-2025", basis="consolidated")
+    obs.apply_ar_row_gates(
+        [row14],
+        "Annual Report 2025-26 183\nNotes annexed to and forming part of the Consolidated Financial Statements "
+        "for the year ended 31st March, 2026\n29 Employee Benefit Expenses\nContract labour and services 1,396.99\n"
+        "consolidated earlier",
+        "Asian Hotels (North) Limited",
+    )
+    assert row14["basis"] == "consolidated" and row14["basis_source"] == "page_heading"
+    assert row14["status"] == "verified"
+
+    # Row 18: BEMHY p165 MSME trade payables stored as headline trade_payables -> ar_subset_as_total
+    row18 = _gate_row(measure="trade_payables", printed_label="- Due to Micro Enterprises & Small Enterprises",
+                      series_title="5.23 Trade Payables", value_text="392.44", unit="₹ in Lakhs",
+                      period="31-03-2025", segment="Due to Micro Enterprises & Small Enterprises")
+    # Row 37: ABFRL p267 one class of preference shares stored as NEW:preference_share_capital -> ar_subset_as_total
+    row37 = _gate_row(measure="NEW:preference_share_capital", printed_label="Preference shares of ` 10/- each",
+                      series_title="NOTE 21 : EQUITY SHARE CAPITAL > Authorised share capital > Preference share capital",
+                      value_text="10.00", unit="` in Crore", period="As at March 31, 2025")
+    # Row 46: BANSWRAS p42 Yarn division stored as revenue_from_operations -> ar_subset_as_total
+    row46 = _gate_row(measure="revenue_from_operations", printed_label="Yarn",
+                      printed_axis="Revenue (Rs. In Crores)", group_path="SEGMENT-WISE PERFORMANCE",
+                      value_text="459", unit="Rs. In Crores", period="2024-25", segment="Yarn")
+    # Negatives for subset gate that must stay verified
+    rev_tot = _gate_row(measure="revenue_from_operations", printed_label="Revenue from operations",
+                        value_text="1,342", unit="Rs. In Crores", period="2025-26")
+    tp_tot = _gate_row(measure="trade_payables", printed_label="Trade payables - Total",
+                       series_title="5.23 Trade Payables", value_text="1,818.49", unit="₹ in Lakhs",
+                       period="31-03-2025")
+    obs.apply_ar_row_gates([row18, row37, row46, rev_tot, tp_tot],
+                           "FY 2025-26 2024-25 31-03-2025 As at March 31, 2025", "")
+    assert row18["status"] == "unverified" and "ar_subset_as_total" in row18["status_reason"]
+    assert row37["status"] == "unverified" and "ar_subset_as_total" in row37["status_reason"]
+    assert row46["status"] == "unverified" and "ar_subset_as_total" in row46["status_reason"]
+    assert rev_tot["status"] == "verified" and tp_tot["status"] == "verified"
+
+    # Row 36: ARVSMART p261 'Investments made during the year' stored as investments -> ar_flow_as_stock
+    row36 = _gate_row(measure="investments", printed_label="Arvind Infracon LLP",
+                      series_title="38. Related party transactions (contd.)",
+                      group_path="Investments made during the year", value_text="1,400.80",
+                      unit="INR Lakhs", period="March 31, 2026", entity_scope="subsidiary")
+    inv_close = _gate_row(measure="investments", printed_label="Investments",
+                          series_title="Note 6 : Investments", value_text="500.00",
+                          unit="INR Lakhs", period="March 31, 2026")
+    obs.apply_ar_row_gates([row36, inv_close],
+                           "March 31, 2026\nInvestments made during the year\nArvind Infracon LLP 1,400.80\n"
+                           "Note 6 : Investments\nInvestments 500.00", "")
+    assert row36["status"] == "unverified" and "ar_flow_as_stock" in row36["status_reason"]
+    assert inv_close["status"] == "verified"
+
+    # Row 48: BHARTIARTL p190 non-current unsecured term loans stored as ..._current_net -> ar_current_mismatch
+    row48 = _gate_row(measure="NEW:unsecured_term_loans_current_net", printed_label="Unsecured Term loans",
+                      group_path="Non-current", value_text="1,095", unit="INR Million", period="March 31, 2026")
+    cur_mat = _gate_row(measure="NEW:current_maturities_of_long_term_debt",
+                        printed_label="Current maturities of long-term debt",
+                        series_title="24 NON-CURRENT BORROWINGS", value_text="18,656",
+                        unit="INR Million", period="March 31, 2026")
+    obs.apply_ar_row_gates([row48, cur_mat], "March 31, 2026", "")
+    assert row48["status"] == "unverified" and "ar_current_mismatch" in row48["status_reason"]
+    assert cur_mat["status"] == "verified"
+
+    # Row 40: BHARATWIRE p20 MD&A ratio tagged subsidiary (no MD&A in head) -> ar_subsidiary_unnamed
+    row40 = _gate_row(measure="roe", printed_label="Return on Net worth", series_title="Ratios",
+                      value_text="9.36%", unit="%", period="FY 2025-2026", entity_scope="subsidiary")
+    obs.apply_ar_row_gates([row40], "Bharat Wire Ropes Limited\nVIII. Financial Performance\nFY 2025-2026 9.36%",
+                           "Bharat Wire Ropes Limited")
+    assert row40["status"] == "unverified" and "ar_subsidiary_unnamed" in row40["status_reason"]
+
+    # Row 57: BHEL p92 Board Report captive solar tagged subsidiary -> entity_scope='company', stays verified
+    row57 = _gate_row(measure="generation.volume",
+                      printed_label="renewable energy output from captive solar installations reached",
+                      value_text="44.21", unit="million units", period="FY 2025-26",
+                      entity_scope="subsidiary", segment="renewable energy")
+    obs.apply_ar_row_gates([row57], "FY 2025-26 renewable energy output 44.21\nANNUAL REPORT 2025-26\nBoard Report\n89",
+                           "Bharat Heavy Electricals Limited")
+    assert row57["entity_scope"] == "company" and row57.get("scope_source") == "no_subsidiary_named"
+    assert row57["status"] == "verified"
+
+    # Rule 5 negatives: named subsidiary, SpA/JV/AOC-1/related-party stay subsidiary and verified
+    adani = _gate_row(measure="shareholding_pct", printed_label="Adani Agri Logistics (Darbhanga) Limited",
+                      value_text="100%", unit="%", period="FY 2025-26", entity_scope="subsidiary")
+    alkem = _gate_row(measure="revenue.value", printed_label="Ascend Laboratories SpA",
+                      series_title="Details of Transactions with Related Parties",
+                      value_text="1,910.4", unit="INR Lakhs", period="FY 2025-26", entity_scope="subsidiary")
+    ajr = _gate_row(measure="ownership_stake_pct", printed_label="GIPL - GECPL JV",
+                    series_title="Notes to Consolidated Financial Statements",
+                    value_text="40.00%", unit="%", period="FY 2025-26", entity_scope="subsidiary")
+    bosch = _gate_row(measure="count.shares", printed_label="Nos.",
+                      series_title='Part "B": Associates and Joint Ventures',
+                      value_text="6,400,000", unit="Nos.", period="FY 2025-26", entity_scope="subsidiary")
+    obs.apply_ar_row_gates([adani, alkem, ajr, bosch], "FY 2025-26", "")
+    assert all(r["entity_scope"] == "subsidiary" and r["status"] == "verified" for r in (adani, alkem, ajr, bosch))
+
+
