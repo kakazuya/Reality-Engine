@@ -1,6 +1,6 @@
-"""T-242 retrieval fix 8: the paraphrase reaches the prepared-remark sentence, a KPI the page prints is served even
-when the row check quarantined it (labelled, never verified), and a target its own page disclaims or calls an
-aspiration is never elected first; a money ask skips allocation-share noise and "capital expenditure" reaches capex.
+"""T-242 retrieval fix 8: the paraphrase reaches the prepared-remark sentence, a quarantined KPI stays held and never
+served (fix 8b), and a target its own page disclaims or calls an aspiration is never elected first; a money ask skips
+allocation-share noise and "capital expenditure" reaches capex.
 
     python -m pytest -q plugins/reality-data/tests/test_retrieval_fix8.py
 
@@ -89,7 +89,7 @@ def store() -> Iterator[Path]:
         period_type="actual", fiscal_period="FY26", basis="consolidated", doc_key=DECK_DOC, page=330,
         quote="capital expenditure of Rs 10,360 Million", known_at="2026-08-20T12:00:00", raw_label="capital expenditure",
         extractor_rule="t")
-    # 3. a quarantined KPI whose page prints the value: served as evidence, never as verified
+    # 3. a quarantined KPI whose page prints the value: held and disclosed, never served (fix 8b, standing ruling)
     add("kpi_series", symbol=SYM, metric="order intake", dimension="total", value=22.0, unit="inr_cr", scale=1.0,
         period_type="actual", fiscal_period="Q1FY27", basis="not_stated", doc_key=CALL_DOC, page=3,
         quote="Orders worth Rs.22 Crores", known_at=f"{FILED}T12:00:00", raw_label="order intake",
@@ -167,12 +167,16 @@ def test_capital_expenditure_reaches_the_capex_row(store: Path) -> None:
     assert reply["answer"]["value_cr"] == 1036.0, reply["answer"]
 
 
-def test_a_quarantined_kpi_the_page_prints_is_served_labelled(store: Path) -> None:
+def test_a_quarantined_kpi_is_held_and_never_served(store: Path) -> None:
+    # fix 8b: Shivam's 8 Nov ruling is that a quarantined row is NEVER served.  The only match is quarantined, so
+    # the reply is found=false with held_quarantined naming the period/dimension and the include_quarantined=true way.
     reply = p3.kpi(SYM, "order intake", "Q1FY27")
-    assert reply["found"], reply
-    row = reply["rows"][0]
-    assert row["value"] == 22.0 and row["check_status"] == "quarantined", row
-    assert "warning" in row and "quarantined" in str(row["warning"]), row
+    assert reply["found"] is False, reply
+    assert not reply["rows"], reply
+    held = " ".join(reply.get("held_quarantined") or [])
+    assert "Q1FY27" in held and "quarantined" in held and "include_quarantined=true" in held, reply
+    shown = p3.kpi(SYM, "order intake", "Q1FY27", include_quarantined=True)
+    assert shown["rows"][0]["value"] == 22.0 and shown["rows"][0]["check_status"] == "quarantined", shown["rows"][0]
 
 
 def test_a_clean_kpi_row_is_never_preceded_by_a_quarantined_one(store: Path) -> None:

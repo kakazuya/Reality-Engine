@@ -1388,26 +1388,6 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
             f"SELECT fiscal_period, dimension, COUNT(*) FROM kpi_series WHERE symbol=? AND metric IN "
             f"({','.join('?' * len(names))}){_visible('kpi_series')} "
             f"GROUP BY 1, 2 ORDER BY MAX(known_at) DESC LIMIT 40", (sym, *names))]
-        # T-242 fix 8: a quarantined row is still the page's own statement.  When it is the ONLY match and its
-        # label/quote prints the asked words, serve it -- labelled quarantined with a warning, never as verified and
-        # never beside a clean row (this branch runs only after no clean row was served).
-        if not include_quarantined and _has_table("row_check"):
-            q_where = (visible_where + " AND EXISTS (SELECT 1 FROM row_check rc2 WHERE rc2.tbl='kpi_series' "
-                       "AND rc2.row_id=k.id AND rc2.status='quarantined')")
-            q_rows = _q(sel + f"WHERE {q_where}{extra} " + q_tail, (*args, *eargs, _cap(limit) * 5))
-            if natural is not None:
-                q_rows = [r for r in q_rows if _period_matches(r["fiscal_period"], period)]
-            printed = [w for w in re.split(r"[^a-z0-9]+", str(metric_asked).lower()) if len(w) > 2]
-            q_items = [item for item in _items(q_rows)
-                       if any(w in f"{item.get('raw_label') or ''} {item.get('quote') or ''}".lower()
-                              for w in printed)]
-            if q_items:
-                for item in q_items:
-                    item["check_status"] = "quarantined"
-                    item["status"] = "quarantined"
-                    item["warning"] = ("the independent row check quarantined this row; the page prints the value "
-                                       "with the asked label, so it is served as evidence, not as a verified figure")
-                out = q_items[: _cap(limit)]
         # A figure the row check quarantined is still held (T-113): say so, or the caller reads a deliberate hide
         # as "not in data" (CHOLAFIN Q2FY27 NIM 7.9 is exactly this, T-165).
         if not out and not include_quarantined and _has_table("row_check"):

@@ -1,11 +1,11 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 (dsh fix 8)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 (dsh fix 8b)
 History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
 - Stores `D:/RealityEngine/{p20/p20new.db,u8/u8.db,q12/q12.db,n10/n10.db,pilot10/pilot10.db}`; backups `*_before_rebuild_2026-11-11.db`.
 - Extraction: `v2/page_words.py` -> `page_layout.py` -> `page_route.py` (T-189, four routes; `table_or_chart` read on the page IMAGE, `needs_ocr` on its OCR words since T-238, plus the two T-242 deck options) -> `reference_geom.py` (T-185) -> `page_reader.py` writes page_cell verified/unverified/quarantined, served by `pilot3_cells`. T-199 atoms (`page_atom` v10): `docs/PILOT3_BLUEPRINT.md` T-199 block.
 - T-225 checker open: FROZEN 464/773, target 95%.
-- 24-26 Nov T-242: `grade_pack.py`, `docs/grading/`. audits 4-8: 45R3P / 36R1P11M / 35R5P2W5M1N / 29R16P1W1M1N / 29R7P2W10M. F3/4: 25-row window <19 kB; named call by date ±3 d. F5: named call served by its printed call-date docs. F7/7b/7c: company figure first (others labelled), paraphrase sentence rank, group guidance election; audit7 30R->39R vs live. F6: held-but-quarantined guidance disclosed, obs_fact guidance fallback, PAT/as-on aliases, all-ask-word sentence first, filed beats call figure >20%; audit-6 replay 36R->45R. F8: prepared-remark sentence, IDF ask-word weight, quarantined KPI served labelled, disclaimed targets demoted, capex alias; 144-row audit-6/7/8 replay 0R lost, audit 8 27R->34R.
+- 24-26 Nov T-242: `grade_pack.py`, `docs/grading/`. audits 4-8: 45R3P / 36R1P11M / 35R5P2W5M1N / 29R16P1W1M1N / 29R7P2W10M. F3/4: 25-row window <19 kB; named call by date ±3 d. F5: named call served by its printed call-date docs. F7/7b/7c: company figure first (others labelled), paraphrase sentence rank, group guidance election; audit7 30R->39R vs live. F6: held-but-quarantined guidance disclosed, obs_fact guidance fallback, PAT/as-on aliases, all-ask-word sentence first, filed beats call figure >20%; audit-6 replay 36R->45R. F8: prepared-remark sentence, IDF ask-word weight, disclaimed targets demoted, capex alias. F8b: a quarantined KPI is never served (held_quarantined only). audit 8 27R->32R.
 - OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD (`--start/--max-workers`), Zen rotates Nemotron VL / DeepSeek Flash by speed.
 - 26 Nov tx statement window (Eagle, 0e8b95f3): sentence snap + referent widen, page-local; recheck dedupes exact repeats.
 - 26 Nov AR gates r4: jv/associate scopes (unnamed never verified), subsidiary/parent need a printed name, junk ordinals/tenures dropped; deck untied chart values unverified.
@@ -22,4 +22,4 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 Store copy: checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE`. Merge: grader row first; merge_worker; drop root PROGRESS_NOTES.md; tests per file; docs; remove worktree; log in worker_reviews.jsonl. Store diff: `reality_engine.scripts.store_diff`.
 - 25 Nov AR re-grade gates merged (Hydrogen, T-242): 5(c) unnamed-sub 184 unverified, 535 reset to company, 0 R changed. Next: --recheck AR copy, non-author grade, then load.
 - 26 Nov: tx recheck waits for 0e8b95f3 (referent window + dedupe) (Eagle)
-26 Nov (Wolf): fix 8 replay 0R lost, audit 8 27R->34R; NEXT audit 9.
+26 Nov (Wolf): fix 8/8b replay 0R lost, audit 8 27R->32R; NEXT audit 9.

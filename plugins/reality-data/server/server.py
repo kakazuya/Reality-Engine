@@ -509,12 +509,11 @@ def pilot3_fact(symbol: str, metric: str, period: str | None = None, basis: str 
         "assets -> credit_cost_bps, cost of funds / cost of borrowings -> cost_of_funds_pct. period: Q2FY26, "
         "FY26, H1FY26 or a date. dimension (segment/product; total first), basis, as_of. Each row: value, "
         "unit (plus value_inr and value_cr in crores for INR money figures), period, quote, provenance (document, "
-        "page, known_at). A row whose independent check failed is normally hidden "
-        "(include_quarantined=true returns it); when it is the ONLY match and its label or quote prints the asked "
-        "words, it is served marked check_status='quarantined' with a `warning` (never as a verified row, and never "
-        "ahead of a verified/unverified row); every row carries check_status = verified, unverified or quarantined "
-        "unverified (unverified rows add check_note, the soft checks that did not pin them): prefer verified rows "
-        "and say 'unverified' when quoting an unverified one."
+        "page, known_at). A row whose independent check failed is NEVER served (include_quarantined=true is the "
+        "only way to return it); when no clean row matches, `held_quarantined` says the quarantined rows are held, "
+        "with the include_quarantined=true hint. Every row carries check_status = verified or unverified (unverified "
+        "rows add check_note, the soft checks that did not pin them): prefer verified rows and say 'unverified' when "
+        "quoting an unverified one."
     ),
     annotations=_RO,
 )
