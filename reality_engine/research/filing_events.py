@@ -833,8 +833,12 @@ def _capex_candidate(title: str, head: str) -> bool:
                for sentence in _clauses(head))
 
 
-def classify(title: str, head: str, filing_date: str | None = None) -> list[str]:
-    """The classes one announcement names, at most once each, from its title and first two pages."""
+def classify(title: str, head: str, filing_date: str | None = None, text: str | None = None) -> list[str]:
+    """The classes one announcement names, at most once each, from its title and first two pages.
+
+    ``text`` (the held pages) is only read for a raise whose step amount is printed past page 2 (KPIGREEN #47):
+    the class still needs the size, so a title-and-head cue alone never makes a fund_raise.
+    """
     body = _flat(f"{title} {head}")
     is_results = bool(_RESULTS_RELEASE.search(_flat(f"{title} {head[:1500]}")))
     is_rollup = bool(_ORDER_ROLLUP.search(body)) or bool(_ORDER_INFLOW_TITLE.search(title))
@@ -866,7 +870,7 @@ def classify(title: str, head: str, filing_date: str | None = None) -> list[str]
 
     # fund raise: a decided raise (or an explicit raise title whose details are inside), not a rating or a
     # SEBI framework circular that merely says "fund raising".
-    if raise_fields(title, head, head):
+    if raise_fields(title, head, text or head):
         found.append("fund_raise")
     return found
 
@@ -2320,11 +2324,68 @@ def _raise_size_family(sentence: str) -> str:
     return "other"
 
 
+# T-242 r7b: a warrant/CCD conversion receives the BALANCE of the issue price at conversion and the letter
+# prints it.  The printed receipt is the step ("upon receipt of amount aggregating to Rs X ... (being remaining
+# 75% of the issue price per warrant)", RATNAVEER #17), never a computed 100% from the full issue price; when
+# only the per-unit balance is printed ("Post receipt of balance amount at the rate of Rs. 48.75 per warrant,
+# N Equity Shares have been allotted") the step is N x that balance price (MANAKCOAT #22, #41, #45).
+_RAISE_BALANCE_MARK = re.compile(r"\bbeing\s+(?:the\s+)?remaining\s+(?:25|75)\s*%", re.I)
+_RAISE_AGGREGATE_RS = re.compile(
+    r"\baggregat(?:ing|ed)?\s*(?:to|upto|up\s*to)?\s*(?:Rs\.?|INR|₹)\s*(?P<v>\d[\d,]{6,}(?:\.\d+)?)", re.I)
+_RAISE_BALANCE_UNIT = re.compile(
+    r"(?:Rs\.?|INR|₹)\s*(?P<v>[\d,]+(?:\.\d+)?)\s*(?:/-)?\s*(?:per|each)\s+(?:warrant|equity\s+share|share)\b", re.I)
+# T-242 r7b: the listed company's OWN issue is an issuance, whatever else the pages mention.  A share swap that
+# pays another company's sellers in the company's own shares allots its own paper, so "acquisition"/"investment"
+# on the same page is the consideration, not another issuer (#24, #50); a priced issuance ("at a price of Rs
+# X per share") is the company's raise, an unpriced swap tranche inside a cash raise still is not (#49).
+_OWN_PRICED_ISSUE = re.compile(
+    r"\b(?:issue|issued|issuance|issuing|allotment|allotted)\b[\s\S]{0,200}?\b(?:equity\s+|preference\s+)?shares?\b"
+    r"[\s\S]{0,160}?\bprice\s+(?:of|per)\s+(?:Rs\.?|INR|₹)\s*\d[\d,]*", re.I)
+_OWN_ISSUE_RAISE = re.compile(
+    r"\b(?:issuance|issue|allotment)\s+(?:of\s+)?(?:the\s+)?(?:[\d,]+\s+)?(?:non[-\s]?convertible\s+)?"
+    r"(?:debentures?|NCDs?)\b", re.I)
+
+
+def _balance_receipt(body: str) -> tuple[float, str, str] | None:
+    """(crore, printed span, clause) of the balance a conversion letter says it received, else None."""
+    for match in _RAISE_AGGREGATE_RS.finditer(body):
+        window = body[match.end():match.end() + 240]
+        if _RAISE_BALANCE_MARK.search(window):
+            return (round(_digits(match.group("v")) / 1e7, 4), match.group(0),
+                    body[max(0, match.start() - 200):match.end() + 240])
+    return None
+
+
+def _balance_unit_price(body: str) -> float | None:
+    """The balance price per warrant/share the letter prints ("at the rate of Rs. 48.75 per warrant")."""
+    for match in _RAISE_BALANCE_UNIT.finditer(body):
+        before = body[max(0, match.start() - 220):match.start()]
+        if not _RAISE_BALANCE_CLAUSE.search(before):
+            continue
+        try:
+            price = float(match.group("v").replace(",", ""))
+        except ValueError:
+            continue
+        if 0.01 <= price <= 100_000:
+            return price
+    return None
+
+
 def _raise_count_size(sentence: str, body: str) -> tuple[float | None, str | None, int, int]:
     """The securities THIS clause allots or converts, times the issue price of that security."""
     shares, count_kind = _step_count(sentence)
+    if shares is None and _PRICE.search(sentence):
+        # a SEBI template cell prints the count without a raise verb ("Up to 48,134 Equity Shares of the
+        # Company ... at a price of INR 1454.30"); the price in the same clause anchors it (#18).
+        shares, _span = _shares_in(sentence)
+        count_kind = "equity shares" if shares else None
     if shares is None:
         return None, None, 0, 0
+    balance = _balance_unit_price(body)
+    if balance:
+        # a warrant conversion pays the BALANCE of the issue price at conversion: count x the balance price
+        # the letter prints, never count x the full issue price (MANAKCOAT #22, #41, #45).
+        return round(shares * balance / 1e7, 4), f"{count_kind or 'shares'} x balance price {balance:g}", 1, 0
     price, price_span = _instrument_price(sentence, body, _raise_instrument(sentence), count_kind)
     if shares and price:
         label = price_span or f"{price:g}"
@@ -2501,6 +2562,11 @@ def _raise_step_sizes(title: str, head: str, text: str) \
     is_results = bool(_RESULTS_RELEASE.search(_flat(f"{title} {head[:1500]}")))
     text = _RAISE_OCR_SPACE.sub(",", text)
     body = _flat(f"{title} {text}")
+    receipt = _balance_receipt(body)
+    if receipt is not None:
+        # the title still names this step's count and issue price, so it stays a winner beside the receipt
+        winners = [title, receipt[2]] if title else [receipt[2]]
+        return [(receipt[0], receipt[1], 0)], winners, [_raise_size_family(receipt[2])]
     # the subject line names the step ("Allotment of 75,000 Equity shares upon conversion of warrants"): the
     # count it prints is what THIS filing allot, and the letter's later background/balance figures cannot
     # replace it (#17, #19, #21, #41).
@@ -2514,7 +2580,8 @@ def _raise_step_sizes(title: str, head: str, text: str) \
     continuation = False
     for sentence in sentences:
         if _RAISE_DEBT_VETO.search(sentence) or _RAISE_OUTBOUND_VETO.search(sentence) \
-                or _RAISE_NOT_STEP.search(sentence) or _RAISE_OTHER_DEAL.search(sentence):
+                or _RAISE_NOT_STEP.search(sentence) \
+                or (_RAISE_OTHER_DEAL.search(sentence) and not _OWN_PRICED_ISSUE.search(sentence)):
             continuation = False
             continue
         cut = len(sentence)
@@ -2633,7 +2700,10 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
         return None                 # a note deep in a financial statement is not the company's raise
     opening = re.split(r"\bAnnexure\b", head, maxsplit=1, flags=re.I)[0][:1200]
     flat_opening = _flat(f"{title} {opening}")
-    if _RAISE_FOREIGN_ISSUE_VETO.search(_flat(f"{title} {head}")):
+    merged, winners, families = _raise_step_sizes(title, head, text)
+    if _RAISE_FOREIGN_ISSUE_VETO.search(_flat(f"{title} {head}")) and not any(
+        _OWN_PRICED_ISSUE.search(winner) or _OWN_ISSUE_RAISE.search(winner) for winner in winners
+    ):
         return None                 # the listed company is not the issuer: another entity's issue, an acquisition, a loan
     whole = _flat(f"{title} {head}")
     if _RAISE_AGREEMENT_VETO.search(whole) \
@@ -2648,7 +2718,7 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
         return None                 # an exchange advisory or lock-in letter about an earlier issue is not one
     if _RAISE_GENERIC_CUE.search(whole) and not _RAISE_SECURITY.search(whole):
         return None                 # "fund raising through debt" names no security: nothing was issued
-    if _RAISE_OUTBOUND_VETO.search(flat_opening) and not re.search(
+    if _RAISE_OUTBOUND_VETO.search(flat_opening) and not _OWN_PRICED_ISSUE.search(flat_opening) and not re.search(
         r"\braising\s+of\s+funds\b|\bfund\s*[- ]?rais|\bQIP\b|\brights\s+issue\b|\bpreferential\s+(?:issue|allotment)\b"
         r"|\bnon[-\s]?convertible\b|\bNCDs?\b",
         flat_opening, re.I,
@@ -2664,7 +2734,6 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
     if re.search(r"\bany\s+instrument\s+or\s+security\b|\bor\s+(?:a|any)\s+combination\s+thereof\b", clean_body, re.I) \
             and sum(1 for _name, rx in _INSTRUMENTS[:6] if rx.search(clean_body)) >= 3:
         instrument = "mixed"
-    merged, winners, families = _raise_step_sizes(title, head, text)
     # a size belongs to the instrument the row reports: a QIP notice never takes the NCD resolution's amount
     merged = [size for size, family in zip(merged, families) if _raise_family_ok(instrument, family)]
     if not merged:
@@ -2877,7 +2946,7 @@ def event_rows(doc: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
     filing_date = doc.get("filing_date")
     rows: list[dict[str, Any]] = []
     missing: list[str] = []
-    classes = classify(title, head, filing_date=filing_date)
+    classes = classify(title, head, filing_date=filing_date, text=text)
     amendment_fields = order_amendment_fields(title, head, text) or {} if "order_amendment" in classes else {}
     excluded = {round(float(amendment_fields["amount_inr_cr"]), 4)} \
         if amendment_fields.get("amount_inr_cr") is not None else None
