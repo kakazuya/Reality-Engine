@@ -16,6 +16,8 @@ Files:
   (`file:...?mode=ro`).
 - You write and commit NO files. Your final answer carries the results.
 
+Evidence: ckpt_0006 grades C:/RealityEngine/t242/tx394_ckpt6/grades.csv (48/8/1/3); the 3 J lines are absent from the r4 copy (Eagle checked).
+
 Steps:
 1. Grade each row R / P / W / J by the rubric:
    - the statement is printed on the page, said by the stored speaker (management, not the analyst or moderator);
@@ -28,6 +30,7 @@ Steps:
 4. Final answer, part 2: counts R/P/W/J, the step-2 lists, and the 3 commonest failure kinds with
    row ids.
 
+Accept: the final answer holds 60 CSV lines with grades and the counts.
 Bar: at least 70% R and at most 5% W+J.
 Stop if: a page cannot be found (grade it J "page not found" and go on). Never write a file.
 Budget: about 60 minutes.

@@ -16,6 +16,8 @@ Files:
   read-only (`file:...?mode=ro`, uri=True). Read pages 1-3.
 - You write NO files and make no commits. Your final answer carries the results.
 
+Evidence: the fresh5 grade of round 6 was 39/5/14/2 (C:/RealityEngine/t242/audit_orderwin_fresh5/grades.csv); round 7 fixed its causes on fresh5 only. fresh6 is 40 stores no round has seen.
+
 Steps:
 1. Grade each row strictly R / P / W / J against the filing text:
    - Kind: the filing announces an order, contract or LoA won by THIS company. Never an order: a bid in progress,

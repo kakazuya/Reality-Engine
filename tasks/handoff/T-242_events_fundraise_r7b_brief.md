@@ -2,7 +2,11 @@
 
 Ticket: T-242
 
-Round 7 (branch dsh/20261125T052722Z-749d4e61) fixes 22/22 W and 6/6 P on fresh5, but on the ROUND-5 grade set
+Goal: restore 9 graded R rows broken by round 7 without losing its fresh5 fixes.
+
+Files: reality_engine/research/filing_events.py (fund_raise paths only), reality_engine/tests/test_filing_events.py, docs/research/T-231_filing_events.md, docs/DEVELOPER_GUIDE.md. Your worktree starts from round 7 (branch dsh/20261125T052722Z-749d4e61) merged with current main (order_win round 7 is merged there; keep it).
+
+Evidence: round 7 (branch dsh/20261125T052722Z-749d4e61) fixes 22/22 W and 6/6 P on fresh5, but on the ROUND-5 grade set
 (C:/RealityEngine/t242/events_grade_fundraise/pack.jsonl + grades.csv, stores fresh4/fresh3) it breaks 9 rows that
 were graded R. Your stop rule (>25% of fund_raise rows moved on fresh4) also fired, and you carried on: next time
 stop and report.
@@ -32,3 +36,4 @@ Steps:
 Accept: all 9 rows back to their graded value; fresh5 still at least 18/22 W fixed and 0 R broken; order_win
 215/132/179 unchanged; test_filing_events.py passes.
 Stop if: a fix for one of these rows re-breaks a fresh5 fix twice. Report it, don't trade.
+Budget: about 2 hours; worktree only.
