@@ -1038,6 +1038,45 @@ _LOGISTICS_SENTENCE_RE = re.compile(
     r"|^i\s+hope\s+you\b", re.I)
 
 
+# T-242 (25 Nov): closing thanks and deferrals the greeting patterns above do not reach. A closing line ends after
+# the thanks/wish (no answer tail), so these anchor at the end of the sentence.
+_CLOSING_THANKS_RE = re.compile(
+    r"^(?:(?:yes|yeah|no|well|okay|ok|right|sure|so|now|and|once\s+again|again|finally|lastly|with\s+that)[,\s]+)*"
+    r"(?:thank\s+you|thanks)"
+    r"(?:\s+(?:so\s+much|very\s+much|a\s+lot|all|everyone|everybody|one\s+and\s+all|folks|sir|madam))?"
+    r"(?:\s+for\s+(?:joining(?:\s+(?:us|the\s+call|today))?|your\s+(?:time|questions|participation|continued\s+support)"
+    r"|attending(?:\s+(?:the\s+call|today))?|being\s+(?:here|with\s+us)))?"
+    r"(?:[,\s]+(?:and\s+)?(?:all\s+the\s+best|best\s+of\s+luck|good\s+luck|take\s+care|stay\s+safe))?\s*[.!]*$"
+    r"|^(?:(?:so|now|and)[,\s]+)*(?:(?:we|i)\s+)?(?:wish|wishing)\s+(?:you|all\s+of\s+you|everyone)(?:\s+all)?\s+a\s+"
+    r"(?:good|great|nice|lovely|wonderful)\s+(?:evening|day|night|weekend)\b"
+    r"(?:[,\s]+(?:and\s+)?(?:take\s+care|stay\s+safe))?[.!?]*$"
+    r"|^(?:(?:so|now|and)[,\s]+)*(?:we|i)\s+(?:look|are\s+looking)\s+forward\s+to\s+"
+    r"(?:interacting|speaking|talking|engaging|meeting|seeing)(?:\s+with\s+(?:you|all\s+of\s+you))?"
+    r"(?:\s+(?:again|soon|next\s+quarter|in\s+the\s+next\s+call)){0,2}[.!?]*$",
+    re.I,
+)
+
+# A deferral to after the call / offline: a promise to answer later, not an answer. The deferral marker must be
+# present ("to you", "offline", "post this call", ...), so "we will get back to growth" is never a deferral.
+_DEFERRAL_SENTENCE_RE = re.compile(
+    _DEFER_PREAMBLE + r"(?:"
+    r"(?:(?:we|i)\s*(?:'ll|'d|\u2019ll|\u2019d|\s+will|\s+would|\s+can|\s+could|\s+may|\s+might)?\s*"
+    r"(?:(?:be\s+able\s+to|try\s+to|like\s+to)\s+)?(?:get\s+back|come\s+back|revert|follow\s+up)\b"
+    r"[^.!?;]{0,60}?\b(?:to\s+you|offline|post\s+(?:this|the)\s+call|after\s+(?:this|the)\s+call|separately|later|on\s+that)\b)"
+    r"|please\s+(?:reach\s+out|get\s+in\s+touch)\b[^.!?;]*\b(?:ir|investor\s+relations)\b"
+    r"|(?:we|i)\s+(?:can|could|will|would)\s+take\s+(?:it|this|that)\s+offline\b"
+    r")[^.!?;]*[.!?]*$",
+    re.I,
+)
+
+# A generic closing platitude: confidence, governance, team or gratitude language with no figure and no substantive
+# clause. Deliberately excludes expect/hope/guidance/target so an outlook sentence is never read as a platitude.
+_CLOSING_PLATITUDE_RE = re.compile(
+    r"\b(?:confiden(?:t|ce)|positive|excited|assurance|mindful|transparen(?:t|cy)|well[- ]governed|governance"
+    r"|nice\s+(?:talking|speaking|chatting)\s+to|(?:my|our)\s+team|humbled|grateful|proud|committed|commitment"
+    r"|endeavour|endeavor|utmost\s+(?:care|integrity)|highest\s+standards?)\b", re.I)
+
+
 def _sentences(text: str) -> list[str]:
     """Split on . ! ? followed by space, keeping a title's dot inside its sentence ("to Mr. Sohoni ...")."""
     guarded = _ABBREV_DOT_RE.sub(lambda m: m.group(0)[:-1] + "\u2024", _normalise_ligatures(text))
@@ -1057,11 +1096,39 @@ def _boilerplate_sentence(sentence: str) -> bool:
     return bool(_LOGISTICS_SENTENCE_RE.search(sent))
 
 
+def _closing_platitude(sentence: str) -> bool:
+    """A figure-free generic closing line (confidence, governance, team) with no substantive clause."""
+    sent = _normalise_ligatures(sentence).strip()
+    if not sent or _has_figure(sent) or _SUBSTANTIVE_CLAUSE_RE.search(sent):
+        return False
+    return bool(_CLOSING_PLATITUDE_RE.search(sent))
+
+
+def _closing_remarks_passage(sentences: list[str]) -> bool:
+    """T-242 (25 Nov): a figure-free passage that opens or closes with a thanks/deferral and whose every other
+    sentence is a figure-free platitude; any figure, outlook or substantive clause keeps it."""
+    has_closing = False
+    for sent in sentences:
+        if _greeting_sentence(sent) or _boilerplate_sentence(sent) \
+                or _CLOSING_THANKS_RE.match(_normalise_ligatures(sent)) \
+                or _DEFERRAL_SENTENCE_RE.match(_normalise_ligatures(sent)):
+            has_closing = True
+            continue
+        if not _closing_platitude(sent):
+            return False
+    return has_closing
+
+
 def greeting_only(statement: str) -> bool:
     """T-242 (fy27_v3 ckpt_0002/0003 J): a passage made only of greetings, thanks, housekeeping and hand-overs
-    carries no statement; any one sentence with substance keeps it."""
+    carries no statement; any one sentence with substance keeps it. T-242 (25 Nov): also a figure-free closing-remarks
+    or deferral passage whose other sentences are generic platitudes (never one carrying a figure or a substantive
+    clause)."""
     sentences = _sentences(statement)
-    return bool(sentences) and all(_greeting_sentence(x) or _boilerplate_sentence(x) for x in sentences)
+    if not sentences:
+        return False
+    return all(_greeting_sentence(x) or _boilerplate_sentence(x) for x in sentences) \
+        or _closing_remarks_passage(sentences)
 
 
 _COURTESY_OR_TAG_QUESTION_RE = re.compile(
