@@ -351,3 +351,97 @@ def test_ar_ckpt_0001_non_figures_and_outside_entities_are_unverified():
     assert [r["status"] for r in rows] == ["unverified"] * 4 + ["verified"] * 4
     assert rows[0]["status_reason"].startswith("ar_not_a_figure")
     assert rows[3]["status_reason"].startswith("ar_outside_entity")
+
+
+def _make_recheck_ar_store(store_db: Path, symbol: str, name: str, doc_key: str,
+                           page: int, text: str) -> None:
+    store_db.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(store_db)
+    con.execute("CREATE TABLE company (symbol TEXT, name TEXT)")
+    con.execute("CREATE TABLE doc (doc_key TEXT, title TEXT, symbol TEXT, doc_type TEXT, known_at TEXT)")
+    con.execute("CREATE TABLE doc_page (doc_key TEXT, page INTEGER, text TEXT)")
+    con.execute("INSERT INTO company VALUES (?,?)", (symbol, name))
+    con.execute("INSERT INTO doc VALUES (?,?,?,?,?)", (doc_key, "Annual Report", symbol, "annual_report",
+                                                       "2026-08-10T10:00:00"))
+    con.execute("INSERT INTO doc_page VALUES (?,?,?)", (doc_key, page, text))
+    con.commit()
+    con.close()
+
+
+def test_recheck_db_applies_ar_row_gates_to_verified_ar_rows(tmp_path: Path):
+    store_db = tmp_path / "c306.db"
+    doc_key = "D:/raw/APTUS/annual_report/ar26.pdf"
+    page_text = "GRI 403-6 48 FY2025-26 Total assets 2,345.67 INR crore"
+    _make_recheck_ar_store(store_db, "APTUS", "Aptus Value Housing Finance India Limited",
+                           doc_key, 12, page_text)
+    con = obs.create_db(tmp_path / "obs.db")
+    try:
+        con.execute(
+            "INSERT INTO observation (symbol, doc_key, page, known_at, measure, printed_label, value, value_text,"
+            " unit, scale, period, period_kind, entity_scope, new_definition, new_driver_node, status,"
+            " status_reason, record_type, adjusted) VALUES"
+            " ('APTUS', ?, 12, '2026-08-10T10:00:00', 'NEW:gri_disclosure_page_reference', 'GRI 403-6', 48.0, '48',"
+            " '', 1.0, 'FY2025-26', 'actual', 'company', 'Page reference in GRI index', 'none', 'verified',"
+            " '', 'number', 0)",
+            (doc_key,),
+        )
+        con.execute(
+            "INSERT INTO observation (symbol, doc_key, page, known_at, measure, printed_label, value, value_text,"
+            " unit, unit_family, scale, period, period_kind, entity_scope, status, status_reason, record_type,"
+            " adjusted) VALUES"
+            " ('APTUS', ?, 12, '2026-08-10T10:00:00', 'total_assets', 'Total assets', 2345.67, '2,345.67',"
+            " 'INR crore', 'money', 1e7, 'FY2025-26', 'instant', 'company', 'unverified',"
+            " 'ar_statement_line: XBRL holds statement lines; served labelled', 'number', 0)",
+            (doc_key,),
+        )
+        con.commit()
+        stats = obs.recheck_db(con, [str(store_db)])
+        rows = con.execute(
+            "SELECT measure, status, status_reason FROM observation ORDER BY observation_id"
+        ).fetchall()
+        assert rows[0][0] == "NEW:gri_disclosure_page_reference"
+        assert rows[0][1] == "unverified"
+        assert "ar_not_a_figure" in rows[0][2]
+        assert rows[1][0] == "total_assets" and rows[1][1] == "unverified"
+        assert "ar_statement_line" in rows[1][2]
+        assert stats["downgraded"] == 1
+    finally:
+        con.close()
+
+
+def test_recheck_cli_stores_root_scans_every_store_beyond_default_sample(tmp_path: Path):
+    stores_root = tmp_path / "universe"
+    base_db = tmp_path / "base.db"
+    out_db = tmp_path / "out.db"
+    con = obs.create_db(base_db)
+    try:
+        for idx in range(1, 8):
+            code = f"c{idx:02d}"
+            symbol = f"CO{idx:02d}"
+            doc_key = f"D:/raw/{symbol}/annual_report/ar26.pdf"
+            _make_recheck_ar_store(stores_root / code / f"{code}.db", symbol, f"{symbol} Limited",
+                                   doc_key, 5, "GRI 403-6 48 FY2025-26")
+            con.execute(
+                "INSERT INTO observation (symbol, doc_key, page, known_at, measure, printed_label, value,"
+                " value_text, unit, scale, period, period_kind, entity_scope, new_definition, new_driver_node,"
+                " status, status_reason, record_type, adjusted) VALUES"
+                " (?, ?, 5, '2026-08-10T10:00:00', 'NEW:gri_disclosure_page_reference', 'GRI 403-6', 48.0, '48',"
+                " '', 1.0, 'FY2025-26', 'actual', 'company', 'Page reference in GRI index', 'none', 'verified',"
+                " '', 'number', 0)",
+                (symbol, doc_key),
+            )
+        con.commit()
+    finally:
+        con.close()
+
+    rc = obs.main(["--recheck", "--baseline", str(base_db), "--out", str(out_db),
+                   "--stores-root", str(stores_root), "--doc-types", "annual_report"])
+    assert rc == 0
+    check = sqlite3.connect(f"file:{out_db.as_posix()}?mode=ro", uri=True)
+    try:
+        got = check.execute("SELECT symbol, status, status_reason FROM observation ORDER BY symbol").fetchall()
+    finally:
+        check.close()
+    assert len(got) == 7
+    assert all(status == "unverified" and "ar_not_a_figure" in reason for _sym, status, reason in got), got
+

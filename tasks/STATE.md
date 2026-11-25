@@ -10,9 +10,8 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - 24 Nov T-242 (`observations.py`): empty page in a parsed window is `page_read` `no_rows`, not a failure; share = failures / attempted.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
-00000. 25 Nov 09:15 (Wolf): AR ckpt_0001 FAIL 51/5/1/3 -> 0ab885b6 AR gates (reference numbers, label durations, industry/country/peer: 298 of 11,086 verified). NEXT: recheck AR DB, re-grade. 394_v3 ckpt_0004 PASS 42/18/0/0. question_end fix: Eagle/Hydrogen.
+00000. 25 Nov 09:15 (Wolf): AR ckpt_0001 FAIL 51/5/1/3 -> 0ab885b6 AR gates (reference numbers, label durations, industry/country/peer: 298 of 11,086 verified). re-grade PASS 45/13/0/2, swapped live (Eagle recorded). --recheck now scans every store (agy 17ed580a; it used --sample 5). 394_v3 ckpt_0004 PASS 42/18/0/0. question_end fix: Eagle/Hydrogen.
 00000. 25 Nov 08:40 (Eagle merged dsh a7c04bff): fund_raise round 5 (step amount, stage map, folds, vetoes): graded 60 all W/J/P fixed, 0 R lost, order_win 132/193 same; loader on events_r5_fresh{4,3}.db. NEXT: fresh-store fund_raise grade.
-00000. 24 Nov 23:55: T-242 transcripts v3: 394 ckpt_0002 PASS 54/5/0/1; fy27 ckpt_0003 FAIL 48/8/0/4 (boilerplate) -> greeting widening merged (10 of 15,517 drop). fy27_v3 reparse copy failed re-grade (question_end on 'right?'): question_end narrowed 25 Nov (agy 9ecc668f + Eagle; 145/298 stay flagged); NEXT: reparse copy again, re-grade, swap. no_referent widening NOT merged (would unverify 12.8%; `tasks/t242_no_referent_v3_measure.md`).
 000. 24 Nov 19:00 (Wolf): T-242: call statements gate (numbers only via v2/corroborate.py); deck whose-figure prompt GATE PASSED 55/4/0/1 (fp ea5e621d2826); deck bulk in hy4 loop; AR row guards dsh cb0efb86; v3 fy27 ckpt_0001 grading (dsh 5edabb75).
 0a. 18 Nov store repairs : `docs/state_history/STATE_2026-11-19_2005.md`. Then notes PP&E/CWIP, commitments, ratios; trial 2.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
