@@ -483,3 +483,163 @@ def test_gate_not_company_holds_jv_and_associate_figures_unless_the_entity_is_na
     from reality_engine.v2.observations import canonical_scope
     assert canonical_scope("Joint Venture") == "jv" and canonical_scope("Associates") == "associate"
 
+
+# ------------------------------------------------- T-242 r5: decorative numbers on slide images (ocr_grade1)
+
+
+def test_deck_section_card_page_serials_are_dropped():
+    """Part 1 J ids 31 33 41 48 51 53 57: a numbered card/divider/page is a serial, not a figure."""
+    serials = [
+        _deck_row(measure="NEW:section_number", printed_label="Business Overview", value=1.0, value_text="1",
+                  unit="", period=""),
+        _deck_row(measure="NEW:section_number", printed_label="Annexures", value=5.0, value_text="05",
+                  unit="", period=""),
+        _deck_row(measure="NEW:section_divider_number", printed_label="", value=4.0, value_text="04",
+                  unit="", period="", text_source="ocr"),
+        _deck_row(measure="NEW:slide_page_number", printed_label="", value=20.0, value_text="20",
+                  unit="", period=""),
+        _deck_row(measure="NEW:strategic_pillar_number", printed_label="Make it easy for customers to invest",
+                  value=1.0, value_text="01", unit="customers", period=""),
+        _deck_row(measure="NEW:solution_category_index", printed_label="AYUSH PRODUCTS", value=15.0,
+                  value_text="15", unit="", period=""),
+    ]
+    kept = _deck_row(measure="count.stores", printed_label="Stores", value=7.0, value_text="7",
+                     unit="stores", period="FY26")
+    rows = serials + [kept]
+    obs.apply_number_gates(rows, "deck")
+    assert rows == [kept]
+
+
+def test_deck_title_period_digits_are_dropped():
+    """Part 1 J ids 40 43 46 54 59: Q4 -> 4, FY26 -> 26, '2026 Investor Presentation' -> 2026."""
+    junk = [
+        _deck_row(measure="NEW:fiscal_period_reference", printed_label="Q1FY27 HIGHLIGHTS",
+                  value=1.0, value_text="Q1FY27", unit="", period="Q1FY27"),
+        _deck_row(measure="NEW:presentation_year_reference", printed_label="Q4 & 2026 INVESTOR PRESENTATION",
+                  value=2026.0, value_text="2026", unit="", period="Q4 & 2026"),
+        _deck_row(measure="NEW:fiscal_period_highlights", printed_label="Q2 & H1 FY27 Highlights",
+                  value=27.0, value_text="FY27", unit="", period="FY27"),
+        _deck_row(measure="NEW:presentation_period", printed_label="Q4 & 2026 INVESTOR PRESENTATION",
+                  value=4.0, value_text="4", unit="", period="FY26"),
+        _deck_row(measure="NEW:presentation_period", printed_label="Q4 & FY26 Highlights",
+                  value=26.0, value_text="26", unit="", period="FY26"),
+    ]
+    kept = [
+        _deck_row(measure="ebitda_margin", printed_label="", value=20.1, value_text="20.1%", unit="%",
+                  period="Q3 FY26"),
+        _deck_row(measure="count.hotels", printed_label="6 Hotels Opened (Q1)", value=6.0, value_text="6",
+                  unit="hotels", period="Q1 FY27"),
+        _deck_row(measure="revenue.value", printed_label="Q4 FY26 revenue", value=26.0, value_text="26",
+                  unit="Rs crore", period="Q4 FY26"),
+    ]
+    rows = junk + kept
+    obs.apply_number_gates(rows, "deck")
+    assert rows == kept and all(r["status"] == "verified" for r in rows)
+
+
+def test_deck_establishment_year_and_foundation_ordinal_are_dropped():
+    """Part 1 J ids 44 58 60: 'ESTD. 1969', 'TRUSTED SINCE 1966', 'FOUNDATION YEAR 119th'."""
+    junk = [
+        _deck_row(measure="NEW:company_establishment_year", printed_label="ESTD.", value=1969.0,
+                  value_text="1969", unit="", period=""),
+        _deck_row(measure="NEW:founding_year", printed_label="TRUSTED SINCE", value=1966.0,
+                  value_text="1966", unit="", period=""),
+        _deck_row(measure="NEW:foundation_year", printed_label="FOUNDATION YEAR", value=119.0,
+                  value_text="119th", unit="", period=""),
+    ]
+    kept = [
+        _deck_row(measure="NEW:employee_average_tenure", printed_label="Average employee tenure",
+                  value=4.5, value_text="4.5", unit="years", period="FY26"),
+        _deck_row(measure="capacity.total", printed_label="Installed capacity", value=2000.0,
+                  value_text="2,000", unit="MW", period="FY26"),
+        _deck_row(measure="capex", printed_label="Since 2015, capex", value=500.0, value_text="500",
+                  unit="Rs crore", period="FY26"),
+    ]
+    rows = junk + kept
+    obs.apply_number_gates(rows, "deck")
+    assert rows == kept and all(r["status"] == "verified" for r in rows)
+
+
+def test_deck_standard_model_and_id_codes_are_dropped():
+    """Part 0/1 J ids 35 49 (and the review's other codes): ISO 13485:2016, CyberKnife M6, Ne 40, 20mg, IN2212..."""
+    junk = [
+        _deck_row(measure="NEW:iso_certification_standard",
+                  printed_label="Received ISO 13485:2016 Accreditation from BSI, UK",
+                  value=13485.0, value_text="13485:2016", unit="", period="2022"),
+        _deck_row(measure="iso_certification", printed_label="Intertek ISO 27001 Certificate",
+                  value=27001.0, value_text="27001", unit="", period=""),
+        _deck_row(measure="NEW:technology_model_number",
+                  printed_label="North India's First CyberKnife\u00ae M6\u2122", value=6.0,
+                  value_text="6", unit="", period=""),
+        _deck_row(measure="NEW:cryogenic_storage_rack_labels", printed_label="C5", value=5.0,
+                  value_text="5", unit="", period=""),
+        _deck_row(measure="NEW:cotton_yarn_count_range",
+                  printed_label="100% Cotton Yarns (Ne 26 to Ne 40): Carded, Combed, Compact Combed",
+                  value=40.0, value_text="40", unit="Ne", period=""),
+        _deck_row(measure="NEW:forbes_india_select_200_rank",
+                  printed_label="Became Part of Forbes India Select 200 companies with global potential",
+                  value=200.0, value_text="200", unit="", period="2023"),
+        _deck_row(measure="NEW:incident_id", printed_label="IN2212110001", value=2212110001.0,
+                  value_text="2212110001", unit="", period=""),
+        _deck_row(measure="NEW:product_dosage_strength", printed_label="Rozutus-Gold 20",
+                  value=20.0, value_text="20mg", unit="mg", period=""),
+    ]
+    kept = [
+        _deck_row(measure="revenue.value", printed_label="Revenue", value=1234.0, value_text="1,234"),
+        _deck_row(measure="count.atms", printed_label="ATMs", value=12796.0, value_text="12,796", unit="ATMs"),
+        _deck_row(measure="order.book", printed_label="order book stood at Rs 618cr", value=618.0,
+                  value_text="618", unit="cr", period="FY26"),
+        _deck_row(measure="ebitda_margin", printed_label="% Margin", value=26.0, value_text="26%",
+                  unit="%", period="FY22"),
+        _deck_row(measure="cost_of_funds", printed_label="CoF declined to", value=12.0,
+                  value_text="12bps", unit="bps", period="Q4 FY26"),
+    ]
+    rows = junk + kept
+    obs.apply_number_gates(rows, "deck")
+    assert rows == kept and all(r["status"] == "verified" for r in rows)
+
+
+def test_deck_brand_name_digit_is_dropped():
+    """Part 1 J id 38 ('5paisa') and the OCR-joined '32Districts' counter-example."""
+    junk = [_deck_row(measure="NEW:brand_logo_text", printed_label="5paisa", value=5.0,
+                      value_text="5", unit="", period="")]
+    kept = [_deck_row(measure="count.districts",
+                      printed_label="32Districts covered out of 75 Districts", value=32.0,
+                      value_text="32", unit="Districts", period="FY23")]
+    rows = junk + kept
+    obs.apply_number_gates(rows, "deck")
+    assert rows == kept and kept[0]["status"] == "verified"
+
+
+def test_deck_junk_rules_are_deck_only_and_keep_an_ar_row():
+    row = _deck_row(measure="NEW:section_number", printed_label="Business Overview", value=1.0,
+                    value_text="1", unit="", period="")
+    assert obs.junk_ordinal_reason(row) == ""                       # the AR row gates keep their rule set
+    assert obs.junk_ordinal_reason(row, deck=True).startswith("junk_deck_serial:")
+
+
+def test_ocr_grade1_rows_are_dropped_and_kept_rows_survive_in_build():
+    """A page from each J kind: build_observations returns only the business figure."""
+    page = ("Q2 & H1 FY27 Highlights\nESTD. 1969\nISO 13485:2016\n5paisa\n"
+            "Segment revenue\n1,234\n")
+    reply = [
+        {"type": "number", "measure": "NEW:presentation_period",
+         "printed_label": "Q2 & H1 FY27 Highlights", "value_text": "Q2 & H1 FY27", "unit": "",
+         "period": "H1 FY27", "new_definition": "period", "new_driver_node": "none"},
+        {"type": "number", "measure": "NEW:company_establishment_year", "printed_label": "ESTD.",
+         "value_text": "1969", "unit": "", "period": "", "new_definition": "year founded",
+         "new_driver_node": "none"},
+        {"type": "number", "measure": "NEW:iso_certification_standard",
+         "printed_label": "ISO 13485:2016", "value_text": "13485:2016", "unit": "", "period": "",
+         "new_definition": "certification", "new_driver_node": "none"},
+        {"type": "number", "measure": "NEW:brand_logo_text", "printed_label": "5paisa",
+         "value_text": "5", "unit": "", "period": "", "new_definition": "brand name",
+         "new_driver_node": "none"},
+        {"type": "number", "measure": "revenue.value", "printed_label": "Segment revenue",
+         "value_text": "1,234", "unit": "Rs crore", "period": "H1 FY27", "entity_scope": "company"},
+    ]
+    rows = _rows(page, reply)
+    obs.apply_number_gates(rows, "deck", page_text=page)   # process_page applies the deck gates after the build
+    assert [r["measure"] for r in rows] == ["revenue.value"], rows
+    assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+

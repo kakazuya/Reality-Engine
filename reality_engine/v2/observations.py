@@ -4028,12 +4028,16 @@ def _ar_parent_backed(row: dict[str, Any], page_text: str, previous_text: str) -
     return False
 
 
-def junk_ordinal_reason(row: dict[str, Any]) -> str:
+def junk_ordinal_reason(row: dict[str, Any], deck: bool = False) -> str:
     """T-242 r4: an edition/AGM ordinal, a celebration slogan or an appointment term is not a figure (AR, deck).
 
     ``34th Annual Report``, ``Celebrating 40 years of innovation`` and ``consecutive term of five (5) years`` are
     numbers a page prints, never business quantities, so the row is dropped rather than served unverified.  A
     business tenure (a loan/lease/contract term, an employee's average tenure) is never caught.
+
+    T-242 r5: ``deck=True`` also applies :func:`deck_junk_reason` (a card/section/page serial, a digit of the
+    slide title's own period, an establishment year/foundation ordinal, a standard/model code, a brand digit).
+    The AR row gates keep the default: those cues only mean junk on a marketing slide.
     """
     measure = norm_space(row.get("measure"))
     label = norm_space(row.get("printed_label"))
@@ -4051,6 +4055,145 @@ def junk_ordinal_reason(row: dict[str, Any]) -> str:
             and not AR_BUSINESS_TENURE_RE.search(measure):
         return (f"junk_tenure_echo: {row.get('value')!r} repeats an appointment's term in {label!r}, "
                 f"not a business figure")
+    if deck:
+        return deck_junk_reason(row)
+    return ""
+
+
+# T-242 r5 (ocr_grade1, 26 Nov): on a marketing/section slide the page prints numbers that are never figures --
+# a card/section/page serial, a digit of the slide title's own period, an establishment year, a standard or model
+# code, a digit inside a brand token.  Structural cues only, from the row's own measure/label/value/unit.
+DECK_SERIAL_MEASURE_RE = re.compile(
+    r"(?:^|[:_.])(?:section|slide|page|divider|card|pillar|chapter|serial|ordinal|index)(?:$|[:_.])", re.I)
+DECK_PERIOD_QTAG_RE = re.compile(r"\bQ([1-4])", re.I)
+DECK_PERIOD_HTAG_RE = re.compile(r"\bH([12])", re.I)
+DECK_PERIOD_FY_RE = re.compile(r"\bFY\s*['\u2019]?(\d{2,4})\b", re.I)
+DECK_PERIOD_YEAR_RE = re.compile(r"(?<!\d)((?:19|20)\d{2})(?!\d)")
+DECK_ESTABLISH_RE = re.compile(
+    r"\b(?:estd\.?|established|founded|founding|foundation|since|incorporated|incorporation|inception|"
+    r"commenced|years?\s+of|year\s+of)\b", re.I)
+DECK_YEAR_MEASURE_RE = re.compile(r"establishment|foundation|founded|inception|incorporat", re.I)
+DECK_CODE_VALUE_RE = re.compile(r"\b\d{3,6}:\d{2,4}\b")
+DECK_CODE_STANDARD_RE = re.compile(
+    r"\b(?:ISO|IEC|BIS|ANSI|DIN|ASTM|IEEE|Select|Ne|Nm)\s*[-/]?\s*0*(\d{2,5})(?::\d{2,4})?\b", re.I)
+DECK_MODEL_CODE_RE = re.compile(r"(?<![A-Za-z0-9])([A-Za-z]{1,2})(\d{1,4})(?![A-Za-z0-9])")
+DECK_ID_CODE_RE = re.compile(r"(?<![A-Za-z0-9])([A-Za-z]{1,4})(\d{3,})(?![A-Za-z0-9])")
+DECK_PERIOD_CODE_RE = re.compile(r"^(?:Q[1-4]|H[12]|9M|FY\s*['\u2019]?\d{2,4}|(?:19|20)\d{2})$", re.I)
+DECK_CURRENCY_CODE = frozenset({"rs", "inr", "usd", "us", "re", "eur"})
+# (a lower-case word right after the digits, never an OCR join like '32Districts' or a unit like '10bn')
+DECK_BRAND_CODE_RE = re.compile(
+    r"(?<![A-Za-z0-9])(\d{1,3})(?![sSnNrRtT][tTdDhH]\b)([a-z]{2,})(?![A-Za-z])")
+# a product strength/dosage ('20mg', '5kg'), never a money scale ('13.45 MM', '10 kg'): lower case, no space
+DECK_SPEC_VALUE_RE = re.compile(r"^(\d+(?:\.\d+)?)(mg|mcg|ml|kg|gm|cm)$")
+# a scale suffix on the printed figure ('618cr', '10bn', '13.45 MM') is a unit, not a brand token
+DECK_SCALE_SUFFIX = frozenset({"cr", "crore", "crores", "mn", "mm", "bn", "lakh", "lakhs", "lac", "lacs",
+                               "million", "billion", "k", "mt", "kg", "gm", "km", "kv", "mw", "gw", "kva",
+                               "bps", "pct", "percent"})
+
+
+def _deck_period_numbers(text: str) -> set[int]:
+    """Every number a printed period/title token names: 'Q4' -> 4, 'FY26' -> 26, '2026' -> 2026."""
+    text = norm_space(text)
+    found: set[int] = set()
+    for rx in (DECK_PERIOD_QTAG_RE, DECK_PERIOD_HTAG_RE, DECK_PERIOD_FY_RE, DECK_PERIOD_YEAR_RE):
+        for match in rx.finditer(text):
+            token = int(match.group(1))
+            found.add(token)
+            if rx is DECK_PERIOD_FY_RE and len(match.group(1)) == 2:
+                found.add(2000 + token)
+    return found
+
+
+def _deck_same_number(digits: str, value: float | None) -> bool:
+    """True when a code's printed digit run is the row's own value."""
+    if value is None:
+        return False
+    try:
+        number = float(str(digits).replace(",", ""))
+    except ValueError:
+        return False
+    return abs(number - float(value)) <= 1e-9 * max(1.0, abs(number))
+
+
+def deck_junk_reason(row: dict[str, Any]) -> str:
+    """T-242 r5: a number hy4 read from a slide that is not a figure at all -> the row is dropped.
+
+    The five cues are structural, from the row itself: (a) a 1-2 digit serial under a section/card/page measure,
+    (b) a digit that is the slide title's own period token (``FY26`` -> 26, ``Q4`` -> 4, ``2026`` -> 2026),
+    (c) an establishment year or foundation ordinal next to ``Estd``/``Since``/``Founded``, (d) a standard or
+    model code (``ISO 13485:2016`` -> 13485, ``CyberKnife M6`` -> 6, ``Ne 40`` -> 40) or an alphanumeric id,
+    and (e) a digit inside a brand token (``5paisa`` -> 5).  A row with a real unit family or a business value
+    is never caught by these rules.
+    """
+    measure = norm_space(row.get("measure"))
+    label = norm_space(row.get("printed_label"))
+    axis = norm_space(row.get("printed_axis"))
+    series = norm_space(row.get("series_title"))
+    value_text = norm_space(row.get("value_text"))
+    unit = norm_space(row.get("unit"))
+    period = norm_space(row.get("period"))
+    context = " ".join(p for p in (label, axis, series) if p)
+    value = row.get("value")
+    try:
+        number = float(value) if value is not None else None
+    except (TypeError, ValueError):
+        number = None
+    if number is None:
+        return ""
+    whole = int(round(number)) if abs(number - round(number)) <= 1e-9 else None
+    # (a) a slide/section/card/page serial: one or two digits with no period of its own
+    if DECK_SERIAL_MEASURE_RE.search(measure) and not period \
+            and re.fullmatch(r"0?\d{1,2}(?:\.0+)?", value_text):
+        return (f"junk_deck_serial: {value_text!r} numbers a slide/section/card, not a figure "
+                f"({measure} {label!r})")
+    # (b) the value is a digit of the slide title's own period token (or of a period-token value_text)
+    period_value = bool(deck_date_value(value_text, unit)) or bool(
+        re.search(r"(?:Q[1-4]|H[12]|9M|FY\s*['\u2019]?\d{2,4})", value_text, re.I)
+        and re.fullmatch(r"[\d\sQHFYqhfy&/,'\u2019.\-\u2013]+", value_text))
+    if whole is not None and period_value and whole in _deck_period_numbers(value_text):
+        return f"junk_deck_period_digit: {value_text!r} is the slide's period token, not a quantity"
+    label_period = f"{label} {axis}"
+    if whole is not None and not unit and re.fullmatch(r"\d{1,4}", value_text) \
+            and re.search(r"(?:Q[1-4]|H[12]|FY\s*['\u2019]?\d{2,4})", label_period, re.I) \
+            and whole in _deck_period_numbers(label_period):
+        return f"junk_deck_period_digit: {value_text!r} repeats the period in {label or label_period!r}"
+    if whole is not None and not unit and not context and 1900 <= whole <= 2100 \
+            and re.fullmatch(r"\d{4}", value_text):
+        return f"junk_deck_period_digit: unlabelled year {value_text!r} is not a quantity"
+    # (c) an establishment year or foundation ordinal
+    if (DECK_ESTABLISH_RE.search(context) or DECK_YEAR_MEASURE_RE.search(measure)) and not unit \
+            and ((whole is not None and 1800 <= whole <= 2100)
+                 or (AR_ORDINAL_VALUE_RE.match(value_text)
+                     and (DECK_YEAR_MEASURE_RE.search(measure) or len(label.split()) <= 6))):
+        return (f"junk_deck_establishment: {value_text!r} is an establishment year/foundation ordinal, "
+                f"not a figure ({label or measure!r})")
+    # (d) an alphanumeric code: a letter-digit model token, a standard number or an id, when it carries the value
+    if DECK_CODE_VALUE_RE.search(value_text):
+        return f"junk_deck_code: {value_text!r} is an alphanumeric code, not a figure"
+    for match in DECK_CODE_STANDARD_RE.finditer(context):
+        if _deck_same_number(match.group(1), number):
+            return f"junk_deck_code: {value_text!r} is part of a standard code in {label!r}"
+    for match in DECK_MODEL_CODE_RE.finditer(context):
+        token = match.group(0)
+        if match.group(1).lower() in DECK_CURRENCY_CODE or DECK_PERIOD_CODE_RE.match(token):
+            continue
+        if _deck_same_number(match.group(2), number):
+            return f"junk_deck_code: {value_text!r} is part of the model code {token!r}"
+    for match in DECK_ID_CODE_RE.finditer(context):
+        if DECK_PERIOD_CODE_RE.match(match.group(0)) \
+                or match.group(1).lower() in DECK_CURRENCY_CODE:
+            continue
+        if _deck_same_number(match.group(2), number):
+            return f"junk_deck_code: {value_text!r} is part of the id {match.group(0)!r}"
+    # (e) a digit inside a brand/company token ('5paisa' -> 5) or a product strength ('20mg')
+    for match in DECK_BRAND_CODE_RE.finditer(context):
+        if match.group(2).lower() in DECK_SCALE_SUFFIX:
+            continue
+        if _deck_same_number(match.group(1), number):
+            return f"junk_deck_brand_digit: {value_text!r} is a digit inside {match.group(0)!r}"
+    spec = DECK_SPEC_VALUE_RE.match(value_text)
+    if spec and unit.lower() == spec.group(2) and _deck_same_number(spec.group(1), number):
+        return f"junk_deck_brand_digit: {value_text!r} is a product strength, not a reported figure"
     return ""
 
 
@@ -5473,6 +5616,9 @@ def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> Non
     T-242 r4: a junk ordinal (an annual-report/AGM edition, a celebration slogan, an appointment term) is dropped
     from ``rows``; a verified chart/matrix figure the page prints no label tie for is marked unverified
     (``deck_untied_value``, see :func:`deck_untied_reason`).
+    T-242 r5: a decorative number from a cover/divider/marketing slide (a serial, a title-period digit, an
+    establishment year, a standard/model code, a brand digit) is dropped too, OCR or not
+    (see :func:`deck_junk_reason`).
     """
     basis = heading_basis(page_text, SECTION_BASIS_RE) if page_text else ""
     kept: list[dict[str, Any]] = []
@@ -5480,7 +5626,7 @@ def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> Non
         if norm_space(row.get("record_type") or "number") != "number":
             kept.append(row)
             continue
-        if junk_ordinal_reason(row):
+        if junk_ordinal_reason(row, deck=True):
             continue
         kept.append(row)
         if basis and not norm_space(row.get("basis")):

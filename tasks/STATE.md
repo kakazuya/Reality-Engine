@@ -9,6 +9,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD (`--start/--max-workers`), Zen rotates Nemotron VL / DeepSeek Flash by speed.
 - 26 Nov tx statement window (Eagle, 0e8b95f3): sentence snap + referent widen, page-local; recheck dedupes exact repeats.
 - 26 Nov AR gates r4: jv/associate scopes (unnamed never verified), subsidiary/parent need a printed name, junk ordinals/tenures dropped; deck untied chart values unverified.
+- 26 Nov deck junk gate r5: OCR-slide decorative numbers (serials, title-period digits, establishment years, standard/model codes, brand digits) dropped, AR rule set unchanged; measured 0/118 graded-R hit, 27/30 ocr_grade1 J dropped, 585/4,054 OCR rows (test_deck_guards 32 pass).
 - 26 Nov `gate_not_company`: industry/country/peer/customer rows never verified (read + recheck); recheck keeps not_company/subsidiary_unnamed.
 - 26 Nov bulk hy4 reads: one Drive fetch per doc (`raw_store.shared_cache`).
 
