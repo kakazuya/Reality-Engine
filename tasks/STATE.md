@@ -7,6 +7,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Checker T-225 merged 18 Nov: Dots right cells kept dev 384/426, FROZEN 464/773 (60.0%, baseline 47.7%), 0 wrong; Beam frozen 8 wrong (text layer). Target >=95% not met; T-225 open. Split `D:/RealityEngine/t225_split`; notes V2 contract "Round 1-5".
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
 - 24-25 Nov T-242: empty window page = `no_rows`; `scripts/grade_pack.py` builds the 60-row pack; rubrics `docs/grading/`. Fix 2: named call, dates, label-first, guidance, holding route; audits 2/3/4: 33R8P3W4M / 32R12P4M / 45R3P (fix 3; quote first 14/16). Fix 3: call rank, 25/named call, label subset.
+- 25 Nov T-242 deck OCR fill: `scripts/ocr_fill.py` pilot 40 pages, 0 errors, 6 pages >= 4 figures, `.tmp/ocr_pilot`; bulk after the 60-row grade.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 25 Nov 19:50 (Wolf): deck gates merged (81+11 unverified, 242 basis); next: --recheck obs_decks_fy27 copy, swap, load_symbols.
