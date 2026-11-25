@@ -521,12 +521,15 @@ class Pilot3ToolTests(unittest.TestCase):
             self.assertEqual(out["metrics_matched"], [metric], word)
             self.assertEqual(out["rows"][0]["value"], value, word)
 
-    def test_kpi_says_when_a_quarantined_row_holds_the_figure(self):
-        """T-165/T-113: an empty reply separates 'not held' from 'held but quarantined' (Chola Q2FY27 NIM)."""
+    def test_kpi_reports_a_quarantined_row_held_not_served(self):
+        """T-113/T-165: a deliberate hide is never read as "not in data"; the standing ruling (8 Nov) is that a
+        quarantined row is NEVER served.  ``held_quarantined`` says it is held and how to show it."""
         out = p3.kpi("KEC", "GNPA", "Q1FY27")
         self.assertFalse(out["found"])
-        self.assertTrue(any("Q1FY27 / total" in h and "include_quarantined" in h
-                            for h in out["held_quarantined"]))
+        self.assertEqual(out["rows"], [])
+        held = " ".join(out.get("held_quarantined") or [])
+        self.assertIn("Q1FY27", held)
+        self.assertIn("include_quarantined=true", held)
         shown = p3.kpi("KEC", "GNPA", "Q1FY27", include_quarantined=True)
         self.assertEqual(shown["rows"][0]["check_status"], "quarantined")
         self.assertEqual(shown["rows"][0]["value"], 4.2)
