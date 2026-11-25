@@ -38,6 +38,11 @@ PAID_PREFIX_RE = re.compile(r"^(deepinfra/|kilo/~?(anthropic|openai|google|x-ai|
                             r"openrouter/(anthropic|openai|google)/|opencode/(claude|gpt|gemini|kimi|muse))", re.I)
 # Ids that say "free" but are billed on Zen (Shivam 25 Nov).
 PAID_FREE = {"opencode/mimo-v2.6-flash-free", "opencode/hy4-flash-free"}
+# Killing by image name takes down every worker, reader, MCP server and loop of BOTH accounts (25 Nov 21:14:
+# a helper's `taskkill /IM python.exe` killed 3 dsh workers, the MCP servers and all uploaders). Kill by PID only.
+MASS_KILL_RE = re.compile(r"(\btaskkill\b[^;&|\n]*/IM\s+\"?(python|node|bash|claude|pythonw|py)(\.exe)?\b|"
+                          r"\b(Stop-Process|spps|kill)\b[^;&|\n]*-Name\s+\"?(python|node|bash|claude)\b|"
+                          r"\b(pkill|killall)\b[^;&|\n]*\b(python|node|bash|claude)\b)", re.I)
 
 RULES = {
     "private": "D:\\Shivam_Private\\Manual Dumps is never read or sent anywhere (RULINGS: Never).",
@@ -45,6 +50,8 @@ RULES = {
     "secrets": "Never print or copy keys or credential files (RULINGS: Never).",
     "push": "No git push without Shivam's OK; only merged main is pre-approved (3 Nov).",
     "paid_model": "Free models only: this model id is paid (DeepInfra / Zen MiMo or hy4 / paid Kilo-OpenRouter routes).",
+    "mass_kill": "Never kill processes by name (python/node/bash/claude): it kills both accounts' workers, readers and MCP "
+                 "servers. Find the PID (Get-CimInstance Win32_Process with its CommandLine) and stop that PID only.",
 }
 
 
@@ -91,6 +98,8 @@ def breaches(call: dict) -> list[str]:
         if mid in PAID_FREE or (PAID_PREFIX_RE.search(mid) and not re.search(r"(:free|-free)$", mid)):
             out.append("paid_model")
             break
+    if MASS_KILL_RE.search(cmd):
+        out.append("mass_kill")
     return out
 
 

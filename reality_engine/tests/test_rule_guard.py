@@ -25,6 +25,9 @@ def read(path):
     (bash("echo $OPENCODE_GO_API_KEY"), "secrets"),
     (bash("env | grep KEY"), "secrets"),
     (bash("git push origin Wolf-skills"), "push"),
+    (bash("taskkill /F /IM python.exe"), "mass_kill"),
+    ({"tool_name": "PowerShell", "tool_input": {"command": "Stop-Process -Name python -Force"}}, "mass_kill"),
+    (bash("pkill -f python"), "mass_kill"),
     (bash("python - <<'E'\nimport os; os.listdir(r'C:/Users/warri/Downloads/Telegram Desktop')\nE"), "telegram"),
     (bash("cat > x.txt <<'EOF'\nnotes\nEOF\ngit push origin feature"), "push"),
     (bash("git push"), "push"),
@@ -40,6 +43,8 @@ def test_blocks(call, rule):
 
 @pytest.mark.parametrize("call", [
     bash("git push origin main"),
+    bash('powershell -NoProfile -Command "Stop-Process -Id 40592,9676 -Force"'),
+    bash("taskkill /PID 4321 /F"),
     bash("cd repo; git push -q origin main 2>&1 | tail -2"),
     bash("python - <<'E'\ns='after merge, git push origin x needs OK'\nE"),
     bash("env | grep -c DSH_WORKER_CONTROL_TOKEN"),
