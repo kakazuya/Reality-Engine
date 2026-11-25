@@ -275,12 +275,118 @@ def _fy2(text: str) -> str:
     return text[-2:]
 
 
+_MONTH_NAMES = "january february march april may june july august september october november december".split()
+
+
+def _month_num(word: str) -> int | None:
+    low = str(word or "").strip().lower()
+    if len(low) < 3:
+        return None
+    for i, name in enumerate(_MONTH_NAMES, 1):
+        if name.startswith(low):
+            return i
+    return None
+
+
+def _natural_date(text: str | None) -> tuple[dt.date | None, tuple[int, int] | None]:
+    """``(day, (year, month))`` when ``text`` prints a calendar period: '2026-05-27', 'September 30, 2026',
+    '30th Jun'25', '30-Jun-25', 'Mar-26'.  ``day`` is None for a month and year alone (T-242)."""
+    raw = str(text or "").strip().lower()
+    if not raw:
+        return None, None
+    m = re.search(r"\b(\d{4})-(\d{1,2})-(\d{1,2})\b", raw)
+    if m:
+        try:
+            return dt.date(int(m[1]), int(m[2]), int(m[3])), None
+        except ValueError:
+            return None, None
+    for rx, dmy in ((r"\b(\d{1,2})(?:st|nd|rd|th)?[\s\-/,]+([a-z]{3,9})\.?[\s\-/,’']*(\d{2,4})\b", True),
+                    (r"\b([a-z]{3,9})\.?[\s\-/,]+(\d{1,2})(?:st|nd|rd|th)?,?[\s\-/,’']*(\d{2,4})\b", False)):
+        m = re.search(rx, raw)
+        if not m:
+            continue
+        day, month = (int(m[1]), _month_num(m[2])) if dmy else (int(m[2]), _month_num(m[1]))
+        if not month:
+            continue
+        year = int(m[3])
+        try:
+            return dt.date(year + (2000 if year < 100 else 0), month, day), None
+        except ValueError:
+            return None, None
+    m = re.search(r"\b([a-z]{3,9})\.?[\s\-/,’']*(\d{2}|\d{4})\b", raw)
+    if m:
+        month = _month_num(m[1])
+        if month:
+            year = int(m[2])
+            return None, (year + (2000 if year < 100 else 0), month)
+    return None, None
+
+
+def _period_key(text: str | None) -> str:
+    """A period label as one key: letters and digits only, upper ('September 30, 2026' -> 'SEPTEMBER302026')."""
+    return re.sub(r"[^A-Z0-9]", "", str(text or "").upper())
+
+
+def _period_norm_sql(col: str) -> str:
+    """SQL that keys a stored period the way ``_period_key`` does (T-242): punctuation and spaces removed."""
+    for ch in (" ", "-", ",", ".", "/", "(", ")", "’"):
+        col = f"REPLACE({col},'{ch}','')"
+    col = f"REPLACE({col},char(39),'')"
+    return f"UPPER({col})"
+
+
+def _natural_period_forms(text: str | None) -> set[str]:
+    """The spellings a natural date is printed as in ``obs_fact.period`` ('September 30, 2026', '30-Sep-2026',
+    'Sep-26', 'Mar-2026'), already keyed by ``_period_key`` (T-242)."""
+    day, ym = _natural_date(text)
+    if day is not None:
+        year, month = day.year, day.month
+    elif ym is not None:
+        year, month = ym
+    else:
+        return set()
+    name, abbr = _MONTH_NAMES[month - 1], _MONTH_NAMES[month - 1][:3]
+    out = {f"{year}-{month:02d}", f"{name}{year}", f"{name}{year % 100:02d}", f"{abbr}{year}",
+           f"{abbr}{year % 100:02d}", f"{month:02d}{year}", f"{year}{month:02d}"}
+    if day:
+        out |= {f"{day.day}{month:02d}{year}", f"{day.day}{name}{year}", f"{day.day}{abbr}{year}",
+                f"{day.day:02d}{abbr}{year % 100:02d}", f"{year}{month:02d}{day.day:02d}",
+                f"{year}-{month:02d}-{day.day:02d}", f"{name}{day.day}{year}", f"{abbr}{day.day}{year}",
+                f"{name}{day.day:02d}{year % 100:02d}", f"{abbr}{day.day:02d}{year % 100:02d}",
+                f"{month:02d}{day.day:02d}{year}"}
+        for suffix in ("ST", "ND", "RD", "TH"):     # the printed label keeps its ordinal: "30th Jun'25"
+            out |= {f"{day.day}{suffix}{abbr}{year}", f"{day.day}{suffix}{abbr}{year % 100:02d}",
+                    f"{day.day}{suffix}{name}{year}", f"{day.day}{suffix}{name}{year % 100:02d}",
+                    f"{abbr}{day.day}{suffix}{year % 100:02d}", f"{name}{day.day}{suffix}{year % 100:02d}"}
+    return {_period_key(form) for form in out}
+
+
+def _text_day(*texts: str | None) -> dt.date | None:
+    """The calendar day a question names ('In the 2026-05-27 call ...'), so a named call ranks first (T-242)."""
+    for text in texts:
+        day, _ym = _natural_date(text)
+        if day:
+            return day
+    return None
+
+
 def norm_period(period: str | None) -> tuple[str | None, str | None]:
     """``(kind, label)``: Q2FY26 / H1FY26 / FY26 labels the tables use; ``kind`` is Q, H1, FY or None.
-    Accepts Q2FY26, Q2 FY2026, FY2025-26, 2025-26, FY26, H1FY26 and a date (its fiscal quarter)."""
+    Accepts Q2FY26, Q2 FY2026, FY2025-26, 2025-26, FY26, H1FY26, an ISO date and a printed natural date
+    ('September 30, 2026', '30th Jun'25', 'Mar-26') -- its fiscal quarter (T-242)."""
     if period in (None, ""):
         return None, None
-    text = str(period).strip().upper().replace(" ", "")
+    day, ym = _natural_date(str(period))
+    if day is not None or ym is not None:
+        if day is not None:
+            year, month = day.year, day.month
+        else:
+            assert ym is not None
+            year, month = ym
+        fy = year + 1 if month >= 4 else year
+        q = {4: 1, 5: 1, 6: 1, 7: 2, 8: 2, 9: 2, 10: 3, 11: 3, 12: 3, 1: 4, 2: 4, 3: 4}[month]
+        return "Q", f"Q{q}FY{str(fy)[-2:]}"
+    text = re.sub(r"['’]", "", str(period)).strip().upper().replace(" ", "")
     m = re.fullmatch(r"Q([1-4])-?FY?(\d{2}|\d{4})", text)
     if m:
         return "Q", f"Q{m[1]}FY{_fy2(m[2])}"
@@ -2360,15 +2466,30 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
         def _norm_sent(s: str | None) -> str:
             return re.sub(r"\s+", " ", (s or "")).strip().lower()
 
-        obs_norms = [_norm_sent(item.get("quote")) for item in obs_items if item.get("quote")]
-        obs_exact = set(obs_norms)
+        obs_by_quote: dict[str, dict[str, Any]] = {}
+        for item in obs_items:
+            qn = _norm_sent(item.get("quote"))
+            if qn:
+                obs_by_quote.setdefault(qn, item)
         deduped_tagged: list[list[dict[str, Any]]] = []
         for group in tagged:
             kept_group = []
             for row in group:
                 qn = _norm_sent(row.get("quote"))
-                if qn and (qn in obs_exact or (len(qn) >= 25 and any(qn in on for on in obs_norms))):
+                hit = obs_by_quote.get(qn) if qn else None
+                if hit is None and len(qn) >= 25:
+                    hit = next((obs for norm, obs in obs_by_quote.items() if qn in norm), None)
+                if hit is not None:
+                    # T-242: the obs row is the one served; fill its speaker from the transcript row when it has
+                    # none, and fill the transcript row from obs_fact (a kept row) when the transcript has none.
+                    if not hit.get("speaker"):
+                        hit["speaker"] = row.get("speaker")
                     continue
+                if not row.get("speaker") and qn:
+                    near = next((obs for norm, obs in obs_by_quote.items()
+                                 if norm and len(norm) >= 25 and norm in qn), None)
+                    if near:
+                        row["speaker"] = near.get("speaker")
                 kept_group.append(row)
             if kept_group:
                 deduped_tagged.append(kept_group)
@@ -2560,6 +2681,39 @@ GUIDANCE_METRICS = ("revenue_growth", "ebitda_margin", "order_intake", "nim", "c
                     "new_customers", "opex_to_nti", "other")
 
 
+_GUIDANCE_BALANCE = re.compile(r"\b(?:balance|remaining)\b(?!\s+sheet)|\brest of the (?:year|period)\b|"
+                               r"\bnext (?:two|three|four) quarters\b", re.I)
+
+
+def _guidance_elect(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """One current row per metric+period (T-242): a full-year target wins over the balance-of-year restatement of
+    the same target ("INR80 crores for the year" over "the balance INR75 crores for the next three quarters");
+    otherwise the first row served (the table is already newest first).  Returns (kept, alternatives)."""
+    groups: dict[tuple, list[dict[str, Any]]] = {}
+    for row in rows:
+        groups.setdefault((row["metric"], row["target_period"], row.get("entity") or ""), []).append(row)
+    kept_ids: set[int] = set()
+    alternatives: list[dict[str, Any]] = []
+    for group in groups.values():
+        full = [row for row in group if not _GUIDANCE_BALANCE.search(str(row.get("quote") or ""))]
+        chosen = (full or group)[0]
+        kept_ids.add(id(chosen))
+        alternatives += [row for row in group if row is not chosen]
+    return [row for row in rows if id(row) in kept_ids], alternatives
+
+
+def _guidance_alt(row: dict[str, Any]) -> dict[str, Any]:
+    """A dropped current row, said plainly, so the reply shows the other target it elected against (T-242)."""
+    balance = bool(_GUIDANCE_BALANCE.search(str(row.get("quote") or "")))
+    return {"metric": row["metric"], "period": row["target_period"], "low": row["low"], "high": row["high"],
+            "unit": row["unit"], "said_on": row["said_on"], "quote": _trim(row["quote"], 240),
+            "why_not_preferred": "balance-of-year restatement of the full-year target" if balance
+            else "an earlier target of the same metric and period",
+            "provenance": _prov("guidance", f"{row['doc_key']} p{row['page']}", row.get("known_at"),
+                                doc_type=row.get("doc_type"), title=_trim(row.get("title"), 120),
+                                row_id=row["id"])}
+
+
 def guidance(symbol: str, metric: str | None = None, period: str | None = None, as_of: str | None = None,
              limit: int = 12, history: bool = False, include_quarantined: bool = False) -> dict[str, Any]:
     """Rule-extracted forward guidance: the CURRENT target of each metric and target period, newest first, with
@@ -2631,8 +2785,11 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
         else:
             r["is_latest"] = False
             r["superseded_by"] = {"row_id": newest["id"], "said_on": newest["said_on"], "known_at": newest["known_at"]}
+    alternatives: list[dict[str, Any]] = []
     if not history:
         kept = _guidance_current_rows(kept)   # the current target per metric+period, with its dropped-row count
+        kept, dropped = _guidance_elect(kept)  # T-242: one row per metric+period; full year over balance-of-year
+        alternatives = [_guidance_alt(r) for r in dropped[:12]]
     for r in kept[:_cap(limit)]:
         previous = None
         if r["revision_of"] is not None:
@@ -2682,6 +2839,7 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
             + (f" AND metric IN ({','.join('?' * len(names))})" if names else "")
             + _visible("guidance") + " GROUP BY 1, 2 ORDER BY MAX(known_at) DESC LIMIT 40", (sym, *names))]
     return _reply(sym, out, "pilot3_guidance", metrics_matched=names or None, history=True if history else None,
+                  alternatives=alternatives or None,
                   available=allnames[:40] if (metric and not out and not names) else None,
                   metric_asked=metric if (metric and not out and not names) else None,
                   nearest=f"{metric or ''} {period or ''}".strip(), nearest_as_of=as_of,
@@ -3475,6 +3633,9 @@ _FACT_RATIO_SUFFIXES = ("_pct", "_margin", "_growth", "_days", "_ratio", "_cover
 _FACT_SHARES = ("share_count", "shares_outstanding", "share_capital", "shares", "equity_shares")
 _FACT_HOLDING_WORDS = set(_HOLDING_CATEGORY_WORDS) | {"promoter", "promoters", "shareholder", "shareholders",
                                                      "shareholding"}
+# T-242: a bare holder word is a shareholding question ("promoter", "FPI", "DII", "MF"); anything else needs the
+# question to say holding / shareholding / stake / shareholders, so "retail deposits" is never the shp_category.
+_FACT_HOLDING_ONLY = {"promoter", "promoters", "fpi", "fii", "dii", "mf", "mutual_funds", "shareholding"}
 _FACT_UNIT_WORDS = {
     "inr": "rupee", "inr_cr": "crore", "inr_crore": "crore", "inr_mn": "million", "inr_million": "million",
     "inr_lakh": "lakh", "inr_bn": "billion", "inr_per_share": "rupee per share", "rs/share": "rupee per share",
@@ -3699,10 +3860,13 @@ def _fact_route(key: str, symbol: str, period: str | None = None) -> tuple[str |
     found = {"ratio_panel": rnames, "fin": fnames, "kpi_series": knames, "obs_fact": onames}
     allnames = {"ratio_panel": rall, "fin": list(dict.fromkeys(qall + aall + pall)),
                 "kpi_series": kall, "obs_fact": oall}
-    words = set(key.split("_"))
     if key in _FACT_SHARES:
         return "shares", found, allnames
-    if key.endswith("holding") or key.endswith("shareholding") or words & _FACT_HOLDING_WORDS:
+    # T-242: route a filed shp_category only for a question about who holds the shares ("promoter holding",
+    # "FPI stake", "retail shareholders"), never for a line whose word merely shares a category name
+    # ("retail deposits"): that is a P&L / balance line, not the shareholding pattern.
+    if re.search(r"\b(holding|holdings|shareholding|stake|shareholders?)\b", key.replace("_", " ")) \
+            or key in _FACT_HOLDING_ONLY:
         return "holding", found, allnames
     # T-192: a company's own EBITDA / EBITDA margin is the definition it means; the derived ratio is returned as a
     # second, labelled alternative.  Two derivations of one line disagreeing is exactly what sent a grader wrong.
@@ -4334,10 +4498,12 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
 
 
 def _obs_period_clause(period: str | None) -> tuple[str, list[Any]]:
-    """SQL clause matching ``obs_fact.period`` across spacing/hyphenation variants ('H1FY27' == 'H1 FY27')."""
+    """SQL clause matching ``obs_fact.period`` across spacing/hyphenation variants ('H1FY27' == 'H1 FY27'), and a
+    printed natural date ('September 30, 2026' == '30-Sep-2026' == 'Sep-26') by its date key (T-242)."""
     kind, label = norm_period(period) if period else (None, None)
     if not label:
         return "", []
+    forms: set[str] = set()
     if kind in ("Q", "H1", "H2", "FY"):
         yy = label[-2:]
         forms = {label}
@@ -4348,9 +4514,12 @@ def _obs_period_clause(period: str | None) -> tuple[str, list[Any]]:
         else:
             q_part = label[:-4]
             forms.update({f"{q_part} FY{yy}", f"{q_part}FY20{yy}", f"{q_part} FY20{yy}", f"{q_part} FY {yy}"})
-        placeholders = ",".join("?" * len(forms))
-        return f" AND REPLACE(UPPER(COALESCE(o.period,'')),'-','') IN ({placeholders})", sorted(forms)
-    return " AND UPPER(COALESCE(o.period,''))=UPPER(?)", [label]
+    forms |= _natural_period_forms(period)
+    if not forms:
+        return " AND UPPER(COALESCE(o.period,''))=UPPER(?)", [label]
+    keys = sorted({_period_key(form) for form in forms if _period_key(form)})
+    placeholders = ",".join("?" * len(keys))
+    return f" AND {_period_norm_sql('COALESCE(o.period,\'\')')} IN ({placeholders})", keys
 
 
 def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
@@ -4375,6 +4544,24 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
                 non_mix = [c for c in cands if not c.lower().endswith(".mix")]
                 if non_mix:
                     cands = non_mix
+            if _has_column("obs_fact", "printed_label"):
+                # T-242: the row whose printed label is the words asked is a candidate even when its measure code
+                # differs ('liquid cash' -> cash_and_cash_equivalents, not only NEW:net_liquid_cash).
+                printed = _period_norm_sql("COALESCE(o.printed_label,'')")
+                lab = _q(f"SELECT DISTINCT o.measure FROM obs_fact o WHERE o.symbol=? AND {printed}=? "
+                         + ("AND o.record_type=? " if record_type else "")
+                         + "AND o.status IN ('verified','unverified')",
+                         (sym, _period_key(measure), *([record_type] if record_type else ())))
+                # a label that names a movement ("PAT up") may legitimately be a growth measure; a level label
+                # ("Total Revenue from Operations") shares its wording with an extractor's growth row, so a derived
+                # measure is not added for it.
+                movement = {"up", "down", "growth", "grew", "rise", "rising", "fall", "decline", "declined",
+                            "increase", "increased", "decrease", "decreased", "improved", "improvement", "yoy", "qoq"}
+                allow_derived = bool(m_tokens & movement)
+                cands = list(dict.fromkeys(
+                    cands + [r[0] for r in lab if r[0]
+                             and (allow_derived
+                                  or not ((set(_norm_measure(r[0]).split("_")) & derived_tokens) - m_tokens))]))
             if cands:
                 where.append(f"o.measure IN ({','.join('?' * len(cands))})")
                 args.extend(cands)
@@ -4408,6 +4595,14 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
         args.extend(term_args)
     extra, eargs = _asof(as_of, "o.known_at")
     order_parts = ["(o.status='verified') DESC"]
+    order_args: list[Any] = []
+    if measure and _has_column("obs_fact", "printed_label"):
+        # T-242: the row whose printed label is the words asked ('liquid cash') before a fuzzy measure match
+        # ('NEW:net_liquid_cash'): exact label first, then a label carrying the words, then everything else.
+        asked_label = _period_key(measure)
+        printed = _period_norm_sql("COALESCE(o.printed_label,'')")
+        order_parts.append(f"CASE WHEN {printed}=? THEN 0 WHEN {printed} LIKE ? THEN 1 ELSE 2 END")
+        order_args += [asked_label, f"%{asked_label}%"]
     if measure and not terms and _has_column("obs_fact", "segment"):
         order_parts.append("(COALESCE(o.segment,'')='') DESC")
     if _has_column("obs_fact", "doc_type"):
@@ -4419,7 +4614,7 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
     if _has_column("obs_fact", "observation_id"):
         order_parts.append("o.observation_id DESC")
     rows = _q(f"SELECT o.* FROM obs_fact o WHERE {' AND '.join(where)}{extra} "
-              f"ORDER BY {', '.join(order_parts)} LIMIT ?", (*args, *eargs, _cap(limit)))
+              f"ORDER BY {', '.join(order_parts)} LIMIT ?", (*args, *eargs, *order_args, _cap(limit)))
     out: list[dict[str, Any]] = []
     partial = (not measure_exact) and bool(measure)
     for r in rows:
@@ -4471,11 +4666,19 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
         where.append(f"substr(COALESCE(o.known_at,''),1,10)=(SELECT MAX(substr(COALESCE(o2.known_at,''),1,10)) "
                      f"FROM obs_fact o2 WHERE o2.symbol=? AND o2.record_type='statement'{extra.replace('o.', 'o2.')})")
         args.extend([sym, *eargs])
+    doc_join = ("LEFT JOIN doc d ON d.doc_key=COALESCE((SELECT a.doc_key FROM doc_alias a "
+                "WHERE a.symbol=o.symbol AND a.alias_key=o.doc_key), o.doc_key)") if _has_table("doc") else ""
+    doc_sel = (", d.title AS doc_title, d.filing_date AS doc_filing_date"
+               if _has_table("doc") else ", '' AS doc_title, '' AS doc_filing_date")
+    # T-242: a call-date window names the transcript's filing date (the reply's ``call_date``), so filter on the
+    # document date and fall back to known_at only when the document holds none.
+    doc_day = f"COALESCE(d.filing_date, substr(COALESCE(o.known_at,''),1,10))" if _has_table("doc") \
+        else "substr(COALESCE(o.known_at,''),1,10)"
     if date_from:
-        where.append("substr(COALESCE(o.known_at,''),1,10) >= ?")
+        where.append(f"{doc_day} >= ?")
         args.append(date_from)
     if date_to:
-        where.append("substr(COALESCE(o.known_at,''),1,10) <= ?")
+        where.append(f"{doc_day} <= ?")
         args.append(date_to)
     term_words = [w for w in re.findall(r"\w+", terms or "") if len(w) > 1]
     text_cols = [c for c in ("statement", "printed_label", "question_context", "measure", "segment", "series_title")
@@ -4484,11 +4687,11 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
         clause, term_args, _used = _word_groups(term_words, [f"o.{c}" for c in text_cols])
         where.append(f"({clause})")
         args.extend(term_args)
-    doc_join = ("LEFT JOIN doc d ON d.doc_key=COALESCE((SELECT a.doc_key FROM doc_alias a "
-                "WHERE a.symbol=o.symbol AND a.alias_key=o.doc_key), o.doc_key)") if _has_table("doc") else ""
-    doc_sel = ", d.title AS doc_title, d.filing_date AS doc_filing_date" if _has_table("doc") else ", '' AS doc_title, '' AS doc_filing_date"
     rows = _q(f"SELECT o.*{doc_sel} FROM obs_fact o {doc_join} WHERE {' AND '.join(where)}{extra} "
               f"ORDER BY (o.status='verified') DESC, o.known_at DESC LIMIT 500", (*args, *eargs))
+    # T-242: when the question or the arguments name a call date, rank the rows of the call nearest that date
+    # first; with no date the newest call stays first.
+    want_day = _text_day(date_from, date_to, topic, terms, rank_terms)
     plan = _topic_plan(topic) if topic else None
     _kind, plabel = norm_period(period)
     plabels: list[str] = []
@@ -4518,6 +4721,13 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
             p_hit = any(lb in p_blob or lb.replace(" ", "") in p_norm for lb in plabels)
             p_rank = 0 if p_hit else 1
         s_rank = 0 if g("status") == "verified" else 1
+        day_rank = 0
+        if want_day is not None:
+            row_day = str(g("doc_filing_date") or (g("known_at") or ""))[:10]
+            try:
+                day_rank = abs((dt.date.fromisoformat(row_day) - want_day).days)
+            except ValueError:
+                day_rank = 10 ** 4
         title = _trim(g("doc_title") or g("series_title") or "", 120)
         doc_type = _DOC_TYPES.get(str(g("doc_type") or "").lower(), g("doc_type"))
         item: dict[str, Any] = {
@@ -4534,8 +4744,8 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
         }
         if g("question_context"):
             item["question_context"] = _trim(g("question_context"), 300)
-        scored.append(((s_rank, p_rank, -t_score, -(int(g("observation_id") or 0) if False else 0)), item))
-    scored.sort(key=lambda pair: (pair[0][0], pair[0][1], pair[0][2]))
+        scored.append(((s_rank, day_rank, p_rank, -t_score), item))
+    scored.sort(key=lambda pair: (pair[0][0], pair[0][1], pair[0][2], pair[0][3]))
     return [pair[1] for pair in scored]
 
 
