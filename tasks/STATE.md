@@ -11,10 +11,9 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 25 Nov 08:40 (Eagle merged dsh a7c04bff): fund_raise round 5 (step amount, stage map, folds, vetoes): graded 60 all W/J/P fixed, 0 R lost, order_win 132/193 same; loader on events_r5_fresh{4,3}.db. NEXT: fresh-store fund_raise grade.
-00000. 24 Nov 23:55: T-242 transcripts v3: 394 ckpt_0002 PASS 54/5/0/1; fy27 ckpt_0003 FAIL 48/8/0/4 (boilerplate) -> greeting widening merged (10 of 15,517 drop). NEXT: recheck fy27_v3 + re-grade; live reparse.
+00000. 24 Nov 23:55: T-242 transcripts v3: 394 ckpt_0002 PASS 54/5/0/1; fy27 ckpt_0003 FAIL 48/8/0/4 (boilerplate) -> greeting widening merged (10 of 15,517 drop). fy27_v3 reparse copy failed re-grade (question_end on 'right?'; no swap, Wolf briefs fix). no_referent widening NOT merged (would unverify 12.8%; `tasks/t242_no_referent_v3_measure.md`).
 00000. 24 Nov 23:05 (Eagle merged): AR gate PASS 57/0/3/0 (48d75aa69de7); AR gates net-cash sign + bound subsidiary (aa31ca82, + parent-prefix fix), statement lines never verified; deck ranges/date values (d8719f81, + 9M fix). AR bulk may start (Wolf).
 000. 24 Nov 19:00 (Wolf): T-242: call statements gate (numbers only via v2/corroborate.py); deck whose-figure prompt GATE PASSED 55/4/0/1 (fp ea5e621d2826); deck bulk in hy4 loop; AR row guards dsh cb0efb86; v3 fy27 ckpt_0001 grading (dsh 5edabb75).
-00. 20 Nov (Eagle): T-226 script_reader + T-227 script_cells on main (V2 contract s16); r32 rules; NEXT: write the 81 + rewrite the 10 with r32 (paused by T-242). T-225 round 10 (Eagle-t225-r10) unmerged, Shivam's call.
 0a. 18 Nov store repairs : `docs/state_history/STATE_2026-11-19_2005.md`. Then notes PP&E/CWIP, commitments, ratios; trial 2.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
 1. T-214/T-218 Telegram build: plan `tasks/handoff/T-214_TG_BUILD_PLAN.md`, queue `D:/RealityEngine/tg_build/build_queue.csv`, stores `tg_build/measure10/c01..c91`; repair notes `tasks/store_repair/INDEX.md`, grid `reports/store_repair_grid.xlsx`; 16 Nov detail in `docs/state_history/STATE_2026-11-18_0930.md`.
