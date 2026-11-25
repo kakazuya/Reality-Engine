@@ -1936,7 +1936,8 @@ Writer: `reality_engine/v2/observations.py` (DDL is its `SCHEMA` constant; tests
   `customer`, `group_path` (verbatim, e.g. "Projects Under Review"), `group_source` (`printed` / `legend_inferred` /
   empty), `group_check` (`path_sum` when the running-path check passed), `stage` (`operating` / `under_construction` /
   `approved` / `under_review` / `potential` / empty), `series_id` and `series_title` (which chart/panel on the page),
-  `entity_scope` (`company` / `subsidiary` / `industry` / `country` / `customer` / `peer` / empty), `status`
+  `entity_scope` (`company` / `subsidiary` / `parent` / `industry` / `country` / `customer` / `peer` / `jv` /
+  `associate` / empty), `status`
   (`verified` / `unverified` / `quarantined`), `status_reason`, `reader`, `read_at`.
 - `measure_dict` -- `id`, `name`, `unit_family`, `driver_node` (the T-228 driver tree: `revenue.volume`,
   `revenue.price`, `revenue.total`, `revenue.order_book`, `revenue.mix`, `cost.raw_material`, `cost.employee`,
@@ -1983,8 +1984,10 @@ Script checks, independent of the model:
    is crore, `thousand units` is 1000, `Cr Ltrs.` is a crore of litres); a percentage, multiple or duration is never
    scaled. A model scale is kept only when the page prints that scale word, else it is reset to 1 and the row is
    `unverified`.
-5. `entity_scope` must be stated and must be one of the six scopes; an industry or country figure is kept with its
-   scope and never looks like the company's.
+5. `entity_scope` must be stated and must be one of the nine scopes; an industry or country figure is kept with its
+   scope and never looks like the company's. The annual-report row gates assign `jv` / `associate` from a printed
+   JV/associate heading (never verified unless the row's label or segment names the entity) and reset a
+   `subsidiary`/`parent` scope the page does not back to `company` (`docs/DEVELOPER_GUIDE.md`, the T-242 r4 entry).
 6. `stage` is taken from the model only when it names a stage; else derived from a printed group heading
    ("Projects Approved" -> `approved`, "Under Review" -> `under_review`, "Pipeline of Potential Projects" ->
    `potential`). It is never inferred from outside knowledge.

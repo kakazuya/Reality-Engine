@@ -990,7 +990,7 @@ DIM_VOCAB: tuple[tuple[str, str, str], ...] = (
     ("product", "slurry", "slurry"),
 )
 
-SCOPES = ("company", "subsidiary", "parent", "industry", "country", "customer", "peer")
+SCOPES = ("company", "subsidiary", "parent", "industry", "country", "customer", "peer", "jv", "associate")
 PERIOD_KINDS = ("actual", "estimate", "target", "span", "instant")
 STAGES = ("operating", "under_construction", "approved", "under_review", "potential")
 DIMS = ("segment", "product", "geography", "plant", "customer")
@@ -1190,10 +1190,15 @@ def stage_from_group(vocab: dict[tuple[str, str], str], group_path: str) -> str:
 
 
 def canonical_scope(raw: str) -> str:
-    low = norm_space(raw).lower().replace("-", "_")
+    # T-242 r4: the scope vocabulary carries the joint-venture and associate entities the AR gates read from a
+    # note heading (a JV's own line is never the store company's figure).
+    low = norm_space(raw).lower().replace("-", "_").replace(" ", "_")
     synonyms = {"group": "company", "own": "company", "company_total": "company",
                 "industry_total": "industry", "economy": "country", "competitor": "peer",
-                "portfolio_company": "subsidiary"}
+                "portfolio_company": "subsidiary", "parent_company": "parent",
+                "holding_company": "parent", "subsidiary_company": "subsidiary",
+                "joint_venture": "jv", "joint_ventures": "jv", "joint": "jv", "jv_entity": "jv",
+                "associates": "associate", "associate_company": "associate"}
     low = synonyms.get(low, low)
     return low if low in SCOPES else ""
 
@@ -3902,6 +3907,182 @@ AR_ACRONYM_PLAIN = frozenset({
 })
 AR_PROPER_ENTITY_ACRONYM_RE = re.compile(r"\b([A-Z]{4,}(?:-[A-Z]{2,})?)\b")
 
+# T-242 r4 (AR ckpt_0003 grade 45R/8P/5W/2J): a JV/associate note's lines are that entity's figures, a
+# subsidiary/parent scope the page does not print is only the model's claim, and an edition ordinal, an
+# appointment term or a celebration slogan is not a reported figure (AR and deck).
+AR_JV_HEAD_RE = re.compile(
+    r"\b(?:interest\s+in\s+(?:joint\s+ventures?|associates?)|"
+    r"name\s+of\s+(?:the\s+)?(?:joint\s+ventures?|associates?)|"
+    r"joint\s+venture\s+entit(?:y|ies)|associate\s+entit(?:y|ies)|"
+    r"(?:associates?|joint\s+ventures?)\s+and\s+(?:joint\s+ventures?|associates?)|"
+    r"investment\s+in\s+(?:joint\s+ventures?|associates?)|"
+    r"share\s+of\s+(?:profit|loss)[^.\n]{0,40}associates?|"
+    r"summarised\s+financial\s+information[^.\n]{0,80}(?:joint\s+ventures?|associates?))", re.I)
+AR_PARENT_CUE_RE = re.compile(
+    r"\b(?:the\s+parent|parent\s+compan(?:y|ies)|holding\s+compan(?:y|ies)|ultimate\s+holding)\b", re.I)
+AR_STAKE_MEASURE_RE = re.compile(
+    r"(?:^|_)shareholding(?:_|$)|(?:^|_)ownership_stake(?:_|$)|(?:^|_)stake_pct$|(?:^|_)holding_pct$|"
+    r"(?:^|_)ownership_pct$", re.I)
+AR_SUBSIDIARY_TITLE_RE = re.compile(
+    r"\bname\s+of\s+(?:the\s+)?subsidiar|step[\s-]+down\s+subsidiar|"
+    r"\bdetails\s+of\s+(?:the\s+)?subsidiar|subsidiar(?:y|ies)\s+as\s+(?:at|on)\b|"
+    r"\bsubsidiar(?:y|ies)\s+of\s+the\s+compan", re.I)
+AR_EDITION_MEASURE_RE = re.compile(
+    r"annual_report_edition|report_edition|edition_number|annual_report_number|agm_number", re.I)
+AR_ORDINAL_VALUE_RE = re.compile(r"^\d{1,3}(?:st|nd|rd|th)$", re.I)
+AR_EDITION_CUE_RE = re.compile(r"\b(?:annual\s+report|agm|annual\s+general\s+meeting|edition)\b", re.I)
+AR_CELEBRATION_RE = re.compile(
+    r"\b(?:celebrat\w*|anniversary)\b|"
+    r"\b\d{1,3}\s+years?\s+of\s+(?:innovation|excellence|services?|operations?|trust|legacy|growth|"
+    r"partnership|journey|experience)\b", re.I)
+AR_TENURE_ECHO_RE = re.compile(
+    r"\b(?:consecutive\s+term|term\s+of|tenure\s+of|period\s+of)\s+"
+    r"(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:\(\s*\d+\s*\))?\s*(?:years?|yrs?)\b", re.I)
+AR_APPOINTMENT_CUE_RE = re.compile(
+    r"\b(?:directors?|chairman|chairperson|managing\s+director|whole[\s-]*time|key\s+managerial|auditor|ceo|"
+    r"cfo|company\s+secretary|appoint\w*|board)\b", re.I)
+AR_BUSINESS_TENURE_RE = re.compile(
+    r"employee|average|median|loan|lease|debt|contract|warranty|concession|licen[cs]e|policy|customer|"
+    r"amortis|amortiz|useful_life", re.I)
+# T-242 r4: the reporting company's own equity-method lines ("Investment in joint ventures 5,916.51",
+# "Share of profit of associates (21)") are the COMPANY's figures even on a JV/associate page.
+AR_EQUITY_METHOD_LABEL_RE = re.compile(
+    r"^\W*(?:investment\s+in\s+(?:joint\s+ventures?|associates?|jvs?)|"
+    r"share\s+of\s+(?:profit|loss)s?\b|share\s+of\s+net\s+assets\b|"
+    r"quoted\s+market\s+value|extent\s+of\s+holding|number\s+of\s+(?:equity\s+)?shares\s+held|"
+    r"amount\s+of\s+investment)", re.I)
+# T-242 r4: a JV/associate figure verifies only when the row's own label names the entity (a company suffix
+# or a JV token), not when it merely says "joint venture revenue".
+AR_ENTITY_NAME_RE = re.compile(
+    r"\b(?:(?:private|pvt)\s+limited|pvt\.?\s+ltd|limited|ltd\.?|llp|inc\.?|corp\.?|corporation|gmbh|llc|plc|"
+    r"pte\.?\s*ltd|fze|fzco|wll|spa|kft|ltda|jv|jvs|jvc|co\.?\s*ltd\.?)\b", re.I)
+# a deck label that is only another period is a matrix column's coordinate, not a data label
+DECK_PERIOD_ONLY_LABEL_RE = re.compile(
+    r"^(?:q[1-4]\s*)?(?:h[12]\s*)?(?:9m\s*)?(?:fy\s*)?['\u2019]?\d{2,4}(?:\s*[-/]\s*\d{2,4})?$|"
+    r"^(?:q[1-4]|h[12]|9m)\s*(?:fy\s*)?['\u2019]?\d{2,4}(?:\s*[-/]\s*\d{2,4})?$", re.I)
+DECK_SECTION_TITLE_RE = re.compile(
+    r"\b(?:summary|highlights?|overview|indicators?|scorecard|dashboard|snapshot|financials?|results?|"
+    r"performance|update|glance|metrics|standalone|consolidated)\b", re.I)
+
+
+AR_JV_SENTENCE_RE = re.compile(
+    r"\b(?:is|are|was|were|have|has|had|which|that|shall|will|would|should|could|may|increased|decreased)\b", re.I)
+
+
+def _ar_jv_heading(line: str) -> bool:
+    """T-242 r4: a printed JV/associate *heading* — not a prose fragment a column split left behind.
+
+    APOLLOHOSP p64 prints "with Ind AS 28 - Investment in Associates and Ind AS" and "Subsidiaries,
+    Associates and Joint Venture Companies are" as wrapped policy prose, and ACROW p45's previous page prints
+    "the nature of loan to one related party other than subsidiary, joint venture and associates." — neither is
+    a section head.
+    """
+    s = norm_space(line)
+    if not s or len(s) > 110 or not AR_JV_HEAD_RE.search(s):
+        return False
+    if s[0].islower():                       # a wrapped fragment of a sentence, not a heading
+        return False
+    if len(s.split()) > 5 and AR_JV_SENTENCE_RE.search(s):
+        return False
+    return True
+
+
+def _ar_jv_scope(page_text: str, previous_text: str) -> str:
+    """T-242 r4: 'jv' / 'associate' when the page (or the page before) is headed as that entity's section.
+
+    A combined "Associates and Joint Ventures" heading reads as ``jv``; the unnamed gate is the same either way.
+    The page before counts only by a heading in its last 700 characters (a table header whose rows run on), so a
+    note's rows are never given the scope of a section the previous page merely passed through.
+    """
+    page = str(page_text or "")
+    for text in (page, str(previous_text or "")[-700:]):
+        for line in text.splitlines():
+            if not _ar_jv_heading(line):
+                continue
+            return "jv" if re.search(r"\b(?:joint\s+ventures?|jv)\b", norm_space(line), re.I) else "associate"
+    return ""
+
+
+def _ar_entity_named(row: dict[str, Any]) -> bool:
+    """True when the row's own printed label or segment names the entity (a Ltd/LLP/JV name).
+
+    A column header in ``group_path`` names the JV for the whole table, not for this row's measure: ckpt_0003
+    #31 ATGL p283 prints "IndianOil-Adani Gas Private Limited" as the column over an excise-duty row and the
+    grader still counts the row as an unnamed JV figure.
+    """
+    for key in ("printed_label", "segment"):
+        value = norm_space(row.get(key))
+        if value and AR_ENTITY_NAME_RE.search(value):
+            return True
+    return False
+
+
+def _ar_parent_backed(row: dict[str, Any], page_text: str, previous_text: str) -> bool:
+    """T-242 r4: a ``parent`` scope needs a printed parent/holding-company name or heading, not a model claim."""
+    row_text = " ".join(norm_space(row.get(key)) for key in ("printed_label", "series_title", "group_path"))
+    if AR_PARENT_CUE_RE.search(row_text):
+        return True
+    for text in (page_text, previous_text):
+        if AR_PARENT_CUE_RE.search(norm_space(text)):
+            return True
+    return False
+
+
+def junk_ordinal_reason(row: dict[str, Any]) -> str:
+    """T-242 r4: an edition/AGM ordinal, a celebration slogan or an appointment term is not a figure (AR, deck).
+
+    ``34th Annual Report``, ``Celebrating 40 years of innovation`` and ``consecutive term of five (5) years`` are
+    numbers a page prints, never business quantities, so the row is dropped rather than served unverified.  A
+    business tenure (a loan/lease/contract term, an employee's average tenure) is never caught.
+    """
+    measure = norm_space(row.get("measure"))
+    label = norm_space(row.get("printed_label"))
+    value_text = norm_space(row.get("value_text"))
+    context = " ".join(p for p in (label, norm_space(row.get("period")),
+                                   norm_space(row.get("series_title"))) if p)
+    if AR_EDITION_MEASURE_RE.search(measure) or (
+            AR_ORDINAL_VALUE_RE.match(value_text) and AR_EDITION_CUE_RE.search(context)):
+        return (f"junk_edition_ordinal: {value_text!r} numbers an annual report/AGM edition, not a figure "
+                f"({label!r})")
+    if AR_CELEBRATION_RE.search(label):
+        return f"junk_celebration: {label!r} is a celebration slogan, not a reported figure"
+    if AR_TENURE_ECHO_RE.search(context) \
+            and AR_APPOINTMENT_CUE_RE.search(f"{label} {measure.replace('_', ' ')}") \
+            and not AR_BUSINESS_TENURE_RE.search(measure):
+        return (f"junk_tenure_echo: {row.get('value')!r} repeats an appointment's term in {label!r}, "
+                f"not a business figure")
+    return ""
+
+
+def deck_untied_reason(row: dict[str, Any]) -> str:
+    """T-242 r4: a chart/matrix figure with no printed label tie stays unverified (``deck_untied_value``).
+
+    ASIANPAINT p26 prints ten unlabelled bar percentages under the section title "Summary Standalone
+    Financials": the row has no label, axis or group and the only printed context names no measure, so its
+    measure and period were guessed.  ANGELONE p14's cohort matrix prints 35 bare numbers between a cohort-year
+    row and a fiscal-year column; a row whose only label is a DIFFERENT period is reading a column coordinate as
+    its data label.
+    """
+    label = norm_space(row.get("printed_label"))
+    axis = norm_space(row.get("printed_axis"))
+    group = norm_space(row.get("group_path"))
+    series = norm_space(row.get("series_title"))
+    if not (label or axis or group):
+        if _word_set(series) & measure_keywords(norm_space(row.get("measure"))):
+            return ""
+        if DECK_SECTION_TITLE_RE.search(series):
+            return (f"deck_untied_value: no printed label, axis or group for {row.get('value_text')!r}; "
+                    f"the series title {series!r} names no measure")
+        return ""
+    if label and DECK_PERIOD_ONLY_LABEL_RE.match(label):
+        label_rank = _period_rank(label)
+        period_rank = _period_rank(norm_space(row.get("period")))
+        if label_rank and period_rank and label_rank[0] != period_rank[0]:
+            return (f"deck_untied_value: {label!r} is another period's axis label, not a data label for "
+                    f"{row.get('period')!r}")
+    return ""
+
+
 # T-242 Eagle/Wolf review: AR fiscal-year resolution for relative periods ('during the year',
 # 'end of Financial Year', 'beginning of the year', 'P.Y.').  Resolves April-March FY only on an explicit
 # split year or March year-end, resolves non-March year-ends (e.g. Jan-Dec CY2025) to that year end, and
@@ -4245,9 +4426,12 @@ def _ar_keep_subsidiary_scope(row: dict[str, Any], page_text: str, company: str)
         return True
     if AR_SUBSIDIARY_NAME_RE.search(label):
         return True
-    for m in AR_PROPER_ENTITY_ACRONYM_RE.finditer(label):
-        if m.group(1) not in AR_ACRONYM_PLAIN:
-            return True
+    # T-242 r4: a bare acronym in the label is an entity name only on a page that prints a subsidiary/associate
+    # table somewhere; "NSDL" (a depository) is not one (ABFRL p149, corporate governance).
+    if AR_SUBSIDIARY_TABLE_RE.search(norm_space(page_text)):
+        for m in AR_PROPER_ENTITY_ACRONYM_RE.finditer(label):
+            if m.group(1) not in AR_ACRONYM_PLAIN:
+                return True
     for val in (series, group, customer):
         if val and AR_SUBSIDIARY_NAME_RE.search(val) and not (company and _is_own_entity(val, company)):
             return True
@@ -4630,6 +4814,7 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
     has_prose_consolidated = bool(CONSOLIDATED_RE.search(page_text) or CONSOLIDATED_PAGE_RE.search(page_text))
     fy_spec = _parse_ar_fy_spec(report_fy) if report_fy else _parse_ar_fy_spec(
         ar_report_fy_from_text(page_text, previous_text))
+    jv_scope = _ar_jv_scope(page_text, previous_text)
     kept: list[dict[str, Any]] = []
     for row in rows:
         if norm_space(row.get("record_type") or "number") != "number":
@@ -4637,6 +4822,8 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             continue
         if _is_ar_date_value(str(row.get("value_text") or "")):
             continue
+        if junk_ordinal_reason(row):
+            continue                     # T-242 r4: an edition ordinal / appointment term is dropped, no row
         kept.append(row)
         stated_basis = str(row.get("basis") or "")
         if basis and (stated_basis != basis or (basis_source == "page_heading" and not row.get("basis_source"))) \
@@ -4648,6 +4835,7 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             row["basis"] = ""
             row["basis_source"] = ""
         unnamed_subsidiary = False
+        scope_unbacked = ""
         if str(row.get("entity_scope") or "") == "subsidiary" \
                 and not _ar_keep_subsidiary_scope(row, page_text, company):
             if cons_group_head:
@@ -4657,6 +4845,24 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
                 row["scope_source"] = "no_subsidiary_named"
             else:
                 unnamed_subsidiary = True
+        # T-242 r4: the page, not the model, decides a subsidiary/parent scope; a JV/associate section owns the
+        # lines printed under it, and a "% of holding" row in a subsidiaries table is the GROUP's own holding.
+        scope = str(row.get("entity_scope") or "")
+        own_equity_method = bool(AR_EQUITY_METHOD_LABEL_RE.search(norm_space(row.get("printed_label"))))
+        if jv_scope and not own_equity_method and scope not in ("industry", "country", "peer", "customer"):
+            row["entity_scope"], row["scope_source"] = jv_scope, "jv_heading"
+            scope = jv_scope
+        elif scope == "parent" and not _ar_parent_backed(row, page_text, previous_text):
+            row["entity_scope"] = "company"
+            row["scope_source"] = "scope_unbacked_parent"
+            if not (_ar_is_company_section_scope(row, page_text, previous_text, has_consolidated)
+                    or cons_group_head):
+                scope_unbacked = ("scope_unbacked: entity_scope 'parent' is not backed by a printed "
+                                  "parent/holding-company name or heading")
+        elif scope in ("subsidiary", "parent") \
+                and AR_STAKE_MEASURE_RE.search(str(row.get("measure") or "")) \
+                and AR_SUBSIDIARY_TITLE_RE.search(f"{text}\n{norm_space(previous_text)}"):
+            row["entity_scope"], row["scope_source"] = "company", "subsidiary_holding_pct"
         period_reason = _ar_period_reason(row, page_text, previous_text, fy_spec)
         unit = norm_space(row.get("unit"))
         cues = " ".join(norm_space(row.get(key)) for key in
@@ -4729,6 +4935,12 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             reason = _ar_flow_as_stock_reason(row, page_text)
         if not reason:
             reason = _ar_current_mismatch_reason(row)
+        if not reason and scope_unbacked:
+            reason = scope_unbacked
+        if not reason and str(row.get("entity_scope") or "") in ("jv", "associate") \
+                and not _ar_entity_named(row):
+            reason = (f"ar_jv_unnamed: no {row.get('entity_scope')} named in {label!r} / "
+                      f"{norm_space(row.get('series_title'))!r}")
         if not reason and unnamed_subsidiary:
             reason = f"ar_subsidiary_unnamed: no subsidiary named in {label!r} / {norm_space(row.get('series_title'))!r}"
         if reason:
@@ -5256,11 +5468,21 @@ def deck_combined_label_reason(row: dict[str, Any], page_text: str = "") -> str:
 
 
 def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> None:
-    """T-242: script gates for deck number rows (bounds, combined labels, empty basis from page heading)."""
+    """T-242: script gates for deck number rows (bounds, combined labels, empty basis, untied values).
+
+    T-242 r4: a junk ordinal (an annual-report/AGM edition, a celebration slogan, an appointment term) is dropped
+    from ``rows``; a verified chart/matrix figure the page prints no label tie for is marked unverified
+    (``deck_untied_value``, see :func:`deck_untied_reason`).
+    """
     basis = heading_basis(page_text, SECTION_BASIS_RE) if page_text else ""
+    kept: list[dict[str, Any]] = []
     for row in rows:
         if norm_space(row.get("record_type") or "number") != "number":
+            kept.append(row)
             continue
+        if junk_ordinal_reason(row):
+            continue
+        kept.append(row)
         if basis and not norm_space(row.get("basis")):
             row["basis"] = basis
             row["basis_source"] = "page_heading"
@@ -5269,22 +5491,29 @@ def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> Non
         reason = deck_bound_reason(row)
         if not reason:
             reason = deck_combined_label_reason(row, page_text)
+        if not reason:
+            reason = deck_untied_reason(row)
         if reason:
             row["status"] = "unverified"
             row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", reason) if p)
+    rows[:] = kept
 
 
 def gate_not_company(rows: list[dict[str, Any]], stats: dict[str, Any] | None = None) -> int:
     """T-242 final invariant: a figure whose scope is not the company is never stored verified.
 
     entity_scope industry / country / peer / customer stays on the row and in its label; the row is served
-    unverified.  An existing not_company reason (a read's own scope note) is kept as written.
+    unverified.  A jv/associate figure is the same unless the row names the entity (T-242 r4).  An existing
+    not_company reason (a read's own scope note) is kept as written.
     """
     gated = 0
     for row in rows:
         scope = str(row.get("entity_scope") or "")
-        if str(row.get("status") or "") != "verified" or scope not in NOT_COMPANY_SCOPES:
+        if str(row.get("status") or "") != "verified":
             continue
+        if scope not in NOT_COMPANY_SCOPES:
+            if scope not in ("jv", "associate") or _ar_entity_named(row):
+                continue
         row["status"] = "unverified"
         reason = str(row.get("status_reason") or "")
         if "not_company" not in reason:
@@ -7906,7 +8135,12 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             stats["basis_prev_page"] += sum(1 for row in updated
                                             if row.get("basis_source") == "previous_page_heading")
         elif deck_page:
+            before_deck = list(updated)
             apply_deck_row_gates(updated, raw_text)
+            for row in before_deck:
+                if all(row is not kept_row for kept_row in updated):
+                    con.execute("DELETE FROM observation WHERE observation_id=?", (int(row["observation_id"]),))
+                    stats["deck_dropped"] = int(stats.get("deck_dropped", 0)) + 1
             stats["basis_deck_heading"] += sum(1 for row in updated if row.get("basis_source") == "page_heading")
         elif results_page:                 # T-242: junk numbers, entity scope, holding/fragment values, unit line
             apply_results_row_gates(updated, raw_text,
