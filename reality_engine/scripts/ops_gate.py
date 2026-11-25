@@ -3,8 +3,8 @@
 Rules (``ops_rules.json``, each with its source):
 - heartbeat: a live ``job_watch wait`` (25-minute heartbeats for Wolf and Eagle);
 - hy4: the always-on hy4 loop is running, and no read-gate audit checkpoint waits for a grade;
-- reportees: DeepSeek has a running dsh job off-peak, Hydrogen a running agy job in DeepSeek peak hours, no agy job
-  off-peak, and at most ``max_code_workers`` code workers in all;
+- reportees: DeepSeek has a running dsh job off-peak, Hydrogen a running agy job in DeepSeek peak hours (off-peak agy allowed,
+  25 Nov), and at most ``max_code_workers`` code workers in all;
 - quota: each account's weekly use is on pace for its target (and a 5-hour reading at the hand-off level says
   delegate);
 - ssd_only: no database under D:/RealityEngine changed in the last hour outside the allowed folders.
@@ -194,9 +194,7 @@ def check(now: dt.datetime | None = None, rules: dict[str, Any] | None = None,
     if peak and agy == 0:
         lines.append(f"RULE idle: Hydrogen has no running job in DeepSeek peak hours - brief one "
                      f"({rep['hydrogen']['source']})")
-    if not peak and agy > 0:
-        lines.append(f"RULE reportees: {agy} Hydrogen job(s) running off-peak; agy is for DeepSeek peak hours "
-                     f"({rep['hydrogen']['source']})")
+    # 25 Nov (Shivam): Hydrogen may also run off-peak, alongside DeepSeek; no off-peak agy rule any more
     if dsh + agy > rules["max_code_workers"]:
         lines.append(f"RULE reportees: {dsh + agy} code workers running, limit {rules['max_code_workers']}")
     lines += quota_lines(rules, now)
