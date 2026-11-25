@@ -810,20 +810,52 @@ def management_pool(pages: list[tuple[int, str]]) -> list[str]:
     return names
 
 
+_GENERIC_DESIGNATION_WORDS = frozenset({
+    "cmd", "cfo", "ceo", "coo", "cto", "cio", "chro", "cmo", "cro", "cbo", "cso", "cs",
+    "md", "ed", "jmd", "wtd", "vp", "svp", "evp", "avp", "gm", "dgm", "agm",
+    "head", "chief", "managing", "executive", "whole", "time", "wholetime", "joint",
+    "non", "independent", "director", "chairman", "chairperson", "president", "vice",
+    "secretary", "compliance", "officer", "manager", "investor", "relations", "ir",
+    "founder", "promoter", "group", "deputy", "assistant", "associate", "senior",
+    "general", "team", "lead", "representative", "spokesperson",
+    "finance", "financial", "operations", "operational", "risk", "strategy", "strategic",
+    "commercial", "corporate", "marketing", "sales", "technical", "technology",
+    "business", "development", "hr", "human", "resources", "legal", "treasury",
+    "accounts", "audit", "tax", "it", "supply", "chain", "manufacturing", "production",
+    "projects", "company", "management", "moderator", "operator", "coordinator", "host",
+    "participant", "analyst", "unknown", "speaker",
+    "of", "and", "for", "the", "in", "on", "to",
+})
+
+
+def _is_generic_speaker(speaker: str) -> bool:
+    """True when ``speaker`` is empty, a generic role/company label, or a bare designation (CFO, ED (Finance))."""
+    s = " ".join((speaker or "").split()).strip()
+    if not s:
+        return True
+    toks = [t for t in re.split(r"[\s&/,().:\-]+", s.lower()) if t]
+    if not toks:
+        return True
+    if all(t in _GENERIC_DESIGNATION_WORDS for t in toks):
+        return True
+    return bool(re.match(r"^(?:management\s+of\b|.*\bmanagement$)", s, re.I))
+
+
 def resolve_speaker_name(speaker: str, pool: list[str],
                          company_keys: Iterable[str] = ()) -> tuple[str, str]:
     """T-242: resolve a company/first-name/initials label to one full management name; else keep it and say why.
 
     Returns ``(name, reason)``; ``reason`` is '' when the label (or its replacement) is a usable speaker.
-    A full person name the roster does not list is kept as printed.
+    A full person name the roster does not list is kept as printed. Generic labels ('Management', 'Company',
+    'Moderator') and bare designations ('CFO', 'ED (Finance)') are marked ``speaker_generic``.
     """
     raw = " ".join((speaker or "").split()).strip()
     norm = _norm_name(raw)
     if not norm:
         return raw, ""
+    if _is_generic_speaker(raw):
+        return raw, f"speaker_generic: {raw!r} is a generic speaker or bare designation"
     keys = set(company_keys)
-    if norm in _ROLE_WORDS or norm in _MODERATOR_NAMES:
-        return raw, ""
     if _company_key(raw) in keys:
         return raw, f"speaker_unresolved: {raw!r} is the company, not a person"
     if len(norm.split()) > 1 and _name_matches_list(raw, pool):
@@ -890,19 +922,101 @@ _PERIOD_LABEL_RE = re.compile(r"\b(?:[QH][1-4]\s*FY\s*\d{2,4}|FY\s*\d{2,4}|[QH][
 _ABBREV_DOT_RE = re.compile(r"\b(?:Mr|Mrs|Ms|Dr|Shri|Sh|Prof|Sr|Smt|Er|Capt|vs|etc)\.", re.I)
 
 
+_LIGATURE_MAP = str.maketrans({
+    "\ufb00": "ff",
+    "\ufb01": "fi",
+    "\ufb02": "fl",
+    "\ufb03": "ffi",
+    "\ufb04": "ffl",
+    "\ufb05": "st",
+    "\ufb06": "st",
+    "\u019f": "ti",  # PDF CMap artefact in Indian filings ("quesƟon", "conƟnue")
+    "\u0275": "ti",
+    "\u01af": "ff",  # PDF CMap artefact ("oƯset", "diƯerence")
+})
+
+
+def _normalise_ligatures(text: str) -> str:
+    """Fold PDF OCR ligatures before pattern matching; never mutates stored text."""
+    return str(text or "").translate(_LIGATURE_MAP)
+
+
 def _has_figure(text: str) -> bool:
     """A digit in the sentence, except a fiscal-period label ("Q2FY27 / H1FY27" is not a figure)."""
     return bool(re.search(r"\d", _PERIOD_LABEL_RE.sub(" ", text)))
 
 
+_THANKS_WELCOME_RE = re.compile(
+    r"^(?:(?:so|now|and|hi|hello|good\s+\w+|ladies\s+and\s+gentlemen)[,\s]+)*"
+    r"(?:thank\s+you|thanks)\b[^.!?;]*\bwelcome\b[^.!?;]*"
+    r"\b(?:all\s+(?:the\s+)?participants|participants|everyone|all\s+of\s+you|"
+    r"(?:the\s+)?(?:earnings|conference|investor|analyst|results)\s*(?:call|webinar|meet)|"
+    r"(?:earnings|conference|investor|analyst|results)?\s*call)\b(?P<tail>.*)[.!?]?$",
+    re.I,
+)
+
+_PRAISE_QUESTION_RE = re.compile(
+    r"^(?:(?:yes|yeah|no|well|so|okay|ok|sure|right|actually|firstly|first|sir|madam|i\s+think|"
+    r"[A-Z][a-z]+(?:\s+ji)?)[,\s]+){0,3}"
+    r"(?:(?:that|this|it)(?:\s+is|'s|’s)\s+)?"
+    r"(?:(?:a|an)\s+)?(?:(?:very|really|quite|pretty|truly|super)\s+)?"
+    r"(?:fine|good|great|pertinent|excellent|valid|fair|important|interesting|relevant|nice|wonderful|brilliant|apt)"
+    r"\s+question\b(?P<tail>.*)[.!?]?$",
+    re.I,
+)
+
+_SUBSTANTIVE_CLAUSE_RE = re.compile(
+    r";|\b(?:but|however|though|although|yet|whereas|meanwhile|because|since)\b"
+    r"|,\s*(?:and|so)\s+(?:we|our|the|it|there|in|for|margins?|revenue|growth|demand|volume|cost|price|capex)\b",
+    re.I,
+)
+
+_DEFER_PREAMBLE = (
+    r"^(?:(?:yes|yeah|no|so|now|okay|ok|sure|well|and|with\s+this|with\s+that|maybe|perhaps|actually|honestly|"
+    r"(?:on|for|regarding|as\s+far\s+as|in\s+terms\s+of)\s+[^.!?;]{1,60})[,\s]+){0,4}"
+)
+# Case-sensitive person names so pronouns like 'me'/'we'/'you' never match as a named colleague.
+_PERSON_OR_ROLE = (
+    r"(?:(?:my|our)\s+(?:colleague|team|cfo|ceo|coo|cto|cmd|md|ed|group\s+cfo|director|president|head)|"
+    r"(?-i:(?:(?:Mr|Ms|Mrs|Dr|Shri|Sh)\.?\s+)?[A-Z][A-Za-z.'’-]+(?:\s+(?:[A-Z][A-Za-z.'’-]+|sir|ji))*))"
+)
+_THIRD_PERSON_OR_ROLE = (
+    r"(?:(?:my|our)\s+(?:colleague|team|cfo|ceo|coo|cto|cmd|md|ed|group\s+cfo|director|president|head)|"
+    r"(?-i:he|she|He|She|(?:(?:Mr|Ms|Mrs|Dr|Shri|Sh)\.?\s+)?[A-Z][A-Za-z.'’-]+(?:\s+(?:[A-Z][A-Za-z.'’-]+|sir|ji))*))"
+)
+_DEFER_HANDOVER_RE = re.compile(
+    _DEFER_PREAMBLE + r"(?:"
+    r"(?:(?:i|we)(?:'ll|'d|\s+will|\s+would|\s+might|\s+may|\s+can)?|let\s+(?:me|us))\s+(?:like\s+to\s+)?(?:maybe\s+)?defer\s+(?:this|that|it|the\s+question\s+)?to\s+" + _PERSON_OR_ROLE +
+    r"|(?:(?:i|we)(?:'ll|'d|\s+will|\s+would|\s+now|\s+also)?(?:\s+now|\s+also)?\s+(?:like\s+to\s+(?:now\s+)?)?|let\s+(?:me|us)\s+(?:now\s+)?)(?:hand|pass)(?:\s+it|\s+the\s+(?:call|floor|mic|mike|discussion))?\s+over\s+to\s+" + _PERSON_OR_ROLE +
+    r"|(?:(?:i|we)(?:'ll|'d|\s+will|\s+would|\s+now)?(?:\s+now)?\s+(?:like\s+to\s+)?|let\s+me\s+)?(?:request|ask|invite)\s+" + _PERSON_OR_ROLE + r"(?:\s+(?:sir|ji|ma'am|madam))?(?:,\s*[^.?!;]{1,40},)?\s+to\s+(?:answer|respond|take|address|comment|reply|clarify|elaborate|explain|speak|talk|share|walk|take\s+us|say)\b"
+    r"|let\s+(?!me\b|us\b)" + _PERSON_OR_ROLE + r"\s+(?:answer|take|respond|address)\b"
+    r"|(?!I\b|We\b|You\b|They\b|It\b|This\b|That\b)" + _THIRD_PERSON_OR_ROLE + r"\s+(?:will|can|would)\s+(?:now\s+)?(?:answer|take|respond\s+to|address)\s+(?:on\s+)?(?:that|this|it|the\s+(?:question|other|second\s+part|first\s+part)|your\s+question)\b"
+    r")(?P<tail>.*)[.!?]?$",
+    re.I,
+)
+
+
 def _greeting_sentence(sentence: str) -> bool:
-    """One sentence that is only a greeting: the phrase plus a short tail with no figure ("Thank you, Vaibhav" is;
-    "Thank you, Vaibhav, it is approximately INR5,400 crores ..." is not)."""
-    match = _GREETING_SENTENCE_RE.match(sentence)
-    if not match:
+    """One sentence that is only a greeting, praise of a question, or defer/hand-over with no figure or substance."""
+    sent = _normalise_ligatures(sentence).strip()
+    if not sent:
         return False
-    tail = sentence[match.end():]
-    return not _has_figure(tail) and len(re.findall(r"[A-Za-z]+", tail)) <= _GREETING_TAIL_WORDS
+    match = _GREETING_SENTENCE_RE.match(sent)
+    if match:
+        tail = sent[match.end():]
+        if not _has_figure(tail) and len(re.findall(r"[A-Za-z]+", tail)) <= _GREETING_TAIL_WORDS:
+            return True
+    if _has_figure(sent):
+        return False
+    m_praise = _PRAISE_QUESTION_RE.match(sent)
+    if m_praise:
+        tail = m_praise.group("tail")
+        if not _SUBSTANTIVE_CLAUSE_RE.search(tail) and len(re.findall(r"[A-Za-z]+", tail)) <= 5:
+            return True
+    m_defer = _DEFER_HANDOVER_RE.match(sent)
+    if m_defer and not _SUBSTANTIVE_CLAUSE_RE.search(m_defer.group("tail")):
+        return True
+    return False
 
 
 # Opening welcome: any length when the sentence welcomes the audience ("... a warm welcome to all participants"),
@@ -926,17 +1040,21 @@ _LOGISTICS_SENTENCE_RE = re.compile(
 
 def _sentences(text: str) -> list[str]:
     """Split on . ! ? followed by space, keeping a title's dot inside its sentence ("to Mr. Sohoni ...")."""
-    guarded = _ABBREV_DOT_RE.sub(lambda m: m.group(0)[:-1] + "\u2024", str(text or ""))
+    guarded = _ABBREV_DOT_RE.sub(lambda m: m.group(0)[:-1] + "\u2024", _normalise_ligatures(text))
     return [x.replace("\u2024", ".").strip() for x in re.split(r"(?<=[.!?])\s+", guarded) if x.strip()]
 
 
 def _boilerplate_sentence(sentence: str) -> bool:
     """A welcome or housekeeping sentence with no figure in it; only a sentence that says "welcome" may be long."""
-    if _has_figure(sentence):
+    sent = _normalise_ligatures(sentence).strip()
+    if _has_figure(sent):
         return False
-    if re.search(r"\bwelcome\b", sentence, re.I) and _WELCOME_OPEN_RE.match(sentence):
+    if re.search(r"\bwelcome\b", sent, re.I) and _WELCOME_OPEN_RE.match(sent):
         return True
-    return bool(_LOGISTICS_SENTENCE_RE.search(sentence))
+    m_tw = _THANKS_WELCOME_RE.match(sent)
+    if m_tw and not _SUBSTANTIVE_CLAUSE_RE.search(m_tw.group("tail")) and len(re.findall(r"[A-Za-z]+", m_tw.group("tail"))) <= 8:
+        return True
+    return bool(_LOGISTICS_SENTENCE_RE.search(sent))
 
 
 def greeting_only(statement: str) -> bool:
@@ -1214,7 +1332,7 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
                 reasons.append(f"speaker_is_analyst: {name!r} asks questions on this call; a statement needs management")
         else:
             stats["empty"] += 1
-            reasons.append("speaker_unresolved: no speaker label on this page or an earlier one")
+            reasons.append("speaker_unresolved: no speaker label on this page or an earlier one; speaker_generic: empty speaker")
         # T-242: an empty question_context is filled with the analyst's printed question; the model's is never replaced
         if not str(row.get("question_context") or "").strip():
             question = preceding_question(str(row.get("statement") or ""), page_list,
