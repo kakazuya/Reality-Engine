@@ -7,7 +7,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Checker T-225 merged 18 Nov: Dots right cells kept dev 384/426, FROZEN 464/773 (60.0%, baseline 47.7%), 0 wrong; Beam frozen 8 wrong (text layer). Target >=95% not met; T-225 open. Split `D:/RealityEngine/t225_split`; notes V2 contract "Round 1-5".
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
 - 24 Nov (deck, merged): per-period footnote basis (56 rows changed; deck fp unchanged).
-- 24 Nov T-242 (`observations.py`): empty page in a parsed window is `page_read` `no_rows`, not a failure; share = failures / attempted.
+- 24-25 Nov T-242: empty window page = `no_rows`; `scripts/grade_pack.py` builds the 60-row pack (checkpoint first, seeded fill, 2x30 parts); rubrics `docs/grading/`.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 25 Nov 10:25 (Wolf merged dsh 81c60cde): AR basis carried from the previous page's heading onto continuation pages (181 rows on 9 pages, 0 conflicts). AR year/duration non-figures unverified (agy 87999d39, Eagle merged: 92 of 13,521 live verified; recheck to apply).
