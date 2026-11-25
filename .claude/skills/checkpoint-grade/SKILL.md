@@ -17,7 +17,7 @@ python -m reality_engine.scripts.grade_pack --db <hy4 out db> --ckpt <db>.audit/
 Checkpoint rows first, then a seeded fill (one company per row where possible, <= 2 rows per doc). Touch `ckpt_NNNN.grading.md` to mark a grade in progress.
 
 ## 2. Grade
-- Two Sonnet subagents (`model: sonnet`), 30 rows each, < 100k context each, rubric `docs/grading/number_rubric.md` or `statement_rubric.md`; or a read-only dsh worker off-peak.
+- Grader, best first (Shivam 26 Nov): agy `gemini-4-hydrogen-high` (smarter than DeepSeek max and Sonnet medium; use for new doc types, re-grades after a fail, jumbled/OCR pages); a read-only dsh worker off-peak for routine checkpoints; or two Sonnet subagents (`model: sonnet`), 30 rows each, < 100k context. Rubric `docs/grading/number_rubric.md` or `statement_rubric.md`.
 - Graders recompute every figure (totals, growth %, QoQ/YoY columns) and read the previous page for headers. Lenient reads overstate (89% vs 80% strict).
 - Output per row: R / P / W / J + one-line reason; CSVs `grades_part00.csv`, `grades_part01.csv`.
 
