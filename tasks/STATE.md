@@ -11,7 +11,6 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 26 Nov 00:10 (Wolf): results pilot FAIL 33/12/6/9 -> gates merged (0 R changed); re-grade of results_r5.db next; results reading blocked till pass.
-00000. 25 Nov 19:50 (Wolf): deck gates merged; next: swap rechecked decks_r1.db, load_symbols.
 00000. 25 Nov 19:30 (Eagle) events: r7b (fund_raise) and r8 (order_win) merged; fresh7 gate (40 never-seen stores, code cb741c24) FAILS: order_win 35/10/14/1, fund_raise 31/8/16/0 -> VERIFIED_KINDS stays empty (served unverified). Retrieval fix 1 merged 20:00 (tools serve verified obs_fact first; audit Qs 13->20/20) -> fresh-question audit after MCP restart. NEXT: hy4 model reading + script check (Shivam's call pending).
 00000. 26 Nov deck widening (+2,307 few-figure, +1,438 jumbled 0.70) reading into obs_decks_wide.db (ckpt 1-2 carried); sonnet_settle OFF till Shivam's OK.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
@@ -23,3 +22,4 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 Store copy: checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE`. Merge: grader row first; merge_worker; drop root PROGRESS_NOTES.md; tests per file; docs; remove worktree; log in worker_reviews.jsonl. Store diff: `reality_engine.scripts.store_diff`.
 - 25 Nov AR re-grade gates merged (Hydrogen, T-242): 5(c) unnamed-sub 184 unverified, 535 reset to company, 0 R changed. Next: --recheck AR copy, non-author grade, then load.
 - 25 Nov: tx rules 5c828b61 in; recheck tx DBs (Eagle)
+00000. 26 Nov 01:00 NEXT (Wolf): fix 5 merge+audit 6; results/deck-wide checkpoints; AR ar_r3 grade (Hydrogen); deck swap; OCR->hy4; pack-up EOD.
