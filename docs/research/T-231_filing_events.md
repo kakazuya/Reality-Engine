@@ -283,17 +283,24 @@ After `order_win` failed its strict 60-row grade on 40 untuned stores (`C:/Reali
 round 6: **39 R / 5 P / 14 W / 2 J**), `VERIFIED_KINDS` remained empty (`frozenset()`) and four structural rule groups
 were added to `reality_engine/research/filing_events.py` (no `fund_raise` logic and no `VERIFIED_KINDS` change):
 
-1. **Customer (`_clean_party`, `_ANNEXURE_AWARDER`, `_ANNEXURE_TARGET_AWARDER`, `_ANNEXURE_LABEL_STRIP`,
+1. **Customer (`_clean_party`, `_strip_party_junk`, `_split_customer`, `_DATE_OR_PERIOD_CUSTOMER`,
+   `_UNDISCLOSED_CUSTOMER`, `_ANNEXURE_AWARDER`, `_ANNEXURE_TARGET_AWARDER`, `_ANNEXURE_LABEL_STRIP`,
    `_BAD_CUSTOMER`, `order_fields`, `_loose_order_record`).** `order_fields` prefers annexure awarders over
    title/body `loose_order_v1` guesses, `_ANNEXURE_AWARDER` stops before `Whether the acquisitions` / `Objects and
    effects` / `Indicative time period` / `Total cost`, `_ANNEXURE_TARGET_AWARDER` reads `Name of the target entity`
    when the prescribed awarder label is absent (#1, #15, #19, #21, #23), and `_ANNEXURE_LABEL_STRIP` strips
-   `/Redevelopment(s)` and `/Letter of Intent|Acceptance|Award` (#47, #60). `_clean_party` rejects single generic
-   words (`_SINGLE_GENERIC_CUSTOMERS`: Public, Office, Government, Department, Client, ...), own-segment prefixes
-   (`_OWN_PARTY_PREFIX`: `our`/`its`/`their`/`the Company's`, #9, #12), bare countries/regions (`_COUNTRIES_AND_REGIONS`,
-   #31), `<Day> <Month>` datelines (`_HEADLINE_CUSTOMER`, `_HEADLINE_PLACE`, #32), and leading table-header words
-   (`_HEADER_PARTY_PREFIX`); `_BAD_CUSTOMER` narrows `promoter` to `whether the promoter` / `promoter/group` instead of
-   bare `promoter` (fixing `Yucca Promoters LLP`, #43) and matches `customers` plural and `same client` (#13, #14).
+   `/Redevelopment(s)`, `/Letter of Intent|Acceptance|Award`, and garbled `con...t(s)` labels (#47, #60).
+   `_strip_party_junk` strips leading/trailing bullets (`•●▪✓✔◦·*`) and punctuation plus single-letter OCR markers
+   (`l : `, `e ` before an awarder), `_clean_party` rejects date, month-year and period strings
+   (`_DATE_OR_PERIOD_CUSTOMER`: `<Month> <YYYY>( to <Month> <YYYY>)?`, `Q1 FY26`, `FY 2025-26`, numeric dates, e.g.
+   `December 2024 to May 2025` / `January 2025` / `May 2025`), single generic words (`_SINGLE_GENERIC_CUSTOMERS`:
+   Public, Office, Government, Department, Client, ...), own-segment prefixes (`_OWN_PARTY_PREFIX`:
+   `our`/`its`/`their`/`the Company's`, #9, #12), bare countries/regions (`_COUNTRIES_AND_REGIONS`, #31),
+   `<Day> <Month>` datelines (`_HEADLINE_CUSTOMER`, `_HEADLINE_PLACE`, #32), and leading table-header words
+   (`_HEADER_PARTY_PREFIX`), while `_BAD_CUSTOMER` narrows `promoter` to `whether the promoter` / `promoter/group`
+   (keeping `Yucca Promoters LLP`, #43) and matches `customers` plural and `same client` (#13, #14). On both script
+   and model rows, `_split_customer` and `_finish_scope` turn `'Not disclosed'` / `'Confidential'` / `'withheld'`
+   (`_UNDISCLOSED_CUSTOMER`) into `customer = NULL` and append `customer not disclosed` to `detail`.
 2. **Subsidiary (`_SUB_*`, `_valid_sub_name`, `_subsidiary_names_from_span`, `_subsidiary_name`).** Accepts quoted names
    (#30, #55 `“KRN HVAC Products Private Limited”`), strips `(formerly known as ...)` before `_SUB_JUNK` (#60), adds
    `GmbH` to `_SUB_SUFFIX`, supports plural `subsidiaries` and multi-name lists joined by `'; '` before or after the
@@ -318,10 +325,11 @@ were added to `reality_engine/research/filing_events.py` (no `fund_raise` logic 
    `covered` check replaces `amount not filled by script` rows whenever the model fills a non-quarantined printed-unit
    value regardless of `VERIFIED_KINDS`.
 
-Measured against the round-6 DBs with copied caches (0 new model requests; `.tmp/events_r7c_fresh{5,4,3}.db`):
+Measured against the round-6 DBs with copied caches (0 new model requests; `.tmp/events_r7d_fresh{5,4,3}.db`):
 * **21/21 fresh5 W/P/J rows fixed**: all 11 customer failures (#1, #9, #12, #15, #17, #19, #21, #31, #32, #43, #47), all 5 subsidiary failures (#14, #30, #49, #55, #60), all 3 value failures (#18 vetoed, #23 `16.4743` cr / 70%, #28 `0.89` cr), and both duplicate press releases (#13 -> #27, #20 -> #38; #32 also folded into `60b37559`).
-* **Graded R rows**: `events_grade_fresh3` 25/25 unchanged; `fresh5` 37/39 unchanged (#10 and #11 VEERHEALTH press releases folded into the previous day's identical Reg 30 filings `19b7b74e` and `f5a69454`); `audit_orderwin_r5` 51/52 and `events_grade_fresh4` 45/46 unchanged (`CAPACITE e8953bba` moved from gross `384.72` cr to its 40% JV share `153.888` cr, computed `unverified`).
-* **Set diffs (`r6 -> r7`)**: `fresh5` 74/267 (27.7%, mostly MSECL annexure customers filled), `fresh4` 10/199 (5.0%, under 15% stop), `fresh3` 3/209 (1.4%, under 15% stop). **Tests**: 112 passed in `test_filing_events.py`.
+* **Customer follow-up fixes (`r7c -> r7d`)**: on `fresh5`, date/period rejection cleared 3 `PREMIERENE` rows (`December 2024 to May 2025`, `January 2025`, `May 2025` -> `NULL`), leading bullet/punctuation stripping cleaned 3 rows (`VEERHEALTH 9b3b0373` `'• Apollo Healthco Limited'`, 2 `SBGLP` rows) plus 1 `HECPROJECT` row on `fresh4`, and undisclosed handling moved 48 `fresh5` rows (`VEERHEALTH` 30, `QPOWER` 15, `HIGHNESS` 3) to `customer = NULL` with `customer not disclosed` in `detail` (0 on `fresh4`, 0 on `fresh3`; 1 side-effect row on `fresh5` `QPOWER 1d08d2d9`).
+* **Graded R rows**: `events_grade_fresh3` 25/25 unchanged; `audit_orderwin_r5` 51/52 and `events_grade_fresh4` 45/46 unchanged (`CAPACITE e8953bba` moved from gross `384.72` cr to its 40% JV share `153.888` cr, computed `unverified`); on `fresh5`, `#10` and `#11` (`VEERHEALTH` press releases) folded into the previous day's identical Reg 30 filings (`19b7b74e`, `f5a69454`), the 6 undisclosed-customer R rows (`#4, #8, #27, #36, #44, #48`) moved to `customer = NULL` with `customer not disclosed` in `detail`, and the remaining 31/39 are unchanged in status/amount/customer.
+* **Set diffs (`r6 -> r7d`)**: `fresh5` 118/267 (44.2%, MSECL annexure customers + VEERHEALTH/QPOWER undisclosed customers + PREMIERENE), `fresh4` 11/199 (5.5%, under 15% stop), `fresh3` 3/209 (1.4%, under 15% stop). **Tests**: 114 passed in `test_filing_events.py`.
 
 ## 4. Model fallback
 

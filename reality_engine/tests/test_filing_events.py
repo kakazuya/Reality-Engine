@@ -2376,3 +2376,68 @@ def test_t242_r7_press_release_duplicate_within_10_days_folds_with_amend() -> No
     amends2: list[dict[str, Any]] = []
     kept2 = [r for r in fe._fold_same_order(rows2, amends2) if r["kind"] == "order_win"]
     assert len(kept2) == 2 and amends2 == []
+
+
+def test_t242_r7d_rejects_date_and_period_customers() -> None:
+    for period in ("December 2024 to May 2025", "January 2025", "May 2025", "Q1 FY26", "FY 2025-26", "18.05.2026"):
+        assert fe._clean_party(period, from_annexure=False) is None
+        assert fe._clean_party(period, from_annexure=True) is None
+    assert fe._clean_party("May Industries Limited") == "May Industries Limited"
+
+    doc = _doc(
+        "Solar Co secures orders worth Rs. 500 Crore for modules",
+        "The Company has secured orders aggregating to Rs. 500 Crore for supply of modules, which "
+        "will commence from December 2024 to May 2025. "
+        "a) Name of the entity awarding the order(s)/contract(s): Multiple orders from 2 Domestic IPP customers "
+        "f) Time period by which the order(s)/contract(s) is to be executed: May 2025 "
+        "g) Broad consideration or size of the order(s)/contract(s): Rs. 500 Crore.",
+        symbol="AAA",
+    )
+    orders = [r for r in fe.event_rows(doc)[0] if r["kind"] == "order_win"]
+    assert orders and orders[0]["customer"] is None
+
+
+def test_t242_r7d_strips_bullets_and_marks_undisclosed_customer() -> None:
+    assert fe._clean_party("• Acme Healthcare Limited", from_annexure=True) == "Acme Healthcare Limited"
+    assert fe._clean_party("l : • Acme Healthcare Limited", from_annexure=True) == "Acme Healthcare Limited"
+
+    bullet_doc = _doc(
+        "Receipt of New Order",
+        "Name of the entity awarding the order(s)/contract(s): • Acme Healthcare Limited "
+        "g) Broad consideration or size of the order(s)/contract(s): Rs. 12 Crore.",
+        symbol="AAA",
+    )
+    bullet_orders = [r for r in fe.event_rows(bullet_doc)[0] if r["kind"] == "order_win"]
+    assert bullet_orders and bullet_orders[0]["customer"] == "Acme Healthcare Limited"
+
+    for phrase in (
+        "• Not disclosed",
+        "l : • Not disclosed",
+        "contraczt(s): • Not disclosed",
+        "e Not disclosed",
+        "Not disclosed as per confidential terms.",
+        "Confidential",
+        "Name withheld due to NDA",
+    ):
+        script_doc = _doc(
+            "Receipt of Order",
+            f"Name of the entity awarding the order(s)/contract(s): {phrase} "
+            "7. Broad consideration or size of the order(s)/contract(s): Rs. 25 Crore.",
+            symbol="AAA",
+        )
+        script_rows = [r for r in fe.event_rows(script_doc)[0] if r["kind"] == "order_win"]
+        assert script_rows and script_rows[0]["customer"] is None
+        assert "customer not disclosed" in (script_rows[0].get("detail") or "")
+
+        model_doc = {**_doc(
+            "Receipt of Order",
+            f"We received an order worth Rs. 25 Crore from {phrase}.",
+            symbol="AAA",
+        ), "pages": {1: f"We received an order worth Rs. 25 Crore from {phrase}."}}
+        model_rows = fe.model_rows(
+            model_doc,
+            ["order_win"],
+            _model_reply(customer=phrase, amount_inr_cr=25.0, value_text="Rs. 25 Crore"),
+        )
+        assert model_rows and model_rows[0]["customer"] is None
+        assert "customer not disclosed" in (model_rows[0].get("detail") or "")

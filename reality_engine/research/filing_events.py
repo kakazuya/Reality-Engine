@@ -893,6 +893,24 @@ _HEADLINE_PLACE = re.compile(
     r"|\b[A-Z][A-Za-z/]{2,}\s*[-\u2013\u2014|,]\s*(?:\d{1,2}(?:st|nd|rd|th)?\s+(?i:" + _MONTH_NAME_RX
     + r")|(?i:" + _MONTH_NAME_RX + r")\s+\d{1,2})\b"
 )
+_ANY_MONTH_RX = (
+    r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?"
+    r"|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
+)
+_SINGLE_DATE_TOKEN_RX = (
+    r"(?:\d{1,2}(?:st|nd|rd|th)?\s+" + _ANY_MONTH_RX + r"(?:,?\s*\d{2,4})?"
+    r"|" + _ANY_MONTH_RX + r"(?:\s+\d{1,2}(?:st|nd|rd|th)?)?(?:,?\s*\d{2,4})?"
+    r"|\d{1,4}[./-]\d{1,2}[./-]\d{2,4}"
+    r"|(?:(?:Q[1-4]|H[12]|9M)(?:\s*(?:[-\u2013\u2014/]|to)\s*Q[1-4])?\s*(?:FY|CY)?\s*'?\d{2,4}(?:\s*[-\u2013\u2014/]\s*\d{2,4})?)"
+    r"|(?:FY|CY)\s*'?\d{2,4}(?:\s*[-\u2013\u2014/]\s*\d{2,4})?"
+    r"|Q[1-4](?:\s*(?:[-\u2013\u2014/]|to)\s*Q[1-4])?)"
+)
+_DATE_OR_PERIOD_CUSTOMER = re.compile(
+    r"^(?:from\s+|during\s+|between\s+)?"
+    + _SINGLE_DATE_TOKEN_RX
+    + r"(?:\s*(?:to|and|[-\u2013\u2014/]|till|until)\s*" + _SINGLE_DATE_TOKEN_RX + r")?$",
+    re.I,
+)
 _SINGLE_GENERIC_CUSTOMERS = frozenset({
     "public", "office", "government", "department", "client", "customer", "entity", "company",
     "authority", "ministry", "board", "corporation", "division", "party", "vendor", "supplier",
@@ -973,11 +991,11 @@ _ANNEXURE_LABEL_STRIP = re.compile(
     r"|\bawarding\s+(?:the\s+)?"
     r"|/?\s*redevelopment(?:\s*[\[\(]\s*s?\s*[\)\]])?"
     r"|/?\s*letter\s+of\s+(?:intent|acceptance|award)\b"
-    r"|\bo\S{0,2}der\s*(?:[\[\(]\s*s?\s*[\)\]]\s*)?(?:\s*(?:/|or|and|&)\s*)?con\S{1,8}?ct"
+    r"|\bo\S{0,2}der\s*(?:[\[\(]\s*s?\s*[\)\]]\s*)?(?:\s*(?:/|or|and|&)\s*)?con\S{1,10}?[cz]?t"
     r"\s*(?:[\[\(]\s*s?\s*[\)\]]\s*)?"
-    r"|\/\s*con\S{1,8}?ct\s*(?:[\[\(]\s*s?\s*[\)\]]\s*)?"
+    r"|\/\s*con\S{1,10}?[cz]?t\s*(?:[\[\(]\s*s?\s*[\)\]]\s*)?"
     r"|\bo\S{0,2}der\s*(?:[\[\(]\s*s?\s*[\)\]]\s*)?"
-    r"|(?:the\s+)?contract(?:\s?\(?s?\)?)?\s*(?=[:;|]|$)",
+    r"|(?:the\s+)?con\S{0,8}?[cz]?t(?:\s?\(?s?\)?)?\s*(?=[:;|]|$)",
     re.I)
 
 
@@ -998,6 +1016,29 @@ def _annexure_awarders(text: str) -> list[str]:
     return out
 
 
+_PARTY_EDGE_PUNCT = " ;:,.-—–/|•●▪✓✔◦·*"
+_LEADING_PARTY_JUNK = re.compile(
+    r"^(?:[•●▪✓✔◦·*\-\u2013\u2014:;,.|/\\]+\s*"
+    r"|[a-z]\s*[:|]\s*"
+    r"|con\S{1,10}?\(?s?\)?\s*[:|]\s*"
+    r"|[b-z]\s+(?=[A-Z]))+",
+)
+_UNDISCLOSED_CUSTOMER = re.compile(
+    r"(?:^|\b)(?:not\s+disclosed|undisclosed|withheld)\b"
+    r"|^(?:(?:kept\s+|strictly\s+)?confidential)\b"
+    r"|\bconfidential\s+(?:terms?|agreement|clause|reasons?|understanding|nature)\b",
+    re.I,
+)
+
+
+def _strip_party_junk(text: Any) -> str:
+    """Strip OCR bullets, single-letter list markers and edge punctuation around a customer name."""
+    value = re.sub(r"[\ue000-\uf8ff|]", " ", _flat(text))
+    value = re.sub(r"\s+", " ", value).strip(_PARTY_EDGE_PUNCT)
+    value = _LEADING_PARTY_JUNK.sub("", value)
+    return re.sub(r"\s+", " ", value).strip(_PARTY_EDGE_PUNCT)
+
+
 def _is_customer_description(value: Any) -> bool:
     """A printed category, not a named awarder: all lower case or a generic lead ("A hyperscale partner")."""
     desc = _flat(value)
@@ -1005,16 +1046,42 @@ def _is_customer_description(value: Any) -> bool:
 
 
 def _split_customer(row: dict[str, Any]) -> None:
-    """Move a description out of ``customer`` into ``customer_desc`` so a category is never served as an awarder."""
-    customer = row.get("customer")
-    if customer and _is_customer_description(customer):
-        row["customer_desc"] = row.get("customer_desc") or _flat(customer)[:300]
+    """Clean punctuation, mark undisclosed customers as NULL+detail, and move descriptions to ``customer_desc``."""
+    raw_customer = row.get("customer")
+    if not raw_customer:
+        return
+    parts: list[str] = []
+    undisclosed = False
+    for part in str(raw_customer).split(";"):
+        cleaned = _strip_party_junk(part)
+        if not cleaned:
+            continue
+        if _UNDISCLOSED_CUSTOMER.search(cleaned):
+            undisclosed = True
+            continue
+        parts.append(cleaned)
+    if not parts:
         row["customer"] = None
+        if undisclosed:
+            row["_undisclosed_customer"] = True
+        return
+    kept_named: list[str] = []
+    kept_desc: list[str] = []
+    for part in parts:
+        if _is_customer_description(part):
+            kept_desc.append(part)
+        else:
+            kept_named.append(part)
+    row["customer"] = "; ".join(kept_named)[:300] or None
+    if kept_desc and not row.get("customer_desc"):
+        row["customer_desc"] = "; ".join(kept_desc)[:300]
+    if undisclosed and not kept_named:
+        row["_undisclosed_customer"] = True
 
 
 def _clean_party(text: Any, *, from_annexure: bool = False) -> str | None:
     """A printed awarder name without OCR bullets, table junk, a date clause or generic descriptions."""
-    value = re.sub(r"[\ue000-\uf8ff|]", " ", _flat(text))
+    value = _strip_party_junk(text)
     value = re.sub(r"^.+?\bdepartment\s+of\s+the\s+", "", value, flags=re.I)
     # T-242: an annexure cell that runs into the letter's salutation or the city after the legal suffix.
     value = re.sub(r"[\s,;:/&.\-]*\b(?:dear\s+|respected\s+)?(?:sirs?|madams?|ma['’]?ams?)"
@@ -1046,12 +1113,16 @@ def _clean_party(text: Any, *, from_annexure: bool = False) -> str | None:
         cut = _CUSTOMER_CUTS.search(value)
         if cut and cut.start() > 3:
             value = value[:cut.start()]
-    value = re.sub(r"\s+", " ", value).strip(" ;:,.-—–")
-    value = re.sub(r"^(?:[—–\-•]+\s*)*(?:the|m/s\.?|messrs\.?)\s+", "", value, flags=re.I)
+    value = _strip_party_junk(value)
+    value = re.sub(r"^(?:the|m/s\.?|messrs\.?)\s+", "", value, flags=re.I)
     value = re.sub(r"\s+Ref\.?(?:\s*:.*)?$", "", value)
     value = re.sub(r"\s+[1-9]$", "", value)
-    value = value.strip(" ;:,.-—–/")
-    if _HEADLINE_CUSTOMER.search(value) or _HEADLINE_PLACE.search(value):
+    value = _strip_party_junk(value)
+    if not value:
+        return None
+    if _UNDISCLOSED_CUSTOMER.search(value):
+        return value
+    if _DATE_OR_PERIOD_CUSTOMER.match(value) or _HEADLINE_CUSTOMER.search(value) or _HEADLINE_PLACE.search(value):
         return None
     if _OWN_PARTY_PREFIX.search(value) or _HEADER_PARTY_PREFIX.search(value):
         return None
@@ -1060,8 +1131,7 @@ def _clean_party(text: Any, *, from_annexure: bool = False) -> str | None:
             or low in _COUNTRIES_AND_REGIONS \
             or re.sub(r"\s+region$", "", low).strip(" ,.-") in _COUNTRIES_AND_REGIONS:
         return None
-    if not value or len(value) < 3 or len(value) > (120 if from_annexure else 80) \
-            or _BAD_CUSTOMER.search(value):
+    if len(value) < 3 or len(value) > (120 if from_annexure else 80) or _BAD_CUSTOMER.search(value):
         return None
     if not re.search(r"[A-Z]", value) or re.search(r"\bFY\s?\d{2}\b", value):
         return None
@@ -2474,6 +2544,9 @@ def _finish_scope(row: dict[str, Any], title: str, head: str) -> dict[str, Any]:
     if row["entity_scope"] == "subsidiary" and row.get("_subsidiary"):
         note = f"subsidiary: {row['_subsidiary']}"
         row["detail"] = f"{row['detail']}; {note}" if row.get("detail") else note
+    if row.pop("_undisclosed_customer", False):
+        note = "customer not disclosed"
+        row["detail"] = f"{row['detail']}; {note}" if row.get("detail") else note
     return row
 
 
@@ -2641,12 +2714,11 @@ def _date_named(text: str, iso: str) -> bool:
 
 
 _PRESS_RELEASE_ORDER = re.compile(r"\b(?:press|media)\s+release\b", re.I)
-_UNDISCLOSED_CUSTOMER = re.compile(r"^[•●\-\u2013\u2014\s]*(?:not\s+disclosed|undisclosed|confidential)\b", re.I)
 
 
 def _named_customer(row: dict[str, Any]) -> str:
-    cust = _flat(row.get("customer"))
-    return "" if not cust or _UNDISCLOSED_CUSTOMER.match(cust) else cust
+    cust = _strip_party_junk(row.get("customer"))
+    return "" if not cust or _UNDISCLOSED_CUSTOMER.search(cust) else cust
 
 
 def _fold_same_order(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -> list[dict[str, Any]]:
