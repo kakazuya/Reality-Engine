@@ -1,3 +1,4 @@
 2026-11-26 T-242 shared_cache: code + tests + docs done (15 and 172 passed, 0 new typecheck errors); committing.
 T-242 fix 6: lookups_pilot3.py C1 (guidance held_quarantined + obs fallback), C2 (alias map + printed as-on periods), C3 (sentence-level all-ask-word ranking, call dates), W (filed-vs-transcript >20% conflict); test_retrieval_fix6.py 7 passed; acceptance 124 passed 1 skipped; next: typecheck, docs, replay grade.
 T-242 fix 6 done: tests 124 passed 1 skipped; replay 36R->45R/2P/0W/0M/1N (0 R lost); STATE 3993 chars; docs: DEVELOPER_GUIDE, MSI_LAPTOP, STATE, plugins/reality-data/README.
+T-242 recheck: not_company/subsidiary_unnamed hard old reasons + gate_not_company in apply_number_gates and recheck_db before UPDATE; decks_r1 measure 312 rows would change, 0 graded R (325 hard upgrades kept); test_observations 175 passed; docs DEVELOPER_GUIDE, V2_SCHEMA_CONTRACT, STATE (3990); typecheck 10 pre-existing errors, 0 new.

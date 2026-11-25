@@ -5274,6 +5274,28 @@ def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> Non
             row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", reason) if p)
 
 
+def gate_not_company(rows: list[dict[str, Any]], stats: dict[str, Any] | None = None) -> int:
+    """T-242 final invariant: a figure whose scope is not the company is never stored verified.
+
+    entity_scope industry / country / peer / customer stays on the row and in its label; the row is served
+    unverified.  An existing not_company reason (a read's own scope note) is kept as written.
+    """
+    gated = 0
+    for row in rows:
+        scope = str(row.get("entity_scope") or "")
+        if str(row.get("status") or "") != "verified" or scope not in NOT_COMPANY_SCOPES:
+            continue
+        row["status"] = "unverified"
+        reason = str(row.get("status_reason") or "")
+        if "not_company" not in reason:
+            row["status_reason"] = "; ".join(p for p in (
+                reason, f"not_company: a {scope} figure is served labelled, never verified") if p)
+        gated += 1
+    if stats is not None and gated:
+        stats["not_company_gated"] = int(stats.get("not_company_gated", 0)) + gated
+    return gated
+
+
 def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2: bool = True,
                        page_text: str = "", company: str = "", previous_text: str = "",
                        report_fy: str = "", has_consolidated: bool = False,
@@ -5293,6 +5315,7 @@ def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2:
         apply_deck_row_gates(rows, page_text)
     elif doc_type == "results":
         apply_results_row_gates(rows, page_text, company, previous_text, stats=stats)
+    gate_not_company(rows)          # T-242 final invariant: scope, not a proof, decides verification
 
 
 def apply_parts_sum(rows: list[dict[str, Any]], stats: dict[str, Any] | None = None) -> None:
@@ -7520,6 +7543,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
     stats: dict[str, Any] = {"pages": 0, "rows": 0, "changed": 0, "upgraded": 0, "downgraded": 0,
                              "unit_inherited": 0, "period_inherited": 0, "measure_mapped": 0, "adjusted": 0,
                              "parent_rows": 0, "stage_set": 0, "unproven_upgrades": 0, "kept_hard_reason": 0,
+                             "not_company_gated": 0,
                              "scale_fixed": 0, "basis_set": 0, "basis_conflicts": 0, "bridge_rows": 0,
                              "subsidiary_rows": 0, "deck_asof": 0, "deck_asof_cleared": 0,
                              "deck_asof_fixed": 0, "deck_asof_renamed": 0, "slide_title_periods": 0,
@@ -7854,7 +7878,10 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             status = str(row["status"])
             reason = str(row["status_reason"] or "")
             if status == "verified" and old_status != "verified":
+                # T-242: a non-company figure and an unnamed subsidiary are hard reasons too: no proof overrides
+                # them (not_company covers industry / country / peer / customer; ar_subsidiary_unnamed matches).
                 hard_old = "parts sum to" in old_reason or "geography_not_printed" in old_reason or \
+                    "not_company" in old_reason or "subsidiary_unnamed" in old_reason or \
                     ("scale " in old_reason and not row["_proof"])
                 if hard_old:
                     stats["kept_hard_reason"] = int(stats.get("kept_hard_reason", 0)) + 1
@@ -7867,6 +7894,9 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                                          "measure": row["measure"], "unit": row["unit"], "period": row["period"],
                                          "old_reason": old_reason[:220]})
                     status, reason = old_status, old_reason
+            row["status"], row["status_reason"] = status, reason
+            gate_not_company([row], stats)      # T-242 final invariant, before the UPDATE
+            status, reason = str(row["status"]), str(row["status_reason"] or "")
             if status != old_status:
                 if status == "verified":
                     stats["upgraded"] += 1
