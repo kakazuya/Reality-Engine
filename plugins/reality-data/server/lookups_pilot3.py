@@ -682,18 +682,64 @@ def _nearest(symbol: str, words: str | None, as_of: str | None = None, cap: int 
                     "known_at": r["known_at"], "snippet": _trim(r["snip"], 300),
                     "matched": matched or None, "note": "not a stored row: read the page"})
     word_list = [w for w in re.findall(r"\w+", text.lower()) if len(w) > 2][:6]
-    cols = [c for c in ("statement", "measure") if _has_column("obs_fact", c)] if _has_table("obs_fact") else []
+    non_period = [w for w in word_list if not re.fullmatch(r"(?:q[1-4]|h[12])?fy\d{2,4}", w)]
+    if non_period:
+        word_list = non_period
+    cols = [c for c in ("statement", "measure", "printed_label", "segment", "series_title")
+            if _has_column("obs_fact", c)] if _has_table("obs_fact") else []
     if word_list and cols:
-        where, wargs, _used = _word_groups(word_list, [f"o.{c}" for c in cols])
         extra, eargs = _asof(day, "o.known_at")
-        for r in _q(f"SELECT o.measure, o.record_type, o.period, o.statement, o.doc_key, o.page, o.known_at "
-                    f"FROM obs_fact o WHERE o.symbol=? AND o.status IN ('verified','unverified') AND ({where}){extra} "
-                    f"ORDER BY o.known_at DESC LIMIT ?", (symbol, *wargs, *eargs, cap)):
-            out.append({"kind": "statement", "measure": r["measure"], "record_type": r["record_type"],
-                        "period": r["period"], "statement": _trim(r["statement"], 300),
-                        "doc_key": r["doc_key"], "page": r["page"], "known_at": r["known_at"],
-                        "matched": matched or None,
-                        "note": "a stored statement, not a row for the words asked: read the page"})
+        opt_cols = [c for c in ("value", "value_high", "unit", "scale", "printed_label", "segment")
+                    if _has_column("obs_fact", c)]
+        opt_sql = (", " + ", ".join(f"o.{c}" for c in opt_cols)) if opt_cols else ""
+        where, wargs, _used = _word_groups(word_list, [f"o.{c}" for c in cols])
+        obs_near = _q(f"SELECT o.measure, o.record_type, o.period, o.statement, o.doc_key, o.page, o.known_at, "
+                      f"o.status{opt_sql} FROM obs_fact o WHERE o.symbol=? AND o.status IN ('verified','unverified') "
+                      f"AND ({where}){extra} ORDER BY (o.status='verified') DESC, o.known_at DESC LIMIT ?",
+                      (symbol, *wargs, *eargs, cap))
+        if not obs_near and len(word_list) >= 2:
+            or_parts, or_args = [], []
+            score_parts, score_args = [], []
+            for w in word_list:
+                alts = [w] + _synonyms_for(w)
+                sub = " OR ".join(f"o.{c} LIKE ?" for c in cols for _ in alts)
+                or_parts.append(f"({sub})")
+                for _ in cols:
+                    for a in alts:
+                        or_args.append(f"%{a}%")
+                score_parts.append(f"(CASE WHEN ({sub}) THEN 1 ELSE 0 END)")
+                for _ in cols:
+                    for a in alts:
+                        score_args.append(f"%{a}%")
+            obs_near = _q(f"SELECT o.measure, o.record_type, o.period, o.statement, o.doc_key, o.page, o.known_at, "
+                          f"o.status{opt_sql}, ({' + '.join(score_parts)}) AS hit_score FROM obs_fact o "
+                          f"WHERE o.symbol=? AND o.status IN ('verified','unverified') AND ({' OR '.join(or_parts)})"
+                          f"{extra} ORDER BY hit_score DESC, (o.status='verified') DESC, o.known_at DESC LIMIT ?",
+                          (*score_args, symbol, *or_args, *eargs, cap))
+        for r in obs_near:
+            keys = set(r.keys())
+            g = lambda k: (r[k] if k in keys else None)
+            if r["record_type"] == "number":
+                item: dict[str, Any] = {
+                    "kind": "number", "measure": r["measure"], "record_type": r["record_type"],
+                    "value": g("value"), "unit": g("unit"), "period": r["period"],
+                    "printed_label": _trim(g("printed_label"), 200), "status": r["status"],
+                    "doc_key": r["doc_key"], "page": r["page"], "known_at": r["known_at"],
+                    "matched": matched or None,
+                    "note": "an obs_fact number row, not an exact match for the words asked: check label and period",
+                }
+                if g("value_high") is not None:
+                    item["value_high"] = g("value_high")
+                if g("segment"):
+                    item["segment"] = g("segment")
+                _add_money(item, g("value"), g("unit"), g("scale"))
+                out.append(item)
+            else:
+                out.append({"kind": "statement", "measure": r["measure"], "record_type": r["record_type"],
+                            "period": r["period"], "statement": _trim(r["statement"], 300),
+                            "status": r["status"], "doc_key": r["doc_key"], "page": r["page"],
+                            "known_at": r["known_at"], "matched": matched or None,
+                            "note": "a stored statement, not a row for the words asked: read the page"})
     return out
 
 
@@ -728,22 +774,53 @@ def _available(table: str, col: str, symbol: str, like: str | None = None, extra
     return [r[0] for r in _q(sql, tuple(args)) if r[0]]
 
 
+_MEASURE_ALIASES = {
+    "pbt": "profit_before_tax",
+    "gwp": "gross_written_premium",
+    "capacity_utilisation": "capacity.utilisation",
+    "capacity_utilization": "capacity.utilisation",
+}
+
+
+def _norm_measure(name: str) -> str:
+    """Normalize a measure name for matching: strip leading 'NEW:' and split/join on [_.\\s-]+."""
+    clean = re.sub(r"^new:", "", str(name or "").strip(), flags=re.I).strip("<>")
+    norm = re.sub(r"[_.\s\-]+", "_", clean.lower()).strip("_")
+    return norm.replace("utilization", "utilisation")
+
+
 def _same_series(name: str, key: str) -> bool:
-    """Does ``name`` belong to the same series as ``key``?  A token match, not a substring: ROE is not ROEV, ROCE
-    is not ROE, ROA is not ROCE (T-239, the RAMKY case where one series was read as the other)."""
-    low = name.lower()
-    return (key in low.split("_") or low.startswith(key + "_") or low.endswith("_" + key)
-            or low == f"{key}_pct")
+    """Does ``name`` belong to the same series as ``key``?  A token match over [_.], stripping 'NEW:'."""
+    low = _norm_measure(name)
+    k = _norm_measure(key)
+    if not k:
+        return False
+    return (low == k or k in low.split("_") or low.startswith(k + "_") or low.endswith("_" + k)
+            or low == f"{k}_pct")
 
 
 def _pick(table: str, col: str, symbol: str, name: str, extra: str = "") -> tuple[list[str], list[str]]:
-    """Names to match for a user's metric word: the exact one, else every name of the same series (spaces as _)."""
+    """Names to match for a user's metric word: exact first, then [_.]/NEW: normalized, else series/alias."""
     key = re.sub(r"[\s\-]+", "_", name.strip().lower())
-    names = _available(table, col, symbol, extra=extra, n=500)
+    names = _available(table, col, symbol, extra=extra, n=5000)
     if key in names:
         return [key], names
-    near = [n for n in names if _same_series(n, key)]
-    return near[:8], names
+    nk = _norm_measure(key)
+    alias = _MEASURE_ALIASES.get(nk) or _KPI_WORDS.get(key) or ""
+    cand_keys = list(dict.fromkeys(x for x in (nk, _norm_measure(alias)) if x))
+    exacts = list(dict.fromkeys(n for ck in cand_keys for n in names if _norm_measure(n) == ck))
+    if exacts:
+        return exacts, names
+    for cand_key in cand_keys:
+        near = [n for n in names if _same_series(n, cand_key)]
+        if near:
+            near.sort(key=lambda n: (
+                0 if not str(n).upper().startswith("NEW:") else 1,
+                0 if _norm_measure(n) in (f"{cand_key}_value", f"{cand_key}_pct",
+                                          f"{cand_key}_from_operations", f"{cand_key}_total") else 1,
+            ))
+            return near[:16], names
+    return [], names
 
 
 # --- pilot3_kpi -------------------------------------------------------------------------------------
@@ -900,13 +977,15 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
     sym = resolve_symbol(symbol)
     metric_asked = kpi
     kpi = _KPI_WORDS.get(re.sub(r"[\s\-]+", "_", str(kpi).strip().lower()), kpi)
+    bas_flt = basis.strip().lower() if basis else None
+    obs_rows = (_obs_kpi_rows(sym, kpi, period, as_of, _cap(limit), basis=bas_flt)
+                if _has_table("obs_fact") else [])
     # the metric NAME is not hidden by a quarantine: the row-level filter below hides the rows and the empty
     # reply says they are held but quarantined (T-165: CHOLAFIN Q2FY27 NIM 7.9 is the only row of its period)
     names, allnames = _pick("kpi_series", "metric", sym, kpi)
     if not names:
-        obs_rows = _obs_kpi_rows(sym, kpi, period, as_of, _cap(limit))
         if obs_rows:
-            return _reply(sym, obs_rows, "pilot3_kpi", metrics_matched=[kpi], source="obs_fact",
+            return _reply(sym, obs_rows[: _cap(limit)], "pilot3_kpi", metrics_matched=[kpi], source="obs_fact",
                           as_of=_day(as_of, "as_of"))
         atom_rows = _kpi_atoms(sym, kpi, period, _day(as_of, "as_of"), limit)
         if atom_rows:
@@ -922,9 +1001,9 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
     if dimension:
         where += " AND lower(k.dimension)=?"
         args.append(dimension.strip().lower())
-    if basis:
+    if bas_flt:
         where += " AND k.basis=?"
-        args.append(basis.strip().lower())
+        args.append(bas_flt)
     join, check_sel, hide = _check_cols("kpi_series", "k.id")
     visible_where = where          # without the quarantine clause: the "held but hidden" note needs it
     if not include_quarantined:
@@ -946,30 +1025,41 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
               (*args, *eargs, _cap(limit) * 30))
     out, seen = [], set()
     for r in rows:
-        basis = r["basis"] if r["basis"] in _REPORTING_BASES else "not_stated"
+        row_basis = r["basis"] if r["basis"] in _REPORTING_BASES else "not_stated"
         entity = _entity_of(r, sym)
-        dimension = "total" if r["dimension"] in ("consolidated", "standalone") else r["dimension"]
-        sig = (r["metric"], entity, dimension, r["fiscal_period"], r["value"], r["unit"])
+        dim = "total" if r["dimension"] in ("consolidated", "standalone") else r["dimension"]
+        sig = (r["metric"], entity, dim, r["fiscal_period"], r["value"], r["unit"])
         if sig in seen:      # the same figure printed again by another filing: one row, best evidence first
             continue
         seen.add(sig)
-        out.append(_add_check(_add_money(
-            {"metric": r["metric"], "dimension": dimension, "value": r["value"],
+        item = _add_check(_add_money(
+            {"metric": r["metric"], "dimension": dim, "value": r["value"],
              "unit": r["unit"], "scale": r["scale"], "period": r["fiscal_period"],
-             "period_type": r["period_type"], "as_of_date": r["as_of_date"], "basis": basis,
+             "period_type": r["period_type"], "as_of_date": r["as_of_date"], "basis": row_basis,
              "entity": entity, "raw_label": r["raw_label"],
-             "quote": _trim(r["quote"], 300),
+             "quote": _trim(r["quote"], 300), "source": "kpi_series",
              "provenance": _prov("kpi_series", f"{r['dk'] or r['doc_key']} p{r['page']}",
                                  r["known_at"], doc_type=r["doc_type"], title=r["title"],
-                                 row_id=r["id"])}, r["value"], r["unit"], r["scale"]), r))
+                                 row_id=r["id"])}, r["value"], r["unit"], r["scale"]), r)
+        item.setdefault("status", item.get("check_status"))
+        out.append(item)
     # the company's own rows first (T-088), then the operating definition of a measure that has several (T-192)
     out.sort(key=lambda row: (0 if row["entity"] == sym else 1, _definition_rank(row, str(row["metric"]))))
+    if obs_rows:
+        combined = out + obs_rows
+        combined.sort(key=lambda row: (
+            0 if (row.get("status") or row.get("check_status")) == "verified" else 1,
+            0 if row.get("entity", sym) == sym else 1,
+            0 if not row.get("segment") else 1,
+            _definition_rank(row, str(row.get("metric") or "")),
+            0 if row.get("source") == "kpi_series" else 1,
+        ))
+        out = combined[: _cap(limit)]
+        top_src = out[0].get("source") if out else None
+        return _reply(sym, out, "pilot3_kpi", metrics_matched=names,
+                      source=top_src if top_src == "obs_fact" else None,
+                      as_of=_day(as_of, "as_of"))
     out = out[: _cap(limit)]
-    if not out and _has_table("obs_fact"):
-        obs_rows = _obs_kpi_rows(sym, kpi, period, as_of, _cap(limit))
-        if obs_rows:
-            return _reply(sym, obs_rows, "pilot3_kpi", metrics_matched=names, source="obs_fact",
-                          as_of=_day(as_of, "as_of"))
     held = None
     held_hidden = None
     if not out:  # the metric exists: say which periods / dimensions hold it, so the next call can be exact
@@ -2154,7 +2244,7 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
                role: str | None = None, period: str | None = None,
                rank_terms: str | None = None, latest: bool = False,
                 entities: str | None = None, whole_turn: bool = True, offset: int = 0,
-                documents: str | None = None) -> dict[str, Any]:
+                documents: str | None = None, status: str | None = None) -> dict[str, Any]:
     """Management statements from concall transcripts, exact quotes: topic tag (margin, guidance, capex, order ...),
     free ``terms`` (all words must appear), call-date window, role (ceo / cfo / md / mgmt).
 
@@ -2261,6 +2351,28 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
                 turn_rows[key].append(r)
     tagged = [[_statement_row(r) for r in turn_rows[key]] for key in order]
     tagged_match = any(topic in (row["topics"] or "") for group in tagged for row in group) if topic else None
+    obs_items: list[dict[str, Any]] = []
+    if _has_table("obs_fact"):
+        obs_items = _obs_statement_rows(sym, topic=topic, terms=terms, period=period, rank_terms=rank_terms,
+                                        latest=latest, status=status, date_from=from_day, date_to=to_day,
+                                        as_of=as_of)
+    if obs_items:
+        def _norm_sent(s: str | None) -> str:
+            return re.sub(r"\s+", " ", (s or "")).strip().lower()
+
+        obs_norms = [_norm_sent(item.get("quote")) for item in obs_items if item.get("quote")]
+        obs_exact = set(obs_norms)
+        deduped_tagged: list[list[dict[str, Any]]] = []
+        for group in tagged:
+            kept_group = []
+            for row in group:
+                qn = _norm_sent(row.get("quote"))
+                if qn and (qn in obs_exact or (len(qn) >= 25 and any(qn in on for on in obs_norms))):
+                    continue
+                kept_group.append(row)
+            if kept_group:
+                deduped_tagged.append(kept_group)
+        tagged = deduped_tagged
     # the same phrase-first matcher over every document type, not only calls: a deck table, an annual report or a
     # filing body answers what no transcript tag carries (T-197 step 2).
     ask = " ".join(x for x in (topic, terms, rank_terms) if x)
@@ -2273,33 +2385,36 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
                    "provenance": _prov("doc_page", f"{r['doc_key']} p{r['page']}", r["known_at"],
                                        title=_trim(r["title"], 120), doc_type=r["doc_type"])}
                   for r in hits]
-    # a tag no row carries leads with the page text that matched (the old fallback, now an addition); otherwise the
-    # tagged statements lead and the page hits follow, so relevance order never buries the tag (T-194 ranking).
-    items = tagged + [[item] for item in page_items]
-    if topic and tagged_match is False:
-        items = [[item] for item in page_items] + tagged
+    # Merge obs_fact statements with transcript_statement BEFORE the row cut: verified obs_fact ranks first.
+    obs_v = [item for item in obs_items if item.get("status") == "verified"]
+    obs_u = [item for item in obs_items if item.get("status") != "verified"]
+    if words:
+        obs_v_hit = [[item] for item in obs_v if item.get("_term_score", 0) > 0]
+        obs_v_miss = [[item] for item in obs_v if item.get("_term_score", 0) == 0]
+        obs_u_hit = [[item] for item in obs_u if item.get("_term_score", 0) > 0]
+        obs_u_miss = [[item] for item in obs_u if item.get("_term_score", 0) == 0]
+        w_low = [w.lower() for w in words[:8]]
+
+        def _grp_hit(group: list[dict[str, Any]]) -> bool:
+            blob = " ".join(str(r.get("quote") or "") for r in group).lower()
+            return any(w in blob for w in w_low)
+
+        tagged_hit = [g for g in tagged if _grp_hit(g)]
+        tagged_miss = [g for g in tagged if not _grp_hit(g)]
+        merged_stmts = obs_v_hit + tagged_hit + obs_v_miss + obs_u_hit + tagged_miss + obs_u_miss
+    else:
+        merged_stmts = [[item] for item in obs_v] + tagged + [[item] for item in obs_u]
+    for item in obs_items:
+        item.pop("_term_score", None)
+    # a tag no row carries leads with the page text that matched (unless verified obs_fact matched); otherwise
+    # merged statements lead and the page hits follow, so relevance order never buries the tag (T-194 ranking).
+    items = merged_stmts + [[item] for item in page_items]
+    if topic and tagged_match is False and not obs_v:
+        items = [[item] for item in page_items] + merged_stmts
     page_groups = items[start:start + cap]
     out = [item for group in page_groups for item in group]
-    if _has_table("obs_fact"):
-        obs_stmt_rows = _obs_rows(sym, record_type="statement", terms=terms, as_of=as_of, limit=_cap(limit))
-        plan = _topic_plan(topic) if topic else None
-        filtered_obs = []
-        for r in obs_stmt_rows:
-            if not r.get("statement"):
-                continue
-            if plan is not None and not _topic_hit(plan, r.get("statement"), r.get("measure")):
-                continue
-            filtered_obs.append(r)
-        remaining = max(0, _cap(limit) - len(out))
-        for r in filtered_obs[:remaining if remaining else _cap(limit)]:
-            out.append({"call_date": (r.get("known_at") or "")[:10], "call_period": None, "speaker": r.get("speaker"),
-                        "role": None, "section": None, "topics": None, "entities": None,
-                        "period_discussed": None, "answer_turn": None, "match": "obs",
-                        "page": r.get("page"), "doc_key": r.get("doc_key"), "doc_type": r.get("doc_type"),
-                        "quote": _trim(r.get("statement"), 300),
-                        "provenance": r.get("provenance")})
-    fallback = "doc_page_bm25" if (topic and tagged_match is False and page_items) else None
-    matched_total = len(tagged) + len(page_items)          # items (answer turns and page hits), not sentences
+    fallback = "doc_page_bm25" if (topic and tagged_match is False and not obs_v and page_items) else None
+    matched_total = len(merged_stmts) + len(page_items)    # items (answer turns, obs statements and page hits)
     shown_items = len(page_groups)
     cut = max(0, matched_total - shown_items)
     docs = [{"doc_key": row["doc_key"], "doc_type": row.get("doc_type"), "date": row["call_date"],
@@ -2457,11 +2572,12 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
     stated for a named subsidiary, segment or investee is stored with that ``entity`` and never returned here: only
     the group's own guidance is served (T-192)."""
     sym = resolve_symbol(symbol)
+    has_obs = _has_table("obs_fact")
     names, allnames = ([], list(GUIDANCE_METRICS))
     if metric:
         names, allnames = _pick("guidance", "metric", sym, metric,
                                 extra="" if include_quarantined else _visible("guidance"))
-        if not names:
+        if not names and not has_obs:
             return _reply(sym, [], "pilot3_guidance", available=allnames[:40], metric_asked=metric,
                           nearest=f"{metric} {period or ''}".strip(), nearest_as_of=as_of)
     kind, label = norm_period(period)
@@ -2470,30 +2586,32 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
     # existed has no entity rows at all, so every row it holds is the group's and is served (T-192 round 4).
     g_entity = _has_column("guidance", "entity")
     g_unsure = _has_column("guidance", "entity_unsure")
-    where, args = "g.symbol=?", [sym]
-    if g_entity:
-        where += " AND COALESCE(g.entity,'')=''"
-    if names:
-        where += f" AND g.metric IN ({','.join('?' * len(names))})"
-        args += names
-    if kind and label:
-        where += " AND g.target_period=?"
-        args.append(label)
-    join, check_sel, hide = _check_cols("guidance", "g.id")
-    if not include_quarantined:
-        where += hide
-    extra, eargs = _asof(as_of, "g.known_at")
-    ent_sel = (", COALESCE(g.entity,'') AS entity" if g_entity else ", '' AS entity") + \
-              (", COALESCE(g.entity_unsure,0) AS entity_unsure" if g_unsure else ", 0 AS entity_unsure")
-    rows = _q(f"SELECT g.id, g.metric, g.target_period, g.low, g.high, g.unit, g.direction, g.said_on, g.doc_key, "
-              f"g.page, g.quote, g.speaker, g.known_at, g.revision_of, g.extractor_rule, d.title, d.doc_type, "
-              f"pv.low prev_low, pv.high prev_high, pv.said_on prev_said_on, pv.direction prev_direction"
-              f"{ent_sel}{check_sel} "
-              f"FROM guidance g LEFT JOIN doc d ON d.doc_key=g.doc_key "
-              f"LEFT JOIN guidance pv ON pv.id=g.revision_of{join} WHERE {where}{extra} "
-              f"ORDER BY COALESCE(g.known_at, g.said_on) DESC, g.id DESC LIMIT 400", (*args, *eargs))
+    kept: list[dict[str, Any]] = []
+    if not metric or names:
+        where, args = "g.symbol=?", [sym]
+        if g_entity:
+            where += " AND COALESCE(g.entity,'')=''"
+        if names:
+            where += f" AND g.metric IN ({','.join('?' * len(names))})"
+            args += names
+        if kind and label:
+            where += " AND g.target_period=?"
+            args.append(label)
+        join, check_sel, hide = _check_cols("guidance", "g.id")
+        if not include_quarantined:
+            where += hide
+        extra, eargs = _asof(as_of, "g.known_at")
+        ent_sel = (", COALESCE(g.entity,'') AS entity" if g_entity else ", '' AS entity") + \
+                  (", COALESCE(g.entity_unsure,0) AS entity_unsure" if g_unsure else ", 0 AS entity_unsure")
+        rows = _q(f"SELECT g.id, g.metric, g.target_period, g.low, g.high, g.unit, g.direction, g.said_on, g.doc_key, "
+                  f"g.page, g.quote, g.speaker, g.known_at, g.revision_of, g.extractor_rule, d.title, d.doc_type, "
+                  f"pv.low prev_low, pv.high prev_high, pv.said_on prev_said_on, pv.direction prev_direction"
+                  f"{ent_sel}{check_sel} "
+                  f"FROM guidance g LEFT JOIN doc d ON d.doc_key=g.doc_key "
+                  f"LEFT JOIN guidance pv ON pv.id=g.revision_of{join} WHERE {where}{extra} "
+                  f"ORDER BY COALESCE(g.known_at, g.said_on) DESC, g.id DESC LIMIT 400", (*args, *eargs))
+        kept = [dict(r) for r in rows]
     out = []
-    kept = [dict(r) for r in rows]
 
     def _g_when(row: dict[str, Any]) -> str:
         return str(row.get("known_at") or row.get("said_on") or "")
@@ -2543,18 +2661,20 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
         if r["entity_unsure"]:
             item["entity_unsure"] = True    # the text named a candidate the store cannot prove is a subsidiary
         out.append(_add_check(item, r))
-    if _has_table("obs_fact"):
-        obs_g = _obs_rows(sym, measure=metric, record_type="guidance", as_of=as_of, limit=_cap(limit),
-                          measure_exact=True)
+    if has_obs:
+        obs_g = _obs_rows(sym, measure=metric, period=period, record_type="guidance", as_of=as_of,
+                          limit=_cap(limit), measure_exact=True)
         for r in obs_g:
             item = {"metric": r["measure"], "period": r["period"], "low": r["value"], "high": r["value_high"],
                     "unit": r["unit"], "direction": r["direction"], "said_on": (r.get("known_at") or "")[:10],
                     "quote": _trim(r.get("statement"), 300), "speaker": r.get("speaker"), "revision_of": None,
                     "previous": None, "changed": False, "superseded_rows": 0, "is_latest": True,
-                    "superseded_by": None, "status": r["status"], "source": r["source"],
-                    "doc_key": r["doc_key"], "page": r["page"], "provenance": r["provenance"]}
+                    "superseded_by": None, "status": r["status"], "check_status": r["status"],
+                    "source": "obs_fact", "doc_key": r["doc_key"], "page": r["page"], "provenance": r["provenance"]}
             _add_money(item, r["value"], r["unit"], r["scale"])
             out.append(item)
+    if out:
+        out.sort(key=lambda row: 0 if (row.get("status") or row.get("check_status")) == "verified" else 1)
     held = None
     if not out:   # say what the table does hold, so the next call can be exact
         held = [f"{r[0]} / {r[1]} ({r[2]} rows)" for r in _q(
@@ -2562,6 +2682,8 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
             + (f" AND metric IN ({','.join('?' * len(names))})" if names else "")
             + _visible("guidance") + " GROUP BY 1, 2 ORDER BY MAX(known_at) DESC LIMIT 40", (sym, *names))]
     return _reply(sym, out, "pilot3_guidance", metrics_matched=names or None, history=True if history else None,
+                  available=allnames[:40] if (metric and not out and not names) else None,
+                  metric_asked=metric if (metric and not out and not names) else None,
                   nearest=f"{metric or ''} {period or ''}".strip(), nearest_as_of=as_of,
                   held_options=held, as_of=_day(as_of, "as_of"))
 
@@ -3521,6 +3643,9 @@ def _fact_answer(row: dict[str, Any], as_of_used: str | None, computed: dict | N
 
 
 def _fact_why(path: str, row: dict[str, Any]) -> str:
+    if (row.get("provenance") or {}).get("table") == "obs_fact" or row.get("source") == "obs_fact":
+        return (f"the {row.get('status') or row.get('check_status') or 'extracted'} obs_fact page read for "
+                f"{row.get('period') or 'this metric'}")
     if path == "fin":
         return (f"the preferred {row.get('definition') or 'reported'} figure for {row.get('period')}; the newest "
                 "filing's restatement wins and an older printing is in alternatives")
@@ -3549,6 +3674,16 @@ def _kpi_covers(symbol: str, names: list[str], period: str | None) -> bool:
                    "AND fiscal_period=? LIMIT 1", (symbol, *names, label)))
 
 
+def _obs_covers(symbol: str, names: list[str], period: str | None) -> bool:
+    """Does ``obs_fact`` hold this number metric (for the period asked, if any)?"""
+    if not names or not _has_table("obs_fact"):
+        return False
+    psql, pargs = _obs_period_clause(period)
+    return bool(_q(f"SELECT 1 FROM obs_fact o WHERE o.symbol=? AND o.record_type='number' "
+                   f"AND o.status IN ('verified','unverified') AND o.measure IN ({','.join('?' * len(names))})"
+                   f"{psql} LIMIT 1", (symbol, *names, *pargs)))
+
+
 def _fact_route(key: str, symbol: str, period: str | None = None) -> tuple[str | None, dict[str, list[str]], dict[str, list[str]]]:
     """Which lookup owns a metric word (T-186 step 1): names matched per table, and every name each table holds."""
     rnames, rall = _pick("ratio_panel", "metric", symbol, key)
@@ -3557,9 +3692,13 @@ def _fact_route(key: str, symbol: str, period: str | None = None) -> tuple[str |
                     if _has_table("fin_quarter_printed") else ([], []))
     anames, aall = _pick("fin_annual_line", "line_item", symbol, key)
     knames, kall = _pick("kpi_series", "metric", symbol, _KPI_WORDS.get(key, key))
+    onames, oall = (_pick("obs_fact", "measure", symbol, key,
+                          extra=" AND record_type='number' AND status IN ('verified','unverified')")
+                    if _has_table("obs_fact") else ([], []))
     fnames = list(dict.fromkeys(qnames + anames + pnames))
-    found = {"ratio_panel": rnames, "fin": fnames, "kpi_series": knames}
-    allnames = {"ratio_panel": rall, "fin": list(dict.fromkeys(qall + aall + pall)), "kpi_series": kall}
+    found = {"ratio_panel": rnames, "fin": fnames, "kpi_series": knames, "obs_fact": onames}
+    allnames = {"ratio_panel": rall, "fin": list(dict.fromkeys(qall + aall + pall)),
+                "kpi_series": kall, "obs_fact": oall}
     words = set(key.split("_"))
     if key in _FACT_SHARES:
         return "shares", found, allnames
@@ -3569,8 +3708,9 @@ def _fact_route(key: str, symbol: str, period: str | None = None) -> tuple[str |
     # second, labelled alternative.  Two derivations of one line disagreeing is exactly what sent a grader wrong.
     # Only a period the KPI rows cover takes that route: an earlier or later year still answers from the derived
     # ratio, never from a different period's company figure.
-    if key in ("ebitda", "ebitda_margin", "ebitda_margin_pct") and found["kpi_series"] \
-            and _kpi_covers(symbol, found["kpi_series"], period):
+    if key in ("ebitda", "ebitda_margin", "ebitda_margin_pct") and (
+            (found["kpi_series"] and _kpi_covers(symbol, found["kpi_series"], period))
+            or (found["obs_fact"] and _obs_covers(symbol, found["obs_fact"], period))):
         return "kpi", found, allnames
     # a ratio word first: a margin / return / growth / valuation is computed or stated, not a balance line.  The
     # plain lines ratio_panel also mirrors (pat, revenue_from_operations) are not ratio words and go to fin.
@@ -3579,10 +3719,12 @@ def _fact_route(key: str, symbol: str, period: str | None = None) -> tuple[str |
         return "ratio", found, allnames
     if fnames:
         return "fin", found, allnames
-    if knames:
+    if knames or onames:
         return "kpi", found, allnames
     if rnames:
         return "ratio", found, allnames
+    if _has_table("obs_fact") and _obs_kpi_rows(symbol, key, period, None, 1):
+        return "kpi", found, allnames
     return None, found, allnames
 
 
@@ -3599,10 +3741,19 @@ def _fact_holding_word(symbol: str, key: str, day: str | None = None) -> str | N
 
 def _fact_paths(path: str, found: dict[str, list[str]]) -> list[str]:
     """The lookup that owns the metric, then the other tables that hold a name for it (T-186 fallback)."""
-    table_of = {"fin": "fin", "ratio": "ratio_panel", "kpi": "kpi_series"}
     order = {"fin": ("fin", "ratio", "kpi"), "ratio": ("ratio", "fin", "kpi"),
              "kpi": ("kpi", "fin", "ratio"), "holding": ("holding",), "shares": ("shares",)}[path]
-    return [candidate for candidate in order if candidate == path or found.get(table_of[candidate])]
+    out: list[str] = []
+    for candidate in order:
+        if candidate == path:
+            out.append(candidate)
+        elif candidate == "fin" and found.get("fin"):
+            out.append(candidate)
+        elif candidate == "ratio" and found.get("ratio_panel"):
+            out.append(candidate)
+        elif candidate == "kpi" and (found.get("kpi_series") or found.get("obs_fact")):
+            out.append(candidate)
+    return out
 
 
 def _fact_rows(path: str, symbol: str, key: str, period: str | None, basis: str | None, day: str | None,
@@ -3628,8 +3779,14 @@ def _fact_rows(path: str, symbol: str, key: str, period: str | None, basis: str 
 
 def _fact_second(path: str, found: dict[str, list[str]]) -> str | None:
     """The next lookup that also holds the metric, so the answer says what the other table says (max 3)."""
-    for candidate, table in (("kpi", "kpi_series"), ("ratio", "ratio_panel"), ("fin", "fin")):
-        if candidate != path and found.get(table):
+    for candidate in ("kpi", "ratio", "fin"):
+        if candidate == path:
+            continue
+        if candidate == "kpi" and (found.get("kpi_series") or found.get("obs_fact")):
+            return candidate
+        if candidate == "ratio" and found.get("ratio_panel"):
+            return candidate
+        if candidate == "fin" and found.get("fin"):
             return candidate
     return None
 
@@ -4095,6 +4252,8 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
     path, found, allnames = _fact_route(key, sym, period)
     if path is None:
         from_cells = _fact_cells(sym, metric, period, day)
+        if not from_cells and key in _MEASURE_ALIASES:
+            from_cells = _fact_cells(sym, _MEASURE_ALIASES[key].replace("_", " ").replace(".", " "), period, day)
         if from_cells:
             return from_cells
         return _fact_not_found(sym, metric, key, found, allnames, day)
@@ -4108,8 +4267,15 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
         if rows:
             used = candidate
             break
+    if not rows and "kpi" not in replies and _has_table("obs_fact"):
+        rows, reply = _fact_rows("kpi", sym, key, period, bas, day, 5)
+        replies["kpi"] = reply
+        if rows:
+            used = "kpi"
     if not rows:
         from_cells = _fact_cells(sym, metric, period, day)
+        if not from_cells and key in _MEASURE_ALIASES:
+            from_cells = _fact_cells(sym, _MEASURE_ALIASES[key].replace("_", " ").replace(".", " "), period, day)
         if from_cells:
             return from_cells
         note = None
@@ -4167,6 +4333,26 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
             **({"company_stated": company_stated} if company_stated else {})}
 
 
+def _obs_period_clause(period: str | None) -> tuple[str, list[Any]]:
+    """SQL clause matching ``obs_fact.period`` across spacing/hyphenation variants ('H1FY27' == 'H1 FY27')."""
+    kind, label = norm_period(period) if period else (None, None)
+    if not label:
+        return "", []
+    if kind in ("Q", "H1", "H2", "FY"):
+        yy = label[-2:]
+        forms = {label}
+        if kind == "FY":
+            prev = int(yy) - 1
+            forms.update({f"FY {yy}", f"FY20{yy}", f"FY 20{yy}", f"20{prev}-{yy}", f"FY20{prev}-{yy}",
+                          f"FY20{prev}-20{yy}", f"20{prev}{yy}", f"FY20{prev}{yy}"})
+        else:
+            q_part = label[:-4]
+            forms.update({f"{q_part} FY{yy}", f"{q_part}FY20{yy}", f"{q_part} FY20{yy}", f"{q_part} FY {yy}"})
+        placeholders = ",".join("?" * len(forms))
+        return f" AND REPLACE(UPPER(COALESCE(o.period,'')),'-','') IN ({placeholders})", sorted(forms)
+    return " AND UPPER(COALESCE(o.period,''))=UPPER(?)", [label]
+
+
 def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
               period: str | None = None, record_type: str | None = None, status: str | None = None,
               as_of: str | None = None, limit: int = 20, measure_exact: bool = False) -> list[dict[str, Any]]:
@@ -4177,11 +4363,18 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
     args: list[Any] = [sym]
     if measure:
         if measure_exact:
-            cands = _pick("obs_fact", "measure", sym, measure)[0] if _has_table("obs_fact") else []
-            # a contained name is a different measure when it adds a derived suffix (revenue -> revenue_growth_yoy)
-            derived = ("growth", "_pct", "_pp", "change", "_yoy", "_qoq", "margin", "share", "ratio")
-            cands = [c for c in cands if c.lower() == measure.lower()
-                     or not any(d in c.lower() and d not in measure.lower() for d in derived)]
+            ex = f" AND record_type='{record_type}'" if record_type else ""
+            cands = _pick("obs_fact", "measure", sym, measure, extra=ex)[0] if _has_table("obs_fact") else []
+            # a contained name is a different measure when it adds a derived token (revenue -> revenue_growth_yoy)
+            derived_tokens = {"growth", "pct", "pp", "change", "yoy", "qoq", "margin", "share", "ratio", "delta"}
+            m_norm = _norm_measure(measure)
+            m_tokens = set(m_norm.split("_"))
+            cands = [c for c in cands if _norm_measure(c) == m_norm
+                     or not ((set(_norm_measure(c).split("_")) & derived_tokens) - m_tokens)]
+            if "mix" not in m_norm and "segment" not in m_norm:
+                non_mix = [c for c in cands if not c.lower().endswith(".mix")]
+                if non_mix:
+                    cands = non_mix
             if cands:
                 where.append(f"o.measure IN ({','.join('?' * len(cands))})")
                 args.extend(cands)
@@ -4196,16 +4389,16 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
         args.append(record_type)
     if status and status.lower() in ("verified", "unverified"):
         where.append("o.status=?")
-        args.append(status)
+        args.append(status.lower())
     else:
         where.append("o.status IN ('verified','unverified')")
-    kind, label = norm_period(period) if period else (None, None)
-    if label:
-        where.append("o.period=?")
-        args.append(label)
+    psql, pargs = _obs_period_clause(period)
+    if psql:
+        where.append(psql.removeprefix(" AND "))
+        args.extend(pargs)
     # terms filter in SQL: every term must hit one of the text columns, its synonyms OR-ed in (T-239)
     term_words = [w for w in re.findall(r"\w+", terms or "") if len(w) > 1]
-    text_cols = [c for c in ("statement", "printed_label", "question_context", "measure")
+    text_cols = [c for c in ("statement", "printed_label", "question_context", "measure", "segment", "series_title")
                  if _has_column("obs_fact", c)]
     if not text_cols:
         text_cols = ["measure"]
@@ -4214,8 +4407,19 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
         where.append(f"({clause})")
         args.extend(term_args)
     extra, eargs = _asof(as_of, "o.known_at")
+    order_parts = ["(o.status='verified') DESC"]
+    if measure and not terms and _has_column("obs_fact", "segment"):
+        order_parts.append("(COALESCE(o.segment,'')='') DESC")
+    if _has_column("obs_fact", "doc_type"):
+        order_parts.append("CASE COALESCE(o.doc_type,'') WHEN 'deck' THEN 0 WHEN 'results' THEN 1 "
+                           "WHEN 'press_release' THEN 2 WHEN 'annual_report' THEN 3 "
+                           "WHEN 'transcript' THEN 4 ELSE 5 END")
+    order_parts.append("(COALESCE(o.period,'')<>'') DESC")
+    order_parts.append("o.known_at DESC")
+    if _has_column("obs_fact", "observation_id"):
+        order_parts.append("o.observation_id DESC")
     rows = _q(f"SELECT o.* FROM obs_fact o WHERE {' AND '.join(where)}{extra} "
-              f"ORDER BY o.known_at DESC LIMIT ?", (*args, *eargs, _cap(limit)))
+              f"ORDER BY {', '.join(order_parts)} LIMIT ?", (*args, *eargs, _cap(limit)))
     out: list[dict[str, Any]] = []
     partial = (not measure_exact) and bool(measure)
     for r in rows:
@@ -4226,8 +4430,9 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
             "source": g("source"), "doc_type": g("doc_type"), "doc_key": g("doc_key"), "page": g("page"),
             "period": g("period"), "period_source": g("period_source"), "basis": g("basis"),
             "basis_source": g("basis_source"), "unit": g("unit"), "scale": g("scale"), "value": g("value"),
-            "value_high": g("value_high"), "statement": g("statement"), "speaker": g("speaker"),
-            "direction": g("direction"), "question_context": g("question_context"),
+            "value_high": g("value_high"), "printed_label": g("printed_label"),
+            "statement": g("statement"), "quote": _trim(g("statement") or g("printed_label"), 300),
+            "speaker": g("speaker"), "direction": g("direction"), "question_context": g("question_context"),
             "segment": g("segment"), "geography": g("geography"), "customer": g("customer"),
             "entity_scope": g("entity_scope"), "known_at": g("known_at"),
             "provenance": _prov("obs_fact", f"{g('doc_key')} p{g('page')}", g("known_at"),
@@ -4248,37 +4453,144 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
     return out
 
 
-def _obs_fin_rows(sym, measure, period, bas, as_of, cap):
-    rows = _obs_rows(sym, measure=measure, period=period, record_type="number", as_of=as_of, limit=cap,
-                     measure_exact=True)
-    out = []
+def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = None,
+                        period: str | None = None, rank_terms: str | None = None,
+                        latest: bool = False, status: str | None = None,
+                        date_from: str | None = None, date_to: str | None = None,
+                        as_of: str | None = None) -> list[dict[str, Any]]:
+    """Fetch and rank ``obs_fact`` statement rows with latest, period, rank_terms, topic and status."""
+    where = ["o.symbol=?", "o.record_type='statement'"]
+    args: list[Any] = [sym]
+    if status and status.lower() in ("verified", "unverified"):
+        where.append("o.status=?")
+        args.append(status.lower())
+    else:
+        where.append("o.status IN ('verified','unverified')")
+    extra, eargs = _asof(as_of, "o.known_at")
+    if latest:
+        where.append(f"substr(COALESCE(o.known_at,''),1,10)=(SELECT MAX(substr(COALESCE(o2.known_at,''),1,10)) "
+                     f"FROM obs_fact o2 WHERE o2.symbol=? AND o2.record_type='statement'{extra.replace('o.', 'o2.')})")
+        args.extend([sym, *eargs])
+    if date_from:
+        where.append("substr(COALESCE(o.known_at,''),1,10) >= ?")
+        args.append(date_from)
+    if date_to:
+        where.append("substr(COALESCE(o.known_at,''),1,10) <= ?")
+        args.append(date_to)
+    term_words = [w for w in re.findall(r"\w+", terms or "") if len(w) > 1]
+    text_cols = [c for c in ("statement", "printed_label", "question_context", "measure", "segment", "series_title")
+                 if _has_column("obs_fact", c)] or ["statement", "measure"]
+    if term_words:
+        clause, term_args, _used = _word_groups(term_words, [f"o.{c}" for c in text_cols])
+        where.append(f"({clause})")
+        args.extend(term_args)
+    doc_join = ("LEFT JOIN doc d ON d.doc_key=COALESCE((SELECT a.doc_key FROM doc_alias a "
+                "WHERE a.symbol=o.symbol AND a.alias_key=o.doc_key), o.doc_key)") if _has_table("doc") else ""
+    doc_sel = ", d.title AS doc_title, d.filing_date AS doc_filing_date" if _has_table("doc") else ", '' AS doc_title, '' AS doc_filing_date"
+    rows = _q(f"SELECT o.*{doc_sel} FROM obs_fact o {doc_join} WHERE {' AND '.join(where)}{extra} "
+              f"ORDER BY (o.status='verified') DESC, o.known_at DESC LIMIT 500", (*args, *eargs))
+    plan = _topic_plan(topic) if topic else None
+    _kind, plabel = norm_period(period)
+    plabels: list[str] = []
+    if plabel:
+        base_labels = ([f"Q{q}FY{plabel[2:]}" for q in (1, 2, 3, 4)] + [plabel]) if plabel.startswith("FY") else [plabel]
+        for lb in base_labels:
+            plabels.append(lb.lower())
+            plabels.append(re.sub(r"^([qh][1-4]|fy)(fy\d{2})$", r"\1 \2", lb.lower()))
+    rwords = [w.lower() for w in re.findall(r"[\w₹%&\-\.]+", rank_terms or "") if len(w) > 2][:8]
+    rword_alts = [([w] + [s.lower() for s in _synonyms_for(w)]) for w in rwords]
+    scored: list[tuple[tuple, dict[str, Any]]] = []
     for r in rows:
-        if bas and r.get("basis") and r["basis"] not in ("not_stated",) and r["basis"] != bas:
+        keys = set(r.keys())
+        g = lambda k: (r[k] if k in keys else None)
+        stmt = g("statement")
+        if not stmt:
             continue
-        row = {"measure": r["measure"], "period": r["period"], "basis": r["basis"] or "not_stated",
-               "definition": "observed", "value": r["value"], "unit": r["unit"], "scale": r["scale"] or 1.0,
-               "status": r["status"], "source": "obs_fact", "doc_key": r["doc_key"], "page": r["page"],
-               "period_source": r["period_source"], "basis_source": r["basis_source"], "known_at": r["known_at"],
-               "provenance": r["provenance"]}
-        row["_table"], row["_known_at"], row["_rowid"], row["_check"] = "obs_fact", r["known_at"], None, None
-        _add_money(row, r["value"], r["unit"], r["scale"])
-        out.append(row)
-    return out
+        if plan is not None and not _topic_hit(plan, stmt, g("measure")):
+            continue
+        blob = " ".join(str(x or "") for x in (stmt, g("question_context"), g("measure"),
+                                               g("printed_label"), g("segment"))).lower()
+        t_score = sum(1 for alts in rword_alts if any(a in blob for a in alts)) if rword_alts else 0
+        p_rank = 0
+        if plabels:
+            p_blob = " ".join(str(x or "") for x in (g("period"), stmt, g("doc_title"))).lower()
+            p_norm = p_blob.replace("-", "").replace(" ", "")
+            p_hit = any(lb in p_blob or lb.replace(" ", "") in p_norm for lb in plabels)
+            p_rank = 0 if p_hit else 1
+        s_rank = 0 if g("status") == "verified" else 1
+        title = _trim(g("doc_title") or g("series_title") or "", 120)
+        doc_type = _DOC_TYPES.get(str(g("doc_type") or "").lower(), g("doc_type"))
+        item: dict[str, Any] = {
+            "call_date": (g("doc_filing_date") or g("known_at") or "")[:10],
+            "call_period": g("period") or None,
+            "speaker": g("speaker"), "role": None, "section": None,
+            "topics": g("measure"), "entities": None, "period_discussed": g("period") or None,
+            "answer_turn": None, "match": "obs", "status": g("status"), "source": "obs_fact",
+            "page": g("page"), "doc_key": g("doc_key"), "doc_type": doc_type,
+            "quote": _trim(stmt, QUOTE_CHARS),
+            "provenance": _prov("obs_fact", f"{g('doc_key')} p{g('page')}", g("known_at"),
+                                title=title, doc_type=doc_type, row_id=g("observation_id")),
+            "_term_score": t_score,
+        }
+        if g("question_context"):
+            item["question_context"] = _trim(g("question_context"), 300)
+        scored.append(((s_rank, p_rank, -t_score, -(int(g("observation_id") or 0) if False else 0)), item))
+    scored.sort(key=lambda pair: (pair[0][0], pair[0][1], pair[0][2]))
+    return [pair[1] for pair in scored]
 
 
-def _obs_kpi_rows(sym, kpi, period, as_of, cap):
-    rows = _obs_rows(sym, measure=kpi, period=period, record_type="number", as_of=as_of, limit=cap,
+def _obs_fin_rows(sym, measure, period, bas, as_of, cap):
+    rows = _obs_rows(sym, measure=measure, period=period, record_type="number", as_of=as_of, limit=max(cap * 3, 20),
                      measure_exact=True)
+    verified_keys = {(r["measure"], r["period"], r["basis"] or "not_stated")
+                     for r in rows if r.get("status") == "verified"}
     out = []
     for r in rows:
+        rb = r.get("basis") or "not_stated"
+        if bas and rb not in ("not_stated",) and rb != bas:
+            continue
+        if r.get("status") != "verified" and (r["measure"], r["period"], rb) in verified_keys:
+            continue
+        row = {"measure": r["measure"], "period": r["period"], "basis": rb,
+               "definition": "observed", "value": r["value"], "unit": r["unit"], "scale": r["scale"] or 1.0,
+               "status": r["status"], "check_status": r["status"], "source": "obs_fact",
+               "doc_key": r["doc_key"], "page": r["page"], "quote": r.get("quote"),
+               "period_source": r["period_source"], "basis_source": r["basis_source"], "known_at": r["known_at"],
+               "provenance": r["provenance"]}
+        row["_table"], row["_known_at"], row["_rowid"], row["_check"] = "obs_fact", r["known_at"], None, r["status"]
+        _add_money(row, r["value"], r["unit"], r["scale"])
+        out.append(row)
+    return out[:cap]
+
+
+def _obs_kpi_rows(sym, kpi, period, as_of, cap, basis=None):
+    rows = _obs_rows(sym, measure=kpi, period=period, record_type="number", as_of=as_of, limit=max(cap * 3, 20),
+                     measure_exact=True)
+    if not rows:
+        words = [w for w in re.split(r"[\s_.\-]+", str(kpi or "").strip().lower()) if len(w) > 1]
+        if len(words) >= 2:
+            cand = _obs_rows(sym, terms=" ".join(words), period=period, record_type="number", as_of=as_of,
+                             limit=max(cap * 3, 20))
+            derived = ("growth", "_pct", "_pp", "change", "_yoy", "_qoq", "delta")
+            k_low = str(kpi or "").lower()
+            rows = [r for r in cand
+                    if not any(d in str(r.get("measure") or "").lower() and d not in k_low for d in derived)]
+    out = []
+    for r in rows:
+        rb = r.get("basis") or "not_stated"
+        if basis and rb not in ("not_stated",) and rb != basis:
+            continue
         row = {"metric": r["measure"], "dimension": "total", "value": r["value"], "unit": r["unit"],
-               "scale": r["scale"] or 1.0, "period": r["period"], "basis": r["basis"] or "not_stated",
-               "status": r["status"], "source": r["source"], "doc_key": r["doc_key"], "page": r["page"],
+               "scale": r["scale"] or 1.0, "period": r["period"], "basis": rb,
+               "entity": sym, "segment": r.get("segment") or None,
+               "raw_label": r.get("printed_label"), "quote": r.get("quote"),
+               "status": r["status"], "check_status": r["status"], "source": "obs_fact",
+               "doc_key": r["doc_key"], "page": r["page"],
                "period_source": r["period_source"], "basis_source": r["basis_source"], "known_at": r["known_at"],
                "provenance": r["provenance"]}
         _add_money(row, r["value"], r["unit"], r["scale"])
         out.append(row)
-    return out
+    return out[:cap]
 
 
 def obs(symbol: str, measure: str | None = None, terms: str | None = None, period: str | None = None,

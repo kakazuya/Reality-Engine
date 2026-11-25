@@ -340,3 +340,194 @@ class SourcePriorityTests(unittest.TestCase):
         self.assertEqual(decks, 1)                            # an empty newer db falls back to the older
         self.assertEqual(stats["obs_db"]["deck"], str(deck))
         self.assertEqual(ev, [("new event", "a leading MNC")])  # the newer events db, with its new column
+
+
+class RetrievalFix1Tests(unittest.TestCase):
+    """T-242 retrieval fix 1: verified obs_fact outranks unverified kpi/page_cell, XBRL still wins, measure
+    matching & aliases, _nearest number rows, statements merge/dedupe, guidance period & verified ranking."""
+
+    @classmethod
+    def setUpClass(cls):
+        d = TMP / "rfix1"
+        if d.exists():
+            shutil.rmtree(d)
+        d.mkdir(parents=True)
+        cls.store = _make_store(d)
+        con = sqlite3.connect(cls.store)
+        con.execute("INSERT INTO doc (doc_key, symbol, doc_type, title, filing_date, known_at, pages) "
+                    "VALUES ('d_deck.pdf','TEST','deck','Q2FY27 Deck','2026-11-05','2026-11-05T10:00:00',10),"
+                    "('d_old_call.pdf','TEST','transcript','Q1FY27 Earnings Call','2026-08-05','2026-08-05T10:00:00',10),"
+                    "('d_new_call.pdf','TEST','transcript','Q2FY27 Earnings Call','2026-11-10','2026-11-10T10:00:00',10)")
+        # 1. kpi_series unverified AUM (46) vs obs_fact verified aum.value (326) for H1FY27
+        con.execute("INSERT INTO kpi_series (symbol, metric, dimension, value, unit, scale, period_type, "
+                    "fiscal_period, basis, doc_key, page, quote, known_at, is_reported, extractor_rule) "
+                    "VALUES ('TEST','aum','total',46.0,'inr_bn',1e9,'H','H1FY27','not_stated','d_deck.pdf',6,"
+                    "'AUM Salaried 46 bn','2026-11-05T10:00:00',1,'t')")
+        kid = con.execute("SELECT last_insert_rowid()").fetchone()[0]
+        con.execute("INSERT INTO row_check (tbl, row_id, symbol, metric, status, checker) "
+                    "VALUES ('kpi_series',?,'TEST','aum','unverified','t')", (kid,))
+        # unverified page_cell for capacity utilisation
+        con.execute("CREATE TABLE IF NOT EXISTS page_cell (doc_key TEXT, page INTEGER, symbol TEXT, known_at TEXT, "
+                    "reader TEXT, table_title TEXT, row_label TEXT, col_header TEXT, value_text TEXT, "
+                    "unit_text TEXT, status TEXT, conflict TEXT)")
+        con.execute("INSERT INTO page_cell (doc_key, page, symbol, known_at, reader, table_title, row_label, "
+                    "col_header, value_text, unit_text, status) VALUES "
+                    "('d_deck.pdf',6,'TEST','2026-11-05T10:00:00','dots','Ops','Capacity Utilization','Q2FY27','70','%','unverified')")
+        # XBRL PAT for Q2FY27 (must still outrank obs_fact verified pat)
+        con.execute("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, "
+                    "audited, statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, "
+                    "source_table, source_rowid, known_at, known_at_source, is_reported) VALUES "
+                    "('TEST','INE000000000','2026-07-01','2026-09-30','Q2FY27','consolidated','u','PL','pat',"
+                    "'ProfitLoss',511.53,'inr',1e6,'xbrl.xml','results_xbrl.db','q','1','2026-11-01T10:00:00','x',1)")
+        # Legacy transcript_statement: 18 rows (exceeds row_cut 15) + 1 exact duplicate of obs_fact statement
+        for i in range(18):
+            q = ("Freight costs remained elevated for exports." if i == 0
+                 else f"Generic commentary line number {i} on business operations.")
+            con.execute("INSERT INTO transcript_statement (symbol, doc_key, call_date, call_period, page, seq, "
+                        "speaker, role, section, topics, period_discussed, numbers_json, statement, quote, is_fragment, "
+                        "known_at, known_at_source, extractor_rule) VALUES "
+                        "('TEST','d_new_call.pdf','2026-11-10','Q2FY27',4,?,'Mgr','md','prepared','margin',"
+                        "'Q2FY27','[]',?,?,0,'2026-11-10T10:00:00','x','t')", (i + 1, q, q))
+        # Legacy unverified guidance row
+        con.execute("INSERT INTO guidance (id, symbol, isin, metric, target_period, low, high, unit, direction, "
+                    "said_on, doc_key, page, quote, speaker, known_at, known_at_source, extractor_rule) VALUES "
+                    "(1,'TEST','INE000000000','ebitda_margin','FY27',10.0,12.0,'pct','flat','2026-11-05','d_deck.pdf',5,"
+                    "'Legacy unverified margin guidance','Mgr','2026-11-05T10:00:00','x','t')")
+        con.execute("INSERT INTO row_check (tbl, row_id, symbol, metric, status, checker) "
+                    "VALUES ('guidance',1,'TEST','ebitda_margin','unverified','t')")
+        # obs_fact table is already cloned empty by _make_store from c01.db
+        obs_cols = [r[1] for r in con.execute("PRAGMA table_info(obs_fact)").fetchall()]
+        if "source" not in obs_cols:
+            con.execute("ALTER TABLE obs_fact ADD COLUMN source TEXT")
+        if "doc_type" not in obs_cols:
+            con.execute("ALTER TABLE obs_fact ADD COLUMN doc_type TEXT")
+
+        def add_obs(**kw):
+            cols = [r[1] for r in con.execute("PRAGMA table_info(obs_fact)").fetchall()]
+            notnull = {r[1]: r[3] for r in con.execute("PRAGMA table_info(obs_fact)").fetchall()}
+            defaults = {"symbol": "TEST", "doc_key": "d_deck.pdf", "page": 1, "known_at": "2026-11-05T10:00:00",
+                        "status": "verified", "record_type": "number", "scale": 1.0, "adjusted": 0, "is_total": 0,
+                        "source": "deck", "doc_type": "deck"}
+            vals = [kw.get(c, defaults.get(c, "" if notnull.get(c, 0) else None)) for c in cols]
+            con.execute(f"INSERT INTO obs_fact ({','.join(cols)}) VALUES ({','.join('?' * len(cols))})", vals)
+
+        # Verified obs_fact rows for Step 1 & 2
+        add_obs(measure="aum.value", printed_label="AUM of", value=326.0, unit="Bn", scale=1e9, period="H1 FY27", page=15)
+        add_obs(measure="profit_before_tax", printed_label="Profit Before Tax (PBT)", value=251.71, unit="₹ Lakhs",
+                scale=1e5, period="H1 FY27", page=4)
+        add_obs(measure="NEW:gross_written_premium", printed_label="GWP", value=7056.0, unit="crores", scale=1e7,
+                period="Q2 FY27", page=4)
+        add_obs(measure="capacity.utilisation", printed_label="Capacity Utilization (%)", value=84.0, unit="%",
+                period="Q2FY27", segment="Yarn Division", page=6)
+        add_obs(measure="revenue.value", printed_label="Revenue", value=103.0, unit="Rs. In Crs", scale=1e7,
+                period="Q2FY27", segment="Yarn Division", page=6)
+        add_obs(measure="pat", printed_label="PAT", value=999.0, unit="Mn", scale=1e6, period="Q2FY27", page=5)
+        add_obs(measure="NEW:special_widget_count", printed_label="Widget output", value=42.0, unit="units",
+                period="Q2FY27", page=7, status="verified")
+        # Step 4 statements: older call + newer call, verified + unverified + duplicate of transcript_statement
+        add_obs(record_type="statement", doc_key="d_old_call.pdf", doc_type="transcript", source="transcript",
+                known_at="2026-08-05T10:00:00", measure="margin",
+                statement="Q1FY27 call note on Truly Indian outlook.", status="verified", page=3)
+        add_obs(record_type="statement", doc_key="d_new_call.pdf", doc_type="transcript", source="transcript",
+                known_at="2026-11-10T10:00:00", measure="margin",
+                statement="Freight costs remained elevated for exports.", status="verified", page=4)
+        add_obs(record_type="statement", doc_key="d_new_call.pdf", doc_type="transcript", source="transcript",
+                known_at="2026-11-10T10:00:00", measure="revenue.mix",
+                statement="Unverified remark on Truly Indian exports.", status="unverified", page=5)
+        # Step 4 guidance: verified FY27 + verified FY28
+        add_obs(record_type="guidance", doc_key="d_new_call.pdf", doc_type="transcript", source="transcript",
+                known_at="2026-11-10T10:00:00", measure="ebitda_margin", value=15.0, value_high=17.0,
+                unit="%", period="FY27", statement="We expect 15% to 17% margin in FY27.", status="verified", page=6)
+        add_obs(record_type="guidance", doc_key="d_new_call.pdf", doc_type="transcript", source="transcript",
+                known_at="2026-11-10T10:00:00", measure="ebitda_margin", value=18.0, value_high=20.0,
+                unit="%", period="FY28", statement="We expect 18% to 20% margin in FY28.", status="verified", page=6)
+        con.commit()
+        con.close()
+
+    def setUp(self):
+        self._prev = os.environ.get("REALITY_PILOT3_DB")
+        os.environ["REALITY_PILOT3_DB"] = str(self.store)
+        p3.close()
+
+    def tearDown(self):
+        p3.close()
+        if self._prev is None:
+            os.environ.pop("REALITY_PILOT3_DB", None)
+        else:
+            os.environ["REALITY_PILOT3_DB"] = self._prev
+
+    def test_step1_verified_obs_beats_unverified_kpi_and_cell_while_xbrl_still_wins(self):
+        aum = p3.fact("TEST", "AUM", period="H1FY27")
+        self.assertTrue(aum["found"])
+        self.assertEqual(aum["answer"]["value"], 326.0)
+        self.assertEqual(aum["answer"]["source"]["table"], "obs_fact")
+        self.assertEqual(aum["answer"]["check_status"], "verified")
+
+        k_aum = p3.kpi("TEST", "AUM", period="H1FY27")
+        self.assertEqual(k_aum["rows"][0]["value"], 326.0)
+        self.assertEqual(k_aum["rows"][0]["source"], "obs_fact")
+        self.assertEqual(k_aum["rows"][0]["status"], "verified")
+
+        cu = p3.fact("TEST", "capacity utilisation", period="Q2FY27")
+        self.assertEqual(cu["answer"]["value"], 84.0)
+        self.assertEqual(cu["answer"]["source"]["table"], "obs_fact")
+
+        # Counter-test: filed XBRL fin row still outranks verified obs_fact
+        pat = p3.fact("TEST", "PAT", period="Q2FY27")
+        self.assertEqual(pat["route"], "fin")
+        self.assertEqual(pat["answer"]["value"], 511.53)
+        self.assertEqual(pat["answer"]["source"]["table"], "fin_quarter_xbrl")
+
+    def test_step2_aliases_and_segment_measure_matching(self):
+        pbt = p3.fact("TEST", "PBT", period="H1FY27")
+        self.assertEqual(pbt["answer"]["value"], 251.71)
+        self.assertEqual(pbt["answer"]["source"]["table"], "obs_fact")
+
+        gwp = p3.fact("TEST", "GWP", period="Q2FY27")
+        self.assertEqual(gwp["answer"]["value"], 7056.0)
+        self.assertEqual(gwp["answer"]["source"]["table"], "obs_fact")
+
+        yarn = p3.fact("TEST", "Yarn revenue", period="Q2FY27")
+        self.assertEqual(yarn["answer"]["value"], 103.0)
+        self.assertEqual(yarn["answer"]["source"]["table"], "obs_fact")
+
+    def test_step3_nearest_shows_obs_fact_number_fields(self):
+        direct = p3._nearest("TEST", "widget")
+        nums_direct = [n for n in direct if n.get("kind") == "number"]
+        self.assertTrue(nums_direct)
+        self.assertEqual(nums_direct[0]["value"], 42.0)
+        self.assertEqual(nums_direct[0]["unit"], "units")
+        self.assertEqual(nums_direct[0]["period"], "Q2FY27")
+        self.assertEqual(nums_direct[0]["printed_label"], "Widget output")
+        self.assertEqual(nums_direct[0]["status"], "verified")
+
+        miss = p3.fact("TEST", "special widget forecast")
+        self.assertFalse(miss["found"])
+        nums = [n for n in miss["nearest"] if n.get("kind") == "number"]
+        self.assertTrue(nums)
+        self.assertEqual(nums[0]["value"], 42.0)
+        self.assertEqual(nums[0]["unit"], "units")
+        self.assertEqual(nums[0]["period"], "Q2FY27")
+        self.assertEqual(nums[0]["printed_label"], "Widget output")
+        self.assertEqual(nums[0]["status"], "verified")
+
+    def test_step4_statements_merges_ranks_verified_first_and_dedupes(self):
+        out = p3.statements("TEST", rank_terms="Freight Truly Indian", latest=True)
+        quotes = [r["quote"] for r in out["rows"]]
+        # Verified obs_fact statement survived row_cut(15) and ranks ahead of unverified obs and transcript rows
+        self.assertEqual(quotes[0], "Freight costs remained elevated for exports.")
+        self.assertEqual(out["rows"][0]["source"], "obs_fact")
+        self.assertEqual(out["rows"][0]["status"], "verified")
+        # Duplicate transcript_statement of the same sentence is dropped
+        self.assertEqual(quotes.count("Freight costs remained elevated for exports."), 1)
+        # latest=True excluded the Q1FY27 call obs_fact statement
+        self.assertFalse(any("Q1FY27 call note" in q for q in quotes))
+
+    def test_step4_guidance_filters_period_and_ranks_verified_first(self):
+        out = p3.guidance("TEST", metric="ebitda_margin", period="FY27")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["rows"][0]["status"], "verified")
+        self.assertEqual(out["rows"][0]["source"], "obs_fact")
+        self.assertEqual(out["rows"][0]["low"], 15.0)
+        self.assertTrue(all(r["period"] == "FY27" for r in out["rows"]))
+
