@@ -10,10 +10,10 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - 25 Nov deck OCR fill (`scripts/ocr_fill.py`, Nemotron VL, Kilo): pilot 40 pages 0 errors, only 6 with >=4 figures (rest covers/dividers).
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
+00000. 26 Nov 00:10 (Wolf): results pilot FAIL 33/12/6/9 -> gates merged (0 R changed); re-grade of results_r5.db next; results reading blocked till pass.
 00000. 25 Nov 19:50 (Wolf): deck gates merged; next: swap rechecked decks_r1.db, load_symbols.
-00000. 25 Nov 19:15 (Wolf): sonnet_settle guarded (stale >5 min, 25 runs/window); OFF until Shivam's OK + one smoke run.
 00000. 25 Nov 19:30 (Eagle) events: r7b (fund_raise) and r8 (order_win) merged; fresh7 gate (40 never-seen stores, code cb741c24) FAILS: order_win 35/10/14/1, fund_raise 31/8/16/0 -> VERIFIED_KINDS stays empty (served unverified). Retrieval fix 1 merged 20:00 (tools serve verified obs_fact first; audit Qs 13->20/20) -> fresh-question audit after MCP restart. NEXT: hy4 model reading + script check (Shivam's call pending).
-00000. 25 Nov 21:55 deck widening merged (off by default): `--deck-few-figures` +2,307 pages; `--deck-jumbled-min` 0.70 +1,438 (samples readable, Wolf); `tasks/t242_deck_widening_measure.md`. NEXT: read both into a separate hy4 db, checkpoint grade, then load.
+00000. 26 Nov deck widening (+2,307 few-figure, +1,438 jumbled 0.70) reading into obs_decks_wide.db (ckpt 1-2 carried); sonnet_settle OFF till Shivam's OK.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
 1. T-214/T-218 Telegram build: plan `tasks/handoff/T-214_TG_BUILD_PLAN.md`, queue `D:/RealityEngine/tg_build/build_queue.csv`, stores `tg_build/measure10/c01..c91`; repair notes `tasks/store_repair/INDEX.md`, grid `reports/store_repair_grid.xlsx`.
 2. T-213: r15 MERGED (`answer/answer_checker.py` C1-C5 + repair): run B 54/9/1 -> 57/7/0; next checks on Telegram stores, frozen halves.

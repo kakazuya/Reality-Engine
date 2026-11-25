@@ -4737,6 +4737,224 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
     rows[:] = kept
 
 
+# T-242 results-page gates: the 60-row strict grade (D:/RealityEngine/t242/grades/results_pilot_b9dfba35.md) found
+# 9 non-figures taken from results notes (a year in a circular, a Companies Act year, a section/rule/scrip serial,
+# a board-meeting time, a condition's own percent), the company's own cash flow tagged subsidiary, an associate's
+# PAT and another company's holding stored as the company's, and the "Rs in lakhs" line lost from 7 rows.
+RESULTS_REFERENCE_LABEL_RE = re.compile(
+    r"\b(?:section|sub[\s-]*section|clause|rule|regulation|scrip\s*code|scrip|cin|circular|scheme|act|"
+    r"serial\s*(?:no|number)|sr\.?\s*no)\b", re.I)
+RESULTS_REFERENCE_MEASURE_RE = re.compile(
+    r"(?:reference|section|rule|clause|serial|circular|scrip|statutory|legal_year|reference_year)", re.I)
+RESULTS_SCALE_NOTE_RE = re.compile(
+    r"\b(?:figures?|amounts?)\b[^.\n]{0,8}?\b(?:in|ln)\b\s*"
+    r"(l\s*akhs?|lacs?|crores?|crs?|millions?|billions?|thousands?)\b"
+    r"|(?:\b(?:rupees?|rs\.?|inr)\b|\u20b9|`)\s*(?:in|ln)\s*"
+    r"(l\s*akhs?|lacs?|crores?|crs?|millions?|billions?|thousands?)\b",
+    re.I)
+RESULTS_SCALE_ISH_UNIT_RE = re.compile(r"akh|lak|lac|crore|million|billion|thousand", re.I)
+RESULTS_STATEMENT_TITLE_RE = re.compile(
+    r"\b(?:cash\s*flow|balance\s*sheet|statement\s+of\s+(?:assets|profit|financial)|financial\s+results?)\b", re.I)
+RESULTS_ASSOCIATE_RE = re.compile(r"\bassociates?\b|\bjoint\s+ventures?\b|\bjvs?\b", re.I)
+RESULTS_HOLDING_RE = re.compile(
+    r"\b(?:equity\s+)?(?:stake|holding|investment)s?\b[^.\n]{0,40}?\b(?:in|ln)\b|"
+    r"\bshares?\s+of\s+[A-Z][A-Za-z&.()\- ]{2,60}?(?:limited|ltd|private|pvt)\b", re.I)
+RESULTS_NUMBER_TOKEN_RE = re.compile(r"\(?\d[\d,]*(?:\.\d+)?\)?")
+RESULTS_PERCENT_RE = re.compile(r"(\d+(?:\.\d+)?)\s*%")
+RESULTS_DATE_TEXT_RE = re.compile(
+    r"^\s*\d{1,2}\s*[-/.]\s*(?:[A-Za-z]{3,9}|\d{1,2})\s*[-/.]\s*\d{2,4}\s*$"
+    r"|^\s*(?:[A-Za-z]{3,9})\s+\d{1,2},?\s+\d{4}\s*$", re.I)
+RESULTS_DATE_MEASURE_RE = re.compile(
+    r"(?:^|[_.\s])(?:date|time|quarter|period|month|day|year_end|quarter_end)(?:$|[_.\s])", re.I)
+RESULTS_SHARE_MEASURE_RE = re.compile(
+    r"(?:^|[^a-z])(?:shares?|margin|ratio|growth|yield|rate|turnover|pct|percent)", re.I)
+
+
+def results_scale_note(text: str) -> tuple[str, str, float] | None:
+    """The page's one printed unit/scale line, also without brackets and with an OCR'd scale ("Figures in l akhs")."""
+    note = ar_scale_note(text)
+    if note is not None:
+        return note
+    factors: set[float] = set()
+    for match in RESULTS_SCALE_NOTE_RE.finditer(norm_space(text)):
+        factor = _scale_factor((match.group(1) or match.group(2) or "").replace(" ", "").lower())
+        if factor:
+            factors.add(float(factor))
+    if len(factors) != 1:
+        return None
+    factor = factors.pop()
+    unit = {1e3: "Thousands", 1e5: "Lakhs", 1e6: "Millions", 1e7: "Crores", 1e9: "Billions"}.get(factor)
+    return (unit, "money", factor) if unit else None
+
+
+def results_junk_reason(row: dict[str, Any]) -> str:
+    """T-242: a results-notes number that is a date part, a reference serial, a time or the label's own phrase."""
+    value_text = norm_space(row.get("value_text"))
+    if not value_text:
+        return ""
+    if RESULTS_DATE_TEXT_RE.match(value_text):
+        return f"results_not_a_figure: {value_text!r} is a date, not a figure"
+    if re.search(r"\d{1,2}\s*:\s*\d{2}", value_text):
+        return f"results_not_a_figure: {value_text!r} is a time, not a figure"
+    unit = norm_space(row.get("unit"))
+    unit_family = infer_unit_family(unit)
+    numeric = value_text.replace(",", "").strip()
+    if re.fullmatch(r"(?:19|20)\d{2}", numeric) and unit_family in ("", "time"):
+        context = " ".join(norm_space(row.get(key)) for key in
+                           ("printed_label", "printed_axis", "series_title", "group_path", "period", "measure"))
+        if re.search(rf"(?<!\d){numeric}(?!\d)", context) or RESULTS_REFERENCE_MEASURE_RE.search(context):
+            return f"results_not_a_figure: {numeric} is a year in a date/reference, not a figure"
+    if not unit and re.fullmatch(r"\d+", numeric):
+        label = norm_space(row.get("printed_label"))
+        measure = norm_space(row.get("measure"))
+        printed_in_label = re.search(rf"(?<!\d){re.escape(numeric)}(?!\d)", label.replace(",", ""))
+        if (printed_in_label and RESULTS_REFERENCE_LABEL_RE.search(label)) or \
+                (RESULTS_REFERENCE_MEASURE_RE.search(measure) and RESULTS_REFERENCE_LABEL_RE.search(label)):
+            return f"results_not_a_figure: {numeric} is a section/rule/serial reference, not a figure"
+    if unit_family == "percent" and not RESULTS_SHARE_MEASURE_RE.search(norm_space(row.get("measure"))):
+        label = norm_space(row.get("printed_label"))
+        echo = RESULTS_PERCENT_RE.search(label)
+        if echo and not AR_CHANGE_WORD_RE.search(label) and row.get("value") is not None \
+                and abs(float(echo.group(1)) - float(row["value"])) < 1e-9:
+            return (f"results_not_a_figure: {value_text!r} repeats the condition in its own label "
+                    f"({label!r})")
+    return ""
+
+
+def _results_unit_fill(row: dict[str, Any], note: tuple[str, str, float]) -> bool:
+    """Give an empty (or a mis-spelled scale) unit the page's printed scale note; a known unit is never replaced."""
+    unit = norm_space(row.get("unit"))
+    if unit and (_scale_factor(unit) or not RESULTS_SCALE_ISH_UNIT_RE.search(unit)):
+        return False
+    if RESULTS_DATE_MEASURE_RE.search(norm_space(row.get("measure"))) \
+            or RESULTS_DATE_TEXT_RE.match(norm_space(row.get("value_text"))):
+        return False
+    measure_family = ar_measure_family(row)
+    if not family_ok(measure_family, note[1]):
+        return False
+    if not measure_family:
+        cues = " ".join(norm_space(row.get(key)) for key in
+                        ("printed_label", "printed_axis", "series_title", "value_text", "measure"))
+        if re.search(r"%|\bbps\b|\btimes\b|\bmultiple\b", cues, re.I):
+            return False
+    row["unit"], row["unit_family"], row["scale"] = note
+    return True
+
+
+def _results_scope_reset(row: dict[str, Any], page_text: str, company: str) -> bool:
+    """The company's own cash-flow/balance-sheet page is scope company, not the subsidiary a name prefix matched."""
+    if str(row.get("entity_scope") or "") != "subsidiary" or not company:
+        return False
+    if _ar_keep_subsidiary_scope(row, page_text, company):
+        return False
+    head = norm_space(page_text)[:200]
+    if not RESULTS_STATEMENT_TITLE_RE.search(f"{norm_space(row.get('series_title'))} {head}"):
+        return False
+    own = _entity_key(company)[:12]
+    if len(own) < 6 or not _entity_key(head).startswith(own):
+        return False
+    row["entity_scope"] = "company"
+    row["scope_source"] = "results_own_statement"
+    return True
+
+
+def _results_associate_reason(row: dict[str, Any]) -> str:
+    context = " ".join(norm_space(row.get(key)) for key in ("series_title", "group_path"))
+    if not RESULTS_ASSOCIATE_RE.search(context):
+        return ""
+    label = norm_space(row.get("printed_label"))
+    measure = norm_space(row.get("measure")).replace("_", " ")
+    if RESULTS_ASSOCIATE_RE.search(label) or RESULTS_ASSOCIATE_RE.search(measure):
+        return ""
+    where = norm_space(row.get("group_path")) or norm_space(row.get("series_title"))
+    return f"results_associate_figure: {label!r} is the associate/JV's figure ({where!r}), not the company's"
+
+
+def _results_holding_reason(row: dict[str, Any], page_text: str) -> str:
+    measure = norm_space(row.get("measure"))
+    if not re.match(r"count\.(?:shares?|equity_shares?|share_count)\b", measure, re.I):
+        return ""
+    value_text = norm_space(row.get("value_text"))
+    text = norm_space(page_text)
+    occurrences = list(re.finditer(re.escape(value_text), text))[:3] if value_text else []
+    window = " ".join(text[max(0, m.start() - 250):m.end() + 350] for m in occurrences)
+    if not window or not RESULTS_HOLDING_RE.search(window):
+        return ""
+    return f"results_holding_count: {value_text!r} is a holding in another company, not the company's own share count"
+
+
+def _results_fragment_reason(row: dict[str, Any], page_text: str) -> str:
+    value_text = norm_space(row.get("value_text"))
+    label = norm_space(row.get("printed_label"))
+    if not re.fullmatch(r"\d+", value_text) or not label:
+        return ""
+    text = norm_space(page_text)
+    index = text.lower().find(label.lower())
+    if index < 0:
+        return ""
+    match = RESULTS_NUMBER_TOKEN_RE.search(text[index + len(label): index + len(label) + 80])
+    if not match:
+        return ""
+    printed = match.group(0).strip("()").replace(",", "")
+    integer = printed.split(".")[0]
+    if integer != value_text and integer.startswith(value_text):
+        return f"results_value_fragment: {value_text!r} is the start of the printed figure {match.group(0)!r}"
+    return ""
+
+
+def apply_results_row_gates(rows: list[dict[str, Any]], page_text: str = "", company: str = "",
+                            previous_text: str = "", stats: dict[str, Any] | None = None) -> None:
+    """T-242: the results-page number errors a script can catch from the row and its page.
+
+    The first strict grade of 60 results rows was 33 right / 12 partial / 6 wrong / 9 junk.  For results-page
+    number rows only:
+
+    1. not a figure: a year inside a date/spelling of a regulation, a section/rule/scrip-code serial, a
+       board-meeting time, or a percent that only repeats the condition printed in the row's own label ->
+       ``quarantined``;
+    2. unit: an empty unit (or a mis-spelled scale word, "l akhs", "(Rupees in Lakll )") takes the page's one
+       printed scale line, else the same line on the pages before it ("(Rs. in lakhs, unless otherwise stated)");
+    3. scope: a page whose head names the store company and prints its own cash-flow/balance-sheet statement is
+       ``company`` even when a short another-company name matched inside the company's own name;
+    4. an associate/JV figure under a company statement line (its group/series names the associate) and a
+       ``count.shares`` row that is a holding in another company are ``unverified``;
+    5. a value that is the leading digits of the longer figure printed right after its own label
+       ("5" for "55.43") is ``unverified``.
+
+    The row stays served; only its status/label changes.  Not the AR gates: this runs only for results pages.
+    """
+    note = results_scale_note(page_text)
+    if note is None and previous_text:
+        note = results_scale_note(previous_text)
+    for row in rows:
+        if norm_space(row.get("record_type") or "number") != "number":
+            continue
+        junk = results_junk_reason(row)
+        if junk:
+            row["status"] = "quarantined"
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", junk) if p)
+            if stats is not None:
+                stats["results_junk"] = int(stats.get("results_junk", 0)) + 1
+            continue
+        if note is not None and _results_unit_fill(row, note):
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "",
+                                                         f"results_unit: page prints {note[0]}") if p)
+            if stats is not None:
+                stats["results_units"] = int(stats.get("results_units", 0)) + 1
+        if _results_scope_reset(row, page_text, company):
+            if stats is not None:
+                stats["results_scope_reset"] = int(stats.get("results_scope_reset", 0)) + 1
+        if str(row.get("status") or "") != "verified":
+            continue
+        reason = _results_associate_reason(row) or _results_holding_reason(row, page_text) \
+            or _results_fragment_reason(row, page_text)
+        if reason:
+            row["status"] = "unverified"
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", reason) if p)
+            if stats is not None:
+                stats["results_unverified"] = int(stats.get("results_unverified", 0)) + 1
+
+
 AR_REFERENCE_MEASURE_RE = re.compile(
     r"(?<![a-z])(?:page_ref\w*|page_no|page_number|clause\w*|serial_no|sr_no|note_no|note_number|section_number"
     r"|regulation_number|reference_number|folio_no)(?![a-z])", re.I)
@@ -5058,10 +5276,12 @@ def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> Non
 
 def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2: bool = True,
                        page_text: str = "", company: str = "", previous_text: str = "",
-                       report_fy: str = "", has_consolidated: bool = False) -> None:
-    """T-242: the number gates that depend on the document type (a call number, an AR statement line, an AR row, a deck row).
+                       report_fy: str = "", has_consolidated: bool = False,
+                       stats: dict[str, Any] | None = None) -> None:
+    """T-242: the number gates that depend on the document type (a call number, an AR statement line, an AR row, a deck row, a results row).
 
-    ``previous_text`` is the page before this one, for the AR row gates' carried basis.
+    ``previous_text`` is the page before this one, for the AR row gates' carried basis and the results rows'
+    carried unit line (the results caller passes the last three pages).
     """
     if doc_type == "transcript" and transcript_v2:
         apply_transcript_number_gate(rows)       # Shivam 24 Nov: call numbers need a filing to verify
@@ -5071,6 +5291,8 @@ def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2:
                            has_consolidated=has_consolidated)
     elif doc_type == "deck":
         apply_deck_row_gates(rows, page_text)
+    elif doc_type == "results":
+        apply_results_row_gates(rows, page_text, company, previous_text, stats=stats)
 
 
 def apply_parts_sum(rows: list[dict[str, Any]], stats: dict[str, Any] | None = None) -> None:
@@ -6201,6 +6423,12 @@ def page_text_of(store_db: str | Path, doc_key: str, page: int) -> str:
     return str(row[0] or "") if row else ""
 
 
+def previous_pages_text(store_db: str | Path, doc_key: str, page: int, pages: int = 3) -> str:
+    """Text of the pages before ``page``: a results statement's printed unit line can sit two pages back."""
+    parts = [page_text_of(store_db, doc_key, p) for p in range(max(1, int(page) - max(0, int(pages))), int(page))]
+    return "\n".join(part for part in parts if part)
+
+
 # --------------------------------------------------------------------------- stage H image-only text (OCR)
 
 OCR_READER = os.environ.get("T230_OCR_READER", "")   # T-238: the Kilo Dots default is gone (404); the env hook stays
@@ -6857,10 +7085,12 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                                         transcript_v2=transcript and transcript_v2_mode(),
                                         deck_guards=meta.get("doc_type") == "deck")
     own_name = next((full for sym, full in (companies or {}).values() if sym == meta["symbol"]), "")
-    if not own_name and meta.get("doc_type") == "annual_report":
+    if not own_name and meta.get("doc_type") in ("annual_report", "results"):
         own_name = _store_company_name(store_db, meta["symbol"])
-    prev_txt = page_text_of(store_db, doc_key, page - 1)
-    apply_number_gates(result["rows"], str(meta.get("doc_type") or ""), page_text=check_text,
+    doc_type = str(meta.get("doc_type") or "")
+    prev_txt = previous_pages_text(store_db, doc_key, page) if doc_type == "results" \
+        else page_text_of(store_db, doc_key, page - 1)
+    apply_number_gates(result["rows"], doc_type, page_text=check_text,
                        company=own_name, previous_text=prev_txt,
                        report_fy=ar_report_fy(store_db, doc_key, check_text, prev_txt)
                        if meta.get("doc_type") == "annual_report" else "",
@@ -7302,7 +7532,9 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                              "basis_header": 0, "period_header": 0, "generic_labels": 0,
                              "parts_degenerate": 0, "comparative_periods": 0, "instant_periods": 0,
                              "basis_page": 0, "basis_prev_page": 0, "basis_deck_heading": 0,
-                             "ar_statement_rows": 0, "no_store": 0}
+                             "ar_statement_rows": 0, "no_store": 0,
+                             "results_junk": 0, "results_units": 0, "results_scope_reset": 0,
+                             "results_unverified": 0}
     pages = list(con.execute("SELECT DISTINCT doc_key, page FROM observation ORDER BY doc_key, page"))
     if only is not None:                      # T-233: a scoped recheck touches only the selected pages
         pages = [p for p in pages if only.page(doc_store.get(str(p[0])), str(p[0]), int(p[1]))]
@@ -7320,6 +7552,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             meta = None                 # a fixture store without a doc_type column is no annual report
         ar_page = bool(meta) and meta["doc_type"] == "annual_report"
         deck_page = bool(meta) and meta["doc_type"] == "deck"
+        results_page = bool(meta) and meta["doc_type"] == "results"
         raw_text = page_text_of(store_db, doc_key, int(page))
         page_footnote = page_footnote_bases(raw_text) if bool(meta) and meta["doc_type"] == "deck" else {}
         try:
@@ -7611,6 +7844,10 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
         elif deck_page:
             apply_deck_row_gates(updated, raw_text)
             stats["basis_deck_heading"] += sum(1 for row in updated if row.get("basis_source") == "page_heading")
+        elif results_page:                 # T-242: junk numbers, entity scope, holding/fragment values, unit line
+            apply_results_row_gates(updated, raw_text,
+                                    company_names.get(store_symbol.get(store_db, ""), ""),
+                                    previous_pages_text(store_db, doc_key, int(page)), stats=stats)
         for row in updated:
             old_status = str(row["_old_status"])
             old_reason = str(row["_old_reason"])
