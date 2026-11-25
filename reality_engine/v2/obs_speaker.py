@@ -1272,16 +1272,144 @@ def _closing_remarks_passage(sentences: list[str]) -> bool:
     return has_closing
 
 
+# T-242 (26 Nov, tx394 ckpt_0014 J): the call's own logistics carries no statement -- opening the floor, a demo
+# break, a walk to the products.  Figure-free only: a sentence that states a number stays, and a floor line that also
+# carries a measure ("we keep our cost and capex guidance intact ... open the floor") is a statement.
+_FLOOR_LOGISTICS_RE = re.compile(
+    r"\bopen(?:s|ed|ing)?\s+(?:up\s+)?the\s+floor\b"
+    r"|\b(?:take|taking|invite|inviting|field|fielding)\s+(?:some\s+|a\s+few\s+|your\s+|the\s+)?questions?\b",
+    re.I,
+)
+_FLOOR_LOGISTICS_MAX_WORDS = 24
+_DEMO_LOGISTICS_RE = re.compile(
+    r"\b(?:take|taking|have|having)\s+(?:a\s+)?(?:few|short|small|quick|two|three|five)\s+(?:seconds?|minutes?)\s+break\b"
+    r"|\bwalk(?:ing)?\s+(?:down|over|around|up)\s+to\s+(?:the|our)\s+products?\b"
+    r"|\b(?:physically\s+)?(?:show|showing|demonstrate|demonstrating|demo|demoing)\s+(?:you\s+)?"
+    r"(?:the|our|these)\s+products?\b"
+    r"|\bproducts?\s+in\s+action\b"
+    r"|\binformal\s+survey\b",
+    re.I,
+)
+
+# A short figure-free forward pointer ("You will see that it does not end here"); a measure word, a named entity or
+# a substantive clause keeps the sentence.
+_FILLER_MAX_WORDS = 10
+_MEASURE_WORD_RE = re.compile(
+    r"\b(?:revenues?|sales|turnover|margins?|ebitda|pat|profits?|loss(?:es)?|growth|demand|orders?|order\s*book"
+    r"|capex|capital\s+expenditure|capacity|volumes?|costs?|pricing|prices?|debt|borrowings?|cash|liquidity"
+    r"|tax|eps|dividend|market\s+share|utilis(?:ation|ed)|utiliz(?:ation|ed)|inventory|receivables?|payables?"
+    r"|working\s+capital|headcount|aum|nim|npa|production|shipments?|presales?|guidance|outlook)\b",
+    re.I)
+_TRANSITION_FILLER_RE = re.compile(
+    r"\b(?:does\s+not|doesn't)\s+end\s+here\b"
+    r"|\b(?:this|it)\s+is\s+(?:just|only|merely)\s+the\s+(?:beginning|start)\b", re.I)
+
+# T-242 (26 Nov, tx394 ckpt_0014 J): a promise to answer later, anywhere in a figure-free sentence -- "get back to
+# you on e-mail", "share the loss numbers offline".  A growth figure keeps its sentence ("get back to growth of 15%").
+_DEFERRAL_MARKER_RE = re.compile(
+    r"\bget\s+back\s+(?:to\s+(?:you|them|him|her)|on|via|by|over|in|with)\b"
+    r"|\b(?:share|send|email|e-mail|mail|provide|answer|revert)\b[^.!?;]{0,40}?"
+    r"\b(?:offline|separately|after\s+(?:the|this)\s+call|post\s+(?:the|this)\s+call|on\s+e-?mail"
+    r"|by\s+e-?mail|over\s+e-?mail|in\s+writing)\b"
+    r"|\btake\s+(?:it|this|that)\s+offline\b"
+    r"|\be-?mail\s+you\b", re.I)
+# "get back on a volume growth path" is a recovery, not a promise to answer later.
+_NOT_A_DEFERRAL_RE = re.compile(r"\bget\s+back\s+on\b[^.!?;]{0,40}\b(?:growth\s+path|on\s+track|path\s+to|trajectory)\b", re.I)
+
+
+def _call_logistics_sentence(sentence: str) -> bool:
+    """A figure-free call-mechanics sentence: opening the floor, a demo break, a walk to the products."""
+    sent = _normalise_ligatures(sentence).strip()
+    if not sent or _has_figure(sent):
+        return False
+    if _DEMO_LOGISTICS_RE.search(sent):
+        return True
+    return len(sent.split()) <= _FLOOR_LOGISTICS_MAX_WORDS and not _MEASURE_WORD_RE.search(sent) \
+        and bool(_FLOOR_LOGISTICS_RE.search(sent))
+
+
+def _filler_sentence(sentence: str) -> bool:
+    """A short figure-free forward pointer that names no measure, product or place."""
+    sent = _normalise_ligatures(sentence).strip()
+    if not sent or _has_figure(sent) or _names_like_entity(sent):
+        return False
+    if len(sent.split()) > _FILLER_MAX_WORDS or _MEASURE_WORD_RE.search(sent) \
+            or _SUBSTANTIVE_CLAUSE_RE.search(sent):
+        return False
+    return bool(_TRANSITION_FILLER_RE.search(sent))
+
+
+def _deferral_sentence(sentence: str) -> bool:
+    sent = _normalise_ligatures(sentence).strip()
+    return bool(sent) and not _has_figure(sent) and bool(_DEFERRAL_MARKER_RE.search(sent)) \
+        and not _NOT_A_DEFERRAL_RE.search(sent)
+
+
+def _deferral_passage(sentences: list[str]) -> bool:
+    """T-242 (26 Nov): a passage that only promises the answer later; every sentence is a greeting, housekeeping,
+    logistics or deferral, and at least one is a deferral."""
+    has_deferral = False
+    for sent in sentences:
+        if _greeting_sentence(sent) or _boilerplate_sentence(sent) or _call_logistics_sentence(sent) \
+                or _filler_sentence(sent):
+            continue
+        if _deferral_sentence(sent):
+            has_deferral = True
+            continue
+        return False
+    return has_deferral
+
+
 def greeting_only(statement: str) -> bool:
     """T-242 (fy27_v3 ckpt_0002/0003 J): a passage made only of greetings, thanks, housekeeping and hand-overs
     carries no statement; any one sentence with substance keeps it. T-242 (25 Nov): also a figure-free closing-remarks
     or deferral passage whose other sentences are generic platitudes (never one carrying a figure or a substantive
-    clause)."""
+    clause). T-242 (26 Nov, tx394 ckpt_0014 J): also call logistics (floor, demo break), deferral-only passages and
+    short refer-back fillers."""
     sentences = _sentences(statement)
     if not sentences:
         return False
-    return all(_greeting_sentence(x) or _boilerplate_sentence(x) for x in sentences) \
-        or _closing_remarks_passage(sentences)
+    return all(_greeting_sentence(x) or _boilerplate_sentence(x) or _call_logistics_sentence(x)
+               or _filler_sentence(x) for x in sentences) \
+        or _closing_remarks_passage(sentences) \
+        or _deferral_passage(sentences)
+
+
+# T-242 (26 Nov, tx394 ckpt_0014 P): a prepared remark that says "this quarter" / "the year" / "previous year" reads
+# alone only with the call's period; the reader's own call quarter is passed in, never guessed.
+_REL_QUARTER_RE = re.compile(r"\b(?:this|the|current)\s+quarter\b", re.I)
+_REL_HALF_RE = re.compile(r"\b(?:half\s+year|first\s+half|H1)\b", re.I)
+_REL_YEAR_RE = re.compile(r"\b(?:this|the|current|full)\s+year\b(?!-on-)", re.I)
+_REL_PRIOR_YEAR_RE = re.compile(r"\b(?:previous|last|prior)\s+year\b", re.I)
+_REL_PRIOR_QUARTER_RE = re.compile(r"\b(?:previous|last|prior)\s+quarter\b", re.I)
+_CALL_PERIOD_RE = re.compile(r"^Q([1-4])\s+FY(\d{2,4})$")
+
+
+def anchored_period(statement: str, call_period: str) -> str:
+    """The fiscal label a prepared remark's own relative period resolves to on this call; '' when none or unknown.
+
+    ``call_period`` is the label the reader was given for the call ("Q2 FY26"), so nothing is invented: an unparsed
+    call period gives ''.  "this quarter" wins over "half year" (a half-year statement names its half), which wins
+    over "the year", and a prior-year comparison resolves to the prior year.
+    """
+    m = _CALL_PERIOD_RE.match(" ".join(str(call_period or "").split()))
+    if not m:
+        return ""
+    q, fy = int(m.group(1)), int(m.group(2))
+    if fy > 99:
+        fy %= 100
+    text = _normalise_ligatures(statement)
+    if _REL_QUARTER_RE.search(text):
+        return f"Q{q} FY{fy:02d}"
+    if _REL_HALF_RE.search(text):
+        return f"{'H1' if q <= 2 else 'H2'} FY{fy:02d}"
+    if _REL_YEAR_RE.search(text):
+        return f"FY{fy:02d}"
+    if _REL_PRIOR_YEAR_RE.search(text):
+        return f"FY{fy - 1:02d}"
+    if _REL_PRIOR_QUARTER_RE.search(text):
+        return f"Q{q - 1} FY{fy:02d}" if q > 1 else f"Q4 FY{fy - 1:02d}"
+    return ""
 
 
 # T-242 (25 Nov, surprise audit J): a short figure-free remark that carries no statement.
@@ -1778,18 +1906,21 @@ def widen_statement(statement: str, page_text: str, page_num: int = 0, question_
 
 
 def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int, str]],
-                              symbol: str = "", company_names: Iterable[str] = ()) -> dict[str, int]:
+                              symbol: str = "", company_names: Iterable[str] = (),
+                              call_period: str = "") -> dict[str, int]:
     """T-242: carry a page-break speaker, resolve/flag a junk label and a referentless reply, in place.
 
     A statement with no speaker is re-attributed from this doc's pages (last label before it on the page, else the
     last label of an earlier page); a carried analyst or moderator label is refused.  What remains is resolved to
     one full management name or marked unverified ``speaker_unresolved`` -- a company name is not a person and is
     never re-attributed to a nearby label -- and a short yes/no reply is marked unverified ``no_referent``.  An empty
-    ``question_context`` is filled from ``preceding_question``; a model-written one is never replaced.
+    ``question_context`` is filled from ``preceding_question``; a model-written one is never replaced.  A statement
+    made only of call logistics, a deferral or filler is dropped, and a prepared remark whose own relative period
+    ("this quarter", "the year") has an empty ``question_context`` gains the call's ``call_period``.
     """
     stats = {"statements": 0, "carried": 0, "resolved": 0, "empty": 0, "unverified": 0, "question_filled": 0,
-             "not_a_call": 0, "moderator": 0, "not_a_person": 0, "short_remarks": 0,
-             "snapped": 0, "widened": 0, "noted": 0}
+             "not_a_call": 0, "moderator": 0, "not_a_person": 0, "short_remarks": 0, "content_free": 0,
+             "period_anchored": 0, "snapped": 0, "widened": 0, "noted": 0}
     indexes = [i for i, row in enumerate(rows) if str(row.get("record_type") or "") == "statement"]
     if not indexes:
         return stats
@@ -1932,11 +2063,26 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
             row["status_reason"] = "; ".join(p for p in (str(row.get("status_reason") or ""), notes[i]) if p)
     for i in indexes:                              # 394_v3 ckpt_0001 J (NLCINDIA p1): a filing letter's closing line
         row = rows[i]
-        # only the letter's own wording, whoever signs it: a company secretary's real opening remarks stay (Wolf)
-        if (int(row.get("page") or 0) <= 2 and _FILING_LINE_RE.search(str(row.get("statement") or ""))) \
-                or greeting_only(str(row.get("statement") or "")):
+        statement = str(row.get("statement") or "")
+        # only the letter's own wording, whoever signs it: a company secretary's real opening remarks stay (Wolf);
+        # T-242 (26 Nov): a statement made only of call logistics, a deferral or filler carries no statement
+        letter = int(row.get("page") or 0) <= 2 and bool(_FILING_LINE_RE.search(statement))
+        content_free = greeting_only(statement)
+        if letter or content_free:
             row["_drop"] = True
             stats["filing_lines"] = stats.get("filing_lines", 0) + 1
+            if content_free:
+                stats["content_free"] += 1
+        # T-242 (26 Nov, tx394 ckpt_0014 P): a prepared remark that says "this quarter"/"the year" carries the
+        # call's period so it reads alone; only a kept row with an empty qc and an empty period is anchored.
+        if not row.get("_drop") and call_period and not str(row.get("question_context") or "").strip() \
+                and not str(row.get("period") or "").strip():
+            anchor = anchored_period(statement, call_period)
+            if anchor:
+                row["period"] = anchor
+                row["period_kind"] = "actual"
+                row["period_source"] = "call_period"
+                stats["period_anchored"] += 1
     seen: set[tuple[Any, Any, str, str]] = set()        # Eagle v3 spot check: 19 statements stored twice on one page
     keep: list[dict[str, Any]] = []
     statement_at = set(indexes)
