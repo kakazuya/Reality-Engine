@@ -248,7 +248,7 @@ def test_ar_row_gate_sets_the_basis_the_page_heading_prints():
     row = _gate_row(measure="NEW:trade_receivables_ageing_unbilled", printed_label="Undisputed - considered good",
                     printed_axis="Unbilled", unit="(₹ in million)", basis="consolidated")
     obs.apply_ar_row_gates([row], "Notes to the standalone financial statements for the year ended 31 March, 2026")
-    assert (row["basis"], row["basis_source"]) == ("standalone", "page_heading")
+    assert (row["basis"], row.get("basis_source", "")) == ("standalone", "page_heading")
     both = _gate_row(measure="NEW:trade_receivables_ageing_unbilled", printed_label="Undisputed", basis="consolidated")
     obs.apply_ar_row_gates([both], "Standalone financial statements\nConsolidated financial statements")
     assert both["basis"] == "consolidated"             # both headings: nothing to override with
@@ -444,4 +444,50 @@ def test_recheck_cli_stores_root_scans_every_store_beyond_default_sample(tmp_pat
         check.close()
     assert len(got) == 7
     assert all(status == "unverified" and "ar_not_a_figure" in reason for _sym, status, reason in got), got
+
+
+# T-242: a continuation page takes the one basis its previous page's heading names (the commonest AR P cause).
+CONSOLIDATED_HEAD = "Consolidated Financial Statements\nBalance Sheet as at 31 March 2026"
+
+
+def test_ar_row_gate_carries_the_previous_pages_basis_onto_a_continuation_page():
+    row = _gate_row(measure="NEW:unquoted_equity", printed_label="Unquoted equity", unit="Rs crore")
+    obs.apply_ar_row_gates([row], "Unquoted equity 1,704.09 1,520.31", "",
+                           previous_text=CONSOLIDATED_HEAD)
+    assert (row["basis"], row.get("basis_source", "")) == ("consolidated", "previous_page_heading")
+
+
+def test_ar_row_gate_does_not_carry_the_basis_onto_a_page_that_starts_a_note_or_statement():
+    for head in ("Notes to the financial statements for the year ended 31 March 2026",
+                 "Notes forming part of the Balance Sheet as at 31 March 2026",
+                 "Note 12 Unquoted equity",
+                 "Statement of Profit and Loss for the year ended 31 March 2026"):
+        row = _gate_row(measure="NEW:unquoted_equity", printed_label="Unquoted equity", unit="Rs crore")
+        obs.apply_ar_row_gates([row], head + "\nUnquoted equity 1,704.09 1,520.31", "",
+                               previous_text=CONSOLIDATED_HEAD)
+        assert (row["basis"], row.get("basis_source", "")) == ("", ""), head
+
+
+def test_ar_row_gate_does_not_carry_the_basis_when_this_page_names_one_later_on():
+    row = _gate_row(measure="NEW:unquoted_equity", printed_label="Unquoted equity", unit="Rs crore")
+    body = ("Unquoted equity 1,704.09 1,520.31 "
+            + "Revenue grew on strong demand across all segments. " * 8
+            + "Details are in the standalone financial statements.")
+    obs.apply_ar_row_gates([row], body, "", previous_text=CONSOLIDATED_HEAD)
+    assert (row["basis"], row.get("basis_source", "")) == ("", "")
+
+
+def test_ar_row_gate_does_not_carry_a_basis_the_previous_head_does_not_single_out():
+    for previous in ("Standalone financial statements\nConsolidated financial statements", "",
+                     "Unquoted equity 1,704.09 1,520.31"):
+        row = _gate_row(measure="NEW:unquoted_equity", printed_label="Unquoted equity", unit="Rs crore")
+        obs.apply_ar_row_gates([row], "Unquoted equity 1,704.09", "", previous_text=previous)
+        assert (row["basis"], row.get("basis_source", "")) == ("", ""), previous
+
+
+def test_ar_row_gate_never_replaces_a_stated_basis_with_the_previous_pages():
+    row = _gate_row(measure="NEW:unquoted_equity", printed_label="Unquoted equity", unit="Rs crore",
+                    basis="standalone")
+    obs.apply_ar_row_gates([row], "Unquoted equity 1,704.09", "", previous_text=CONSOLIDATED_HEAD)
+    assert (row["basis"], row.get("basis_source", "")) == ("standalone", "")
 

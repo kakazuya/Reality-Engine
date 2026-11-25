@@ -3045,7 +3045,12 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   (3) narrative growth -- a percent row whose whole label is change words ("an increase of", "up by", "a growth of")
   names no measure -> `ar_narrative_growth`;
   (4) basis -- the page heading's `standalone|consolidated financial statements` overrides a disagreeing basis
-  (`basis_source=page_heading`) when the page names exactly one of them (a page naming both changes nothing).
+  (`basis_source=page_heading`) when the page names exactly one of them (a page naming both changes nothing); a
+  continuation page that prints no basis word anywhere and starts no statement / note / section of its own (none of
+  'Notes forming part of', 'Notes to', 'Note N', 'Statement of Profit', 'Balance Sheet', 'Cash Flow', 'Independent
+  Auditor' in its first 300 characters) takes the one basis the page before it heads (`previous_text`, passed by the
+  read path, `--reparse` and `--recheck`; `basis_source='previous_page_heading'`), and a stated basis is never
+  replaced by a carried one.
   Measured on the 60 graded rows of `pilot_ar_reparsed2.db` (`D:/RealityEngine/t242/ar_grade_fresh`, in-process,
   read-only): 5 of the 7 W handled (4 gated -- the ageing bucket, the related-party purchase, the narrative growth,
   the vehicle unit; 1 corrected -- the standalone-note basis) and all 4 P corrected (blank unit -> Lakhs / Times /
@@ -3055,6 +3060,18 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   with no unit word or a label noun is gated (see the `ponytail:` comment in the function), so widening it needs the
   vocabulary, not this gate. Tests `reality_engine/tests/test_ar_sections.py` (6 new tests with their counters); the
   `read_gate` annual_report fingerprint stays `48d75aa69de7` (no prompt or template touched).
+  Carried basis (25 Nov, dsh): 181 of 51,306 number rows, on 9 of the 2,256 pages of the 582 annual reports behind
+  `obs_ar_fy27.db`, take the page before's heading, and 0 of them print a basis word later on their own page
+  (Eagle's check; the stop rule was >5%). The 30-row sample (seed 9) is all continuation pages of a statement, note
+  or auditor annexure headed on the page before (Axis Bank p503 standalone, Astec p262 consolidated, the Balte /
+  Aimco Pesticides / Batliboi / Alfl auditor annexures standalone). Measured through the gate itself over every
+  page, read-only (the full `--recheck` was stopped after 30 min CPU on the 2,256-page copy, and the gate is the
+  only path that sets a carried basis); copy `.tmp/ar242/ar_basis_measure.db`, found rows in
+  `.tmp/ar242/gate_pass.json` (the brief's `C:/RealityEngine/t242/reparse` is outside the worker's write fence).
+  5 new tests (`test_ar_row_gate_carries_...`, `..._does_not_carry_onto_a_page_that_starts_a_note_or_statement`,
+  `..._does_not_carry_the_basis_when_this_page_names_one_later_on`,
+  `..._does_not_carry_a_basis_the_previous_head_does_not_single_out`,
+  `..._never_replaces_a_stated_basis_with_the_previous_pages`): 30 pass in `test_ar_sections.py`.
 - **Loader sources: T-242 reads served first (24 Nov 2026, Eagle).** `load_observations.OBS_SOURCES` entries that share a source are an ordered priority list: for each symbol the first db holding rows for it is loaded and the older dbs are skipped, so the gated T-242 reads (decks `hy4_out/obs_decks_fy27.db`, transcripts v3 `obs_transcripts_fy27_v3.db` then `obs_transcripts_394_v3.db`) replace the T-230/T-238 reads company by company, and a company hy4 has not reached keeps its older rows (annual reports stay on `t230/obs_ar_91_m.db` until an AR bulk passes). Events: `EVENTS_PRIORITY` (filing_events round 5 on the fresh3/fresh4 stores, `t242/events_r5_fresh{4,3}.db`, since 25 Nov) then `EVENTS_DB` (t231), same rule; `filing_event` gets the union of the events dbs' columns (ALTER on old stores, e.g. `customer_desc`). Stats name the db used (`obs_db`, `events_db`). Not run yet: store builds are paused (T-242); a universe filing_events run is still needed (round 5 merged 25 Nov; fund_raise stays unverified until a fresh-store grade). Test `SourcePriorityTests` in `test_obs_wiring.py`.
 - **Sonnet settles unverified hy4 rows (T-242, Wolf, 24 Nov, Shivam: spare Wolf quota).** `python -m reality_engine.scripts.sonnet_settle --db <hy4 obs db> --stores-root <build root> --out D:/RealityEngine/t242/sonnet_settle/<set> [--max-pages N]` sends one headless `claude -p --model sonnet --effort medium` run per 6 pages (no tools) with each page's text and its UNVERIFIED company number rows; Sonnet answers confirm / fix (period, unit, scale, basis, segment) / reject / unsure with an evidence snippet and header. Verdicts go to `<out>/verdicts.jsonl` keyed by observation_id; the hy4 DB is never written, so a bad fix rolls back by dropping the verdict. One run at a time on Wolf's config (`SONNET_SETTLE_CONFIG=C:\Users\warri\.claude` runs it on Eagle's account, Shivam 24 Nov while Wolf's window is spent), paused while Wolf's 5-hour use is >= 75% or its usage reading is older than 30 min. Deck pilot (1,265 rows): 511 confirm, 379 fix, 98 reject, 277 unsure; strict DeepSeek grade (seed 7171) confirm 29R/1P/0W, fix 29R/1P/0W, reject 9 agree / 1 disagree, so confirm/fix may be served labelled `model_checked` and reject is advisory only (never deletes a row). Not for transcript call numbers (filing match only, ruling 24 Nov). Served (24 Nov): `load_observations.CHECKS` maps a source obs db to its verdicts files; the loader adds `check_status` (`model_checked` for confirm/fix, `model_rejected`, `model_unsure`), `check_fields` (a fix's corrections, JSON), `check_evidence` and `checker` to `obs_fact` (ALTER on old stores), and `_obs_rows` returns them as `check` {status, by, evidence, corrected}; the row's own status and fields never change (test `test_model_check_is_served_labelled_and_keeps_the_row`). Open: a fix with no changed field is a confirm. (Ranges now fill `value_high` and date-shaped values are gated `date_value` in `build_observations(deck_guards=True)`; see the deck value-ranges entry below.)
 - **Deck value ranges and date values (T-242, 24 Nov 2026, `v2/observations.py`).** Two number-row defects the
