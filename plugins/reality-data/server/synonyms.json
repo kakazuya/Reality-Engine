@@ -53,6 +53,14 @@
     {"terms": ["contingent liabilities", "disputed tax", "tax demand", "claims"],
      "why": "JYOTISTRUC q630 asks unresolved contingent liabilities and disputed tax demands; the AR note is the only source"},
     {"terms": ["capital work in progress", "cwip", "capital advance"],
-     "why": "NAHARSPING q5788 and RSWM q6648 ask what sits in CWIP and the capitalised interest in it"}
+     "why": "NAHARSPING q5788 and RSWM q6648 ask what sits in CWIP and the capitalised interest in it"},
+    {"terms": ["pbt", "profit before tax"],
+     "why": "T-242 retrieval audit 1 (AUSTERE Q13): question asks 'PBT', filings and obs_fact store 'Profit Before Tax (PBT)' / profit_before_tax"},
+    {"terms": ["gwp", "gross written premium"],
+     "why": "T-242 retrieval audit 1 (BAJAJFINSV Q15): question asks 'GWP', filings and obs_fact store 'Gross Written Premium' / NEW:gross_written_premium"},
+    {"terms": ["capacity utilisation", "capacity utilization", "utilisation", "utilization"],
+     "why": "T-242 retrieval audit 1 (BANSWRAS Q17): question asks 'capacity utilisation', filings print 'Capacity Utilization' and obs_fact stores capacity.utilisation"},
+    {"terms": ["alcobev", "alcohol"],
+     "why": "T-242 retrieval audit 1 (ASALCBR Q11): transcript says 'Alcobev segment', deck prints 'Alcohol Segment' (obs_fact 64823)"}
   ]
 }

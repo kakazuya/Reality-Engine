@@ -1939,6 +1939,36 @@ class ServerFixTests(unittest.TestCase):
         bvps = p3.ratio("KEC", "book value per share", as_of="2026-11-09")["rows"][0]
         self.assertEqual((bvps["ratio"], bvps["value"]), ("book_value_per_share", 33001.55))
 
+    # 6. T-242 retrieval fix 1: measure normalization, aliases, pilot-store safety, INSTRUCTIONS ------
+    def test_measure_matching_splits_dots_strips_new_and_keeps_pilot_exact_names(self):
+        self.assertTrue(p3._same_series("aum.value", "aum"))
+        self.assertTrue(p3._same_series("capacity.utilisation", "capacity_utilisation"))
+        self.assertTrue(p3._same_series("NEW:gross_written_premium", "gross_written_premium"))
+        self.assertFalse(p3._same_series("roev", "roe"))
+        # synonyms.json includes pbt / gwp / capacity utilisation expansions
+        exps, matched = p3._expansion("pbt and gwp and capacity utilisation")
+        self.assertIn("profit before tax", exps)
+        self.assertIn("gross written premium", exps)
+        self.assertIn("capacity utilization", exps)
+        self.assertTrue(matched)
+
+    def test_pilot_store_without_obs_fact_answers_as_before(self):
+        # KEC fixture has no obs_fact table: fact still falls back to page_cell and exact kpi/guidance keep working
+        out = p3.fact("KEC", "gross written premium")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["route"], "cells")
+        self.assertEqual(out["answer"]["source"]["table"], "page_cell")
+        # gwp alias also resolves page_cell when no kpi/obs_fact exists
+        out_gwp = p3.fact("KEC", "GWP")
+        self.assertTrue(out_gwp["found"])
+        self.assertEqual(out_gwp["answer"]["value"], "2,100")
+        self.assertEqual(p3.kpi("KEC", "order book", "Q3FY26")["rows"][0]["value"], 40000.0)
+
+    def test_server_instructions_name_pilot3_obs_and_obs_fact(self):
+        import server as srv
+        self.assertIn("pilot3_obs", srv.INSTRUCTIONS)
+        self.assertIn("obs_fact", srv.INSTRUCTIONS)
+
 
 if __name__ == "__main__":
     unittest.main()
