@@ -9,7 +9,9 @@ given correction), reject (not on the page, wrong row/column, or not the company
 It needs a printed snippet holding the value and its column/period header for confirm/fix.
 Never writes the hy4 DB: verdicts go to <out>/verdicts.jsonl, labelled model-checked, and are served only after
 an independent >= 60-row hand grade of the confirm/fix verdicts passes (maker-checker-verifier, 24 Nov).
-Stops while Wolf's 5-hour use is >= LIMIT_5H or its reading is stale; one headless run at a time.
+Stops (exit 0, no sleep loop; a person resumes it) while its usage reading is older than 5 min, Wolf's 5-hour use
+is >= LIMIT_5H, or this script has already fired --max-runs-per-window runs in the current 5-hour window. One headless
+run at a time. Each run is bare: no tools, no MCP, no settings, no CLAUDE.md/memory, from an empty cwd under <out>/bare.
 """
 from __future__ import annotations
 
@@ -31,8 +33,9 @@ from reality_engine.v2 import observations as obs  # noqa: E402
 CFG = os.environ.get("SONNET_SETTLE_CONFIG", r"C:\Users\warri\.claude-neo")   # Eagle: C:\Users\warri\.claude
 LIMIT_5H = 75
 LIMIT_7D = 95
-STALE_S = 1800
-PAGES_PER_RUN = 6
+STALE_S = 300
+PAGES_PER_RUN = 12
+MAX_RUNS_PER_WINDOW = 25
 CREATE_NO_WINDOW = 0x08000000
 FIELDS = ("observation_id", "measure", "printed_label", "printed_axis", "value_text", "value", "unit", "scale",
           "period", "basis", "segment", "series_title", "status_reason")
@@ -69,19 +72,26 @@ def jlines(p: Path) -> list[dict]:
     return out
 
 
-def quota_ok() -> tuple[bool, str]:
+def quota_ok() -> tuple[bool, str, str]:
+    """(may_run, why, five_hour resets_at); a reading older than STALE_S or at a limit says no."""
     try:
         st = json.loads(Path(CFG, "usage_status.json").read_text(encoding="utf-8"))
         age = (dt.datetime.now() - dt.datetime.fromisoformat(st["_saved_at"])).total_seconds()
         five = st["rate_limits"]["five_hour"]["used_percentage"]
         seven = st["rate_limits"]["seven_day"]["used_percentage"]
+        reset = str(st["rate_limits"]["five_hour"]["resets_at"])
     except Exception as exc:  # noqa: BLE001
-        return False, f"no reading ({exc})"
+        return False, f"no reading ({exc})", ""
     if age > STALE_S:
-        return False, f"reading {int(age)}s old"
+        return False, f"reading {int(age)}s old", reset
     if five >= LIMIT_5H or seven >= LIMIT_7D:
-        return False, f"5h {five}% 7d {seven}%"
-    return True, f"5h {five}% 7d {seven}%"
+        return False, f"5h {five}% 7d {seven}%", reset
+    return True, f"5h {five}% 7d {seven}%", reset
+
+
+def runs_in_window(out: Path, reset: str) -> int:
+    """This script's own runs recorded for the 5-hour window that resets at `reset`."""
+    return sum(1 for r in jlines(out / "runs.jsonl") if r.get("five_hour_resets_at") == reset)
 
 
 def store_index(root: str, cache: Path) -> dict[str, str]:
@@ -102,12 +112,16 @@ def store_index(root: str, cache: Path) -> dict[str, str]:
     return idx
 
 
-def run_claude(prompt: str, log: Path) -> tuple[str, dict]:
+def build_cmd() -> list[str]:
+    """The bare headless call: no tools, no MCP servers, no settings/CLAUDE.md/memory (a temp cwd finds no project file)."""
+    return ["claude", "-p", "--model", "sonnet", "--effort", "medium", "--output-format", "json", "--max-turns", "2",
+            "--tools", "", "--setting-sources", "", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}']
+
+
+def run_claude(prompt: str, log: Path, cwd: Path) -> tuple[str, dict]:
     env = {k: v for k, v in os.environ.items() if not k.startswith(("CLAUDE_CODE", "CLAUDE_PID", "CLAUDE_EFFORT"))}
     env.update(CLAUDE_CONFIG_DIR=CFG, PYTHONIOENCODING="utf-8")
-    cmd = ["claude", "-p", "--model", "sonnet", "--effort", "medium", "--output-format", "json", "--max-turns", "2",
-           "--disallowedTools", "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Agent"]
-    p = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8", cwd=str(log.parent),
+    p = subprocess.run(build_cmd(), input=prompt, capture_output=True, text=True, encoding="utf-8", cwd=str(cwd),
                        env=env, timeout=1800, creationflags=CREATE_NO_WINDOW, shell=False)
     log.write_text(p.stdout + "\n--- stderr ---\n" + p.stderr, encoding="utf-8")
     try:
@@ -137,9 +151,14 @@ def main() -> int:
     ap.add_argument("--stores-root", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--max-pages", type=int, default=0)
+    ap.add_argument("--pages-per-run", type=int, default=PAGES_PER_RUN)
+    ap.add_argument("--max-runs-per-window", type=int, default=MAX_RUNS_PER_WINDOW)
     args = ap.parse_args()
     out = Path(args.out)
     (out / "logs").mkdir(parents=True, exist_ok=True)
+    bare = out / "bare"
+    bare.mkdir(parents=True, exist_ok=True)
+    runs = out / "runs.jsonl"
     verdicts = out / "verdicts.jsonl"
     done = {int(r["id"]) for r in jlines(verdicts)}
     idx = store_index(args.stores_root, out / "store_index.json")
@@ -157,8 +176,8 @@ def main() -> int:
         syms[key] = r["symbol"]
     keys = list(pages)[: args.max_pages or None]
     print(f"{len(done)} rows done, {sum(len(pages[k]) for k in keys)} rows on {len(keys)} pages to check", flush=True)
-    for i in range(0, len(keys), PAGES_PER_RUN):
-        part = keys[i:i + PAGES_PER_RUN]
+    for i in range(0, len(keys), args.pages_per_run):
+        part = keys[i:i + args.pages_per_run]
         blocks = []
         for k in part:
             store = idx.get(k[0])
@@ -169,15 +188,20 @@ def main() -> int:
                            "rows": pages[k]})
         if not blocks:
             continue
-        while True:
-            ok, why = quota_ok()
-            if ok:
-                break
-            print(f"  paused: {why}", flush=True)
-            time.sleep(300)
+        ok, why, reset = quota_ok()
+        if not ok:
+            print(f"  stopping: {why}", flush=True)
+            return 0
+        fired = runs_in_window(out, reset)
+        if fired >= args.max_runs_per_window:
+            print(f"  stopping: {fired} runs already fired in this window (resets {reset})", flush=True)
+            return 0
         t0 = time.time()
         text, meta = run_claude(RULES + "\n\nPages and rows:\n" + json.dumps(blocks, ensure_ascii=False, indent=1),
-                                out / "logs" / f"run_{i // PAGES_PER_RUN:04d}.json")
+                                out / "logs" / f"run_{i // args.pages_per_run:04d}.json", bare)
+        with runs.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps({"ts": dt.datetime.now().isoformat("T", "seconds"),
+                                 "five_hour_resets_at": reset, "cost": meta.get("cost")}) + "\n")
         got = parse(text)
         want = {int(r["observation_id"]) for b in blocks for r in b["rows"]}
         with verdicts.open("a", encoding="utf-8") as fh:
@@ -189,7 +213,7 @@ def main() -> int:
                 if rid in want:
                     r.update(id=rid, checker="claude-sonnet medium", checked_at=dt.datetime.now().isoformat("T", "seconds"))
                     fh.write(json.dumps(r, ensure_ascii=False) + "\n")
-        print(f"  run {i // PAGES_PER_RUN}: {len(blocks)} pages, {len(want)} rows, {len(got)} verdicts, "
+        print(f"  run {i // args.pages_per_run}: {len(blocks)} pages, {len(want)} rows, {len(got)} verdicts, "
               f"{time.time() - t0:.0f}s, {why}, err={meta.get('error')}", flush=True)
     return 0
 
