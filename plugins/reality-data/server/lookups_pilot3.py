@@ -1063,6 +1063,11 @@ _MEASURE_ALIASES = {
     "profit_after_tax": "pat",
     "net_profit": "pat",
     "installed_capacity": "capacity.total",
+    # T-242 fix 8: a line the store files as "capex" is also asked for as "capital expenditure" (audit 8: ALKEM's
+    # AR p330 "capital expenditure of Rs 10,360 Million" was held in kpi_series and unreachable through fact/fin).
+    "capital_expenditure": "capex",
+    "capital_expenditures": "capex",
+    "capital_outlay": "capex",
 }
 
 
@@ -1313,42 +1318,48 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
     if not include_quarantined:
         where += hide
     extra, eargs = _asof(as_of, "k.known_at")
-    rows = _q(f"SELECT k.id, k.metric, k.dimension, k.value, k.unit, k.scale, k.fiscal_period, k.period_type, "
-              f"k.as_of_date, k.basis, k.entity, k.doc_key, k.page, k.quote, k.known_at, k.conf_rank, k.raw_label, "
-              f"d.doc_key AS dk, d.title, d.doc_type{check_sel} FROM kpi_series k {_DOC_JOIN}{join} WHERE {where}{extra} "
-              # best evidence first: the extractor's confidence, then a deck/results/filing before a call remark.
-              # The window must reach past a measure's duplicates (one value restated in many filings): at 3x the
-              # reply size, a restated measure filled it and its lower-confidence period series never arrived (T-049,
-              # 4 Nov 2026: Bajaj's quarterly GNPA and KEC's order-intake trend came back as old annual rows only).
-              f"ORDER BY k.conf_rank DESC, "
-              f"CASE d.doc_type WHEN 'deck' THEN 0 WHEN 'results' THEN 1 WHEN 'press_release' THEN 2 "
-              f"WHEN 'annual_report' THEN 3 WHEN 'transcript' THEN 4 ELSE 5 END, "
+    sel = (f"SELECT k.id, k.metric, k.dimension, k.value, k.unit, k.scale, k.fiscal_period, k.period_type, "
+           f"k.as_of_date, k.basis, k.entity, k.doc_key, k.page, k.quote, k.known_at, k.conf_rank, k.raw_label, "
+           f"d.doc_key AS dk, d.title, d.doc_type{check_sel} FROM kpi_series k {_DOC_JOIN}{join} ")
+    # best evidence first: the extractor's confidence, then a deck/results/filing before a call remark.
+    # The window must reach past a measure's duplicates (one value restated in many filings): at 3x the
+    # reply size, a restated measure filled it and its lower-confidence period series never arrived (T-049,
+    # 4 Nov 2026: Bajaj's quarterly GNPA and KEC's order-intake trend came back as old annual rows only).
+    q_tail = ("ORDER BY k.conf_rank DESC, "
+              "CASE d.doc_type WHEN 'deck' THEN 0 WHEN 'results' THEN 1 WHEN 'press_release' THEN 2 "
+              "WHEN 'annual_report' THEN 3 WHEN 'transcript' THEN 4 ELSE 5 END, "
               # the group statement before standalone when both are filed (as pilot3_fin does): HINDUNILVR Q2FY27
               # Beauty & Wellbeing EBIT came back standalone 1,242 first (filed later) for consolidated 1,235 (8 Nov)
-              f"(k.dimension='total') DESC, (k.basis='consolidated') DESC, k.known_at DESC, k.id LIMIT ?",
-              (*args, *eargs, _cap(limit) * 30))
+              "(k.dimension='total') DESC, (k.basis='consolidated') DESC, k.known_at DESC, k.id LIMIT ?")
+    rows = _q(sel + f"WHERE {where}{extra} " + q_tail, (*args, *eargs, _cap(limit) * 30))
     if natural is not None:     # a printed point-in-time label answers the date it prints (T-242 fix 6)
         rows = [r for r in rows if _period_matches(r["fiscal_period"], period)]
-    out, seen = [], set()
-    for r in rows:
-        row_basis = r["basis"] if r["basis"] in _REPORTING_BASES else "not_stated"
-        entity = _entity_of(r, sym)
-        dim = "total" if r["dimension"] in ("consolidated", "standalone") else r["dimension"]
-        sig = (r["metric"], entity, dim, r["fiscal_period"], r["value"], r["unit"])
-        if sig in seen:      # the same figure printed again by another filing: one row, best evidence first
-            continue
-        seen.add(sig)
-        item = _add_check(_add_money(
-            {"metric": r["metric"], "dimension": dim, "value": r["value"],
-             "unit": r["unit"], "scale": r["scale"], "period": r["fiscal_period"],
-             "period_type": r["period_type"], "as_of_date": r["as_of_date"], "basis": row_basis,
-             "entity": entity, "raw_label": r["raw_label"],
-             "quote": _trim(r["quote"], 300), "source": "kpi_series",
-             "provenance": _prov("kpi_series", f"{r['dk'] or r['doc_key']} p{r['page']}",
-                                 r["known_at"], doc_type=r["doc_type"], title=r["title"],
-                                 row_id=r["id"])}, r["value"], r["unit"], r["scale"]), r)
-        item.setdefault("status", item.get("check_status"))
-        out.append(item)
+    seen: set[tuple] = set()
+
+    def _items(rows_in: list[Any]) -> list[dict[str, Any]]:
+        items_out: list[dict[str, Any]] = []
+        for r in rows_in:
+            row_basis = r["basis"] if r["basis"] in _REPORTING_BASES else "not_stated"
+            entity = _entity_of(r, sym)
+            dim = "total" if r["dimension"] in ("consolidated", "standalone") else r["dimension"]
+            sig = (r["metric"], entity, dim, r["fiscal_period"], r["value"], r["unit"])
+            if sig in seen:  # the same figure printed again by another filing: one row, best evidence first
+                continue
+            seen.add(sig)
+            item = _add_check(_add_money(
+                {"metric": r["metric"], "dimension": dim, "value": r["value"],
+                 "unit": r["unit"], "scale": r["scale"], "period": r["fiscal_period"],
+                 "period_type": r["period_type"], "as_of_date": r["as_of_date"], "basis": row_basis,
+                 "entity": entity, "raw_label": r["raw_label"],
+                 "quote": _trim(r["quote"], 300), "source": "kpi_series",
+                 "provenance": _prov("kpi_series", f"{r['dk'] or r['doc_key']} p{r['page']}",
+                                     r["known_at"], doc_type=r["doc_type"], title=r["title"],
+                                     row_id=r["id"])}, r["value"], r["unit"], r["scale"]), r)
+            item.setdefault("status", item.get("check_status"))
+            items_out.append(item)
+        return items_out
+
+    out = _items(rows)
     # the company's own rows first (T-088), then the operating definition of a measure that has several (T-192)
     out.sort(key=lambda row: (0 if row["entity"] == sym else 1, _definition_rank(row, str(row["metric"]))))
     if obs_rows:
@@ -1377,9 +1388,29 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
             f"SELECT fiscal_period, dimension, COUNT(*) FROM kpi_series WHERE symbol=? AND metric IN "
             f"({','.join('?' * len(names))}){_visible('kpi_series')} "
             f"GROUP BY 1, 2 ORDER BY MAX(known_at) DESC LIMIT 40", (sym, *names))]
+        # T-242 fix 8: a quarantined row is still the page's own statement.  When it is the ONLY match and its
+        # label/quote prints the asked words, serve it -- labelled quarantined with a warning, never as verified and
+        # never beside a clean row (this branch runs only after no clean row was served).
+        if not include_quarantined and _has_table("row_check"):
+            q_where = (visible_where + " AND EXISTS (SELECT 1 FROM row_check rc2 WHERE rc2.tbl='kpi_series' "
+                       "AND rc2.row_id=k.id AND rc2.status='quarantined')")
+            q_rows = _q(sel + f"WHERE {q_where}{extra} " + q_tail, (*args, *eargs, _cap(limit) * 5))
+            if natural is not None:
+                q_rows = [r for r in q_rows if _period_matches(r["fiscal_period"], period)]
+            printed = [w for w in re.split(r"[^a-z0-9]+", str(metric_asked).lower()) if len(w) > 2]
+            q_items = [item for item in _items(q_rows)
+                       if any(w in f"{item.get('raw_label') or ''} {item.get('quote') or ''}".lower()
+                              for w in printed)]
+            if q_items:
+                for item in q_items:
+                    item["check_status"] = "quarantined"
+                    item["status"] = "quarantined"
+                    item["warning"] = ("the independent row check quarantined this row; the page prints the value "
+                                       "with the asked label, so it is served as evidence, not as a verified figure")
+                out = q_items[: _cap(limit)]
         # A figure the row check quarantined is still held (T-113): say so, or the caller reads a deliberate hide
         # as "not in data" (CHOLAFIN Q2FY27 NIM 7.9 is exactly this, T-165).
-        if not include_quarantined and _has_table("row_check"):
+        if not out and not include_quarantined and _has_table("row_check"):
             q_where = (visible_where + " AND EXISTS (SELECT 1 FROM row_check rc WHERE rc.tbl='kpi_series' "
                        "AND rc.row_id=k.id AND rc.status='quarantined')")
             held_hidden = [f"{r[0]} / {r[1]} ({r[2]} rows; the row check quarantined them: "
@@ -2670,9 +2701,31 @@ _ASK_SYNONYMS: dict[str, tuple[str, ...]] = {
     "order": ("order book", "order intake", "order inflow", "order"),
     "cost": ("cost", "expense", "price", "spend"),
     "capacity": ("capacity", "output", "production", "plant", "expansion"),
-    "customer": ("customer", "client", "attrition", "churn"),
+    "customer": ("customer", "client", "clientele", "attrition", "churn"),
     "operations": ("operat", "plant", "facility", "production", "commission", "ready"),
     "guidance": ("target", "expect", "outlook", "guide", "range"),
+    # T-242 fix 8: the paraphrase an investor uses for a sentence the page prints in its own words.  Structural
+    # (one investor word -> the words a call prints), never per company: "why are large enterprise deals taking
+    # longer to close" -> "large contracts are taking longer to conclude as clients evaluate".
+    "deal": ("contract", "contracts", "order", "orders", "agreement", "win"),
+    "deals": ("contract", "contracts", "order", "orders", "agreement", "win"),
+    "enterprise": ("large", "corporate", "business"),
+    "enterprises": ("large", "corporate", "business"),
+    "convert": ("conclude", "concluded", "closing", "close", "closure", "conversion"),
+    "converting": ("conclude", "concluded", "closing", "close", "conversion"),
+    "close": ("conclude", "concluded", "completion", "closure"),
+    "closing": ("conclude", "concluded", "completion", "closure"),
+    "consolidation": ("integrat", "consolidat", "combine"),
+    "strength": ("strong", "discipline", "experience", "team"),
+    "strengths": ("strong", "discipline", "experience", "team"),
+    "change": ("transition", "newly created", "appoint", "leadership"),
+    "changed": ("transition", "transitioned", "newly created", "appoint"),
+    "poor": ("disappoint", "weak", "soft", "lower"),
+    "fix": ("recover", "recovery", "improve", "confiden"),
+    "fixed": ("recover", "recovery", "improve", "confiden"),
+    "protect": ("protecting", "defend", "counter"),
+    "fuel": ("cost", "cost pressure", "pricing"),
+    "expensive": ("elevated", "high", "cost pressure"),
 }
 # a quantitative ask ("how much", "what is the target") is answered by a sentence that prints a figure and a period
 _ASK_QUANT = re.compile(r"\bhow (?:much|many|big|large|long)|what (?:is|was|are|were)\b|target|guidance|size|"
@@ -2714,17 +2767,22 @@ def _token_matches(token: str, word: str) -> bool:
 
 
 def _ask_weights(items: list[list[dict[str, Any]]], words: list[str]) -> dict[str, float]:
-    """Each ask word's weight in this reply: 1.0, and 1.5 when the reply prints it once (T-242 fix 7).
+    """Each ask word's weight in this reply: an IDF bucket, the rarest word weighing most (T-242 fixes 7, 8).
 
-    A word the call prints once ('Bokaro', 'press', 'attrition') names the asked sentence; a word printed in almost
-    every row ('capacity', 'increase', 'year') does not.  The corpus is the reply itself, so no global table has to be
-    kept, and the weight is structural: it is read from the held pages, never from a company."""
-    token_cache: list[list[set[str]]] = [[set(re.findall(r"[a-z0-9]+", str(r.get("quote") or "").lower()))
-                                           for r in group] for group in (items or [])]
+    A word the call prints once ('Bokaro', 'Jettings', 'salt') names the asked sentence and weighs 2.5; a word
+    printed in at most a fifth of the served rows weighs 1.5; a word printed almost everywhere ('capacity',
+    'increase', 'year') weighs 1.0, so one rare ask word outranks several common ones.  The corpus is the reply's
+    own structured rows (the page-text hits are long snippets and would flood the frequency count), so no global
+    table is kept and the weight is structural: read from the held pages, never from a company."""
+    rows = [row for group in (items or []) for row in group]
+    structured = [row for row in rows if str(row.get("match") or "") != "text"]
+    rows = structured or rows
+    n = len(rows) or 1
+    token_cache = [set(re.findall(r"[a-z0-9]+", str(r.get("quote") or "").lower())) for r in rows]
     out: dict[str, float] = {}
     for word in words:
-        df = sum(1 for toks in token_cache if any(any(_token_matches(tok, word) for tok in row) for row in toks))
-        out[word] = 1.5 if df == 1 else 1.0
+        df = sum(1 for toks in token_cache if any(_token_matches(tok, word) for tok in toks))
+        out[word] = 2.5 if df == 1 else (1.5 if df and df * 5 <= n else 1.0)
     return out
 
 
@@ -2836,7 +2894,10 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     ``period`` (Q4FY26 / FY26) and ``rank_terms`` (the question's own words) rank the rows: a statement of the
     period asked, carrying more of the question's words, comes first; the newest call breaks a tie.  Inside a named
     call the sentence carrying EVERY ask word (topic, terms or rank_terms, light-stemmed and read per sentence, not
-    per answer turn) ranks first, then the sentence carrying them closest together and most often; each named-call
+    per answer turn) ranks first, then the rarest ask word (2.5 when the reply prints it once, 1.5 when at most a
+    fifth of its rows do, else 1.0) and the sentence carrying them closest together and most often; a
+    prepared-remarks turn, a paragraph, serves the sentence that answers the ask rather than its first sentence and
+    is admitted past the turn window.  Each named-call
     row carries ``call_date`` plus ``filed`` and ``call_date_printed`` where they differ.  ``latest``
     keeps only the newest call's statements.  The tagged statements are joined by the same phrase-first page-text
     matcher ``pilot3_search`` uses, over every held document type, so a sentence the tagger missed still answers
@@ -2931,12 +2992,14 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     for r in rows:
         key = _turn_key(r)
         if key not in turn_rows:
-            if len(order) >= want:
+            # T-242 fix 8: a prepared-remarks turn is a paragraph and sits late in the topic-ordered window, so it
+            # is admitted past the turn cap (ADSL's asked sentence is 12 sentences into the p4 prepared remarks);
+            # the Q&A window and the page-text window keep their old size, so no new rival turn is added.
+            if len(order) >= want and not (one_per_turn and str(r["section"] or "") == "prepared"):
                 continue
-            turn_rows[key] = [r] if one_per_turn else []
+            turn_rows[key] = []
             order.append(key)
-        if not one_per_turn:
-            turn_rows[key].append(r)
+        turn_rows[key].append(r)
     if whole_turn and not one_per_turn and turn_rows:
         # expand each matched row to all sentences of its answer turn, keyed by (document, turn): answer-turn ids
         # collide across calls and prepared remarks carry negative ids, so a bare id mixed two calls and swept
@@ -3049,6 +3112,21 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     quant = bool(named_day and _ASK_QUANT.search(" ".join(x for x in (rank_terms, terms, topic) if x)))
     weights = _ask_weights(items, ask_tokens) if ask_tokens else {}
     tie_words = _ask_tokens(topic, terms, rank_terms, stop=False) if ask_tokens else []
+    if one_per_turn and ask_tokens:
+        # T-242 fix 8: one row per answer turn is still served, but a prepared-remarks turn serves the sentence
+        # that answers the ask.  A prepared-remarks turn is a paragraph: ADSL's p4 turn opens on revenue growth
+        # and prints "large contracts are taking longer to conclude" 12 rows later, so the turn's first sentence
+        # was never the asked one.  A Q&A turn keeps its first row: its sentences are already the answer's own.
+        tagged_ids = {id(group) for group in tagged}
+        for group in items:
+            if len(group) > 1 and id(group) in tagged_ids:
+                if str(group[0].get("section") or "") == "prepared":
+                    best = max(group, key=lambda row: (
+                        *_sentence_hits(str(row.get("quote") or ""), ask_tokens, measures, quant, weights)[:2],
+                        -len(str(row.get("quote") or ""))))
+                    group[:] = [best]
+                else:
+                    group[:] = group[:1]     # a Q&A turn serves its first row, as before
 
     def _key(group: list[dict[str, Any]]) -> tuple:
         # T-242 fix 7: a question phrased with rank_terms is ranked by the sentence score; a bare topic search keeps
@@ -3306,6 +3384,30 @@ def _guidance_group_target(row: dict[str, Any]) -> bool:
     return not _GUIDANCE_COMPONENT.search(str(row.get("quote") or ""))
 
 
+# T-242 fix 8: a target the page itself disclaims or calls an aspiration ("it should be aspiring for 10% margin" on
+# the same page as "no guidance at the moment ... get to 6.5%") is never elected first.  Structural: the quote's own
+# words, no company list.
+_GUIDANCE_DISCLAIMED = re.compile(
+    r"\bno guidance\b|\bnot guid(?:ing|e|ed)\b|\baspir(?:e|es|ing|ation)\b|\bhope(?:s|d)? to\b|"
+    r"\bwait and see\b|\btoo early to\b|\bdifficult to (?:project|guide)\b", re.I)
+
+
+def _guidance_disclaimed(row: dict[str, Any]) -> bool:
+    """Does this target's own quote disclaim guidance or call it an aspiration?"""
+    return bool(_GUIDANCE_DISCLAIMED.search(str(row.get("quote") or "")))
+
+
+# T-242 fix 8: a money ask ("capex") must not be answered by an allocation-share percentage rule noise
+# (NEW:capex_allocation_share: 5% / 3% / 8% ... is how the store tagged a pie chart, not a capex plan).
+_GUIDANCE_NOISE = re.compile(r"(?:^|_)(?:share|allocation)(?:_|$)")
+
+
+def _guidance_noise_measure(metric: str | None) -> bool:
+    """Is this measure a share / allocation / bare percentage, never an amount a money ask asks for?"""
+    code = _norm_measure(str(metric or ""))
+    return bool(_GUIDANCE_NOISE.search(code)) or code.endswith("_pct")
+
+
 def _guidance_elect(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """One current row per metric+period (T-242): the company's / group's own full-year target wins over a
     component's or subsidiary approval's ("ARACT, WOS, has approved a capex of Rs. 2,320 crores" is not the group's
@@ -3327,12 +3429,14 @@ def _guidance_elect(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], l
 
 
 def _guidance_demote_components(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Hold back component / subsidiary-approval rows before the newest-document collapse (T-242 fix 7).
+    """Hold back component / subsidiary-approval / disclaimed rows before the newest-document collapse (T-242 fix 7/8).
 
     ``current_rows`` keeps every row of the newest document for a metric+period, so a later WOS board approval
     replaces the group's own target before the election can choose (ARE&M: the ARACT WOS approval of 2,320 crores
     came from a later document than the call's 1,700-crore group estimate).  A component row is never the group's
-    target: it goes to the reply's alternatives, labelled, and the group rows go on to the normal election."""
+    target, and a target its own page disclaims or calls an aspiration is never a guidance target either (audit 8:
+    BLUESTARCO's "aspiring for 10%" over the same page's "no guidance at the moment ... get to 6.5%"): both go to
+    the reply's alternatives, labelled, and the group's own clear rows go on to the normal election."""
     groups: dict[tuple, list[dict[str, Any]]] = {}
     for row in rows:
         groups.setdefault((row["metric"], row["target_period"]), []).append(row)
@@ -3340,9 +3444,13 @@ def _guidance_demote_components(rows: list[dict[str, Any]]) -> tuple[list[dict[s
     alternatives: list[dict[str, Any]] = []
     for group in groups.values():
         company = [row for row in group if _guidance_group_target(row)]
-        if company:
-            kept_ids.update(id(row) for row in company)
-            alternatives.extend(row for row in group if not _guidance_group_target(row))
+        clear = [row for row in company if not _guidance_disclaimed(row)]
+        if clear:
+            kept_ids.update(id(row) for row in clear)
+            alternatives.extend(row for row in group if id(row) not in {id(x) for x in clear})
+        elif company:
+            # every candidate group target is disclaimed / aspirational: none is the answer, all are shown labelled
+            alternatives.extend(company)
         else:
             kept_ids.update(id(row) for row in group)
     return [row for row in rows if id(row) in kept_ids], alternatives
@@ -3352,10 +3460,13 @@ def _guidance_alt(row: dict[str, Any]) -> dict[str, Any]:
     """A dropped current row, said plainly, so the reply shows the other target it elected against (T-242)."""
     balance = bool(_GUIDANCE_BALANCE.search(str(row.get("quote") or "")))
     component = not _guidance_group_target(row)
+    disclaimed = _guidance_disclaimed(row)
     if balance:
         why = "balance-of-year restatement of the full-year target"
     elif component:
         why = "a component / subsidiary target, not the group's own full-year one"
+    elif disclaimed:
+        why = "a target its own page disclaims or calls an aspiration, not a guidance target"
     else:
         why = "an earlier target of the same metric and period"
     return {"metric": row["metric"], "period": row["target_period"], "low": row["low"], "high": row["high"],
@@ -3410,7 +3521,9 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
     still reported under ``held_quarantined`` (with value, page and the way to show them), never as the answer, and a
     target held only in ``obs_fact`` ``record_type='guidance'`` is served with ``source='obs_fact'`` (its target
     period is the period asked when the call printed the range without a year, marked ``period_source='unstated'``).
-    Every row says ``check_status`` verified or unverified (T-113).  A target
+    Every row says ``check_status`` verified or unverified (T-113).  A target its own quote disclaims or calls an
+    aspiration is never elected first, and a money ask such as capex skips allocation-share / ``_pct`` measure
+    noise.  A target
     stated for a named subsidiary, segment or investee is stored with that ``entity`` and never returned here: only
     the group's own guidance is served (T-192)."""
     sym = resolve_symbol(symbol)
@@ -3454,6 +3567,12 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
                   f"LEFT JOIN guidance pv ON pv.id=g.revision_of{join} WHERE {where}{extra} "
                   f"ORDER BY COALESCE(g.known_at, g.said_on) DESC, g.id DESC LIMIT 400", (*args, *eargs))
         kept = [dict(r) for r in rows]
+    # T-242 fix 8: a money ask ("capex") is never answered by an allocation-share percentage the store happens to
+    # tag under the same word (AZTEC NEW:capex_allocation_share 5%/3%/8%: a pie chart's shares, not a capex plan).
+    money_ask = bool(metric) and (_metric_family(metric or "") == "money"
+                                  or _metric_key(metric or "") in ("capex", "capital_expenditure", "capital_outlay"))
+    if money_ask:
+        kept = [r for r in kept if not _guidance_noise_measure(r["metric"])]
     out = []
 
     def _g_when(row: dict[str, Any]) -> str:
@@ -3540,6 +3659,8 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
             for r in obs_g:
                 r["period"] = asked_label or period
                 r["period_source"] = "unstated"
+        if money_ask:
+            obs_g = [r for r in obs_g if not _guidance_noise_measure(r["measure"])]
         for r in obs_g:
             item = {"metric": r["measure"], "period": r["period"], "low": r["value"], "high": r["value_high"],
                     "unit": r["unit"], "direction": r["direction"], "said_on": (r.get("known_at") or "")[:10],
@@ -3559,7 +3680,9 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
                 continue
             out.append(item)
     if out:
-        out.sort(key=lambda row: 0 if (row.get("status") or row.get("check_status")) == "verified" else 1)
+        # T-242 fix 8: a disclaimed / aspirational target is never served first, whatever its check status
+        out.sort(key=lambda row: (1 if _guidance_disclaimed({"quote": row.get("quote")}) else 0,
+                                  0 if (row.get("status") or row.get("check_status")) == "verified" else 1))
     held = None
     held_hidden = None
     if not out:   # say what the table does hold, so the next call can be exact
@@ -5211,7 +5334,8 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
     known_at, and ``computed`` {formula, inputs} for a figure the store derives; up to three ``alternatives`` from
     another table or filing, and ``why_this_one``.  Nothing matching returns ``found: false`` with the tables and
     names searched and up to three nearest rows.  A metric word resolves through one alias map ("profit after tax"
-    -> pat, "installed capacity" -> capacity.total) and a printed point-in-time period ("As on 30th Sept, 2026")
+    -> pat, "installed capacity" -> capacity.total, "capital expenditure" -> capex) and a printed point-in-time
+    period ("As on 30th Sept, 2026")
     matches the row that prints that date; a transcript number a filed results / press-release figure contradicts by
     more than 20% is served filed-first, with the call remark as an alternative carrying ``conflict: true``."""
     sym = resolve_symbol(symbol)
