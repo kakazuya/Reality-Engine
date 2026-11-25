@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import calendar
+import hashlib
 import json
 import random
 import re
@@ -49,7 +50,7 @@ from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 from reality_engine.pilot3 import order_wins
 from reality_engine.research.driver_claims import (
@@ -68,12 +69,15 @@ DEFAULT_OUT = Path(".tmp/t231/events.db")
 DEFAULT_REPORT = Path(".tmp/t231/report_a.md")
 DEFAULT_CACHE = Path(".tmp/t231/model_cache.json")
 PAGES = 4                    # first pages read (classification and parse; annexure tables carry the size)
-MAX_MODEL_CHARS = 6000       # first two pages sent to the model
+MAX_MODEL_CHARS = 20000      # first four pages sent to the model
 MAX_QUOTE = 400              # characters of printed context kept on a row
-MODEL_STOP_SHARE = 0.30      # brief: more than 30% of classified filings needing the model stops the run
+MODEL_STOP_SHARE = 0.30      # brief: more than 30% of non-model-first classified filings needing the model stops
+ERROR_STOP_SHARE = 0.05      # T-242: stop if hy4 returns errors on >5% of requests
 QUARANTINE_STOP_SHARE = 0.10
 MAX_RETRIES = 3
 MAX_RETRY_WAIT_S = 900.0
+MODEL_FIRST_KINDS = frozenset({"order_win", "fund_raise"})
+EVENT_PROMPT_VERSION = "v1"
 
 # ------------------------------------------------------------------ cues
 _INTIMATION = re.compile(
@@ -642,6 +646,12 @@ CREATE INDEX ix_event_symbol_date ON event (symbol, filing_date);
 CREATE INDEX ix_event_kind_status ON event (kind, status);
 CREATE TABLE amend (
   doc_key TEXT PRIMARY KEY, symbol TEXT, amends TEXT NOT NULL, filing_date TEXT, known_at TEXT, why TEXT
+);
+CREATE TABLE skip_log (
+  skip_id INTEGER PRIMARY KEY,
+  store TEXT, symbol TEXT, doc_key TEXT NOT NULL,
+  candidate_kind TEXT, event_type TEXT, stage TEXT, instrument TEXT,
+  reason TEXT, title TEXT, filing_date TEXT
 );
 CREATE TABLE run_meta (key TEXT PRIMARY KEY, value TEXT);
 """
@@ -2675,7 +2685,13 @@ def _raise_size(sentence: str, body: str) -> tuple[float | None, str | None, int
     return _raise_count_size(sentence, body)
 
 
-_RAISE_STAGE_RANK = {"allotment": 5, "completion": 4, "approval": 3, "listing": 2, "proposed": 1}
+_RAISE_STAGE_RANK = {
+    "allotted": 5, "allotment": 5,
+    "completion": 4, "approved_shareholders": 4,
+    "approval": 3, "approved_board": 3, "in_principle": 3,
+    "listing": 2,
+    "proposed": 1, "filed_offer_doc": 1,
+}
 # T-242: only a completed allotment is ``allotment``; a board meeting that approves an issue is ``approval``
 # even when the annexure prints "allotment" in a future sense ("allotment of up to", "date of allotment") (#29,
 # #46, #60).  "allotted" alone is not enough: "to be allotted"/"assumed to be allotted" state a plan.
@@ -3517,6 +3533,10 @@ def _fold_same_raise(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -
             same_day = str(row.get("filing_date")) == str(prior.get("filing_date"))
             if not same_day and rank > prior_rank:
                 continue            # a later stage is a new dated step of the same raise
+            row_has_amt = row.get("amount_inr_cr") is not None or row.get("amount_usd_mn") is not None
+            prior_has_amt = prior.get("amount_inr_cr") is not None or prior.get("amount_usd_mn") is not None
+            if same_day and rank > prior_rank and not row_has_amt and prior_has_amt:
+                continue            # never drop a quantified raise step for an unquantified same-day twin
             match = prior
             break
         if match is None:
@@ -3524,8 +3544,10 @@ def _fold_same_raise(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -
             continue
         rank = _RAISE_STAGE_RANK.get(str(row.get("raise_stage")), 0)
         prior_rank = _RAISE_STAGE_RANK.get(str(match.get("raise_stage")), 0)
-        if rank > prior_rank:
-            winner, loser = row, match               # the completed step stands, the earlier letter is the repeat
+        row_has_amt = row.get("amount_inr_cr") is not None or row.get("amount_usd_mn") is not None
+        match_has_amt = match.get("amount_inr_cr") is not None or match.get("amount_usd_mn") is not None
+        if rank > prior_rank or (rank == prior_rank and row_has_amt and not match_has_amt):
+            winner, loser = row, match               # the completed (or quantified) step stands, the twin is the repeat
             kept[kept.index(match)] = row
             dropped.add(id(match))
         else:
@@ -3585,6 +3607,13 @@ def load_docs(store: str) -> list[dict[str, Any]]:
             "SELECT doc_key, symbol, isin, title, filing_date, known_at, pages FROM doc "
             f"WHERE doc_type IN ({','.join('?' for _ in EVENT_DOC_TYPES)}) "
             "ORDER BY COALESCE(known_at, filing_date), doc_key", EVENT_DOC_TYPES) or [])
+        company_name = ""
+        try:
+            comp_rows: list[Any] = list(con.execute("SELECT name FROM company LIMIT 1") or [])
+            if comp_rows and comp_rows[0] is not None and comp_rows[0][0]:
+                company_name = str(comp_rows[0][0])
+        except sqlite3.Error:
+            company_name = ""
         docs: list[dict[str, Any]] = [
             {column: row[column] for column in
              ("doc_key", "symbol", "isin", "title", "filing_date", "known_at", "pages")}
@@ -3602,6 +3631,7 @@ def load_docs(store: str) -> list[dict[str, Any]]:
         key = str(doc["doc_key"])
         doc["store"] = store
         doc["doc_key"] = key
+        doc["company_name"] = company_name
         kept = {page: pages[key][page] for page in sorted(pages.get(key, {}))[:PAGES]}
         for page in kept:
             if not _flat(kept[page]) and (key, page) in ocr:
@@ -3678,9 +3708,98 @@ def amend_rows(docs: list[dict[str, Any]], classified: set[str]) -> tuple[list[d
     return amends, skipped
 
 
-# ------------------------------------------------------------------ model fallback
-def model_prompt(doc: dict[str, Any], kinds: list[str]) -> str:
-    text = (doc.get("head") or doc.get("text") or "")[:MAX_MODEL_CHARS]   # brief: the filing's first two pages
+# ------------------------------------------------------------------ model-first + fallback
+_HARD_RAISE_VETO = re.compile(
+    r"framework\s+for\s+fund\s*raising|large\s+corporates?|credit\s+rating|rating\s+(?:action|revision|rationale)"
+    r"|the\s+exchange\s+has\s+received\s+the\s+disclosure|disclosure\s+(?:received|under).{0,80}"
+    r"(?:SAST|takeover|regulation\s+(?:29|31|18))|u/r\s*7\(2\)|insider\s+trading"
+    r"|statement\s+of\s+deviation|utilisation|utilization|\bdeviation\b"
+    r"|\bESOPs?\b|\bESOS\b|employee\s+stock\s+options?|stock\s+options?|employee\s+benefit|share\s+based\s+employee"
+    r"|sweat\s+equity|\bRSUs?\b|restricted\s+stock"
+    r"|open\s+offer|pre[-\s]offer|manager\s+to\s+the\s+offer|takeover"
+    r"|borrowing\s+limits?|limit\s+of\s+borrowings?|increase\s+in\s+(?:the\s+)?borrowing",
+    re.I,
+)
+
+EVENT_PROMPT_V1 = """Read one Indian stock-exchange filing (headline + up to first 4 pages). Return STRICT JSON only, no prose, no code fence.
+
+Classify whether this filing discloses an actual customer ORDER WIN (`order_win`) or the listed company's own FUND RAISE (`fund_raise`), or `not_event`.
+If the filing discloses multiple distinct orders (different orders/contracts), return one object per order in `events`.
+If the filing is NOT an order win and NOT the company's own fund raise, return ONE object in `events` with `"is_event": false, "event_type": "not_event"` and a short `not_event_reason`.
+
+JSON shape:
+{"events":[{"is_event":true,"event_type":"order_win|fund_raise|not_event","not_event_reason":null,"stage":"received|loa|l1_only|amended|cancelled|approved_board|approved_shareholders|filed_offer_doc|allotted|in_principle|withdrawn","instrument":"equity|warrants|ncd|ccd|qip|rights|preferential|ipo|bonus|other|null","amounts":[{"value_text":"exact substring from text","number":0.0,"unit":"crore|lakh|million|billion|unit","currency":"INR|USD|EUR|GBP|...","role":"order_size|annual_value|tranche|total_issue|equity_leg|warrant_leg|board_limit|offered_size|threshold|other"}],"tenure_years":null,"awardee":"exact printed name or null","awardee_is_subsidiary":false,"awardee_is_joint":false,"customer":"exact printed customer or null","execution_period":"exact printed period or null","execution_months":null,"shares":null,"price_per_share":null}]}
+
+Rules for `amounts` (NEVER invent or convert numbers):
+- Copy `value_text` VERBATIM as a contiguous substring from the filing text, INCLUDING the currency symbol/code and scale word (e.g. "Rs. 40.58 Crores", "USD 9.28 million", "Rs. 1,60,00,00,000/-", "€ 4,222,683").
+- Set `number` to the exact number printed inside `value_text` BEFORE any unit conversion (e.g. 1600000000 for "Rs. 1,60,00,00,000/-", 40.58 for "Rs. 40.58 Crores", 2593125 for "USD 2,593,125").
+- Set `unit` to the scale word printed in `value_text` ("crore", "lakh", "million", "billion") or "unit" if it is a full currency amount with no scale word.
+- Set `currency` to the printed currency ("INR", "USD", "EUR", "GBP", etc.). Keep USD in USD and EUR in EUR; NEVER convert USD/EUR to INR.
+
+Rules for `order_win`:
+- NOT an order win (`is_event`: false, `event_type`: "not_event") if it is: a Government/Ministry order appointing or removing a director/CMD; a SEBI/IRDAI/RBI/Court/Tribunal/NCLT/Regional Director/Tax/GST/Customs/Legal Metrology order or regulatory approval to launch products; a coal block termination, PLI ineligibility, or MoU called off; a board meeting outcome with no order; an LOI/LoA to set up the company's OWN outlet, dealership, showroom or 3S facility; a quarterly/annual order-inflow roll-up or order-book summary; or an EPC contract where the listed company is the BUYER paying a contractor.
+- `stage`: "loa" (LoA/LoI received), "received" (PO/work order/contract received), "l1_only" (declared L1/lowest bidder only, no award/LoA received yet), "amended" (variation/extension of existing order), "cancelled" (order cancelled/terminated).
+- `amounts`: use role "order_size" for the value of THIS new order (for a JV/consortium or joint company+subsidiary order that prints the company's own share separately from the gross value, put the company's own share as "order_size" and the gross value as "other"). Use role "annual_value" ONLY when the value is explicitly per annum/yearly/monthly, and set `tenure_years` if the contract tenure is printed in years. Put past/delivered order values, project GDV, project cost, FY order-book targets/guidance, or the company's own capex as "other", NEVER "order_size".
+- `awardee`: the exact printed name of the entity winning the order (the listed company or its named subsidiary). Set `awardee_is_subsidiary`: true ONLY when the awardee itself is a subsidiary of the listed company (and NEVER when the CUSTOMER is described as a subsidiary of another group like "SECL (Subsidiary Company) of Coal India Limited"). Set `awardee_is_joint`: true ONLY when the listed company AND its subsidiary receive the order together.
+- `customer`: exact printed name of the entity awarding the order (null if confidential/withheld/undisclosed, or generic like "a leading domestic company", or a bare country/own business segment/headline).
+
+Rules for `fund_raise`:
+- NOT a fund raise (`is_event`: false, `event_type`: "not_event") if it is: a divestment/stake sale/SPV sale; an acquisition/investment/subscription in another entity's shares/CCPS/OCRPS or asset/IPR purchase; an unsecured loan granted to a subsidiary; an NCLT/NCLAT scheme update with no actual share/debt issuance in this filing; a credit facility/bank loan revision, ESOP, SAST/open offer, statement of deviation/utilisation, debt redemption/interest payment, or warrant lapse.
+- `stage`: "allotted" (actual allotment/conversion/issue closure), "approved_board" (board/committee approval or enabling resolution), "approved_shareholders" (AGM/EGM/postal ballot voting result), "filed_offer_doc" (draft prospectus/offer doc/DLOF or EGM/postal ballot notice), "in_principle" (exchange in-principle approval), "withdrawn" (proposed issue withdrawn/cancelled).
+- `instrument`: "equity" | "warrants" | "ncd" | "ccd" | "qip" | "rights" | "preferential" | "ipo" | "bonus" | "other". Use "bonus" for bonus share issues.
+- `amounts`:
+  - Use role "total_issue" for the actual total size of THIS filing's step (whether allotted, approved by board/shareholders, or offered in this prospectus). If a filing prints multiple tranches AND a combined total (e.g. Rs 420 cr + Rs 980 cr aggregating to Rs 1,400 cr), mark the combined total as "total_issue" and each tranche as "tranche".
+  - Use role "tranche", "equity_leg", or "warrant_leg" when the filing issues/approves multiple tranches or equity+warrant legs and prints each leg's rupee amount.
+  - Use role "board_limit" ONLY for an EARLIER umbrella board limit quoted as background in a later filing (prospectus, allotment, clarification) — NEVER label this filing's own board approval size as "board_limit".
+  - Use role "offered_size" for the offered/maximum issue size when a smaller amount is actually allotted in this filing.
+  - Use role "threshold" for a regulatory/single-QIB size threshold.
+  - Use role "other" for paid-up/authorised share capital, a 25% upfront / 75% balance partial instalment when the full total is separate, green shoe already included inside `total_issue`, premium/accrued interest, or acquisition consideration.
+- `shares`: number of shares/warrants/NCDs in THIS step only (null if only post-issue/cumulative count is printed). `price_per_share`: printed issue price per unit."""
+
+
+def prompt_fingerprint(version: str = EVENT_PROMPT_VERSION, model: str = MODEL) -> str:
+    """Short sha256 fingerprint of the active model-first prompt template and model id."""
+    template = EVENT_PROMPT_V1 if version == "v1" else EVENT_PROMPT_V1
+    return hashlib.sha256(f"{model}\n{version}\n{template}".encode("utf-8")).hexdigest()[:12]
+
+
+def _order_win_candidate(title: str, head: str) -> bool:
+    """True when the existing classifier or a soft-vetoed order cue puts this filing in ``order_win``."""
+    body = _flat(f"{title} {head}")
+    if _ORDER_VETO.search(body):
+        return False
+    if _RESULTS_RELEASE.search(_flat(f"{title} {head[:1500]}")):
+        return False
+    amend = _order_amendment_clause(title, head)
+    if amend:
+        prose = _prose_order_records(title, head)
+        if not (len({round(float(r["value_cr"]), 4) for r in prose}) >= 2
+                and not re.search(r"variation|amendment|extension|cancel|reduc|withdraw|short[-\s]?clos|descop|foreclos",
+                                  title, re.I)):
+            return False
+    return bool(
+        order_wins.parse(_flat(title), _flat(head))
+        or _loose_order_record(title, head)
+        or order_wins.WIN.search(body)
+    )
+
+
+def _fund_raise_candidate(title: str, head: str, text: str) -> bool:
+    """True when the existing classifier or a soft-vetoed raise cue puts this filing in ``fund_raise``."""
+    body = _flat(f"{title} {head}")
+    full = _flat(f"{title} {text}")
+    if not _RAISE_CUE.search(body):
+        return False
+    if _HARD_RAISE_VETO.search(body) or _RAISE_DEBT_VETO.search(_flat(f"{title} {head[:1200]}")) \
+            or _RAISE_ADVISORY_VETO.search(body):
+        return False
+    if _INTIMATION.search(body) and not (_DONE.search(body) or _RAISE_DONE.search(body)):
+        return False
+    return bool(_RAISE_ISSUANCE.search(full) or _RAISE_STEP_TOTAL.search(full) or _RAISE_CONCLUDED.search(full))
+
+
+def _legacy_model_prompt(doc: dict[str, Any], kinds: list[str]) -> str:
+    text = (doc.get("text") or doc.get("head") or "")[:MAX_MODEL_CHARS]
     schema = (
         '{"events":[{"kind":"order_win|capex_approval|capacity_commissioned|fund_raise",'
         '"amount_inr_cr":null,"amount_usd_mn":null,"value_text":null,"customer":null,'
@@ -3699,19 +3818,48 @@ def model_prompt(doc: dict[str, Any], kinds: list[str]) -> str:
     )
 
 
+def model_prompt(doc: dict[str, Any], kinds: list[str] | None = None) -> str:
+    """Build the model prompt over the filing's first 4 pages (v1 schema for order_win/fund_raise)."""
+    if kinds and not any(k in MODEL_FIRST_KINDS for k in kinds):
+        return _legacy_model_prompt(doc, kinds)
+    text = (doc.get("text") or doc.get("head") or "")[:MAX_MODEL_CHARS]
+    company = doc.get("company_name") or doc.get("symbol") or ""
+    cand = ", ".join(kinds) if kinds else "order_win, fund_raise"
+    return (
+        f"{EVENT_PROMPT_V1}\n\n"
+        f"LISTED COMPANY: {company} (SYMBOL: {doc.get('symbol') or ''})\n"
+        f"FILING DATE: {doc.get('filing_date') or ''}\n"
+        f"CANDIDATE KINDS: {cand}\n"
+        f"TITLE: {doc.get('title') or ''}\n\n"
+        f"PAGES (first {PAGES}):\n{text}"
+    )
+
+
 def parse_model_reply(raw: str) -> list[dict[str, Any]]:
     text = (raw or "").strip()
     if text.startswith("```"):
         text = re.sub(r"^```[a-zA-Z0-9]*\s*|\s*```$", "", text.strip())
-    start, end = text.find("{"), text.rfind("}")
-    if start < 0 or end <= start:
+    obj_start, obj_end = text.find("{"), text.rfind("}")
+    arr_start, arr_end = text.find("["), text.rfind("]")
+    if arr_start >= 0 and (obj_start < 0 or arr_start < obj_start) and arr_end > arr_start:
+        try:
+            items = json.loads(text[arr_start:arr_end + 1])
+            if isinstance(items, list):
+                return [e for e in items if isinstance(e, dict)]
+        except ValueError:
+            pass
+    if obj_start < 0 or obj_end <= obj_start:
         return []
     try:
-        payload = json.loads(text[start:end + 1])
+        payload = json.loads(text[obj_start:obj_end + 1])
     except ValueError:
         return []
-    events = payload.get("events") if isinstance(payload, dict) else None
-    return [e for e in events or [] if isinstance(e, dict)]
+    if isinstance(payload, dict):
+        if "events" in payload:
+            return [e for e in (payload.get("events") or []) if isinstance(e, dict)]
+        if any(k in payload for k in ("event_type", "is_event", "kind")):
+            return [payload]
+    return []
 
 
 def _model_unit_printed(row: dict[str, Any]) -> bool:
@@ -3728,10 +3876,313 @@ def _model_unit_printed(row: dict[str, Any]) -> bool:
     return bool(unit and unit.split("_")[0] in text.lower())
 
 
-def model_rows(doc: dict[str, Any], kinds: list[str], raw: str) -> list[dict[str, Any]]:
-    """Validate one model reply against the printed page: one row per filled class, quarantine if unprinted."""
+_INR_CUR_RX = re.compile(r"(?:₹|\bRs\.?|\bINR\b|\bRupees?\b)", re.I)
+_USD_CUR_RX = re.compile(r"(?:\bUSD\b|\bUS\s?\$|\bUS\s+Dollars?\b|\$)", re.I)
+_FOREIGN_CUR_RX = re.compile(
+    r"(?:€|\bEUR\b|\bEuros?\b|£|\bGBP\b|\bPounds?\b|¥|\bJPY\b|\bYen\b|\bAUD\b|\bSGD\b|\bAED\b|\bDirhams?\b|\bCHF\b|\bCAD\b)",
+    re.I,
+)
+_SCALE_WORD_RX = re.compile(
+    r"(?<![a-zA-Z])(crores?|cr\.?|crs\.?|lakhs?|lacs?|millions?|mn|billions?|bn)(?![a-zA-Z])",
+    re.I,
+)
+_SKIP_STAGES = frozenset({"l1_only", "cancelled", "withdrawn"})
+
+
+def _find_printed_span(pages: dict[int, str], title: str, value_text: str) -> tuple[str | None, int | None]:
+    """Find whitespace-normalised ``value_text`` on pages 1..PAGES (or headline page 0); return (matched_span, page)."""
+    needle = _flat(value_text)
+    if not needle:
+        return None, None
+    # Try exact substring first across pages 1..PAGES, then headline
+    for page in sorted(pages):
+        if int(page) > PAGES:
+            continue
+        flat_page = _flat(pages[page])
+        if needle in flat_page:
+            return needle, int(page)
+    flat_title = _flat(title)
+    if flat_title and needle in flat_title:
+        return needle, 0
+    # Fallback: symbol spacing differences (e.g. "₹ 1,000" vs "₹1,000") and OCR "¥" for "₹" beside crore/lakh
+    has_ind_scale = bool(re.search(r"crore|lakh|\bcr\b|\blacs?\b", needle, re.I))
+    parts = [re.escape(needle)]
+    flex = re.sub(r"(?:\\₹|\\\$|\\€|\\£|Rs\\\.?|INR|USD)\\\s+", lambda m: m.group(0).rstrip("\\ ") + r"\s*", parts[0], flags=re.I)
+    flex = re.sub(r"([₹$€£])", r"\1\\s*", flex)
+    if has_ind_scale:
+        flex = flex.replace(r"\₹", r"[₹¥]").replace("₹", "[₹¥]")
+    for page in sorted(pages):
+        if int(page) > PAGES:
+            continue
+        m = re.search(flex, _flat(pages[page]), re.I)
+        if m:
+            return m.group(0), int(page)
+    if flat_title:
+        m = re.search(flex, flat_title, re.I)
+        if m:
+            return m.group(0), 0
+    return None, None
+
+
+def _norm_currency(raw: Any) -> str:
+    val = _flat(raw).upper()
+    if val in ("INR", "RS", "RS.", "₹", "RUPEES", "RUPEE"):
+        return "INR"
+    if val in ("USD", "US$", "$", "US DOLLAR", "US DOLLARS"):
+        return "USD"
+    if val in ("EUR", "€", "EURO", "EUROS"):
+        return "EUR"
+    if val in ("GBP", "£", "POUND", "POUNDS"):
+        return "GBP"
+    if val in ("JPY", "¥", "YEN"):
+        return "JPY"
+    return val
+
+
+def _norm_scale(raw: Any) -> str:
+    val = _flat(raw).lower().rstrip(".")
+    if val in ("crore", "crores", "cr", "crs"):
+        return "crore"
+    if val in ("lakh", "lakhs", "lac", "lacs"):
+        return "lakh"
+    if val in ("million", "millions", "mn"):
+        return "million"
+    if val in ("billion", "billions", "bn"):
+        return "billion"
+    return "unit" if val in ("", "unit", "units", "rupees", "rupee", "inr", "usd", "dollar", "dollars", "full", "none") else val
+
+
+def _parse_printed_amount(amt: Mapping[str, Any], pages: dict[int, str], title: str) -> dict[str, Any]:
+    """Verify one model amount dict against the printed pages: substring, number, unit, and currency."""
+    raw_vt = _flat(amt.get("value_text"))
+    role = _flat(amt.get("role") or "other").lower()
+    if not raw_vt:
+        return {"ok": False, "role": role, "reason": "empty value_text"}
+    matched_span, page = _find_printed_span(pages, title, raw_vt)
+    if matched_span is None or page is None:
+        return {"ok": False, "role": role, "reason": "value_text not printed on page", "value_text": raw_vt}
+
+    # Extract numbers printed inside matched_span (plus OCR-spaced decimals like "43. 50")
+    num_tokens = re.findall(r"\d[\d,]*(?:\.\d+)?", matched_span)
+    parsed_nums: list[float] = []
+    for tok in num_tokens:
+        try:
+            parsed_nums.append(float(tok.replace(",", "")))
+        except ValueError:
+            pass
+    collapsed_span = re.sub(r"(\d)\.\s+(\d{1,2})\b", r"\1.\2", matched_span)
+    collapsed_nums: list[float] = []
+    if collapsed_span != matched_span:
+        for tok in re.findall(r"\d[\d,]*(?:\.\d+)?", collapsed_span):
+            try:
+                collapsed_nums.append(float(tok.replace(",", "")))
+            except ValueError:
+                pass
+    if not parsed_nums and not collapsed_nums:
+        return {"ok": False, "role": role, "reason": "no number printed in value_text", "value_text": matched_span}
+
+    model_num = amt.get("number")
+    try:
+        target_num = float(str(model_num).replace(",", "")) if model_num not in (None, "") else None
+    except (TypeError, ValueError):
+        target_num = None
+    if target_num is None:
+        return {"ok": False, "role": role, "reason": "model number missing", "value_text": matched_span}
+    chosen_num: float | None = None
+    for n in parsed_nums:
+        if abs(n - target_num) <= 1e-4 * max(1.0, abs(n), abs(target_num)):
+            chosen_num = n
+            break
+    if chosen_num is None:
+        for n in collapsed_nums:
+            if abs(n - target_num) <= 1e-4 * max(1.0, abs(n), abs(target_num)):
+                chosen_num = n
+                break
+    if chosen_num is None and target_num > 0:
+        # Recover exact digits when LLM miscounts zeros in Indian comma notation (10x/100x/1000x slip)
+        for n in parsed_nums:
+            if n > 0:
+                ratio = max(n, target_num) / min(n, target_num)
+                if any(abs(ratio - p) <= 1e-4 * p for p in (10.0, 100.0, 1000.0)):
+                    chosen_num = n
+                    break
+    if chosen_num is None:
+        return {"ok": False, "role": role, "reason": "number does not parse from value_text",
+                "value_text": matched_span}
+
+    # Check currency and scale are printed (allowing OCR ¥->₹ on crore/lakh, Indian comma full rupees, and page unit headers)
+    scale_matches = [_norm_scale(m.group(1)) for m in _SCALE_WORD_RX.finditer(matched_span)]
+    has_inr = bool(_INR_CUR_RX.search(matched_span))
+    has_usd = bool(_USD_CUR_RX.search(matched_span))
+    foreign_m = _FOREIGN_CUR_RX.search(matched_span)
+    decl_cur = _norm_currency(amt.get("currency"))
+    decl_unit = _norm_scale(amt.get("unit"))
+    page_text = _flat(pages.get(page, "") or title)
+    if foreign_m and foreign_m.group(0) == "¥" and decl_cur == "INR" and any(s in ("crore", "lakh") for s in scale_matches):
+        has_inr = True
+        foreign_m = None
+
+    table_header_scale: str | None = None
+    if has_usd and (decl_cur == "USD" or not has_inr):
+        currency = "USD"
+    elif has_inr and (decl_cur == "INR" or not has_usd):
+        currency = "INR"
+    elif foreign_m:
+        currency = _norm_currency(foreign_m.group(0))
+    elif decl_cur == "INR" and any(s in ("crore", "lakh") for s in scale_matches):
+        currency = "INR"
+    elif decl_cur == "INR" and chosen_num >= 100_000.0 \
+            and re.search(r"\b\d{1,2}(?:,\d{2}){2,},\d{3}(?:\.\d+)?\b", matched_span) \
+            and _INR_CUR_RX.search(page_text):
+        currency = "INR"
+    elif decl_cur == "INR" and decl_unit in ("crore", "lakh") and not scale_matches \
+            and ("." in matched_span or chosen_num >= 10.0) \
+            and re.search(rf"(?:₹|Rs\.?|INR)\s*(?:in\s*)?{decl_unit}s?|in\s*(?:₹|Rs\.?|INR)\s*{decl_unit}s?", page_text, re.I):
+        currency = "INR"
+        table_header_scale = decl_unit
+    else:
+        return {"ok": False, "role": role, "reason": "currency not printed in value_text", "value_text": matched_span}
+    if decl_cur and decl_cur != currency:
+        # e.g. model said INR on a USD string or vice versa
+        return {"ok": False, "role": role, "reason": f"currency mismatch ({decl_cur} vs {currency} in value_text)",
+                "value_text": matched_span}
+
+    # Check unit is printed in value_text (or proven by page table header)
+    if decl_unit in ("crore", "lakh", "million", "billion"):
+        if decl_unit not in scale_matches and table_header_scale != decl_unit:
+            return {"ok": False, "role": role, "reason": f"unit '{decl_unit}' not printed in value_text",
+                    "value_text": matched_span}
+        scale = decl_unit
+    elif decl_unit == "unit":
+        if scale_matches:
+            # e.g. model set unit='unit' when 'crore' was actually printed
+            scale = scale_matches[0]
+        else:
+            min_full = 100_000.0 if currency == "INR" else 10_000.0
+            if chosen_num < min_full:
+                return {"ok": False, "role": role, "reason": "unit not printed in value_text",
+                        "value_text": matched_span}
+            scale = "unit"
+    else:
+        return {"ok": False, "role": role, "reason": f"unknown/unprinted unit '{decl_unit}'",
+                "value_text": matched_span}
+
+    inr_cr: float | None = None
+    usd_mn: float | None = None
+    if currency == "INR":
+        if scale == "unit":
+            inr_cr = round(chosen_num / 1e7, 4)
+        else:
+            factor = _TO_CR[scale]
+            inr_cr = round(chosen_num / 1e7, 4) if (scale == "crore" and chosen_num >= 1e6) else round(chosen_num * factor, 4)
+    elif currency == "USD":
+        if scale == "unit":
+            usd_mn = round(chosen_num / 1e6, 4)
+        elif scale in _TO_USD_MN:
+            usd_mn = round(chosen_num * _TO_USD_MN[scale], 4)
+        else:
+            return {"ok": False, "role": role, "reason": f"invalid USD scale '{scale}'", "value_text": matched_span}
+
+    return {
+        "ok": True,
+        "role": role,
+        "value_text": matched_span,
+        "page": page,
+        "number": chosen_num,
+        "scale": scale,
+        "currency": currency,
+        "inr_cr": inr_cr,
+        "usd_mn": usd_mn,
+    }
+
+
+def _awardee_printed(awardee: str, pages: dict[int, str], title: str) -> bool:
+    needle = _flat(awardee)
+    if not needle or len(needle) < 3:
+        return False
+    haystack = _flat(" ".join([title] + [pages[p] for p in sorted(pages) if int(p) <= PAGES])).lower()
+    if needle.lower() in haystack:
+        return True
+    # Allow minor punctuation/comma differences ("Co. Ltd." vs "Co., Ltd.")
+    def _alnum_ws(s: str) -> str:
+        return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", s.lower())).strip()
+    norm_needle = _alnum_ws(needle)
+    return bool(norm_needle and len(norm_needle) >= 3 and norm_needle in _alnum_ws(haystack))
+
+
+def _is_listed_company_name(awardee: str, doc: Mapping[str, Any]) -> bool:
+    comp = _flat(doc.get("company_name") or "").lower()
+    aw = _flat(awardee).lower()
+    if not comp or not aw:
+        return False
+    clean = lambda s: re.sub(r"\b(?:limited|ltd|private|pvt)\b", "", re.sub(r"[^\w\s]", " ", s)).split()
+    c_words, a_words = clean(comp), clean(aw)
+    return bool(c_words and a_words and c_words == a_words)
+
+
+def _verified_tenure_years(raw_tenure: Any, exec_months: Any, text: str) -> float | None:
+    """Return tenure in years only when printed on the page."""
+    if raw_tenure not in (None, ""):
+        try:
+            yrs = float(raw_tenure)
+        except (TypeError, ValueError):
+            yrs = None
+        if yrs and yrs > 0:
+            flat_t = _flat(text)
+            tok = str(int(yrs)) if abs(yrs - round(yrs)) < 1e-6 else f"{yrs:g}"
+            if re.search(rf"\b{re.escape(tok)}\s*(?:\([^)]*\)\s*)?(?:years?|yrs?)\b", flat_t, re.I):
+                return yrs
+    if exec_months not in (None, ""):
+        try:
+            m = float(exec_months)
+            if m > 0:
+                return round(m / 12.0, 4)
+        except (TypeError, ValueError):
+            pass
+    return _tenure_years(text, None)
+
+
+def _norm_instrument(raw: Any) -> str | None:
+    val = _flat(raw).lower()
+    if not val or val == "null":
+        return None
+    mapping = {"warrants": "warrant", "warrant": "warrant", "ncds": "ncd", "ncd": "ncd",
+               "ccds": "ccd", "ccd": "ccd", "qip": "qip", "rights": "rights",
+               "preferential": "preferential", "equity": "equity", "ipo": "ipo",
+               "bonus": "bonus", "other": "other"}
+    return mapping.get(val, val)
+
+
+def _script_amount_pairs(script_rows: list[dict[str, Any]]) -> list[tuple[float | None, float | None]]:
+    return [(r.get("amount_inr_cr"), r.get("amount_usd_mn")) for r in script_rows
+            if r.get("amount_inr_cr") is not None or r.get("amount_usd_mn") is not None]
+
+
+def _check_script_mismatch(row: dict[str, Any], script_rows: list[dict[str, Any]] | None) -> str | None:
+    """Compare model amount against script parse when both have an amount; return detail string on >1% mismatch."""
+    if not script_rows:
+        return None
+    m_inr, m_usd = row.get("amount_inr_cr"), row.get("amount_usd_mn")
+    if m_inr is None and m_usd is None:
+        return None
+    pairs = _script_amount_pairs(script_rows)
+    if not pairs:
+        return None
+    # Match against closest script row (supports multi-order filings)
+    for s_inr, s_usd in pairs:
+        if m_inr is not None and s_inr is not None and abs(m_inr - s_inr) <= 0.01 * max(1.0, abs(m_inr), abs(s_inr)):
+            return None
+        if m_usd is not None and s_usd is not None and abs(m_usd - s_usd) <= 0.01 * max(1.0, abs(m_usd), abs(s_usd)):
+            return None
+    s_inr, s_usd = pairs[0]
+    m_str = f"Rs {m_inr:g} cr" if m_inr is not None else f"USD {m_usd:g} mn"
+    s_str = f"Rs {s_inr:g} cr" if s_inr is not None else f"USD {s_usd:g} mn"
+    return f"amount mismatch: model={m_str} vs script={s_str}"
+
+
+def _legacy_model_rows(doc: dict[str, Any], kinds: list[str], events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    for event in parse_model_reply(raw):
+    for event in events:
         kind = str(event.get("kind") or "")
         if kind not in kinds:
             continue
@@ -3756,16 +4207,18 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str) -> list[dict[str
                 and _not_order_size(row.get("value_text"), row.get("value_text") or "", doc.get("text") or ""):
             row["amount_inr_cr"] = row["amount_usd_mn"] = None
             size_note = "amount sits beside a GDV/project-cost/target label, not the order size (model)"
-        if kind == "order_win" and row.get("amount_inr_cr") is not None \
+        amt_raw = row.get("amount_inr_cr")
+        if kind == "order_win" and amt_raw is not None \
                 and _ANNUAL_CUE.search(row.get("value_text") or ""):
-            row["value_annual"] = row["amount_inr_cr"]
+            annual_val = float(amt_raw)
+            row["value_annual"] = annual_val
             tenure = _tenure_years(doc.get("text") or "", row.get("execution_months"))
             if tenure:
-                row["value_total"] = round(row["value_annual"] * tenure, 4)
+                row["value_total"] = round(annual_val * tenure, 4)
                 row["amount_inr_cr"] = row["value_total"]
             else:
                 row["amount_inr_cr"] = None
-        check_doc = {**doc, "pages": {page: text for page, text in doc["pages"].items() if page <= 2}}
+        check_doc = {**doc, "pages": {page: text for page, text in doc["pages"].items() if int(page) <= PAGES}}
         if row.get("value_text"):
             row["page"] = _page_of(check_doc["pages"], row["value_text"])
         required = (row.get("capacity_value") if kind == "capacity_commissioned"
@@ -3782,7 +4235,7 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str) -> list[dict[str
                              else "annual value; tenure not printed, not a total (model)")
         elif _locate(row, check_doc):
             row["status"] = "quarantined"
-            row["detail"] = "model value not printed on the first two pages"
+            row["detail"] = "model value not printed on the first four pages"
         elif row["entity_scope"] == "parent":
             row["status"] = "unverified"
             row["detail"] = "parent-company release"
@@ -3791,7 +4244,6 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str) -> list[dict[str
         _finish_scope(row, doc.get("title") or "", doc.get("head") or doc.get("text") or "")
         row["quote"] = row.get("quote") or _flat(doc.get("text"))[:MAX_QUOTE]
         rows.append(row)
-    # one row per (filing, class): the best-filled of the model's own repeats
     best: dict[str, dict[str, Any]] = {}
     rank = {"verified": 3, "unverified": 2, "quarantined": 1}
     for row in rows:
@@ -3801,14 +4253,285 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str) -> list[dict[str
     return list(best.values())
 
 
+def model_rows(doc: dict[str, Any], kinds: list[str], raw: str, *,
+               script_check: Mapping[str, list[dict[str, Any]]] | None = None,
+               skips_out: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    """Validate one model reply against the first 4 printed pages; collect skip_log rows for skipped filings."""
+    events = parse_model_reply(raw)
+    if not events:
+        return []
+    # Keep legacy fallback test/schema support when events carry only legacy ``kind`` without v1 keys
+    if all("kind" in ev and "event_type" not in ev and "amounts" not in ev and "is_event" not in ev for ev in events):
+        return _legacy_model_rows(doc, kinds, events)
+
+    title = doc.get("title") or ""
+    text = doc.get("text") or ""
+    head = doc.get("head") or text
+    pages = doc.get("pages") or {1: text}
+    rows_by_kind: dict[str, list[dict[str, Any]]] = defaultdict(list)
+
+    for ev in events:
+        etype = _flat(ev.get("event_type")).lower()
+        is_event = ev.get("is_event")
+        stage = _flat(ev.get("stage")).lower()
+        instr = _norm_instrument(ev.get("instrument"))
+        if is_event is False or etype == "not_event" or stage in _SKIP_STAGES or instr == "bonus":
+            reason = _flat(ev.get("not_event_reason")) or (
+                "bonus issue raises no funds" if instr == "bonus"
+                else f"stage {stage}" if stage in _SKIP_STAGES
+                else "not an event"
+            )
+            if skips_out is not None:
+                skips_out.append({
+                    "store": doc.get("store"),
+                    "symbol": doc.get("symbol"),
+                    "doc_key": doc.get("doc_key"),
+                    "candidate_kind": ",".join(kinds),
+                    "event_type": etype or "not_event",
+                    "stage": stage or None,
+                    "instrument": instr,
+                    "reason": reason[:300],
+                    "title": title[:300],
+                    "filing_date": doc.get("filing_date"),
+                })
+            continue
+        if etype not in MODEL_FIRST_KINDS:
+            continue
+
+        row = blank_row(doc, etype)
+        row["method"] = "model"
+        row["why"] = f"model:{EVENT_PROMPT_VERSION}:{stage or etype}"
+        notes: list[str] = []
+        force_unverified = False
+        quarantined_reason = ""
+
+        # Parse & script-verify every printed amount (skip non-monetary capacity counts & per-share price entries)
+        raw_amounts = [a for a in (ev.get("amounts") or []) if isinstance(a, Mapping)]
+        parsed_with_raw = [(a, _parse_printed_amount(a, pages, title)) for a in raw_amounts]
+        valid_amounts = [p for _, p in parsed_with_raw if p["ok"]]
+        pps = ev.get("price_per_share")
+        rejected_amounts = []
+        for raw_a, p in parsed_with_raw:
+            if p["ok"]:
+                continue
+            vt_s = _flat(raw_a.get("value_text"))
+            is_capacity = raw_a.get("currency") is None and bool(
+                re.search(r"\b(MW|MWp|KW|KWp|GW|GWh|MWh|MVA|KVA|MT|MTPA|KL|KM|pieces|nos|units?|vehicles?|buses?|sets?)\b", vt_s, re.I)
+            )
+            is_pps = False
+            if etype == "fund_raise" and pps not in (None, "") and raw_a.get("number") not in (None, ""):
+                try:
+                    if _norm_scale(raw_a.get("unit")) == "unit" and abs(float(raw_a["number"]) - float(pps)) < 1e-4:
+                        is_pps = True
+                except (TypeError, ValueError):
+                    pass
+            if not (is_capacity or is_pps):
+                rejected_amounts.append(p)
+
+        relevant_roles = ("order_size", "annual_value") if etype == "order_win" else (
+            "total_issue", "tranche", "equity_leg", "warrant_leg"
+        )
+        rejected_relevant = [a for a in rejected_amounts if a.get("role") in relevant_roles]
+
+        if etype == "order_win":
+            order_sizes = [a for a in valid_amounts if a["role"] == "order_size"
+                           and not _not_order_size(a["value_text"], title, text)]
+            annuals = [a for a in valid_amounts if a["role"] == "annual_value"]
+            if order_sizes:
+                chosen = order_sizes[0]
+                row["value_text"] = chosen["value_text"]
+                row["page"] = chosen["page"]
+                if chosen["currency"] == "INR":
+                    row["amount_inr_cr"] = chosen["inr_cr"]
+                elif chosen["currency"] == "USD":
+                    row["amount_usd_mn"] = chosen["usd_mn"]
+                else:
+                    notes.append(f"printed in non-INR/non-USD currency ({chosen['currency']}); not converted")
+            elif annuals:
+                ann = annuals[0]
+                row["value_text"] = ann["value_text"]
+                row["page"] = ann["page"]
+                tenure = _verified_tenure_years(ev.get("tenure_years"), ev.get("execution_months"), text)
+                if ann["currency"] == "INR" and ann["inr_cr"] is not None:
+                    row["value_annual"] = ann["inr_cr"]
+                    if tenure:
+                        row["value_total"] = round(ann["inr_cr"] * tenure, 4)
+                        row["amount_inr_cr"] = row["value_total"]
+                        notes.append("annual value x printed tenure (computed)")
+                    else:
+                        notes.append("annual value; tenure not printed, not a total")
+                elif ann["currency"] == "USD" and ann["usd_mn"] is not None:
+                    if tenure:
+                        row["amount_usd_mn"] = round(ann["usd_mn"] * tenure, 4)
+                        notes.append("annual USD value x printed tenure (computed)")
+                    else:
+                        notes.append("annual USD value; tenure not printed")
+                force_unverified = True
+            elif any(_not_order_size(a["value_text"], title, text) for a in valid_amounts if a["role"] == "order_size"):
+                notes.append("amount sits beside a GDV/project-cost/target label, not the order size")
+                force_unverified = True
+            elif rejected_relevant:
+                quarantined_reason = rejected_relevant[0]["reason"]
+        else:
+            # fund_raise: total_issue wins over sum of tranche/leg rows; never add board_limit/offered_size/threshold
+            totals = [a for a in valid_amounts if a["role"] == "total_issue"]
+            parts = [a for a in valid_amounts if a["role"] in ("tranche", "equity_leg", "warrant_leg")]
+            if totals:
+                inr_totals = [a for a in totals if a["currency"] == "INR" and a["inr_cr"] is not None]
+                usd_totals = [a for a in totals if a["currency"] == "USD" and a["usd_mn"] is not None]
+                chosen = inr_totals[0] if inr_totals else (usd_totals[0] if usd_totals else totals[0])
+                row["value_text"] = chosen["value_text"]
+                row["page"] = chosen["page"]
+                if chosen["currency"] == "INR":
+                    row["amount_inr_cr"] = chosen["inr_cr"]
+                elif chosen["currency"] == "USD":
+                    row["amount_usd_mn"] = chosen["usd_mn"]
+                else:
+                    notes.append(f"printed in non-INR/non-USD currency ({chosen['currency']}); not converted")
+            elif parts:
+                inr_parts = []
+                seen_part: set[tuple[float, str]] = set()
+                for p in parts:
+                    if p["currency"] == "INR" and p["inr_cr"] is not None:
+                        pk = (round(p["inr_cr"], 4), p["value_text"])
+                        if pk not in seen_part:
+                            seen_part.add(pk)
+                            inr_parts.append(p)
+                if inr_parts:
+                    row["page"] = inr_parts[0]["page"]
+                    if len(inr_parts) == 1:
+                        row["amount_inr_cr"] = inr_parts[0]["inr_cr"]
+                        row["value_text"] = inr_parts[0]["value_text"]
+                    else:
+                        row["amount_inr_cr"] = round(sum(p["inr_cr"] for p in inr_parts), 4)
+                        row["value_text"] = "; ".join(p["value_text"] for p in inr_parts)
+                        notes.append("sum of printed tranche/leg amounts")
+                        force_unverified = True
+                else:
+                    usd_parts = [p for p in parts if p["currency"] == "USD" and p["usd_mn"] is not None]
+                    if usd_parts:
+                        row["page"] = usd_parts[0]["page"]
+                        row["amount_usd_mn"] = round(sum(p["usd_mn"] for p in usd_parts), 4)
+                        row["value_text"] = "; ".join(dict.fromkeys(p["value_text"] for p in usd_parts))
+                        if len(usd_parts) > 1:
+                            notes.append("sum of printed USD tranche/leg amounts")
+                            force_unverified = True
+            elif rejected_relevant:
+                quarantined_reason = rejected_relevant[0]["reason"]
+            else:
+                notes.append("no printed issue amount")
+                force_unverified = True
+
+        # Awardee / entity_scope check
+        parent = bool(_PARENT_SCOPE.search(_flat(f"{title} {text[:1500]}")))
+        awardee = _flat(ev.get("awardee"))
+        if parent:
+            row["entity_scope"] = "parent"
+            notes.append("parent-company release")
+            force_unverified = True
+        elif ev.get("awardee_is_joint"):
+            row["entity_scope"] = "joint"
+            notes.append("joint: company and subsidiary awarded together")
+        elif awardee:
+            printed = _awardee_printed(awardee, pages, title)
+            is_listed = _is_listed_company_name(awardee, doc) or awardee.lower() in ("the company", "company")
+            if not printed and not (not ev.get("awardee_is_subsidiary") and is_listed):
+                notes.append("awardee not printed on page")
+                force_unverified = True
+                row["entity_scope"] = "company"
+            elif ev.get("awardee_is_subsidiary") and printed and not _is_listed_company_name(awardee, doc) \
+                    and not re.search(r"Company\)?\s+of\s+Coal\s+India", awardee, re.I):
+                row["entity_scope"] = "subsidiary"
+                row["_subsidiary"] = awardee[:120]
+                notes.append(f"subsidiary: {awardee[:120]}")
+            else:
+                row["entity_scope"] = "company"
+                row["_subsidiary"] = None
+        else:
+            row["entity_scope"] = "company"
+            row["_subsidiary"] = None
+
+        # Kind-specific fields
+        if etype == "order_win":
+            row["order_kind"] = _order_kind(title, text[:800])
+            cust = ev.get("customer")
+            if isinstance(cust, str) and _flat(cust):
+                row["customer"] = _clean_party(cust, from_annexure=True) or _flat(cust)[:300]
+            _split_customer(row)
+            exec_m = ev.get("execution_months")
+            if exec_m not in (None, ""):
+                try:
+                    row["execution_months"] = float(exec_m)
+                except (TypeError, ValueError):
+                    row["execution_months"] = None
+            if row["execution_months"] is None and isinstance(ev.get("execution_period"), str):
+                row["execution_months"] = order_wins.months(ev["execution_period"])
+        else:
+            row["instrument"] = instr
+            row["raise_stage"] = stage or "approved_board"
+            for num_k in ("shares", "price_per_share"):
+                val = ev.get(num_k)
+                if val not in (None, ""):
+                    try:
+                        row[num_k] = float(str(val).replace(",", ""))
+                    except (TypeError, ValueError):
+                        row[num_k] = None
+
+        # Quote around matched value_text or opening text
+        if row.get("value_text"):
+            flat_all = _flat(text)
+            idx = flat_all.find(_flat(row["value_text"]))
+            if idx >= 0:
+                start = max(0, idx - MAX_QUOTE // 3)
+                row["quote"] = flat_all[start:min(len(flat_all), start + MAX_QUOTE)].strip()
+        if not row.get("quote"):
+            row["quote"] = _flat(text)[:MAX_QUOTE]
+
+        # Cross-check against script parse
+        mismatch = _check_script_mismatch(row, (script_check or {}).get(etype))
+        if mismatch:
+            notes.append(mismatch)
+            force_unverified = True
+
+        if quarantined_reason:
+            row["status"] = "quarantined"
+            row["amount_inr_cr"] = None
+            row["amount_usd_mn"] = None
+            row["value_text"] = None
+            notes.insert(0, quarantined_reason)
+        elif force_unverified:
+            row["status"] = "unverified"
+        else:
+            _gate_status(row)
+
+        if notes:
+            # Preserve kind_not_gated alongside other notes without duplicates
+            existing_detail = [p.strip() for p in str(row.get("detail") or "").split(";") if p.strip()]
+            for n in notes:
+                if n not in existing_detail:
+                    existing_detail.append(n)
+            row["detail"] = "; ".join(existing_detail)
+        if row.pop("_undisclosed_customer", False):
+            row["detail"] = f"{row['detail']}; customer not disclosed" if row.get("detail") else "customer not disclosed"
+
+        rows_by_kind[etype].append(row)
+
+    out: list[dict[str, Any]] = []
+    for k, kind_rows in rows_by_kind.items():
+        for seq, row in enumerate(kind_rows, 1):
+            row["seq"] = seq
+            out.append(row)
+    return out
+
+
 def ask(client: Client, doc: dict[str, Any], kinds: list[str]) -> str:
-    """One free-model read of the first two pages: the raw reply ("" when every try failed)."""
+    """One hy4 read of the first 4 pages: the raw reply ("" when every try failed)."""
     prompt = model_prompt(doc, kinds)
     for attempt in range(MAX_RETRIES):
         code, body, _usage = client.chat(prompt)
         if code == 200:
             return body
-        wait = retry_after_of(client)
+        wait = retry_after_of(client) if code == 429 else 0.0
         if wait > 0:
             time.sleep(min(wait, MAX_RETRY_WAIT_S))
         else:
@@ -3816,59 +4539,139 @@ def ask(client: Client, doc: dict[str, Any], kinds: list[str]) -> str:
     return ""
 
 
+def _load_cache(cache_path: Path | None) -> dict[str, str]:
+    cache: dict[str, str] = {}
+    if not cache_path or not cache_path.exists():
+        return cache
+    if cache_path.suffix == ".jsonl":
+        for line in cache_path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                rec = json.loads(line)
+                if isinstance(rec, dict) and "key" in rec and "raw" in rec:
+                    cache[str(rec["key"])] = str(rec["raw"])
+            except ValueError:
+                continue
+        return cache
+    try:
+        loaded = json.loads(cache_path.read_text(encoding="utf-8"))
+        if isinstance(loaded, dict):
+            return {str(k): str(v) for k, v in loaded.items()}
+    except (OSError, ValueError):
+        pass
+    return {}
+
+
 def run_model(pending: list[dict[str, Any]], workers: int,
               cache_path: Path | None = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """One hy4-flash-free read per pending filing; a reply is cached so a rerun never re-spends the quota.
+    """One hy4-flash-free read per pending filing; replies are cached by ``(doc_key, prompt_fp)``.
 
-    A 429 is honoured through its Retry-After (the free window was capped twice on 21 Nov): wait, then retry.
+    Honours 429 Retry-After across workers and halts new requests if errors exceed ``ERROR_STOP_SHARE``.
     """
+    fp = prompt_fingerprint()
     if not pending:
-        return [], {"requests": 0, "rows": 0, "cached": 0}
-    cache: dict[str, str] = {}
-    if cache_path and cache_path.exists():
-        try:
-            cache = json.loads(cache_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            cache = {}
-    client = Client(MODEL, MODEL_BODY, "t231-filing-events")
+        return [], {"requests": 0, "rows": 0, "cached": 0, "errors": 0, "skips": [], "prompt_fp": fp, "stopped": None}
+    cache = _load_cache(cache_path)
+    client = Client(MODEL, MODEL_BODY, "t242-filing-events")
     out: list[dict[str, Any]] = []
+    skips: list[dict[str, Any]] = []
     lock = threading.Lock()
     requests = 0
     cached = 0
+    errors = 0
+    cooldown_until = 0.0
+    stop_event = threading.Event()
+    dirty = 0
+
+    def flush_json() -> None:
+        if cache_path and cache_path.suffix != ".jsonl":
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            cache_path.write_text(json.dumps(cache), encoding="utf-8")
+
+    def append_jsonl(key: str, raw: str) -> None:
+        if cache_path and cache_path.suffix == ".jsonl":
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            with cache_path.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps({"key": key, "raw": raw}, ensure_ascii=False) + "\n")
 
     def key_of(doc: dict[str, Any]) -> str:
-        return f"{doc['doc_key']}|{','.join(sorted(doc['_missing']))}"
+        kinds = sorted(doc.get("_missing") or [])
+        if any(k in MODEL_FIRST_KINDS for k in kinds):
+            return f"{doc['doc_key']}|{fp}"
+        return f"{doc['doc_key']}|{','.join(kinds)}|{fp}"
 
     def one(doc: dict[str, Any]) -> None:
-        nonlocal requests, cached
+        nonlocal requests, cached, errors, cooldown_until, dirty
+        if stop_event.is_set():
+            return
         key = key_of(doc)
+        kinds = list(doc.get("_missing") or ["order_win", "fund_raise"])
         with lock:
             raw = cache.get(key)
         if raw is None:
-            raw = ask(client, doc, list(doc["_missing"]))
+            # Respect any shared 429 cooldown before firing
+            with lock:
+                delay = cooldown_until - time.monotonic()
+            if delay > 0:
+                time.sleep(min(delay, MAX_RETRY_WAIT_S))
+            if stop_event.is_set():
+                return
+            prompt = model_prompt(doc, kinds)
+            raw = ""
+            for attempt in range(MAX_RETRIES):
+                code, body, _usage = client.chat(prompt)
+                if code == 200 and body:
+                    raw = body
+                    break
+                wait = retry_after_of(client) if code == 429 else 0.0
+                if code == 429 and wait > 0:
+                    bounded = min(wait, MAX_RETRY_WAIT_S)
+                    with lock:
+                        cooldown_until = max(cooldown_until, time.monotonic() + bounded)
+                    time.sleep(bounded)
+                else:
+                    time.sleep(2.0 * (attempt + 1))
             with lock:
                 requests += 1
                 if raw:
                     cache[key] = raw
-                    if cache_path:
-                        cache_path.parent.mkdir(parents=True, exist_ok=True)
-                        cache_path.write_text(json.dumps(cache), encoding="utf-8")
+                    dirty += 1
+                    if cache_path and cache_path.suffix == ".jsonl":
+                        append_jsonl(key, raw)
+                    elif dirty >= 10:
+                        flush_json()
+                        dirty = 0
+                else:
+                    errors += 1
+                if requests >= 20 and errors / requests > ERROR_STOP_SHARE:
+                    stop_event.set()
         else:
             with lock:
                 cached += 1
         if raw:
-            rows = model_rows(doc, list(doc["_missing"]), raw)
+            doc_skips: list[dict[str, Any]] = []
+            rows = model_rows(doc, kinds, raw, script_check=doc.get("_script_check"), skips_out=doc_skips)
             with lock:
                 out.extend(rows)
+                skips.extend(doc_skips)
 
-    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
-        list(pool.map(one, pending))
-    return out, {"requests": requests, "cached": cached, "rows": len(out)}
+    try:
+        with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+            list(pool.map(one, pending))
+    finally:
+        if dirty:
+            flush_json()
+
+    stopped_msg = (f"hy4 error rate {errors}/{requests} ({errors/requests:.1%}) > {ERROR_STOP_SHARE:.0%}"
+                   if requests >= 20 and errors / requests > ERROR_STOP_SHARE else None)
+    return out, {"requests": requests, "cached": cached, "errors": errors,
+                 "rows": len(out), "skips": skips, "prompt_fp": fp, "stopped": stopped_msg}
 
 
 # ------------------------------------------------------------------ build + report
 def _insert(con: sqlite3.Connection, rows: list[dict[str, Any]], amends: list[dict[str, Any]],
-            meta: dict[str, Any] | None = None) -> None:
+            meta: dict[str, Any] | None = None, skips: list[dict[str, Any]] | None = None) -> None:
     con.executemany(
         f"INSERT INTO event ({','.join(COLUMNS)}) VALUES ({','.join('?' * len(COLUMNS))})",
         [tuple(row.get(column) for column in COLUMNS) for row in rows])
@@ -3876,19 +4679,26 @@ def _insert(con: sqlite3.Connection, rows: list[dict[str, Any]], amends: list[di
         "INSERT INTO amend (doc_key, symbol, amends, filing_date, known_at, why) VALUES (?,?,?,?,?,?)",
         [(a["doc_key"], a.get("symbol"), a["amends"], a.get("filing_date"), a.get("known_at"), a.get("why"))
          for a in amends])
+    if skips:
+        con.executemany(
+            "INSERT INTO skip_log (store, symbol, doc_key, candidate_kind, event_type, stage, instrument, "
+            "reason, title, filing_date) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            [(s.get("store"), s.get("symbol"), s["doc_key"], s.get("candidate_kind"), s.get("event_type"),
+              s.get("stage"), s.get("instrument"), s.get("reason"), s.get("title"), s.get("filing_date"))
+             for s in skips])
     if meta is not None:
         con.executemany("INSERT INTO run_meta (key, value) VALUES (?, ?)",
                         [(key, json.dumps(value)) for key, value in meta.items()])
 
 
 def write_db(path: Path, rows: list[dict[str, Any]], amends: list[dict[str, Any]],
-             meta: dict[str, Any]) -> None:
+             meta: dict[str, Any], skips: list[dict[str, Any]] | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.unlink(missing_ok=True)
     con = sqlite3.connect(path)
     try:
         con.executescript(SCHEMA)
-        _insert(con, rows, amends, meta)
+        _insert(con, rows, amends, meta, skips=skips)
         con.commit()
     finally:
         con.close()
@@ -3900,10 +4710,16 @@ def _ensure_event_columns(con: sqlite3.Connection) -> None:
     for column in COLUMNS:
         if column not in have:
             con.execute(f"ALTER TABLE event ADD COLUMN {column} TEXT")
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS skip_log ("
+        "skip_id INTEGER PRIMARY KEY, store TEXT, symbol TEXT, doc_key TEXT NOT NULL, "
+        "candidate_kind TEXT, event_type TEXT, stage TEXT, instrument TEXT, reason TEXT, title TEXT, filing_date TEXT)"
+    )
 
 
 def merge_db(path: Path, baseline: Path, rows: list[dict[str, Any]], amends: list[dict[str, Any]],
-             meta: dict[str, Any], doc_keys: Iterable[str]) -> None:
+             meta: dict[str, Any], doc_keys: Iterable[str],
+             skips: list[dict[str, Any]] | None = None) -> None:
     """T-233: copy ``baseline`` to ``path`` and replace only the filings this scoped run re-read."""
     from reality_engine.research.selector import copy_db
 
@@ -3916,7 +4732,8 @@ def merge_db(path: Path, baseline: Path, rows: list[dict[str, Any]], amends: lis
             marks = ",".join("?" * len(keys))
             con.execute(f"DELETE FROM event WHERE doc_key IN ({marks})", keys)
             con.execute(f"DELETE FROM amend WHERE doc_key IN ({marks})", keys)
-        _insert(con, rows, amends)
+            con.execute(f"DELETE FROM skip_log WHERE doc_key IN ({marks})", keys)
+        _insert(con, rows, amends, skips=skips)
         con.execute("DELETE FROM run_meta WHERE key='scoped_merge'")
         con.execute("INSERT INTO run_meta (key, value) VALUES ('scoped_merge', ?)",
                     (json.dumps({"baseline": str(baseline), "documents": len(keys),
@@ -3926,13 +4743,29 @@ def merge_db(path: Path, baseline: Path, rows: list[dict[str, Any]], amends: lis
         con.close()
 
 
+def _script_cross_check(doc: dict[str, Any], want_ow: bool, want_fr: bool) -> dict[str, list[dict[str, Any]]]:
+    """Run existing script parse in memory for ``order_win`` / ``fund_raise`` amount cross-check only."""
+    title, text = doc.get("title") or "", doc.get("text") or ""
+    head = doc.get("head") or text
+    out: dict[str, list[dict[str, Any]]] = {}
+    if want_ow:
+        ow_list = order_rows(title, text, doc.get("symbol") or "", head=head)
+        if ow_list:
+            out["order_win"] = ow_list
+    if want_fr:
+        fr = raise_fields(title, head, text)
+        if fr:
+            out["fund_raise"] = [fr]
+    return out
+
+
 def build(stores: list[str] | None = None, limit: int | None = None, use_model: bool = True,
           workers: int = 4, out: Path = DEFAULT_OUT, cache: Path | None = DEFAULT_CACHE,
           only: Any = None, baseline: Path | str | None = None) -> dict[str, Any]:
     """Scan every store's announcements and write the event DB. Returns the run counts.
 
-    T-233: ``only`` (a selector) limits the stores/documents re-read, and ``baseline`` makes the run
-    copy that DB to ``out`` and replace just those filings' rows.
+    Model-first for ``order_win`` and ``fund_raise`` when ``use_model=True`` (no 30% MODEL_STOP_SHARE stop for
+    those two kinds); ``capex_approval``, ``capacity_commissioned`` and ``order_amendment`` stay script-first.
     """
     from reality_engine.research.driver_claims import list_stores
 
@@ -3941,9 +4774,12 @@ def build(stores: list[str] | None = None, limit: int | None = None, use_model: 
         chosen = [store for store in chosen if only.store(store)]
     rows: list[dict[str, Any]] = []
     amends: list[dict[str, Any]] = []
-    pending: list[dict[str, Any]] = []
+    skips: list[dict[str, Any]] = []
+    pending_first: list[dict[str, Any]] = []
+    pending_fallback: list[dict[str, Any]] = []
     by_class: Counter[str] = Counter()
     filings = 0
+    other_classified = 0
     docs_seen = 0
     doc_keys: list[str] = []
     for store in chosen:
@@ -3961,41 +4797,94 @@ def build(stores: list[str] | None = None, limit: int | None = None, use_model: 
             docs_seen += 1
             doc_keys.append(str(doc["doc_key"]))
             subset.append(doc)
-        parsed: list[tuple[dict[str, Any], list[dict[str, Any]], list[str]]] = []
+        parsed: list[tuple[dict[str, Any], list[dict[str, Any]], list[str], list[str]]] = []
         classified_keys: set[str] = set()
         for doc in subset:
-            found, missing = event_rows(doc)
-            parsed.append((doc, found, missing))
-            if found:
-                classified_keys.add(doc["doc_key"])
+            title, text = doc.get("title") or "", doc.get("text") or ""
+            head = doc.get("head") or text
+            filing_date = doc.get("filing_date")
+            classes = classify(title, head, filing_date=filing_date, text=text)
+            if use_model:
+                want_ow = ("order_win" in classes) or _order_win_candidate(title, head)
+                want_fr = ("fund_raise" in classes) or _fund_raise_candidate(title, head, text)
+                cand_kinds = [k for k, flag in (("order_win", want_ow), ("fund_raise", want_fr)) if flag]
+                other_classes = [k for k in classes if k not in MODEL_FIRST_KINDS]
+                found: list[dict[str, Any]] = []
+                missing: list[str] = []
+                amendment_fields = order_amendment_fields(title, head, text) or {} if "order_amendment" in other_classes else {}
+                for kind in other_classes:
+                    if kind == "order_amendment":
+                        fields = amendment_fields
+                    elif kind == "capex_approval":
+                        fields = capex_fields(title, head, text) or {}
+                    else:
+                        fields = capacity_fields(title, head, text, filing_date=filing_date) or {}
+                    row, absent = _assemble_row(doc, kind, fields, 1)
+                    found.append(row)
+                    if absent:
+                        missing.append(kind)
+                if found or cand_kinds:
+                    classified_keys.add(doc["doc_key"])
+                parsed.append((doc, found, missing, cand_kinds))
+            else:
+                found, missing = event_rows(doc)
+                if found:
+                    classified_keys.add(doc["doc_key"])
+                parsed.append((doc, found, missing, []))
         amend, skipped = amend_rows(subset, classified_keys)
         amends.extend(amend)
-        for doc, found, missing in parsed:
+        for doc, found, missing, cand_kinds in parsed:
             if doc["doc_key"] in skipped:
                 continue
             if found:
                 filings += 1
+                other_classified += 1
             by_class.update({kind: 1 for kind in {row["kind"] for row in found}})
             rows.extend(found)
+            if cand_kinds:
+                by_class.update({k: 1 for k in cand_kinds})
+                doc["_missing"] = cand_kinds
+                doc["_script_check"] = _script_cross_check(
+                    doc, "order_win" in cand_kinds, "fund_raise" in cand_kinds,
+                )
+                pending_first.append(doc)
             if missing:
-                doc["_missing"] = missing
-                pending.append(doc)
+                doc_fb = dict(doc)
+                doc_fb["_missing"] = missing
+                pending_fallback.append(doc_fb)
         if limit is not None and docs_seen >= limit:
             break
 
-    classified = len({(row["doc_key"]) for row in rows}) or filings
-    need_share = len(pending) / classified if classified else 0.0
+    fb_denom = other_classified or len({row["doc_key"] for row in rows})
+    need_share = len(pending_fallback) / fb_denom if fb_denom else 0.0
+    fp = prompt_fingerprint()
     meta: dict[str, Any] = {
-        "stores": len(chosen), "docs": docs_seen, "classified_filings": classified,
-        "by_class": dict(by_class), "script_rows": len(rows), "need_model": len(pending),
-        "need_model_share": round(need_share, 4), "model_rows": 0, "workers": workers,
-        "stopped": None,
+        "stores": len(chosen), "docs": docs_seen,
+        "classified_filings": len({row["doc_key"] for row in rows}) + len(pending_first),
+        "by_class": dict(by_class), "script_rows": len(rows),
+        "model_first_candidates": len(pending_first),
+        "need_model": len(pending_fallback),
+        "need_model_share": round(need_share, 4),
+        "model_rows": 0, "model_requests": 0, "model_cached": 0, "model_errors": 0,
+        "skipped": 0, "skip_reasons": {},
+        "prompt_version": EVENT_PROMPT_VERSION, "prompt_fp": fp,
+        "workers": workers, "stopped": None,
     }
-    if pending and use_model and need_share > MODEL_STOP_SHARE:
-        meta["stopped"] = (f"more than {MODEL_STOP_SHARE:.0%} of classified filings need the model "
-                           f"({len(pending)}/{classified})")
-    elif pending and use_model:
-        modelled, stats = run_model(pending, workers, cache)
+    if use_model and pending_first:
+        modelled_first, stats_first = run_model(pending_first, workers, cache)
+        rows.extend(modelled_first)
+        skips.extend(stats_first["skips"])
+        meta["model_rows"] += stats_first["rows"]
+        meta["model_requests"] += stats_first["requests"]
+        meta["model_cached"] += stats_first["cached"]
+        meta["model_errors"] += stats_first["errors"]
+        if stats_first.get("stopped"):
+            meta["stopped"] = stats_first["stopped"]
+    if pending_fallback and use_model and need_share > MODEL_STOP_SHARE:
+        fb_stop = f"more than {MODEL_STOP_SHARE:.0%} of fallback filings need the model ({len(pending_fallback)}/{fb_denom})"
+        meta["stopped"] = f"{meta['stopped']}; {fb_stop}" if meta["stopped"] else fb_stop
+    elif pending_fallback and use_model and not meta["stopped"]:
+        modelled, stats = run_model(pending_fallback, workers, cache)
         def _has_val(r: dict[str, Any]) -> bool:
             return any(r.get(k) is not None
                        for k in ("amount_inr_cr", "amount_usd_mn", "value_annual", "capacity_value"))
@@ -4004,14 +4893,18 @@ def build(stores: list[str] | None = None, limit: int | None = None, use_model: 
                    if row["status"] != "quarantined" and _has_val(row)
                    and "amount unit not printed" not in str(row.get("detail") or "")
                    and "model filled no amount" not in str(row.get("detail") or "")}
-        # a model row replaces the script row of the same (doc_key, kind)
         rows = [row for row in rows if not ((row["doc_key"], row["kind"]) in covered and row["method"] == "script"
                                             and str(row.get("detail") or "").startswith("amount not filled by script"))]
         rows.extend(modelled)
-        meta["model_rows"] = stats["rows"]
-        meta["model_requests"] = stats["requests"]
-    elif pending:
+        meta["model_rows"] += stats["rows"]
+        meta["model_requests"] += stats["requests"]
+        meta["model_cached"] += stats["cached"]
+        meta["model_errors"] += stats["errors"]
+    elif pending_fallback and not use_model:
         meta["stopped"] = "model pass disabled (--no-model)"
+
+    meta["skipped"] = len(skips)
+    meta["skip_reasons"] = dict(Counter(s["reason"] for s in skips))
 
     rows = _fold_same_order(rows, amends)
     rows = _fold_same_raise(rows, amends)
@@ -4020,7 +4913,7 @@ def build(stores: list[str] | None = None, limit: int | None = None, use_model: 
     _assign_raise_ids(rows)
     rows = _drop_restated_capacity(rows)
 
-    # one event per (filing, class), the best-filled row stands
+    # one event per (filing, class, seq), the best-filled row stands
     rank = {"verified": 3, "unverified": 2, "quarantined": 1}
     best: dict[tuple[str, str, int], dict[str, Any]] = {}
     for row in rows:
@@ -4045,13 +4938,13 @@ def build(stores: list[str] | None = None, limit: int | None = None, use_model: 
     quarantined = sum(1 for row in rows if row["status"] == "quarantined")
     meta["quarantined"] = quarantined
     meta["quarantined_share"] = round(quarantined / len(rows), 4) if rows else 0.0
-    if rows and quarantined / len(rows) > QUARANTINE_STOP_SHARE:
+    if rows and quarantined / len(rows) > QUARANTINE_STOP_SHARE and not meta["stopped"]:
         meta["stopped"] = (f"more than {QUARANTINE_STOP_SHARE:.0%} of events quarantined "
                            f"({quarantined}/{len(rows)})")
     if baseline is not None:
-        merge_db(out, Path(baseline), rows, amends, meta, doc_keys)
+        merge_db(out, Path(baseline), rows, amends, meta, doc_keys, skips=skips)
     else:
-        write_db(out, rows, amends, meta)
+        write_db(out, rows, amends, meta, skips=skips)
     return meta
 
 
@@ -4062,6 +4955,8 @@ def _report_lines(db: Path, seed: int = 7) -> list[str]:
         meta = {r["key"]: json.loads(r["value"]) for r in con.execute("SELECT key, value FROM run_meta")}
         total = con.execute("SELECT COUNT(*) FROM event").fetchone()[0]
         lines = [f"# T-231 filing events -- {db}", "", f"events: {total}"]
+        if meta.get("prompt_fp"):
+            lines.append(f"prompt: {meta.get('prompt_version')} (fp={meta.get('prompt_fp')})")
         if meta.get("stopped"):
             lines.append(f"STOPPED: {meta['stopped']}")
         lines.append(f"announcements read: {meta.get('docs')} in {meta.get('stores')} stores; "
@@ -4072,6 +4967,12 @@ def _report_lines(db: Path, seed: int = 7) -> list[str]:
         for r in con.execute("SELECT kind, status, method, COUNT(*) n FROM event "
                              "GROUP BY kind, status, method ORDER BY kind, status, method"):
             lines.append(f"  {r['kind']} {r['status']} {r['method']}: {r['n']}")
+        has_skip = con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='skip_log'").fetchone()
+        if has_skip:
+            skip_total = con.execute("SELECT COUNT(*) FROM skip_log").fetchone()[0]
+            lines.append(f"skipped (skip_log): {skip_total}")
+            for r in con.execute("SELECT reason, COUNT(*) n FROM skip_log GROUP BY reason ORDER BY n DESC LIMIT 20"):
+                lines.append(f"  skip [{r['n']}]: {r['reason']}")
         lines.append("companies / month-ends with >=1 verified event:")
         for kind in ("order_win", "capex_approval", "fund_raise"):
             row = con.execute(
