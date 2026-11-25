@@ -1591,10 +1591,9 @@ def test_t242_r3_fix4_l1_and_loss_reduction_are_awards() -> None:
     )
     rows, _missing = fe.event_rows(l1)
     assert not [r for r in rows if r["kind"] == "order_amendment"], rows
-    # T-242 round 6: an L1-only intimation is not an order yet; the printed value is kept, the status is not.
-    l1_row = _row(rows, "order_win")
-    assert l1_row["amount_inr_cr"] == pytest.approx(148.1069)
-    assert (l1_row["status"], l1_row["why"]) == ("unverified", "l1_only")
+    # T-242 round 8: an L1-only intimation is not an order won at all (the round-6 rule only unverified it,
+    # which still served a wrong row through the audit).  The received letter of award below stays an order.
+    assert not [r for r in rows if r["kind"] == "order_win"], rows
 
     loa = _doc(
         "EMS Limited has informed the exchange regarding Intimation of Receipt of letter of award for Development of "
@@ -2049,9 +2048,8 @@ def test_t242_r6_an_l1_only_intimation_is_unverified_but_a_received_award_stays(
         "contract(s) Order value (excluding GST) of Rs. 18381.49 lakhs (Rupees Eighteen Thousand Three Hundred "
         "Eighty-one lakhs and Forty-Nine Thousand only).",
     )
-    jal_row = _row(fe.event_rows(jal)[0], "order_win")
-    assert (jal_row["status"], jal_row["why"]) == ("unverified", "l1_only")
-    assert jal_row["amount_inr_cr"] == pytest.approx(183.8149)
+    # T-242 round 8: the L1-only letter is not an order_win row at all; the received LoA below stays one.
+    assert not [r for r in fe.event_rows(jal)[0] if r["kind"] == "order_win"]
 
     # audit #26: the LoA is received; a lowest-bidder mention elsewhere does not unverify it.
     kolkata = _doc(
@@ -2613,3 +2611,240 @@ def test_t242_r7b_a_raise_printed_past_page_two_still_classifies() -> None:
     ), "pages": pages, "head": f"{pages[1]}\n{pages[2]}", "text": "\n".join(pages[page] for page in sorted(pages))}
     row = _row(fe.event_rows(doc)[0], "fund_raise")
     assert row["amount_inr_cr"] == 475.003
+
+
+# ---- T-242 round 8: structural kind vetoes, scope, value and customer rules --------------------------------
+def test_t242_r8_an_authority_order_or_a_regulator_approval_is_not_an_order_win() -> None:
+    """fresh6: a tax/IRDAI/legal-metrology order issued TO the company, and a SEBI approval to launch a
+    product, all said "order"/"contract" and were served as order wins (#2, #8, #22, #24, #31, #33, #38)."""
+    cases = [
+        ("BSE Limited has informed the Exchange regarding 'SEBI Approval to launch Derivative Contracts on BSE "
+         "Focused IT Index'.",
+         "This is to inform that BSE has received approval from the Securities and Exchange Board of India (SEBI) "
+         "to launch derivative contracts on the 'BSE Focused IT Index'."),
+        ("Receipt of Order from the IRDAI",
+         "IRDAI issued an order on August 19, 2026, whereby the Company has been warned for not complying with "
+         "the applicable EoM limits for FY 2024-25 and has directed not to open new place of business for six "
+         "months."),
+        ("Intimation of compounding order dated November 19, 2024 received from Office of Senior Inspector Legal "
+         "Metrology, Kalindi Vihar, Agra under Legal Metrology Act, 2009",
+         "We wish to inform you that the Company has received compounding order dated November 19, 2024 from "
+         "Office of Senior Inspector Legal Metrology, Kalindi Vihar, Agra under Legal Metrology Act, 2009."),
+        ("With reference to our letter dated July 9,2025, We wish to inform you that the Company has received an "
+         "order of acceptance of reply against the notice issued under section 61 (Form-GST AMT-12) ....",
+         "we wish to inform you that the company has received an order of acceptance of reply against the notice "
+         "issued under section 61 (Form- GST AMT -12) intimating dropping of the proceeding, from the Office of "
+         "the Superintendent, Central Goods & Service Tax Range - Baddi II."),
+        ("We wish to inform you that the Company has received an order from the office of Commissioner (Appeals) "
+         "CGST Appeals Commissionerate Chandigarh on an appeal filed by the company against ....",
+         "the Company has received an Order from the Office of the Commissioner (Appeals), Central Goods & "
+         "Services Tax Appeals Commissionerate, Chandigarh on an appeal filed by the Company against Order No. "
+         "07/GST/AC/Div Baddi/2024-25."),
+        ("Intimation under Regulation 30 of the Securities and Exchange Board of India (LODR) Regulations, 2015",
+         "we hereby inform you that the Company has received an order dated May 27, 2026 from the Office of the "
+         "Deputy Commissioner, State Tax, Ahmedabad directing reversal of Input Tax Credit amounting to "
+         "Rs. 11,60,838/-."),
+        ("Disclosure under the Regulation 30 of SEBI (LODR) Regulations, 2015",
+         "We hereby inform you that the Company has received a Refund Sanction Order on July 14, 2026, at 16:58 "
+         "hours from the Office of the Deputy Commissioner of State Tax, Mumbai. Pursuant to the order, a refund "
+         "of Rs 22.12 crores has been sanctioned to the Company."),
+    ]
+    for title, text in cases:
+        assert fe._not_an_order(title, text), title
+        assert not [r for r in fe.event_rows(_doc(title, text))[0] if r["kind"] == "order_win"], title
+
+    # counter-test: a real LoA received FROM an authority stays an order.
+    loa = _doc(
+        "Intimation of receipt of Letter of Acceptance",
+        "The Company has received Letter of Acceptance from the Malda Division of the Eastern Railway Zone for "
+        "the provision of coach guidance display boards at major stations. The aggregate value of the said work "
+        "order is Rs. 3,04,95,149.54.")
+    assert _row(fe.event_rows(loa)[0], "order_win")["amount_inr_cr"] == pytest.approx(3.0495)
+
+    # counter-test: a GST-registered customer and an "excluding GST" value are not vetoed.
+    gst_customer = _doc(
+        "Receipt of Order",
+        "The Company has received a purchase order from Acme Industries Limited (GSTIN 27AAACA1234A1Z5) for "
+        "supply of pumps, valued at Rs. 12.50 Crore excluding GST.")
+    assert _row(fe.event_rows(gst_customer)[0], "order_win")["amount_inr_cr"] == pytest.approx(12.5)
+
+
+def test_t242_r8_board_outcomes_and_appointments_are_not_orders() -> None:
+    board = _doc(
+        "Outcome of Board Meeting pursuant to Regulation 30 and 33 of the SEBI (LODR) Regulations, 2015",
+        "Please be informed that the Board of Directors at its meeting held today has inter-alia considered and "
+        "approved the Financial Results for the quarter, the appointment of Ms. Sucharita Basu De as an Additional "
+        "Director, and the Capital Expenditure at Plant 8. Ms. De has confirmed that she is not debarred from "
+        "holding the office of director by virtue of any order of SEBI.")
+    assert not [r for r in fe.event_rows(board)[0] if r["kind"] == "order_win"]
+    cmd = _doc(
+        "In terms of Government of India, Ministry of Railways, letter dated 1st July, 2024, Shri Hari Mohan "
+        "Gupta has assumed the charge for the post of CMD of IRCON w.e.f. 1st July, 2024 (A/N), ....",
+        "It is to inform that Shri Hari Mohan Gupta has assumed the charge of the post of CMD of IRCON w.e.f. "
+        "1st July, 2024, till the date of his superannuation i.e. 30th June, 2026 or until further orders, "
+        "whichever is earlier.")
+    assert not [r for r in fe.event_rows(cmd)[0] if r["kind"] == "order_win"]
+
+    # unless they quote an award: a board outcome that reports the win is still an order.
+    quoted = _doc(
+        "Outcome of Board Meeting",
+        "The Board noted that the Company has received a work order worth Rs. 45.60 Crore from Northern Railway "
+        "for supply of coaches.")
+    assert _row(fe.event_rows(quoted)[0], "order_win")["amount_inr_cr"] == pytest.approx(45.6)
+
+
+def test_t242_r8_an_loi_to_set_up_the_own_outlet_or_facility_is_not_an_order() -> None:
+    outlet = _doc(
+        "Announcement under Regulation 30 (LODR) Regulations, 2015-Press Release- Receipt of Letter of Intent",
+        "We wish to inform you that our Company has received a Letters of Intent (LOI) from Maruti Suzuki India "
+        "Limited to establish a new independent True Value outlet for pre-owned vehicles in Bangalore, Karnataka.")
+    assert not [r for r in fe.event_rows(outlet)[0] if r["kind"] == "order_win"]
+    facilities = _doc(
+        "Press Release titled- 'PVSL ventures into the state of Karnataka with Ather : To Launch two facilities "
+        "in Bangalore.' Intimation is pursuant to Regulation 30 of the SEBI (LODR) Regulations, 2015",
+        "We wish to inform you that our wholly owned subsidiary Company, 'Kuttukaran Cars Private Limited' has "
+        "received two Letters of Intent (LOIs) for setting up Ather facilities in Bangalore.")
+    assert not [r for r in fe.event_rows(facilities)[0] if r["kind"] == "order_win"]
+    dealership = _doc(
+        "Announcement under Regulation 30 of SEBI (LODR) Regulations, 2015 with respect to receipt of Letter of "
+        "Intent by Prabal Motors Private Limited, step down subsidiary.",
+        "We wish to inform you that our subsidiary Company, 'Prabal Motors Private Limited' has received a Letter "
+        "of Intent (LOI) to establish eight state-of-the-art 3S facilities (Sales, Service and Spare Parts) for "
+        "BharatBenz in the state of Punjab.")
+    assert not [r for r in fe.event_rows(dealership)[0] if r["kind"] == "order_win"]
+
+    # counter-test: an LOI for a capacity project is an order, not the company's own outlet.
+    solar = _doc(
+        "Receipt of Letter of Intent",
+        "The Company has received a Letter of Intent from Sun Grid Power Limited to set up a 250 MW solar power "
+        "plant in Rajasthan, valued at Rs. 1,100 Crore.")
+    assert _row(fe.event_rows(solar)[0], "order_win")["amount_inr_cr"] == pytest.approx(1100.0)
+
+
+def test_t242_r8_subsidiary_spellings_and_a_joint_company_subsidiary_award() -> None:
+    material = _doc(
+        "M/s DEE Piping Systems (Thailand) Co. Ltd. which is Material Subsidiary of the Company has received an "
+        "order amounting to Euro 1.9 million equivalent to INR 20 Crores.",
+        "we would like to inform that Material Subsidiary of the Company, M/s DEE Piping Systems (Thailand) Co., "
+        "Ltd. has received a Letter of Intent for supply of HRSG piping for an International customer.")
+    row = _row(fe.event_rows(material)[0], "order_win")
+    assert row["entity_scope"] == "subsidiary"
+    assert "DEE Piping Systems (Thailand) Co. Ltd" in (row["detail"] or "")
+
+    awarded_to = _doc(
+        "Bagging of order for CCTV Surveillance System",
+        "we are pleased to inform the stakeholders that our subsidiary Company M/s. NIS Facility Management "
+        "Services Private Limited has been awarded a work order by the West Bengal Police Housing and "
+        "Infrastructure Development Corporation Limited for CCTV Surveillance. The total value of the Work order "
+        "is INR 53,14,666/-.")
+    row = _row(fe.event_rows(awarded_to)[0], "order_win")
+    assert row["entity_scope"] == "subsidiary" and "NIS Facility" in (row["detail"] or "")
+
+    i_e = _doc(
+        "This is to inform you that our wholly owned subsidiary Company i.e. Dynasty Modular Furnitures Pvt. Ltd. "
+        "has received Work Order/LOI from M3M Group for Supply & Installation of Wardrobes ....",
+        "this is to inform that our wholly owned subsidiary company i.e. Dynasty Modular Furnitures Pvt. Ltd. has "
+        "received the work order/LOI from M3M Group for Supply & Installation of Wardrobes for a total value of "
+        "Rs. 3.60 Crore (including GST).")
+    row = _row(fe.event_rows(i_e)[0], "order_win")
+    assert row["entity_scope"] == "subsidiary" and "Dynasty Modular" in (row["detail"] or "")
+
+    # a company AND a subsidiary awarded together: joint, with the company's own printed share.
+    joint = _doc(
+        "As per the attachment.",
+        "we are pleased to inform you that Man Industries (India) Limited ('the Company') and National Pipe "
+        "Company Limited ('NPC'), step-down subsidiary of the Company situated in Saudi Arabia have received new "
+        "orders of approx. Rs.300 Crores (Rupees Three Hundred Crores only) and approx. Rs.700 Crores (Rupees "
+        "Seven Hundred Crores only) respectively. Annexure-A g) Broad consideration or size of the order(s)/ "
+        "contract(s); Approx. Rs.1,000 Crores.")
+    row = _row(fe.event_rows(joint)[0], "order_win")
+    assert row["entity_scope"] == "joint"
+    assert row["amount_inr_cr"] == pytest.approx(300.0)
+
+
+def test_t242_r8_gdv_target_and_own_investment_are_never_the_order_value() -> None:
+    # #48: the title's Rs 1,000 crore is an order-book target; the release's own size is ~Rs 400 crore.
+    target = _doc(
+        "Please find the enclosed Press Release to be issued by the Company.",
+        "Sub: Press / Media Release - Jupiter Wagons secures 100 MW/400 MWh BESS capacity in West Bengal; "
+        "targeting Rs. 1,000 crore order book. Jupiter Wagons Limited has emerged as the successful bidder for "
+        "two standalone BESS projects with a combined capacity of 100 MW/400 MWh. These projects add meaningful "
+        "scale and target a BESS order book of approximately Rs. 1,000 crore by FY27. This involves supply and "
+        "commissioning of an approximately Rs. 400 crore of BESS project and will operate under a 15-year BOO model.")
+    assert _row(fe.event_rows(target)[0], "order_win")["amount_inr_cr"] == pytest.approx(400.0)
+
+    # #39: a project's GDV is not the developer mandate's size; the model must not store it either.
+    gdv_doc = _doc(
+        "Press Release of receipt of order by a subsidiary company",
+        "Arisinfra Solutions Limited today announced that its subsidiary has been appointed by Transcon Group as "
+        "the Developer-as-a-Service partner for Transcon UNO at Kalina. The project has a GDV of Rs. 400 Cr.")
+    (gdv_row,) = fe.model_rows(gdv_doc, ["order_win"],
+                               _model_reply(amount_inr_cr=400, customer="Transcon Group",
+                                            value_text="Rs. 400 Cr GDV Project in Kalina"))
+    assert gdv_row["amount_inr_cr"] is None
+    assert "GDV" in (gdv_row["detail"] or "") or "project cost" in (gdv_row["detail"] or "")
+
+    # #54: the company's own facility investment never stands in for the order value.
+    invest = _doc(
+        "Announcement under Regulation 30 of SEBI (LODR) Regulations, 2015",
+        "Prabal Motors Private Limited has received a Letter of Intent to establish eight 3S facilities for "
+        "BharatBenz. The facilities represent a cumulative investment of approximately Rs. 13 crores.")
+    assert not [r for r in fe.event_rows(invest)[0] if r["kind"] == "order_win"]
+
+    # a non-INR, non-USD value is stored as printed, never converted without a printed rate (#13, #51).
+    eur = _doc(
+        "Intimation of Receiving of Order/Contracts",
+        "The Company has received an order from Grid Solutions SAS, France. a) Name of the entity awarding the "
+        "order(s)/contract(s) Grid Solutions SAS, France g) Broad consideration or size of the order(s)/"
+        "contract(s) 100 Million Euros.")
+    eur_row = _row(fe.event_rows(eur)[0], "order_win")
+    assert eur_row["amount_inr_cr"] is None and eur_row["amount_usd_mn"] is None
+    assert "100 Million Euros" in (eur_row["value_text"] or "")
+    assert "non-INR/non-USD currency" in (eur_row["detail"] or "")
+
+
+def test_t242_r8_customer_brackets_ocr_hyphens_consortium_and_never_the_subsidiary() -> None:
+    assert fe._clean_party("( Hindustan Aeronautics Limited") == "Hindustan Aeronautics Limited"
+    hal = _doc(
+        "Intimation of work order received from Hindustan Aeronautics Limited.",
+        "7. Broad consideration or size of the order(s)/contract Rs. 47.14 Lakhs with 100% payment terms. "
+        "1. Name of the entity awarding the order(s)/contract ( Hindustan Aeronautics Limited, Kanpur.")
+    assert _row(fe.event_rows(hal)[0], "order_win")["customer"] == "Hindustan Aeronautics Limited"
+
+    consortium = _doc(
+        "Please find enclosed herewith our press release titled 'Ramkrishna Forgings Limited Secures Prestigious "
+        "Order for Vande Bharat Train Set'.",
+        "This order, valued at INR 270 crores, is to be supplied to the BHEL- TRSL consortium, marking a pivotal "
+        "moment in the Company's journey towards excellence in rail infrastructure development.")
+    assert _row(fe.event_rows(consortium)[0], "order_win")["customer"] == "BHEL-TRSL consortium"
+
+    # the annexure names the issuer's own subsidiary as the "awarder": the subsidiary is never the customer.
+    aris = _doc(
+        "ArisUnitern RE Solutions Private Limited a subsidiary of Arisinfra Solutions Limited has received the "
+        "provisional purchase order from AVS Housing and Construction LLP (AVS Group) for development ....",
+        "we are pleased to inform you that ArisUnitern RE Solutions Private Limited, a Subsidiary Company of "
+        "Arisinfra Solutions Limited, has received a provisional purchase order from AVS Hous- ing and "
+        "Construction LLP (AVS Group) for a Development Management Mandate worth approximately Rs. 40 crore. "
+        "1. Name of the entity awarding the order(s)/con-tract(s) ArisUnitern RE Solutions Private Limited "
+        "7. Broad consideration or size of the order(s)/contract(s) Approximately Rs. 40 crore")
+    row = _row(fe.event_rows(aris)[0], "order_win")
+    assert row["customer"] == "AVS Housing and Construction LLP (AVS Group)"
+    assert "ArisUnitern" not in (row["customer"] or "")
+
+
+def test_t242_r8_an_unvalued_twin_filing_folds_into_the_valued_one() -> None:
+    cover = _doc(
+        "Receipt of Export Order",
+        "Please find attached the Press Release for receipt of Export Order from Canada for approx. 5,000 MT of "
+        "Black Welded Hollow Sections.",
+        symbol="JTL", doc_key="cover", filing_date="2026-10-05", known_at="2026-10-05T09:27:00")
+    release = _doc(
+        "Receipt of Export Order",
+        "Press Release: JTL Industries Limited has secured a sizeable export order from Canada for approximately "
+        "5,000 MT. The order is valued at approximately USD 3.4 million.",
+        symbol="JTL", doc_key="release", filing_date="2026-10-05", known_at="2026-10-05T09:37:00")
+    rows = [r for r in fe.event_rows(cover)[0] + fe.event_rows(release)[0] if r["kind"] == "order_win"]
+    assert len(rows) == 2
+    amends: list[dict[str, Any]] = []
+    kept = [r for r in fe._fold_same_order(rows, amends) if r["kind"] == "order_win"]
+    assert len(kept) == 1 and len(amends) == 1

@@ -36,7 +36,7 @@ addendum/corrigendum.
 
 | kind | cue that fires | what is NOT an event |
 |---|---|---|
-| `order_win` | `pilot3.order_wins.parse` finds a win or the prescribed table, or a loose free-form letter with a win sentence and a printed "(e) Value" row | a court/tax/regulator order (incl. "penalty charged by GST department", "stay order", "writ"), a rumour clarification, a results release that mentions orders |
+| `order_win` | `pilot3.order_wins.parse` finds a win or the prescribed table, or a loose free-form letter with a win sentence and a printed "(e) Value" row, and the round-8 kind gate (`_not_an_order`) passes: a counter-party awards/receives the order | a court/tax/regulator order (incl. "penalty charged by GST department", "stay order", "writ"), an order an authority issues TO the company (compounding/assessment/refund/warning/remand, round 8), a regulator's approval to launch a product, a board-meeting outcome or appointment without a quoted award, an LOI/LoA to set up the company's own outlet/dealership, an L1-only letter, a rumour clarification, a results release that mentions orders |
 | `order_amendment` | a title/opening amendment/variation/extension cue **and** an order/contract word **and** a printed value or from-to phrase | a statement of deviation/variation, a credit-rating rationale, a termination/cancellation, a periodic utilisation statement |
 | `capex_approval` | a clause carries a strong capex cue (capital expenditure/capex/expansion project/expansion at/of/greenfield/setting up) **and** an approval verb **and** the amount is printed | a board-meeting intimation, a deviation statement, a financial-statement note, "new line of business", a raise whose purpose is "to accelerate expansion" |
 | `capacity_commissioned` | a completed commissioning cue and the added capacity with its unit in the same clause | EPC "supply, erection, testing and commissioning" scope; "expected/planned/approved/proposed to be commissioned" (a plan) |
@@ -83,12 +83,13 @@ source in stage A).
   (`quote`). `_locate` matches the number against the page's own money/capacity spans, accepting the printed
   full-rupee form and a "crore"-suffixed full figure (`Rs. 7,40,06,30,000 Crore` -> 740.063 cr).
 
-Status (T-242 round 3, 24 Nov 2026; scope and L1 in round 6; the step's amount/issuer/stage in round 7): `verified` =
-every field printed, scope company or
-`subsidiary` (a subsidiary's order keeps its status with the printed name in `detail`), no `l1_only` veto, **and the
-row's kind is in `VERIFIED_KINDS`** (EMPTY since 25 Nov 2026; it held `order_win` 24-25 Nov; `_gate_status`, then `_finish_scope`); `unverified` =
-a computed figure, an amount the script could not fill, a parent-scope row, an L1-only intimation
-(`why='l1_only'`), or a kind that has not passed its own fresh strict 60-row grade (detail
+Status (T-242 round 3, 24 Nov 2026; scope and L1 in round 6; the order kind gate in round 8; the step's
+amount/issuer/stage in round 7): `verified` = every field printed, scope company, `subsidiary` or `joint` (a
+subsidiary's or a joint group order keeps its status, with the printed name or the joint note in `detail`), no
+`l1_only` veto, **and the row's kind is in `VERIFIED_KINDS`** (EMPTY since 25 Nov 2026; it held `order_win` 24-25 Nov;
+`_gate_status`, then `_finish_scope`); `unverified` = a computed figure, an amount the script could not fill, a
+parent-scope row, an L1-only intimation that reached `_finish_scope` (`why='l1_only'`; round 8 keeps such a letter out
+of `order_win` entirely), or a kind that has not passed its own fresh strict 60-row grade (detail
 `kind_not_gated: <kind> awaits its own 60-row grade`); `quarantined` = the value is not on the page. A kind joins
 `VERIFIED_KINDS` only after its own fresh 60-row grade, so `fund_raise`, `capex_approval`,
 `capacity_commissioned` and `order_amendment` rows are never verified until then. Run 24 Nov 2026 on the 20 fresh3
@@ -239,9 +240,11 @@ verified rows, against the 5% bar. Three script causes, fixed in `reality_engine
 `fund_raise` logic and no `VERIFIED_KINDS` change.
 
 1. **L1-only is not an order yet** (`_LOWEST_BIDDER` now also reads "emerged as L1"; `_AWARD_RECEIVED`, `_l1_only`,
-   applied by `_finish_scope` at both status sites). When the title/subject or the first 600 characters say lowest
+   applied by `_finish_scope` at both status sites). When the title/subject or the first 600 characters (round 8:
+   2,600) say lowest
    bidder / L-1 / L1 status and no LoA, work order or contract award is ALSO stated as received, the row keeps its
-   printed value but is stored `unverified` with `why='l1_only'` (detail names the rule). A received LoA wins even
+   printed value but is stored `unverified` with `why='l1_only'` (detail names the rule). Round 8 supersedes the
+   storage half: an L1-only letter is no longer an `order_win` row at all (see 3g). A received LoA wins even
    when the same document mentions L1 (audit #26 Kolkata Municipal Corporation; fresh3 #28 KMEW "emerged as the
    lowest bidder" after the LoA). 13 fresh3 verified rows unverified, all EMSLIMITED; 0 on fresh4. Measured stop
    (agy 70ccab33): 13/193 = 6.7%, under the 15% line.
@@ -263,7 +266,8 @@ verified rows, against the 5% bar. Three script causes, fixed in `reality_engine
 Measured on the same stores into new DBs (cache `C:/RealityEngine/t242/events_cache.db` copied to `.tmp/events_cache.db`,
 0 new model requests; `.tmp/events_r6_fresh4.db`, `.tmp/events_r6_fresh3.db`):
 
-* **All 8 W rows** are no longer verified-and-wrong: #7 and #32 are `unverified` / `why='l1_only'`; #24, #37, #42, #49
+* **All 8 W rows** are no longer verified-and-wrong: #7 and #32 are `unverified` / `why='l1_only'` (round 8: both
+  are no longer `order_win` rows); #24, #37, #42, #49
   and #58 are `entity_scope='subsidiary'` (status verified) with printed names Provigil Surveillance Limited (x2),
   EFC Limited, Lineage Power Private Limited and Aurionpro Fintech Inc; #54 (the headline-customer row) is gone
   because its row now names the same BSNL and the same 94.35 cr as the earlier `5d19a5c9` filing (94.3513 cr,
@@ -278,8 +282,9 @@ Measured on the same stores into new DBs (cache `C:/RealityEngine/t242/events_ca
 * **Tests**: `test_t242_r6_an_l1_only_intimation_is_unverified_but_a_received_award_stays`,
   `test_t242_r6_a_subsidiary_order_is_labelled_and_keeps_its_status` (five quoted shapes + the unnamed and the third
   party's subsidiary) and `test_t242_r6_a_press_release_headline_is_not_the_customer` (audit #54);
-  `test_t242_r3_fix4_l1_and_loss_reduction_are_awards` now expects the L1 half `unverified`/`l1_only`. 107 passed at
-  round 6 (121 after round 7).
+  `test_t242_r3_fix4_l1_and_loss_reduction_are_awards` then expected the L1 half `unverified`/`l1_only` (round 8:
+  no `order_win` row for an L1-only letter; the received LoA half is unchanged). 107 passed at
+  round 6 (121 after round 7, 138 after round 8).
 * **Deliberate ceilings.** The scope test is document-level, not sentence-level: an order the issuer *received
   from* its own subsidiary would be labelled `subsidiary` too (rare; the related-party crop is small). A subsidiary
   whose parent is named rather than "the Company" is recovered where an order-receiving verb follows (or via the
@@ -340,7 +345,83 @@ Measured against the round-6 DBs with copied caches (0 new model requests; `.tmp
 * **Graded R rows**: `events_grade_fresh3` 25/25 unchanged; `audit_orderwin_r5` 51/52 and `events_grade_fresh4` 45/46 unchanged (`CAPACITE e8953bba` moved from gross `384.72` cr to its 40% JV share `153.888` cr, computed `unverified`); on `fresh5`, `#10` and `#11` (`VEERHEALTH` press releases) folded into the previous day's identical Reg 30 filings (`19b7b74e`, `f5a69454`), the 6 undisclosed-customer R rows (`#4, #8, #27, #36, #44, #48`) moved to `customer = NULL` with `customer not disclosed` in `detail`, and the remaining 31/39 are unchanged in status/amount/customer.
 * **Set diffs (`r6 -> r7d`)**: `fresh5` 118/267 (44.2%, MSECL annexure customers + VEERHEALTH/QPOWER undisclosed customers + PREMIERENE), `fresh4` 11/199 (5.5%, under 15% stop), `fresh3` 3/209 (1.4%, under 15% stop). **Tests**: 114 passed in `test_filing_events.py`.
 
-## 3f. T-242 round 7 (25 Nov 2026): the step's own amount, the issuer, the stage
+## 3g. T-242 round 8 (25 Nov 2026): structural `order_win` kind vetoes, joint scope, value and customer rules
+
+`order_win` failed its gate grade on 40 never-seen stores (`C:/RealityEngine/t242/audit_orderwin_fresh6/`, built with
+round-6 code: **31 R / 4 P / 23 W / 2 J**). Rebuilt with round 7 (`C:/RealityEngine/t242/fresh6/events_r7d_fresh6.db`),
+22 of the 25 W+J failures still stood: the kind test accepted any filing that said "order" (a tax/regulatory/judicial
+order, a SEBI approval to launch a product, a board outcome, an appointment), a subsidiary order was stored as the
+company's, a GDV/order-book target/own investment was stored as the order value, a run-together EUR value was dropped,
+and a customer carried OCR brackets. Round 8 adds structural rules to `reality_engine/research/filing_events.py`;
+`VERIFIED_KINDS` stays empty and no rule is keyed on a company or customer name.
+
+1. **Kind gate (`_not_an_order`, `_AUTHORITY_ORDER_STRONG`, `_AUTHORITY_OFFICE`, `_REGULATOR_APPROVAL`,
+   `_BOARD_OR_APPOINTMENT`, `_AWARD_QUOTED`, `_SELF_SETUP`, `_self_setup_loi`, `_CAPACITY_TOKEN`, `_AWARD_RECEIVED`,
+   `_l1_only`).** The company (or a named subsidiary) must RECEIVE or BE AWARDED a contract, LoA, LoI, work or
+   purchase order from a counter-party. Vetoed: an order a tax office, tribunal or regulator issues TO the company
+   (`compounding|assessment|demand|penalty|refund|remand-back|adjudication|rectification|warning|acceptance of
+   reply` beside `order`; `from the Office of the Commissioner/Inspector/Superintendent` unless the clause names an
+   award noun; `SEBI|IRDAI|RBI|tribunal|court ... issued/passed/imposed/warned/directed ... order`) — fresh6 #8, #22,
+   #24, #31, #33, #38 and 4 more gone; a regulator's approval to launch a product (`_REGULATOR_APPROVAL`, #2/#10/#57);
+   a board-meeting outcome or an appointment (`_BOARD_OR_APPOINTMENT`) unless the filing quotes an award
+   (`_AWARD_QUOTED`: a win verb + order noun + a value, `worth`/`valued at`, or `from <Name>`), #47/#56/#58 and 4 more;
+   an LOI/LoA to set up the company's OWN outlet, dealership or showroom (`_SELF_SETUP`, #28/#46/#54 and 2 more) while
+   a capacity project ("set up a 250 MW solar facility") stays an order (`_CAPACITY_TOKEN`); and an L1-only letter.
+   `_l1_only` now reads the annexure past 600 characters (#5 "has issued a letter intimating ... as the L1 bidder")
+   and `_AWARD_RECEIVED` needs the award verb beside the noun ("received a Letter of Acceptance"), so the table label
+   "Name of the entity awarding the order(s)" is never an award. A genuine LoA "received from <Authority>", a
+   GST-registered customer and "excluding GST" values stay orders (counter-tests).
+2. **Scope (`_SUB_*`, `_valid_sub_name`, `_subsidiary_name`, `_JOINT_RECEIVER`, `_JOINT_SHARE`, `_names_subsidiary`,
+   `blank_row`, `_finish_scope`).** The named-subsidiary forms now read "(Material|wholly owned|step-down) Subsidiary
+   <Name> (has received|received)" from both sides: `<Name> which is Material Subsidiary of the Company` (#9),
+   `Material Subsidiary of the Company, M/s <Name>` (#9), `our subsidiary Company M/s. <Name>` (#36), `subsidiary
+   Company i.e. <Name>` (#55); `M/s` is stripped, Latin-1 names are read (`Linjemontage i Grästorp AB (Sweden)`),
+   `AB/AS/Oy/SA` are company suffixes, a bare legal form as the first word is a truncated tail and rejected, and a
+   candidate made only of stop words ("Company and") is not a name. A company AND a subsidiary awarded together is
+   `entity_scope='joint'` (#14, #44): when the filing splits the printed amounts ("Company ... Rs 300 cr and NPC ...
+   Rs 700 cr respectively") the event stores the company's own share and `value_total` keeps the group total, else the
+   aggregate with the joint label. `_names_subsidiary` keeps a subsidiary's own name out of `customer` (#53: the
+   annexure prints "Name of the entity awarding ... ArisUnitern ...", while the body names AVS Housing as the awarder).
+3. **Value (`_not_order_size`, `_NOT_ORDER_SIZE_BEFORE/NEAR/AFTER`, `_ORDER_SIZE_SENTENCE`, `_FOREIGN_VALUE`,
+   `_foreign_value`).** An amount sitting beside a GDV, project cost/value, order-book/intake, guidance, target or
+   own-investment label is never the order's size (#39 GDV -> NULL, #48 target `1,000` -> the printed `~400` crore,
+   #54 own `13` crore -> no order). The label must be beside the figure: "fresh orders worth Rs 534 crore; order
+   intake crosses ..." keeps 534 (r5 #39), a `Capex/Opex` component note after a genuine contract value does not
+   disqualify it, and an "order book"/"order intake" label before the figure does. A free-form size sentence ("supply
+   and commissioning of an approximately INR 400 crore ...") is readable when the labelled value row is absent. A
+   non-INR, non-USD value is stored in `value_text` as printed with detail "printed in a non-INR/non-USD currency",
+   never converted without a printed rate (#13 `55 Million Euros`, #51 `100 Million Euros`).
+4. **Customer (`_strip_unbalanced_brackets`, `_strip_party_junk`, `_HEADLINE_PLACE`, `order_fields`, `_split_customer`).**
+   An edge bracket with no partner is stripped ("( Hindustan Aeronautics Limited", #26) while a balanced "(AVS Group)"
+   stays; an OCR line-wrap hyphen is joined ("AVS Hous- ing" -> "AVS Housing") and an all-caps hyphen loses its space
+   ("BHEL- TRSL" -> "BHEL-TRSL"); `<X> consortium` printed after "supplied to" is read as the awarder (#12
+   `BHEL-TRSL consortium`); `_HEADLINE_PLACE` needs whitespace around the dash, so a hyphenated company name is not a
+   dateline. `_split_customer` also drops a part that names the subsidiary.
+5. **Duplicates (`_fold_same_order`).** An unvalued twin filing (a cover letter "Receipt of Export Order") folds into
+   the valued one when both are press releases within 10 days with the same normalised title and exactly one carries a
+   value; the kept row (earlier `known_at`) takes the twin's amount/value_text (#19 <- #52, USD 3.4 mn), so the order
+   survives once with its size.
+
+Measured with the copied caches (0 new model requests; `.tmp/r8_fresh6.db`, `.tmp/r8_fresh5.db`, `.tmp/r8_fresh4.db`,
+`.tmp/r8_fresh3.db`; baselines `fresh6/events_r7d_fresh6.db` and `orderwin_r7d/events_r7d_fresh{5,4,3}.db`):
+
+* **Fresh6 failures**: all 25 W+J rows fixed — 16 gone by a veto (#2, #5, #8, #10, #22, #24, #28, #31, #33, #38, #46,
+  #47, #54, #56, #57, #58) and 9 fixed in place (#9 `subsidiary: DEE Piping Systems (Thailand) Co. Ltd`, #14 `joint`,
+  #19 carries the twin's USD 3.4 mn and #52's separate row is gone, #36/#55 subsidiary, #39 amount NULL, #44 joint
+  `300` of `1,000`, #48 `400`, #53 `AVS Housing and Construction LLP (AVS Group)`). The 4 P rows also get their
+  printed customer/value text (#12 `BHEL-TRSL consortium`, #13/#51 EUR `value_text` as printed, #26 brackets stripped).
+* **Graded R rows**: 193 checked across `audit_orderwin_fresh6`, `audit_orderwin_fresh5`, `audit_orderwin_r5`,
+  `events_grade_fresh4`, `events_grade_fresh3`; none worse. Two changed: fresh6 #52 folded into #19 (the same order,
+  now valued) and fresh4 #40 lost a stray unbalanced ")" from its printed customer ("... India Limited)").
+* **Rows each rule touches**: fresh6 278 -> 257 `order_win` rows (24 gone: authority 8, board/appointment 6, LOI
+  set-up 5, regulator approval 3, L1 1, folded duplicate 1; amount changed 9, 7 of them a GDV/target label; customer
+  changed 8; scope subsidiary 38, joint 5; foreign value 4). fresh5 258 -> 256 (2 authority orders gone; 5 previously
+  empty amounts now read; 1 subsidiary name `Linjemontage i Grästorp AB (Sweden)`). fresh4 198 -> 197 (1 L1-only gone,
+  1 KPIGREEN amount now read, #40 bracket). fresh3 209 -> 200 (14 L1-only and 2 board outcomes gone, 1 amount now
+  read) — 4.3%, under the 10% stop, as is fresh4's 0.5%. **Tests**: 138 passed in `test_filing_events.py`
+  (`test_t242_r8_*` covers each veto and its counter-test).
+
+## 3h. T-242 round 7 (25 Nov 2026): the step's own amount, the issuer, the stage
 
 Round 5 fixed all 30 failing rows of its own graded 60; a strict grade on 40 UNTUNED stores (fresh5,
 `C:/RealityEngine/t242/events_grade_fundraise_fresh5/`) then read **31 R / 7 P / 22 W / 0 J**: round 5 had fitted
@@ -445,7 +526,9 @@ run made 0 new requests (the cache held the earlier replies) and produced 14 ver
   counts), same customer when both printed (an initialism of the full name counts, round 4; or an exactly equal
   value when one is missing), filing dates within 7 days: the
   earlier `known_at` row stands; the later document goes to `amend` (28 links this run: 24 same-order twins, 4 real
-  addenda/corrigenda).
+  addenda/corrigenda). Round 8: a press-release twin within 10 days whose normalised title matches and only one of
+  the two carries a value folds too (a cover letter "Receipt of Export Order"), and the kept earlier row takes the
+  valued twin's amount/value_text so the order is not lost with the dropped document.
 * **B3 amendment links** are on `event.amends` (PREMEXPLN 163 -> 155).
 * `entity_scope='parent'` when the title/first 1500 characters name a parent/ultimate-holding-company release.
   These are kept and `unverified` (3 rows this run, all NAVKARCORP store press releases from JSW Infrastructure).
@@ -543,9 +626,8 @@ python plugins/code-tools/ct.py typecheck reality_engine/research/filing_events.
   parent-labelled capex rows, `subsidiary` for a named subsidiary's order (round 6, name in `detail`), else
   `company`. The scope test is document-level, not sentence-level (a subsidiary's order keeps its verified status;
   see 3e for its ceiling).
-* `tasks/STATE.md` carries the current T-242 line (round 7b's restored rows and the fresh5/fresh4/fresh3 counts); the
-  controller re-runs the loader on the merged round-7b DBs (`.tmp/events_r7b_fresh{5,4,3}.db` are the measurement
-  builds, staged for promotion).
+* `tasks/STATE.md` carries the current T-242 line; the round-8 measurement DBs are `.tmp/r8_fresh{6,5,4,3}.db` in the
+  round-8 worktree (the controller loads merged DBs only after a fresh grade).
 
 ## Wolf's independent reads (21 Nov 2026)
 Stage A (seed 311): verified 40 = 28 right / 8 minor / 4 wrong; recall 3/5. Stage B (seed 411): verified 50 = 37 / 9 / 4
@@ -558,4 +640,4 @@ months: median 25 of 91 over 2025-06..2026-10.
 
 ## Gate withdrawn (25 Nov 2026, Eagle)
 
-`order_win` left `VERIFIED_KINDS` after a strict 60-row grade of its verified rows on 40 stores no fix was tuned on (fresh5, round 6; Hydrogen 05f386b3, `C:/RealityEngine/t242/audit_orderwin_fresh5/`): 39 R / 5 P / 14 W / 2 J (65% right, 26.7% wrong+junk). Its causes: a wrong, truncated or garbled customer (the company's own segment, a one-word title fragment, a country, a headline); subsidiary orders missed by `_subsidiary_name` or with a non-name in `detail`; a customer printed in the annexure left empty; a JV's gross value for the company's share; a past order's value; a quarterly roll-up stored as an order; press-release repeats. The fund_raise fresh5 grade was 31/7/22/0. Since then no kind is gated: every event row is `unverified` (served labelled). Event DBs built BEFORE this change still hold `verified` on order wins, so re-run filing_events (or `--recheck`) before any store load. Tests run with order_win gated through an autouse fixture, so the row checks stay tested; `test_live_gate_is_empty_until_a_kind_passes_a_fresh_store_grade` checks the live gate.
+`order_win` left `VERIFIED_KINDS` after a strict 60-row grade of its verified rows on 40 stores no fix was tuned on (fresh5, round 6; Hydrogen 05f386b3, `C:/RealityEngine/t242/audit_orderwin_fresh5/`): 39 R / 5 P / 14 W / 2 J (65% right, 26.7% wrong+junk). Its causes: a wrong, truncated or garbled customer (the company's own segment, a one-word title fragment, a country, a headline); subsidiary orders missed by `_subsidiary_name` or with a non-name in `detail`; a customer printed in the annexure left empty; a JV's gross value for the company's share; a past order's value; a quarterly roll-up stored as an order; press-release repeats. The fund_raise fresh5 grade was 31/7/22/0. Since then no kind is gated: every event row is `unverified` (served labelled). Event DBs built BEFORE this change still hold `verified` on order wins, so re-run filing_events (or `--recheck`) before any store load. Tests run with order_win gated through an autouse fixture, so the row checks stay tested; `test_live_gate_is_empty_until_a_kind_passes_a_fresh_store_grade` checks the live gate. Round 8 (25 Nov, section 3g) fixes every fresh6 failure but the gate stays empty: Eagle builds fresh7 with the merged code and a non-author grades it before any kind is served verified.
