@@ -3194,7 +3194,7 @@ python -m reality_engine.scripts.grade_pack --db <observation db> --ckpt <ckpt.j
 
 Graders score the halves with `docs/grading/statement_rubric.md` (R/P/W/J plus the `qc` column that checks `question_context` against the printed analyst question) and `docs/grading/number_rubric.md` (R/P/W/J for deck/AR numbers: the printed value, the company's own, measure/period/unit/scale/basis right; J for page/note/clause numbers, years and label-duration echoes). Tests: `python -m pytest -q reality_engine/tests/test_grade_pack.py` -> 4 passed.
 
-## Skills catalog and rule hooks (T-242 skills, Shivam 25 Nov 2026)
+## Skills catalog and rule hooks (T-243, Shivam 25 Nov 2026)
 
 Repeatable workflows live as project skills in `.claude/skills/<name>/SKILL.md` (tracked in git, seen by Wolf and Eagle; call by name or let the description trigger them). Each is a short, exact recipe: inputs, commands, accept bar, pitfalls from past failures. Update a skill in the same change as the workflow it describes.
 
