@@ -518,3 +518,43 @@ def test_welcome_or_housekeeping_with_a_number_is_kept():
     assert not greeting_only("Now let me take you through the financial performance: revenue was Rs 450 crore")
     assert not greeting_only("Good evening, everyone. Revenue for Q2FY27 grew 12%.")
     assert not greeting_only("Audio recording of the call is available; our margin was 18%.")
+
+
+def test_question_passage_keeps_answers_with_courtesy_or_tag_and_flags_questions():
+    from reality_engine.v2.obs_speaker import question_passage
+
+    # Four real management answers (multi-sentence ending with a tag/courtesy question) must stay verified.
+    assert not question_passage(
+        "Keep in mind that Q3 is also a pretty strong quarter from a seasonality perspective. "
+        "So again, these are BAU items from a business standpoint. "
+        "So I would kind of just keep stable as your sort of base case, right?"
+    )
+    assert not question_passage(
+        "What Aravind was clarifying was, the nature of work is precision manufacturing. "
+        "So, that is the common platform we are building. "
+        "Industries that are served are aerospace, consumer electronics, and so on. Is that helpful?"
+    )
+    assert not question_passage(
+        "So in our case, what we are pursuing is a larger share of the customers' wallet that how many new project wins we are having. "
+        "And with those project wins with us, we are fairly confident that we'll sustain the volumes. "
+        "Am I able to answer your question?"
+    )
+    assert not question_passage(
+        "One is low-margin deals. The others are also non-strategic deals where we didn't see any further opportunity to grow. "
+        "Now exact numbers, we can't obviously give, but it is around that figure. What was your second question, Dipesh?"
+    )
+    # Tag/courtesy last sentence must not count towards (b) even when an earlier sentence also asks a question.
+    assert not question_passage(
+        "Why did margins move? We saw seasonal mix benefits. And cost savings helped too. Does that answer your question?"
+    )
+    assert not question_passage(
+        "Why did margins move? Because volume grew. Everything else stayed flat, isn't it?"
+    )
+    assert not question_passage(
+        "Why did margins move? Because volume grew. Everything else stayed flat, no?"
+    )
+
+    # Real questions must stay unverified: <=2 sentences ending in '?', and >= half of >=3 sentences ending in '?'.
+    assert question_passage("But how do we mitigate the risk?")
+    assert question_passage("Gopal, you want to take up, saying high ROCE?")
+    assert question_passage("Sir, on margins. What is the outlook? And will capex rise?")

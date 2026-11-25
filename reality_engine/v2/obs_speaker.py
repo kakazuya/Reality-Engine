@@ -943,6 +943,43 @@ def greeting_only(statement: str) -> bool:
     return bool(sentences) and all(_greeting_sentence(x) or _boilerplate_sentence(x) for x in sentences)
 
 
+_COURTESY_OR_TAG_QUESTION_RE = re.compile(
+    r"(?:(?:^|,\s*)(?:right|isn['’]t\s+it|no)"
+    r"|\b(?:is\s+that\s+helpful"
+    r"|am\s+i\s+able\s+to\s+answer\s+your\s+question"
+    r"|does\s+(?:that|this)\s+answer\s+your\s+question"
+    r"|what\s+was\s+your\s+(?:(?:second|next)\s+)?question)"
+    r"(?:\s*,\s*[A-Za-z.\s]{1,30})?)\s*\?$",
+    re.I,
+)
+
+
+def _ends_in_question(text: str) -> bool:
+    return str(text or "").rstrip().rstrip("\"')”’").endswith("?")
+
+
+def _is_courtesy_or_tag_question(sentence: str) -> bool:
+    cleaned = str(sentence or "").strip().rstrip("\"')”’").strip()
+    return bool(_COURTESY_OR_TAG_QUESTION_RE.search(cleaned))
+
+
+def question_passage(statement: str) -> bool:
+    """T-242: True only when ``statement`` ends in '?' AND has at most 2 sentences or at least half its
+    sentences end in '?' (a trailing courtesy or tag question never counts towards the half)."""
+    text = str(statement or "")
+    if not _ends_in_question(text):
+        return False
+    sentences = _sentences(text)
+    if len(sentences) <= 2:
+        return True
+    last_idx = len(sentences) - 1
+    q_count = sum(
+        1 for idx, sent in enumerate(sentences)
+        if _ends_in_question(sent) and not (idx == last_idx and _is_courtesy_or_tag_question(sent))
+    )
+    return q_count * 2 >= len(sentences)
+
+
 _HANDOVER_RE = re.compile(
     r"(?i:over\s+to\s+you|hand(?:ing)?\s+(?:it\s+)?over\s+to|pass(?:ing)?\s+(?:it\s+)?(?:on\s+)?to|"
     r"(?:i\s+)?(?:now\s+)?invite)\s*,?\s+(?:(?i:our|the)\s+[A-Za-z ,&-]{0,60}?,?\s+)?"
@@ -1096,9 +1133,10 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
         no_ref = no_referent_reason(str(row.get("statement") or ""))
         if no_ref:
             reasons.append(no_ref)
-        if str(row.get("statement") or "").rstrip().rstrip("\"')”’").endswith("?"):
+        if question_passage(str(row.get("statement") or "")):
             # Eagle v3 spot check (24 Nov, 1,436 pages): 43 verified passages ending in '?' were analysts'
-            # questions; a manager's "Why? Because ..." inside an answer does not END in '?' (Wolf)
+            # questions; a manager's "Why? Because ..." inside an answer does not END in '?' (Wolf);
+            # narrowed (25 Nov) via question_passage so multi-sentence answers ending in a tag/courtesy stay verified.
             reasons.append("question_end: a passage ending in a question is not a management statement")
         if reasons:
             row["status_reason"] = "; ".join(p for p in (str(row.get("status_reason") or ""), *reasons) if p)
