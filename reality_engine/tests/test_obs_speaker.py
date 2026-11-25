@@ -737,6 +737,60 @@ def test_closing_deferral_row_is_dropped_by_attach_statement_speakers():
     assert rows == []
 
 
+def test_tx394_ckpt_0014_non_content_turns_are_dropped():
+    """The four J turns of the 394 v3 ckpt_0014 grade plus the demo filler Wolf quoted."""
+    junk = [
+        # 5 GOLDIAM: a deferral to e-mail, twice.
+        "So I can get back to you -- thank you again, Mr. Ankush for the question. I can get back to you on "
+        "e-mail with that. I'll have the exact loss numbers not on my table currently, but I'll be able to get "
+        "back on e-mail with that.",
+        # 27 DEEDEV: thanks, then the floor.
+        "Thank you all for joining the call. With this, I would like to open the floor for questions.",
+        # 31 ZENTEC: the demo break.
+        "So what I will do is I will just take a few seconds break and then I will just walk down to the products "
+        "and try to show you how the products actually look and how they work.",
+        "I just did some informal survey and there was a lot of interest in seeing the products in action.",
+        # 42 TEXRAIL: a forward-pointer filler.
+        "You will see that it does not end here.",
+    ]
+    for text in junk:
+        assert ospeaker.greeting_only(text), text
+    pages = [(1, _CALL_HEAD + _CALL_TAIL), (2, "Ramesh Iyer: " + junk[1])]
+    rows = [_statement(2, junk[1], speaker="Ramesh Iyer")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows == [] and stats["content_free"] == 1
+
+
+def test_a_product_demo_statement_with_substance_stays():
+    # The next ZENTEC turn answered a demo by naming the forces and the feedback: content, not logistics.
+    assert not ospeaker.greeting_only(
+        "We have been talking to the armed forces and one of the products has been demonstrated to them and they "
+        "said this is exactly what we want and nobody has been able to give it.")
+    assert not ospeaker.greeting_only("Thank you. Our revenue grew 12% this quarter.")
+
+
+def test_prepared_remark_period_is_anchored_to_the_call():
+    """394 v3 ckpt_0014 P: "this quarter"/"the year"/"half year"/"previous year" read alone on a prepared remark."""
+    assert ospeaker.anchored_period("This quarter has been our highest ever presales.", "Q1 FY26") == "Q1 FY26"
+    assert ospeaker.anchored_period("Finance costs for the year stood at 562 million.", "Q2 FY27") == "FY27"
+    assert ospeaker.anchored_period("Turnover grew 74% year-on-year, half year basis.", "Q2 FY26") == "H1 FY26"
+    assert ospeaker.anchored_period("Lower tax in previous year was due to the budget.", "Q2 FY27") == "FY26"
+    assert ospeaker.anchored_period("Lower tax in previous year, whereas this year is normal.", "Q2 FY27") == "FY27"
+    assert ospeaker.anchored_period("Revenue grew 12% in Q2 FY27.", "Q2 FY27") == ""
+    assert ospeaker.anchored_period("This quarter was strong.", "") == ""
+    pages = [(1, _CALL_HEAD + _CALL_TAIL), (2, "Ramesh Iyer: This quarter has been our highest ever presales.")]
+    rows = [_statement(2, "This quarter has been our highest ever presales.", speaker="Ramesh Iyer")]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"], call_period="Q1 FY26")
+    assert stats["period_anchored"] == 1
+    assert rows[0]["period"] == "Q1 FY26" and rows[0]["period_kind"] == "actual"
+    assert rows[0]["period_source"] == "call_period"
+    # a stored question is the row's referent, so it is never a prepared remark to anchor
+    rows = [_statement(2, "This quarter has been our highest ever presales.", speaker="Ramesh Iyer")]
+    rows[0]["question_context"] = "Q (Rahul): How was this quarter?"
+    ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"], call_period="Q1 FY26")
+    assert not rows[0].get("period")
+
+
 def test_ligature_normalisation_never_mutates_stored_statement():
     raw_kept = "Our revenue o\u01afset cost \ufb02uctua\u019fons by 12%."
     pages = [(2, f"Synth Corp Limited\nRamesh Iyer: Very \ufb01ne ques\u019fon, Ashok.\n{raw_kept}\n"),
@@ -761,7 +815,7 @@ def test_generic_empty_and_bare_designation_speakers_are_unverified():
         _statement(2, "Revenue grew strongly in the core segment.", speaker=""),
         _statement(2, "Margins expanded across export geographies.", speaker="Management"),
         _statement(2, "Demand remains healthy across urban markets.", speaker="Company"),
-        _statement(2, "We are opening the floor for questions.", speaker="Moderator"),
+        _statement(2, "Working capital days improved to 45 days.", speaker="Moderator"),
         _statement(2, "Capex will be funded via internal accruals.", speaker="CFO"),
         _statement(2, "Working capital days improved sequentially.", speaker="ED (Finance)"),
         _statement(2, "Collection efficiency remained stable.", speaker="VP. Nandakumar"),

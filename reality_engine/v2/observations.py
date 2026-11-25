@@ -6918,7 +6918,8 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
                              "rows_before": 0, "rows_after": 0, "v2_pages": 0, "ar_pages": 0,
                              "speaker_carried": 0, "speaker_resolved": 0, "speaker_empty": 0,
                              "speaker_unverified": 0, "speaker_not_a_call": 0, "speaker_moderator": 0,
-                             "speaker_not_a_person": 0, "short_remarks": 0, "transcript_docs": 0,
+                             "speaker_not_a_person": 0, "short_remarks": 0, "content_free": 0,
+                              "period_anchored": 0, "transcript_docs": 0,
                              "not_call_docs": 0}
     doc_speaker_ctx: dict[tuple[str, str], tuple[list[str], list[str]]] = {}
     transcript_docs: set[str] = set()
@@ -7007,7 +7008,8 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
                 # T-242: carry the speaker across a page break, resolve a company/first-name/initials label,
                 # and mark a referentless short reply; script-level, no prompt change
                 fixed = obs_speaker.attach_statement_speakers(
-                    rows, doc_pages, symbol=meta["symbol"], company_names=company_names.get(meta["symbol"], []))
+                    rows, doc_pages, symbol=meta["symbol"], company_names=company_names.get(meta["symbol"], []),
+                    call_period=call_quarter(meta["known_at"]))
                 stats["speaker_carried"] += fixed["carried"]
                 stats["speaker_resolved"] += fixed["resolved"]
                 stats["speaker_empty"] += fixed["empty"]
@@ -7016,6 +7018,8 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
                 stats["speaker_moderator"] += fixed.get("moderator", 0)
                 stats["speaker_not_a_person"] += fixed.get("not_a_person", 0)
                 stats["short_remarks"] += fixed.get("short_remarks", 0)
+                stats["content_free"] += fixed.get("content_free", 0)
+                stats["period_anchored"] += fixed.get("period_anchored", 0)
         stats["rows_before"] += int(con.execute("SELECT COUNT(*) FROM observation WHERE doc_key=? AND page=?",
                                                 (doc_key, int(page))).fetchone()[0])
         con.execute("DELETE FROM observation WHERE doc_key=? AND page=?", (doc_key, int(page)))
@@ -7347,7 +7351,8 @@ def process_window(store_db: str | Path, doc_key: str, own: list[int], context: 
                                   analyst_speakers=analysts, mgmt_speakers=managers)
         apply_number_gates(rows, str(meta.get("doc_type") or ""))
         if doc_pages and any(str(r.get("record_type") or "") == "statement" for r in rows):
-            obs_speaker.attach_statement_speakers(rows, doc_pages, symbol=meta["symbol"], company_names=own_names)
+            obs_speaker.attach_statement_speakers(rows, doc_pages, symbol=meta["symbol"], company_names=own_names,
+                                                  call_period=call_quarter(meta["known_at"]))
         out.append({**base[i], **common, "rows": rows, "parsed": len(rows_in), "bad_lines": bad if i == 0 else 0,
                     "raw": "\n".join(json.dumps(r, ensure_ascii=False) for r in rows_in) if rows_in else "",
                     "seconds": float(call.get("seconds") or 0.0) if i == 0 else 0.0,
@@ -7507,7 +7512,8 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
         if pages:
             obs_speaker.attach_statement_speakers(
                 result["rows"], pages, symbol=meta["symbol"],
-                company_names=[full for sym, full in (companies or {}).values() if sym == meta["symbol"]])
+                company_names=[full for sym, full in (companies or {}).values() if sym == meta["symbol"]],
+                call_period=call_quarter(meta["known_at"]))
     return result
 
 
