@@ -10,6 +10,8 @@ T-102 (Shivam, 7 Nov): raw files live only on Google Drive, so a reader asks
 manifest (``local_file.drive_path``) maps to Drive is downloaded into a temp folder,
 checked against the manifest md5, and deleted when the reader is done.  ``prefetch``
 gets a whole company's files in one ``rclone copy --files-from`` per Drive top.
+``shared_cache`` (T-242) does the same for a thread pool: one download per file for every
+thread in the block, capped on disk, deleted on exit.
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ import subprocess
 import tempfile
 import threading
 import time
+from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
 
@@ -151,6 +154,8 @@ LOAD_TIMEOUT_S = 60      # one connect's wait on a locked manifest (T-241)
 LOAD_TRIES = 3
 LOAD_BACKOFF_S = 300     # a failed load is not retried for this long
 
+SHARED_CACHE_BYTES = 3 << 30     # T-242: fetched PDFs a bulk read may keep on C: at once
+
 
 def _norm(path) -> str:
     """One spelling per path: forward slashes, lower case, no ``..`` (Windows callers vary)."""
@@ -213,6 +218,15 @@ class RawStore:
         self._fail: tuple[float, Exception] | None = None   # (retry after, error) of the last failed load
         self._fetched: dict[tuple[str, str], Path] = {}
         self._keep_dir: Path | None = None
+        # T-242 shared cache: thread-safe, one download per Drive-only file for every thread in the block.
+        self._shared_dir: Path | None = None
+        self._shared_max = SHARED_CACHE_BYTES
+        self._shared_bytes = 0
+        self._shared: dict[tuple[str, str], Path] = {}
+        self._shared_used: OrderedDict[tuple[str, str], None] = OrderedDict()
+        self._shared_inuse: dict[tuple[str, str], int] = {}
+        self._shared_locks: dict[tuple[str, str], threading.Lock] = {}
+        self._shared_guard = threading.Lock()
 
     # -- index -------------------------------------------------------------------------------------
     @property
@@ -408,6 +422,10 @@ class RawStore:
                 yield fetched                       # inside prefetch: already downloaded
                 return
             row = self._rows.get(key)
+            if row is not None and self._shared_dir is not None:
+                with self._shared_file(key, row) as got:     # T-242: one fetch per file, shared by the threads
+                    yield got
+                return
             if row is not None and self._keep_dir is not None:
                 got = self._fetch({key: row[:2]}, self._keep_dir).get(key)
                 if got is None:
@@ -439,6 +457,91 @@ class RawStore:
             yield
         finally:
             self._keep_dir, self._fetched = previous_dir, previous
+            shutil.rmtree(temp, ignore_errors=True)
+
+    @contextlib.contextmanager
+    def _shared_file(self, key: tuple[str, str], row: tuple[str, str | None, str]):
+        """T-242: ``key`` fetched once per ``shared_cache`` block; a thread wanting a file already being fetched waits."""
+        with self._shared_guard:
+            lock = self._shared_locks.setdefault(key, threading.Lock())
+        with lock:
+            with self._shared_guard:
+                got = self._shared.get(key)
+                if got is not None and got.is_file():
+                    self._shared_used.move_to_end(key)
+                    self._shared_inuse[key] = self._shared_inuse.get(key, 0) + 1
+            if got is None:                     # the first caller fetches; the others found the copy above
+                temp = Path(tempfile.mkdtemp(prefix="f_", dir=self._shared_dir))
+                try:
+                    got = self._fetch({key: row[:2]}, temp).get(key)
+                    if got is None:
+                        raise FileNotFoundError(f"{key[0]}:{key[1]} is in the manifest but rclone fetched nothing")
+                    size = got.stat().st_size
+                except BaseException:
+                    shutil.rmtree(temp, ignore_errors=True)
+                    raise
+                with self._shared_guard:
+                    self._shared[key] = got
+                    self._shared_used[key] = None
+                    self._shared_used.move_to_end(key)
+                    self._shared_inuse[key] = self._shared_inuse.get(key, 0) + 1
+                    self._shared_bytes += size
+                    self._evict_shared()
+        try:
+            yield got
+        finally:
+            with self._shared_guard:
+                left = self._shared_inuse.get(key, 1) - 1
+                if left > 0:
+                    self._shared_inuse[key] = left
+                else:
+                    self._shared_inuse.pop(key, None)
+
+    def _evict_shared(self) -> None:
+        """Delete least-recently-used fetched files while the cache is over its cap; a file being read is kept.
+
+        Called with ``_shared_guard`` held."""
+        while self._shared_bytes > self._shared_max and len(self._shared_used) > 1:
+            victim = next((key for key in self._shared_used if not self._shared_inuse.get(key)), None)
+            if victim is None:                  # every cached file is being read right now: keep them all
+                return
+            path = self._shared.pop(victim)
+            self._shared_used.pop(victim)
+            try:
+                size = path.stat().st_size
+                path.unlink()
+            except OSError:                     # a reader still holds it open (Windows): keep it, retry next pass
+                self._shared[victim] = path
+                self._shared_used[victim] = None
+                self._shared_used.move_to_end(victim)
+                return
+            self._shared_bytes -= size
+            shutil.rmtree(path.parent, ignore_errors=True)   # the one-fetch folder
+
+    @contextlib.contextmanager
+    def shared_cache(self, max_bytes: int = SHARED_CACHE_BYTES):
+        """T-242: every thread inside this block shares one download per Drive-only file.
+
+        A file is fetched on its first ``local`` call into one temp folder and reused by every later call, from
+        any thread, while concurrent callers of the same file wait for that one fetch.  Above ``max_bytes`` the
+        least recently used files are deleted (never one a page is reading).  The folder is deleted on exit, also
+        on an exception, and its ``raw_fetch_`` name keeps ``page_words.open_pdf`` from caching a document handle
+        to a file that is about to be deleted.  Outside the block nothing changes; nested use raises.
+        """
+        if self._shared_dir is not None:
+            raise RuntimeError("shared_cache() is already active on this store")
+        temp = Path(tempfile.mkdtemp(prefix="raw_fetch_"))
+        self._shared_dir, self._shared_max = temp, int(max_bytes)
+        try:
+            yield self
+        finally:
+            self._shared_dir = None
+            with self._shared_guard:
+                self._shared.clear()
+                self._shared_used.clear()
+                self._shared_inuse.clear()
+                self._shared_locks.clear()
+                self._shared_bytes = 0
             shutil.rmtree(temp, ignore_errors=True)
 
     @contextlib.contextmanager

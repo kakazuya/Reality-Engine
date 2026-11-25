@@ -2,7 +2,8 @@
 
 A fake runner stands in for ``rclone copy --files-from``: it writes the requested files into the
 destination the way rclone does.  No test touches the real Drive, the real raw folders or the real
-manifest.
+manifest.  ``shared_cache`` (T-242) is the thread-safe variant a bulk read uses: one download per
+file for every thread, capped on disk, deleted on exit.
 """
 import hashlib
 import sqlite3
@@ -295,3 +296,90 @@ def test_busy_manifest_raises_then_loads(tmp_path, monkeypatch):
     monkeypatch.setattr(rs, "LOAD_BACKOFF_S", 0)
     store._fail = None
     assert store.drive_path(tmp_path / "raw" / "a" / "b.pdf") == "msi_raw/raw/a/b.pdf"
+
+
+def test_shared_cache_fetches_one_drive_pdf_once_for_eight_threads(tmp_path):
+    """T-242: 8 reader threads x 5 pages of one Drive-only document = exactly one rclone fetch."""
+    import threading
+
+    payload = b"%PDF-1.7 one deck read by 30 workers"
+    remote = tmp_path / "remote"
+    _remote_file(remote, "pdfs/KEC/DECK/d.pdf", payload)
+    calls: list[list[str]] = []
+    store = _store(tmp_path, [(
+        "D:/RealityEngine/raw\\decks/KEC/d.pdf", RAW, "decks/KEC/d.pdf",
+        hashlib.md5(payload).hexdigest(), "pdfs/KEC/DECK/d.pdf")], remote=remote, calls=calls)
+    target = tmp_path / "raw" / "decks" / "KEC" / "d.pdf"
+    before = _fetched_dirs()
+    seen: list[Path] = []
+    errors: list[BaseException] = []
+    start = threading.Barrier(8)
+
+    def reader() -> None:
+        try:
+            start.wait(10)
+            for _page in range(5):
+                with store.local(target) as got:
+                    assert got.read_bytes() == payload
+                    seen.append(got)
+        except BaseException as exc:            # noqa: BLE001 - re-raised as a failed assertion below
+            errors.append(exc)
+
+    with store.shared_cache():
+        threads = [threading.Thread(target=reader) for _ in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(60)
+    assert not errors
+    assert len(seen) == 40 and len(set(seen)) == 1          # every page read the one fetched copy
+    assert len(calls) == 1                                  # not 40 downloads of the whole PDF
+    assert not seen[0].exists()                             # deleted with the cache folder on exit
+    assert not (_fetched_dirs() - before)
+    assert store._shared_dir is None and store._shared_bytes == 0
+
+
+def test_shared_cache_evicts_the_least_recently_used_file_above_the_cap(tmp_path):
+    first, second = b"a" * 8, b"b" * 8
+    remote = tmp_path / "remote"
+    _remote_file(remote, "pdfs/KEC/a.pdf", first)
+    _remote_file(remote, "pdfs/KEC/b.pdf", second)
+    calls: list[list[str]] = []
+    store = _store(tmp_path, [
+        ("p1", RAW, "decks/KEC/a.pdf", hashlib.md5(first).hexdigest(), "pdfs/KEC/a.pdf"),
+        ("p2", RAW, "decks/KEC/b.pdf", hashlib.md5(second).hexdigest(), "pdfs/KEC/b.pdf"),
+    ], remote=remote, calls=calls)
+    a = tmp_path / "raw" / "decks" / "KEC" / "a.pdf"
+    b = tmp_path / "raw" / "decks" / "KEC" / "b.pdf"
+
+    with store.shared_cache(max_bytes=10):
+        with store.local(a) as got_a:
+            assert got_a.read_bytes() == first
+        with store.local(b) as got_b:
+            assert got_b.read_bytes() == second
+        assert not got_a.exists() and got_b.exists()        # 16 bytes on a 10-byte cap: the LRU file goes
+        assert store._shared_bytes == len(second)
+        with store.local(a) as again:                       # evicted a is fetched again, not served stale
+            assert again.read_bytes() == first
+        assert len(calls) == 3                              # a, b, a
+
+
+def test_shared_cache_removes_its_folder_on_exit_and_on_error(tmp_path):
+    remote = tmp_path / "remote"
+    _remote_file(remote, "pdfs/KEC/x.pdf", b"x")
+    store = _store(tmp_path, [("px", RAW, "decks/KEC/x.pdf", hashlib.md5(b"x").hexdigest(),
+                               "pdfs/KEC/x.pdf")], remote=remote, calls=[])
+    target = tmp_path / "raw" / "decks" / "KEC" / "x.pdf"
+
+    before = _fetched_dirs()
+    with pytest.raises(RuntimeError, match="reader died"):
+        with store.shared_cache():
+            with store.local(target) as got:
+                assert got.is_file()
+            raise RuntimeError("reader died")
+    assert store._shared_dir is None and not got.exists()
+    assert not (_fetched_dirs() - before)
+    with pytest.raises(RuntimeError, match="already active"):
+        with store.shared_cache():
+            with store.shared_cache():
+                pass
