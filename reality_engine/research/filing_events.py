@@ -368,14 +368,18 @@ _CAPEX_STRONG = re.compile(
 _AMEND_VETO = re.compile(r"credit\s+rating|rating\s+(?:action|revision|reaffirm)"
                          r"|statement\s+of\s+deviation|utilisation|utilization", re.I)
 # an L-1/lowest-bidder intimation is an award, never a variation of an existing order (fresh3 #52).
-_LOWEST_BIDDER = re.compile(r"\bL\s*[-\u2013]\s*1\b|\blowest\s+(?:bidder|tenderer)\b|\bL1\s+(?:status|bidder)\b",
-                            re.I)
+_LOWEST_BIDDER = re.compile(r"\bL\s*[-\u2013]\s*1\b|\blowest\s+(?:bidder|tenderer)\b|\bL1\s+(?:status|bidder)\b"
+                            r"|\bemerged\s+as\s+L\s*[-\u2013]?\s*1\b", re.I)
 # an approved/proposed capacity is a plan until the sentence says it is commissioned.
 _CAPACITY_APPROVED = re.compile(r"\b(?:approved|approves|proposed|setting\s+up|to\s+be\s+set\s+up|will\s+set\s+up)\b",
                                 re.I)
 _ORDER_WORD = re.compile(
     r"\b(?:order|orders|purchase\s+order|work\s+order|contract|contracts|LOA|LOI|letter\s+of\s+award"
     r"|letter\s+of\s+acceptance|letter\s+of\s+variation)\b", re.I)
+# T-242 round 6: an L1-only intimation stays unverified unless an award is ALSO stated as received.
+_AWARD_RECEIVED = re.compile(
+    r"\b(?:receiv(?:ed|es)?|receipt|bagged|secured|won|obtained|awarded)\b[^.;]{0,80}?" + _ORDER_WORD.pattern,
+    re.I)
 _CS_GAP = r"[^;]{0,240}?"      # "USD 762,860.08" and "ie." must not end the gap
 _AMEND_FROM_TO = re.compile(
     r"\bfrom\b" + _CS_GAP + r"(?:Rs\.?|INR|₹)\s*(?P<a>[\d,]+(?:\.\d+)?)\s*(?P<au>crores?|cr\.?|lakhs?|lacs?)"
@@ -439,6 +443,36 @@ _TO_USD_MN = {"million": 1.0, "mn": 1.0, "billion": 1000.0, "bn": 1000.0}
 
 _ADDENDUM = re.compile(r"\b(?:addendum|corrigendum|revised|supplementary)\b", re.I)
 _PARENT_SCOPE = re.compile(r"\bparent\s+company\b|\bultimate\s+holding\s+company\b|\bholding\s+company\s+(?:call|release|announcement)\b", re.I)
+# T-242 round 6: a subsidiary's order is a real order for the listed group -- keep its status and label the
+# scope.  The printed name is captured, never inferred; a bare "a subsidiary" leaves the scope company.
+_SUB_QUALITY = (r"(?:wholly[-\s]?owned|material|step[-\s]?down|unlisted|listed|direct|indirect|foreign|overseas"
+                r"|US[-\s]?based|UK[-\s]?based)")
+_SUB_WORD = r"subs(?:idi|di)ary"          # subsidiary / the printed "subsdiary" typo
+_SUB_NAME = (r"(?P<name>(?-i:[A-Z])[A-Za-z0-9&.'’()\-]*"
+             r"(?:\s+(?:(?-i:[A-Z0-9])[A-Za-z0-9&.'’()\-]*|of|the|and"
+             r"|(?i:private|pvt|limited|ltd|llp|inc|llc|corp|corporation|company))){0,6})")
+# "<Name>, a wholly owned subsidiary of the Company, has received" / "<Name> (wholly owned subsidiary)".
+_SUB_AFTER_NAME = re.compile(
+    _SUB_NAME + r"\s*(?:,\s*|\s*\(\s*|\s+)\s*(?:a|an|the|our|its|their)?\s*"
+    r"(?:(?:" + _SUB_QUALITY + r")\s+){0,3}" + _SUB_WORD + r"\b", re.I)
+# "our subsidiary <Name>" / "material subsidiary, <Name>" / "subsidiary of <Parent>, <Name>".
+_SUB_BEFORE_NAME = re.compile(
+    r"(?:(?i:the\s+Company'?s?|our|its|their)\s+)?(?:(?:" + _SUB_QUALITY + r")\s+){0,3}" + _SUB_WORD
+    + r"\s*(?:company\s*)?"
+    r"(?:[-\u2013\u2014:]\s*|of\s+(?-i:[A-Z])[^,.;]{2,60},\s*|,\s*(?:i\.e\.,?\s*)?|\s+)"
+    + _SUB_NAME, re.I)
+_SUB_NAME_STOP = re.compile(
+    r"\s+(?i:has|have|had|having|received|receives|receipt|secured|secures|won|wins|bagged|bags|awarded"
+    r"|is|are|was|were|will|would|continues?|through|by|from|for|to|with|order|orders|contract|loa|loi"
+    r"|purchase|work|respectively|dear|sirs?|madams?|ma['’]?ams?|we|our|its|their|the\s+company)\b")
+_SUB_GENERIC = re.compile(
+    r"(?i)^(?:the\s+)?(?:our|its|their|wholly[-\s]?owned|material|step[-\s]?down|unlisted|listed|direct|indirect"
+    r"|foreign|overseas|us[-\s]?based|uk[-\s]?based|company|subsidiary)(?:\s+(?:wholly[-\s]?owned|material"
+    r"|step[-\s]?down|unlisted|listed|direct|indirect|foreign|overseas|us[-\s]?based|uk[-\s]?based|company))?$")
+_SUB_HOLDER = re.compile(r"(?i)\b(?:vide|its|their|our)\b")
+# boilerplate that can precede the marker in a title ("EQ Subject <Parent>'s Wholly Owned Subsidiary") is not a name.
+_SUB_JUNK = re.compile(r"(?i)\b(?:wholly|owned|formerly|known|subject|exchange|stock|bombay|bse|nse|entity|name)\b")
+_SUB_SUFFIX = re.compile(r"(?i)\b(?:limited|ltd|llp|inc|llc|corp(?:oration)?|pvt|private)\b")
 _ORDER_BOOK = re.compile(r"\border\s+book\b|\border\s+intake\b|\border\s+inflow\b|\bbacklog\b", re.I)
 _DATE_DMY = re.compile(r"\bdated?\s+(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})\b", re.I)
 _DATE_MD = re.compile(
@@ -822,6 +856,13 @@ _BAD_CUSTOMER = re.compile(
     r"|\ba\s+reputed\b|\ba\s+prominent\b|\ba\s+listed\s+company\b|\bone\s+of\s+the\b"
     r"|\bcustomer\b|\bclient\s+firm\b|\btraders\s+to\b"
     r"|\bbased\s+(?:renow[ne]d|reputed|prominent|at\s+(?:ahmedabad|gujarat|maharashtra|india))\b", re.I)
+# T-242 round 6: a press-release headline is not the awarder ("BSNL to Power India's Telecom Future
+# BANGALORE - January 01"): a headline verb, a place + date, or a month with a day rejects the value.
+_HEADLINE_CUSTOMER = re.compile(
+    r"\bto\s+(?:power|build|transform|shape|drive|accelerate|unlock|energi[sz]e|revolutioni[sz]e|lead|light)\b"
+    r"|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}\b",
+    re.I)
+_HEADLINE_PLACE = re.compile(r"\b[A-Z]{4,}\s*[-\u2013\u2014]\s*[A-Z0-9]")
 _CUSTOMER_CUTS = re.compile(
     r"(?:,?\s+for\s+|\s+amounting\b|\s+as\s+per\b|\s+worth\b|\s+signif\w*\b|\s+towards\b"
     r"|\s+Ref\.?(?:\s*:|\s*$)|\s+(?:on\s+\d|dated\s|of\s+worth|having\s))", re.I)
@@ -934,6 +975,8 @@ def _clean_party(text: Any, *, from_annexure: bool = False) -> str | None:
     value = re.sub(r"\s+Ref\.?(?:\s*:.*)?$", "", value)
     value = re.sub(r"\s+[1-9]$", "", value)
     value = value.strip(" ;:,.-—–")
+    if _HEADLINE_CUSTOMER.search(value) or _HEADLINE_PLACE.search(value):
+        return None
     if not value or len(value) < 3 or len(value) > (120 if from_annexure else 80) \
             or _BAD_CUSTOMER.search(value):
         return None
@@ -942,6 +985,46 @@ def _clean_party(text: Any, *, from_annexure: bool = False) -> str | None:
     if len(value) > 18 and " " in value and value.islower():
         return None
     return value
+
+
+def _subsidiary_name(title: str, text: str) -> str | None:
+    """The printed name of the subsidiary that received the order, or None for a bare "a subsidiary"."""
+    body = _flat(f"{title} {(text or '')[:2500]}")
+    for rx, name_first in ((_SUB_AFTER_NAME, True), (_SUB_BEFORE_NAME, False)):
+        for match in rx.finditer(body):
+            if name_first:
+                # "X, a subsidiary of Raymond Limited" is a third party's subsidiary, not the issuer's.
+                tail = body[match.end(): match.end() + 90]
+                if re.match(r"\s*of\s+", tail) \
+                        and not re.match(r"\s*of\s+(?:the\s+|our\s+)?(?i:company|listed\s+company)\b", tail):
+                    continue
+            name = _SUB_NAME_STOP.split(match.group("name"))[0]
+            name = re.sub(r"\s+", " ", name).strip(" ;:,.-—–")
+            if re.search(r"['’]s$", name, re.I):      # "<Parent>'s Subsidiary" names the parent, not the child
+                continue
+            # "Provigil Surveillance Limited. Bombay Stock Exchange Limited" runs past the sentence end.
+            name = re.sub(r"\.\s+(?!(?i:ltd|limited|pvt|private|llp|inc|llc|corp|corporation)\b).*$", "", name).strip()
+            if len(name) < 4 or len(name) > 60 or not name[0].isupper() \
+                    or re.search(r"(?i)subsidiar", name) or _SUB_GENERIC.match(name) \
+                    or _SUB_HOLDER.search(name) or re.search(r"['’]s\b", name) or _SUB_JUNK.search(name) \
+                    or re.search(r"\d", name) \
+                    or (not _SUB_SUFFIX.search(name) and len(name.split()) > 3) \
+                    or re.fullmatch(r"(?i)(?:the\s+)?(?:company|listed\s+company|parent)", name):
+                continue
+            # the subsidiary must sit in an order sentence, not a passing mention of the group structure.
+            window = body[:600] + body[max(0, match.start() - 180): match.end() + 180]
+            if not re.search(r"(?i)\b(?:receiv|receipt|secur|bagg|won|order|contract|loa|loi|award)", window):
+                continue
+            return name
+    return None
+
+
+def _l1_only(title: str, text: str) -> bool:
+    """A lowest-bidder/L1 intimation with no award stated as received is not an order win yet."""
+    body = _flat(f"{title} {(text or '')[:600]}")
+    if not _LOWEST_BIDDER.search(body):
+        return False
+    return not _AWARD_RECEIVED.search(body)
 
 
 def _order_value_from_text(text: str) -> tuple[float, str] | None:
@@ -2045,14 +2128,17 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
 
 # ------------------------------------------------------------------ row assembly
 def blank_row(doc: dict[str, Any], kind: str) -> dict[str, Any]:
+    title, text = doc.get("title") or "", doc.get("text") or ""
+    parent = bool(_PARENT_SCOPE.search(_flat(f"{title} {text[:1500]}")))
+    subsidiary = None if parent or kind != "order_win" else _subsidiary_name(title, doc.get("head") or text)
     row: dict[str, Any] = {column: None for column in COLUMNS}
     row.update({
         "store": doc["store"], "symbol": doc.get("symbol"), "isin": doc.get("isin"),
         "doc_key": doc.get("doc_key"), "kind": kind, "method": "script", "status": "unverified",
-        "entity_scope": ("parent" if _PARENT_SCOPE.search(
-            _flat(f"{doc.get('title') or ''} {(doc.get('text') or '')[:1500]}")) else "company"),
+        "entity_scope": ("parent" if parent else ("subsidiary" if subsidiary else "company")),
+        "_subsidiary": subsidiary,
         "title": doc.get("title"), "filing_date": doc.get("filing_date"), "known_at": doc.get("known_at"),
-        "page": 1, "seq": 1, "detail": "", "why": "", "_text": _flat(f"{doc.get('title') or ''} {doc.get('head') or ''}"),
+        "page": 1, "seq": 1, "detail": "", "why": "", "_text": _flat(f"{title} {doc.get('head') or ''}"),
     })
     return row
 
@@ -2149,6 +2235,19 @@ def _gate_status(row: dict[str, Any]) -> None:
     row["detail"] = f"{row['detail']}; {note}" if row.get("detail") else note
 
 
+def _finish_scope(row: dict[str, Any], title: str, head: str) -> dict[str, Any]:
+    """T-242 round 6: label a subsidiary's order and unverify an L1-only row before it leaves the builder."""
+    if row["kind"] == "order_win" and row["status"] == "verified" and _l1_only(title, head):
+        row["status"] = "unverified"
+        row["why"] = "l1_only"
+        note = "l1_only (lowest bidder stated, no award received)"
+        row["detail"] = f"{row['detail']}; {note}" if row.get("detail") else note
+    if row["entity_scope"] == "subsidiary" and row.get("_subsidiary"):
+        note = f"subsidiary: {row['_subsidiary']}"
+        row["detail"] = f"{row['detail']}; {note}" if row.get("detail") else note
+    return row
+
+
 def _assemble_row(doc: dict[str, Any], kind: str, fields: dict[str, Any],
                   seq: int = 1) -> tuple[dict[str, Any], bool]:
     title, text = doc.get("title") or "", doc.get("text") or ""
@@ -2172,13 +2271,13 @@ def _assemble_row(doc: dict[str, Any], kind: str, fields: dict[str, Any],
         row["detail"] = "amount not filled by script"
         if not row.get("quote"):
             row["quote"] = _flat(text)[:MAX_QUOTE]
-        return row, True
+        return _finish_scope(row, title, head), True
     if derived:
         # the amount is a sum, a delta or annual x tenure; the inputs are printed, the figure is derived.
         row["status"] = "unverified"
         row["detail"] = row.get("detail") or "amount derived from printed values (see value_text)"
         row["page"] = _page_of(doc["pages"], row.get("value_text"))
-        return row, False
+        return _finish_scope(row, title, head), False
     problem = _locate(row, doc)
     if problem:
         row["status"] = "quarantined"
@@ -2188,7 +2287,7 @@ def _assemble_row(doc: dict[str, Any], kind: str, fields: dict[str, Any],
         row["detail"] = "parent-company release"
     else:
         _gate_status(row)
-    return row, False
+    return _finish_scope(row, title, head), False
 
 
 def event_rows(doc: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
@@ -2756,6 +2855,7 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str) -> list[dict[str
             row["detail"] = "parent-company release"
         else:
             _gate_status(row)
+        _finish_scope(row, doc.get("title") or "", doc.get("head") or doc.get("text") or "")
         row["quote"] = row.get("quote") or _flat(doc.get("text"))[:MAX_QUOTE]
         rows.append(row)
     # one row per (filing, class): the best-filled of the model's own repeats

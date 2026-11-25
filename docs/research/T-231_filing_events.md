@@ -78,13 +78,16 @@ source in stage A).
   (`quote`). `_locate` matches the number against the page's own money/capacity spans, accepting the printed
   full-rupee form and a "crore"-suffixed full figure (`Rs. 7,40,06,30,000 Crore` -> 740.063 cr).
 
-Status (T-242 round 3, 24 Nov 2026): `verified` = every field printed, scope company **and the row's kind is in
-`VERIFIED_KINDS`** (`frozenset({"order_win"})`; `_gate_status`); `unverified` = a computed figure, an amount the
-script could not fill, a parent-scope row, or a kind that has not passed its own fresh strict 60-row grade (detail
+Status (T-242 round 3, 24 Nov 2026; scope and L1 in round 6): `verified` = every field printed, scope company or
+`subsidiary` (a subsidiary's order keeps its status with the printed name in `detail`), no `l1_only` veto, **and the
+row's kind is in `VERIFIED_KINDS`** (`frozenset({"order_win"})`; `_gate_status`, then `_finish_scope`); `unverified` =
+a computed figure, an amount the script could not fill, a parent-scope row, an L1-only intimation
+(`why='l1_only'`), or a kind that has not passed its own fresh strict 60-row grade (detail
 `kind_not_gated: <kind> awaits its own 60-row grade`); `quarantined` = the value is not on the page. A kind joins
 `VERIFIED_KINDS` only after its own fresh 60-row grade, so `fund_raise`, `capex_approval`,
 `capacity_commissioned` and `order_amendment` rows are never verified until then. Run 24 Nov 2026 on the 20 fresh3
-stores: 251 events, 0 quarantined, no non-order row verified.
+stores: 251 events, 0 quarantined, no non-order row verified. Round 6 re-measured the same two sets (25 fresh4 + 20
+fresh3 stores): no graded R row changed status or amount.
 
 ## 3b. Stage C rules
 
@@ -220,6 +223,60 @@ logic are untouched: `fund_raise` is still stored `unverified` (`kind_not_gated`
    the same share count), so a repeat whose number was read differently stays two rows; it never merges an approval
    with its later allotment.
 
+## 3e. T-242 round 6 (25 Nov 2026): L1-only, subsidiary scope, headline customer
+
+A surprise strict audit of 60 **verified** `order_win` rows from the round-5 DBs
+(`C:/RealityEngine/t242/audit_orderwin_r5/`, DeepSeek b87f8d84) scored **52 R / 0 P / 8 W / 0 J**: 13% wrong among
+verified rows, against the 5% bar. Three script causes, fixed in `reality_engine/research/filing_events.py`; no
+`fund_raise` logic and no `VERIFIED_KINDS` change.
+
+1. **L1-only is not an order yet** (`_LOWEST_BIDDER` now also reads "emerged as L1"; `_AWARD_RECEIVED`, `_l1_only`,
+   applied by `_finish_scope` at both status sites). When the title/subject or the first 600 characters say lowest
+   bidder / L-1 / L1 status and no LoA, work order or contract award is ALSO stated as received, the row keeps its
+   printed value but is stored `unverified` with `why='l1_only'` (detail names the rule). A received LoA wins even
+   when the same document mentions L1 (audit #26 Kolkata Municipal Corporation; fresh3 #28 KMEW "emerged as the
+   lowest bidder" after the LoA). 13 fresh3 verified rows unverified, all EMSLIMITED; 0 on fresh4. Measured stop
+   (agy 70ccab33): 13/193 = 6.7%, under the 15% line.
+2. **A subsidiary's order is a real order for the group** (`_subsidiary_name`; `_SUB_AFTER_NAME`, `_SUB_BEFORE_NAME`,
+   `_SUB_NAME_STOP`, `_SUB_GENERIC`, `_SUB_JUNK`, `_SUB_SUFFIX`; called from `blank_row` for `order_win` only). When
+   the order sentence's subject is a NAMED subsidiary ("<Name>, a wholly owned subsidiary of the Company, has
+   received", "our subsidiary <Name>", "material subsidiary, <Name>", "subsidiary - <Name>", "US-based subsidiary
+   <Name>", "our subsidiary, <Name>, has secured", and the printed "subsdiary" typo), the row KEEPS its status and
+   gets `entity_scope='subsidiary'`; the name is the one printed in the filing, stored in `detail` as
+   `subsidiary: <name>` (`detail` is free text, not JSON; the choice the brief asked us to report). A filing that says
+   only "a subsidiary"/"received by subsidiary company" without a name keeps `entity_scope='company'` (Wolf, 25 Nov).
+   A third party's subsidiary is the customer, not the issuer's scope ("TenX Realty Limited, (a step-down subsidiary
+   of Raymond Limited)"). 67 fresh4 + 9 fresh3 rows labelled; no status or amount moves for this rule.
+3. **A press-release headline is not the customer** (`_HEADLINE_CUSTOMER`, `_HEADLINE_PLACE` in `_clean_party`): a
+   customer carrying a headline verb, a month with a day, or an all-caps place + date ("BSNL to Power India's
+   Telecom Future BANGALORE - January 01") is rejected; the existing body-name fallback then finds "Bharat Sanchar
+   Nigam Limited (BSNL)".
+
+Measured on the same stores into new DBs (cache `C:/RealityEngine/t242/events_cache.db` copied to `.tmp/events_cache.db`,
+0 new model requests; `.tmp/events_r6_fresh4.db`, `.tmp/events_r6_fresh3.db`):
+
+* **All 8 W rows** are no longer verified-and-wrong: #7 and #32 are `unverified` / `why='l1_only'`; #24, #37, #42, #49
+  and #58 are `entity_scope='subsidiary'` (status verified) with printed names Provigil Surveillance Limited (x2),
+  EFC Limited, Lineage Power Private Limited and Aurionpro Fintech Inc; #54 (the headline-customer row) is gone
+  because its row now names the same BSNL and the same 94.35 cr as the earlier `5d19a5c9` filing (94.3513 cr,
+  `entity_scope='subsidiary'`), so B2 folds it into that verified row and links it in `amend`.
+* **No graded R row changes status or amount**: 52/52 audit R, 46/46 `events_grade_fresh4` R and 41/41
+  `events_grade_fresh3` R. The only non-R status change is one graded P row (`events_grade_fresh3` #23, the
+  EMSLIMITED L-1 104.0552 cr row, now `l1_only`).
+* **Verified `order_win` counts**: fresh4 132 -> 132 (96 script + 36 model); fresh3 193 -> 179 (172 script + 7 model;
+  13 verified -> `unverified` all `l1_only`, and 1 row fewer because the #54 press release folded). Rows newly
+  labelled `entity_scope='subsidiary'`: 67 on fresh4, 9 on fresh3; among graded rows, 9 of the audit (4 R), 12 of
+  `events_grade_fresh4` (9 R) and 2 of `events_grade_fresh3` (2 R).
+* **Tests**: `test_t242_r6_an_l1_only_intimation_is_unverified_but_a_received_award_stays`,
+  `test_t242_r6_a_subsidiary_order_is_labelled_and_keeps_its_status` (five quoted shapes + the unnamed and the third
+  party's subsidiary) and `test_t242_r6_a_press_release_headline_is_not_the_customer` (audit #54);
+  `test_t242_r3_fix4_l1_and_loss_reduction_are_awards` now expects the L1 half `unverified`/`l1_only`. 107 passed.
+* **Deliberate ceilings.** The scope test is document-level, not sentence-level: an order the issuer *received
+  from* its own subsidiary would be labelled `subsidiary` too (rare; the related-party crop is small). A subsidiary
+  whose parent is named rather than "the Company" is rejected as a name-before-marker match and recovered by the
+  marker-before-name shape where the filing prints one; where it does not, the row stays `company`. No company name
+  is in the code (patterns only).
+
 ## 4. Model fallback
 
 Only a classified **order win** whose printed value the script could not fill is sent, once, to `hy4-flash-free`
@@ -298,7 +355,7 @@ Recall (30 random order/contract/allot titled filings, seed 9, pool 914): 10 sho
 ## 7. Checks
 
 ```bash
-python -m pytest -q reality_engine/tests/test_filing_events.py   # 104 passed (T-242 round 5)
+python -m pytest -q reality_engine/tests/test_filing_events.py   # 107 passed (T-242 round 6)
 python plugins/code-tools/ct.py typecheck reality_engine/research/filing_events.py \
   reality_engine/tests/test_filing_events.py                     # 2 pre-existing sys.stdout.reconfigure errors
 ```
@@ -320,8 +377,10 @@ python plugins/code-tools/ct.py typecheck reality_engine/research/filing_events.
 * A multi-line "Broad consideration" cell with several per-order values is read as the first value by
   `order_wins`; round 4 corrects it when the title prints the aggregate and the body prints that total (the
   headline-aggregate case), otherwise the first item stays.
-* Parent/subsidiary dedupe across stores is not built (no announcement in the 91 carried a parent label); the 3
-  parent-labelled capex rows are kept with `entity_scope='parent'`.
+* Parent/subsidiary dedupe across stores is not built; `entity_scope` labels the scope instead: `parent` for the 3
+  parent-labelled capex rows, `subsidiary` for a named subsidiary's order (round 6, name in `detail`), else
+  `company`. The scope test is document-level, not sentence-level (a subsidiary's order keeps its verified status;
+  see 3e for its ceiling).
 * `tasks/STATE.md` is not edited: the brief forbids it; the controller should add the T-231 status/accept line.
 
 ## Wolf's independent reads (21 Nov 2026)
