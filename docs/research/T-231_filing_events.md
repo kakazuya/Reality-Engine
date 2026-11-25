@@ -406,10 +406,10 @@ Measured with the copied caches (0 new model requests; `.tmp/r8_fresh6.db`, `.tm
 `.tmp/r8_fresh3.db`; baselines `fresh6/events_r7d_fresh6.db` and `orderwin_r7d/events_r7d_fresh{5,4,3}.db`):
 
 * **Fresh6 failures**: all 25 W+J rows fixed — 16 gone by a veto (#2, #5, #8, #10, #22, #24, #28, #31, #33, #38, #46,
-  #47, #54, #56, #57, #58) and 12 fixed in place (#9 `subsidiary: DEE Piping Systems (Thailand) Co. Ltd`, #12
-  `BHEL-TRSL consortium`, #13/#51 EUR `value_text`, #14 `joint`, #26 brackets stripped, #36/#55 subsidiary, #39 amount
-  NULL, #44 joint `300` of `1,000`, #48 `400`, #53 `AVS Housing and Construction LLP (AVS Group)`); #19 carries the
-  twin's USD 3.4 mn and #52's separate row is gone. The 4 P rows also get their customer/value text.
+  #47, #54, #56, #57, #58) and 9 fixed in place (#9 `subsidiary: DEE Piping Systems (Thailand) Co. Ltd`, #14 `joint`,
+  #19 carries the twin's USD 3.4 mn and #52's separate row is gone, #36/#55 subsidiary, #39 amount NULL, #44 joint
+  `300` of `1,000`, #48 `400`, #53 `AVS Housing and Construction LLP (AVS Group)`). The 4 P rows also get their
+  printed customer/value text (#12 `BHEL-TRSL consortium`, #13/#51 EUR `value_text` as printed, #26 brackets stripped).
 * **Graded R rows**: 193 checked across `audit_orderwin_fresh6`, `audit_orderwin_fresh5`, `audit_orderwin_r5`,
   `events_grade_fresh4`, `events_grade_fresh3`; none worse. Two changed: fresh6 #52 folded into #19 (the same order,
   now valued) and fresh4 #40 lost a stray unbalanced ")" from its printed customer ("... India Limited)").
