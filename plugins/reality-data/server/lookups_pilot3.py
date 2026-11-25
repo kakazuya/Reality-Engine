@@ -773,7 +773,25 @@ def _money_inr_cr(value: Any, unit: str | None, scale: Any = None) -> tuple[floa
         return None
     unit_mult = _INR_UNIT_MULTIPLIER.get(u)
     if unit_mult is None:
-        return None
+        # T-242 fix 7: the same money spelled "₹ in Crs.", "Rs. in Crs.", "₹ crore" or "Rs. mn" (the printings the
+        # unit map does not spell) is still INR money; a non-rupee unit ("USD Mn") is never converted here.
+        low = str(unit or "").lower()
+        if not any(tok in low for tok in ("₹", "inr", "rs", "rupee")):
+            return None
+        if "lakh crore" in low or "lakh cr" in low:
+            unit_mult = 1e12
+        elif "crore" in low or re.search(r"\bcrs?\b", low):
+            unit_mult = 1e7
+        elif "lakh" in low or re.search(r"\blacs?\b", low):
+            unit_mult = 1e5
+        elif "billion" in low or re.search(r"\bbn\b", low):
+            unit_mult = 1e9
+        elif "million" in low or re.search(r"\bmn\b", low):
+            unit_mult = 1e6
+        elif "thousand" in low:
+            unit_mult = 1e3
+        else:
+            unit_mult = 1.0
     try:
         sc = float(scale) if scale not in (None, "", 0) else None
     except (TypeError, ValueError):
@@ -1168,7 +1186,7 @@ def _metric_units() -> dict[str, str]:
 def _unit_family(unit: str | None) -> str:
     """pct / x / days / count / money / '' for a unit a metric definition or an atom carries."""
     key = str(unit or "").strip().lower()
-    if key in ("pct", "percent", "bps", "basis_points", "basis points"):
+    if key in ("%", "pct", "percent", "per cent", "bps", "basis_points", "basis points"):
         return "pct"
     if key in ("x", "ratio", "multiple", "times"):
         return "x"
@@ -1176,7 +1194,8 @@ def _unit_family(unit: str | None) -> str:
         return "days"
     if key.startswith("count") or key in ("mn", "million"):
         return "count"
-    if key.startswith(("inr", "usd", "money")):
+    if (key.startswith(("inr", "usd", "money")) or "crore" in key or re.search(r"\bcrs?\b", key)
+            or "₹" in key or key.startswith("rs")):
         return "money"
     return ""
 
@@ -1335,7 +1354,7 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
     if obs_rows:
         combined = out + obs_rows
         combined.sort(key=lambda row: (
-            0 if (row.get("status") or row.get("check_status")) == "verified" else 1,
+            *_ask_row_rank(row, kpi, period),          # T-242 fix 7: company / asked period / unit / no scope
             0 if row.get("entity", sym) == sym else 1,
             0 if not row.get("segment") else 1,
             _definition_rank(row, str(row.get("metric") or "")),
@@ -1908,6 +1927,88 @@ def _entity_of(row: Any, symbol: str) -> str:
     basis = row["basis"] if row["basis"] in _REPORTING_BASES else None
     entity = row["entity"] or basis or symbol
     return symbol if entity in _REPORTING_BASES or entity == "total" else entity
+
+
+# --- T-242 fix 7: the company's own figure, the asked period and the asked scope ----------------------------------
+# A verified row is not yet the company's own number: obs_fact carries entity_scope, and a question about a company
+# answered with an industry / country / peer / customer figure is wrong whatever its status (audit 7: 13,031 observed
+# rows carry another scope).  Scope is a sort key, never a filter, so the other figure is still shown as an
+# alternative, labelled.
+_SCOPE_LABELS = {"industry": "industry figure", "country": "country figure", "peer": "peer figure",
+                 "competitor": "peer figure", "customer": "customer figure"}
+
+_COMPONENT = re.compile(r"\b(?:division|segment|brand|proprietary|subsidiary|wos|joint venture|jv|plant|unit|"
+                        r"facility|vertical|product|category|channel|geography|region|sub-segment|sale of)\b", re.I)
+_SCOPE_COLUMNS = ("segment", "product", "plant", "customer")
+
+
+def _scope_rank(row: dict[str, Any]) -> int:
+    """0 for the company / group figure, 1 for a named subsidiary, 2 for an industry / country / peer / customer one.
+
+    ``entity_scope`` is the store's own column (company, subsidiary, industry, country, peer, customer); a row that
+    does not carry it (a kpi_series or fin row) is the company's."""
+    scope = str(row.get("entity_scope") or "").strip().lower()
+    if not scope or scope == "company":
+        return 0
+    return 1 if scope == "subsidiary" else 2
+
+
+def _scope_label(row: dict[str, Any]) -> str | None:
+    """How an alternative says it is another scope's figure ('scope: industry figure'), None for the company's."""
+    return _SCOPE_LABELS.get(str(row.get("entity_scope") or "").strip().lower())
+
+
+def _component_scope(row: dict[str, Any]) -> bool:
+    """Is this row a division / brand / plant / product figure rather than the company's whole one?
+
+    A segment column says it outright; a deck's section title says it for a row whose segment column the reader left
+    empty ('Q2FY27 Highlights from Sale of Ethanol' carries the 2% margin slide, not the company's 7%)."""
+    if any(str(row.get(col) or "").strip() for col in _SCOPE_COLUMNS):
+        return True
+    text = " ".join(str(row.get(col) or "") for col in ("series_title", "group_path", "segment"))
+    return bool(_COMPONENT.search(text))
+
+
+def _asked_period_kind(period: str | None) -> str:
+    """Q / H1 / H2 / FY / instant / '' for the kind of period a question asks."""
+    if not period:
+        return ""
+    if _natural_date(period)[0] is not None:
+        return "instant"
+    kind, _label = norm_period(period)
+    return kind or ""
+
+
+def _row_period_kind(row: dict[str, Any]) -> str:
+    """The kind of period a row actually reports, from its own label and the store's ``period_kind`` column."""
+    text = str(row.get("period") or "")
+    if str(row.get("period_kind") or "").lower() == "instant" or _natural_date(text)[0] is not None:
+        return "instant"
+    kind, _label = norm_period(text)
+    return kind or ""
+
+
+def _period_kind_rank(row: dict[str, Any], period: str | None) -> int:
+    """1 when the row reports a different kind of period than the one asked (an H1 answer to a quarter ask)."""
+    want, got = _asked_period_kind(period), _row_period_kind(row)
+    return 0 if (not want or not got or want == got) else 1
+
+
+def _unit_fits(metric: str | None, row: dict[str, Any]) -> bool:
+    """Is the row's unit the family the metric's own definition carries ('AUM' is money, not the growth %)."""
+    want = _metric_family(metric) if metric else ""
+    return True if not want else _unit_family(row.get("unit")) == want
+
+
+def _ask_row_rank(row: dict[str, Any], metric: str | None, period: str | None) -> tuple:
+    """T-242 fix 7: the company's own figure of the asked period and unit, with no segment scope, first.
+
+    In the brief's order: another scope's figure is never the first answer; then the asked period kind; then the
+    measure's own unit family; then an unscoped row.  Every part is a stable sort key, so the store's own evidence
+    order (verified, printed label, document type, newest) is kept wherever these do not differ."""
+    return (0 if (row.get("status") or row.get("check_status")) == "verified" else 1,
+            _scope_rank(row), 0 if _unit_fits(metric, row) else 1, _period_kind_rank(row, period),
+            1 if _component_scope(row) else 0)
 
 
 def _fin_row(r: sqlite3.Row, table: str, period: str, definition: str, source: str) -> dict[str, Any]:
@@ -2505,18 +2606,95 @@ def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categor
 
 
 # --- pilot3_statements ------------------------------------------------------------------------------
-def _ask_tokens(*texts: str | None) -> list[str]:
-    """The words a statement question is asked with: topic, terms and rank_terms, deduped, 3+ letters (T-242)."""
+# The grammar words a question is written with are not what its sentence answers: counting 'the', 'and', 'they',
+# 'this' or 'will' as ask words let a long unrelated sentence win (T-242 fix 7).
+_ASK_STOP = {"how", "what", "when", "why", "where", "which", "who", "whom", "whose", "the", "and", "for", "this",
+             "that", "with", "from", "will", "would", "could", "should", "can", "may", "might", "must", "they",
+             "them", "their", "there", "these", "those", "was", "were", "are", "has", "have", "had", "does", "did",
+             "done", "much", "many", "more", "most", "some", "any", "all", "also", "just", "only", "than", "then",
+             "into", "onto", "over", "under", "about", "after", "before", "between", "during", "each", "other",
+             "same", "both", "here", "very", "been", "being", "because", "while", "such", "its", "our", "your",
+             "you", "we", "us", "me", "my", "he", "she", "his", "her", "not", "but", "off", "out", "up", "down",
+             "per", "is", "be", "as", "at", "by", "in", "on", "of", "to", "or", "if", "no", "so", "do", "new"}
+
+
+def _ask_tokens(*texts: str | None, stop: bool = True) -> list[str]:
+    """The content words a statement question is asked with: topic, terms and rank_terms (T-242 fix 7)."""
     out: list[str] = []
     for text in texts:
         for word in re.findall(r"[\w₹%&\-\.]+", text or ""):
             low = word.lower()
-            if len(low) > 2 and low not in out:
+            if len(low) > 2 and low not in out and (low not in _ASK_STOP or not stop):
                 out.append(low)
     return out
 
 
+def _proximity(text: str | None, words: list[str]) -> tuple[int, int]:
+    """(ask words close together, how often they occur) for the best sentence -- the fix-6 tie-break (T-242)."""
+    best = (0, 0)
+    for sentence in _SENTENCE_SPLIT.split(str(text or "")):
+        tokens = re.findall(r"[a-z0-9]+", sentence.lower())
+        if not tokens:
+            continue
+        close = 0
+        for start in range(max(0, len(tokens) - 1)):
+            window = tokens[start:start + 4]
+            if len({word for word in words if any(_token_matches(tok, word) for tok in window)}) >= 2:
+                close = 1
+                break
+        occ = sum(1 for tok in tokens if any(_token_matches(tok, word) for word in words))
+        if (close, occ) > best:
+            best = (close, occ)
+    return best
+
+
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+")
+
+# T-242 fix 7: the words a call prints for a measure an ask names in investor language, plus the committed
+# thesaurus's expansion of the same words.  Structural (one measure word), never per company.
+_ASK_SYNONYMS: dict[str, tuple[str, ...]] = {
+    "capex": ("capital expenditure", "capital outlay", "project cost", "invest", "spend", "outlay"),
+    "demand": ("volume", "offtake", "demand", "dispatch"),
+    "margin": ("ebitda", "profitab", "margin"),
+    "revenue": ("top line", "topline", "revenue", "sales", "income"),
+    "order": ("order book", "order intake", "order inflow", "order"),
+    "cost": ("cost", "expense", "price", "spend"),
+    "capacity": ("capacity", "output", "production", "plant", "expansion"),
+    "customer": ("customer", "client", "attrition", "churn"),
+    "operations": ("operat", "plant", "facility", "production", "commission", "ready"),
+    "guidance": ("target", "expect", "outlook", "guide", "range"),
+}
+# a quantitative ask ("how much", "what is the target") is answered by a sentence that prints a figure and a period
+_ASK_QUANT = re.compile(r"\bhow (?:much|many|big|large|long)|what (?:is|was|are|were)\b|target|guidance|size|"
+                        r"number|outlook|expect", re.I)
+_ASK_FIGURE = re.compile(r"(?:₹|rs\.?|inr|usd|\$)\s*\d[\d,]*(?:\.\d+)?|"
+                         r"\d[\d,]*(?:\.\d+)?\s*(?:crores?|cr\b|lakhs?|millions?|mn\b|billions?|bn\b|%|per ?cent|"
+                         r"bps|tons?|mtpa|megawatts?|mw\b)", re.I)
+_ASK_PERIOD = re.compile(r"\b(?:fy\s?\d{2}|q[1-4]\s?fy|h[12]\s?fy|quarters?|half|years?|annual|annum|months?|"
+                         r"full[- ]year|fy\d{2}|yrs?)\b", re.I)
+_TIE_WIDEN = 15        # extra turns a named call may add while the rows at the 25-row window's edge are ties
+# T-242 fix 7: 'this year' asks for the year's total; a sentence printing Q1/Q2 answers one quarter of it
+_ASK_YEAR_SEARCH = re.compile(r"\byear\b|\bfy\s?\d{2}\b|annual|full[- ]year", re.I)
+_QUARTER_WORD = re.compile(r"\bq[1-4]\b|\bquarter\b", re.I)
+
+
+def _measure_words(*texts: str | None) -> list[str]:
+    """The words a call prints for a measure an ask names in investor language (T-242 fix 7).
+
+    "How much will they invest this year" must reach "during FY27, we estimate to spend around INR1,700 crores": the
+    ask's own words never appear in that sentence, its measure's words do.  The committed thesaurus
+    (``synonyms.json``) expands the same words, so one small table serves the asks and the pages."""
+    out: list[str] = []
+    for text in texts:
+        for word in re.findall(r"[a-z]+", str(text or "").lower()):
+            for term in _ASK_SYNONYMS.get(word, ()):
+                if term not in out:
+                    out.append(term)
+            for term in _synonyms_for(word):
+                low = term.lower()
+                if low not in out:
+                    out.append(low)
+    return out
 
 
 def _token_matches(token: str, word: str) -> bool:
@@ -2525,26 +2703,51 @@ def _token_matches(token: str, word: str) -> bool:
             or (len(word) >= 5 and len(token) >= 5 and token[:5] == word[:5]))
 
 
-def _sentence_hits(text: str | None, words: list[str]) -> tuple[bool, int, int]:
-    """(every ask word in ONE sentence, ask words close together in it, occurrences) -- T-242 fix 6.
+def _ask_weights(items: list[list[dict[str, Any]]], words: list[str]) -> dict[str, float]:
+    """Each ask word's weight in this reply: 1.0, and 1.5 when the reply prints it once (T-242 fix 7).
 
-    A long ``obs_fact`` statement is several sentences: the sentence that answers the ask is ranked, not the blob
-    around it and not the whole answer turn.  'Close together' is two different ask words within four tokens, so a
-    phrase a label prints in either order ('capital raise', 'the growth of industry') beats a sentence that merely
-    repeats one word far apart.  A light stem covers plural/derived forms ('industry' == 'industries')."""
-    best: tuple[bool, int, int] = (False, 0, 0)
+    A word the call prints once ('Bokaro', 'press', 'attrition') names the asked sentence; a word printed in almost
+    every row ('capacity', 'increase', 'year') does not.  The corpus is the reply itself, so no global table has to be
+    kept, and the weight is structural: it is read from the held pages, never from a company."""
+    token_cache: list[list[set[str]]] = [[set(re.findall(r"[a-z0-9]+", str(r.get("quote") or "").lower()))
+                                           for r in group] for group in (items or [])]
+    out: dict[str, float] = {}
+    for word in words:
+        df = sum(1 for toks in token_cache if any(any(_token_matches(tok, word) for tok in row) for row in toks))
+        out[word] = 1.5 if df == 1 else 1.0
+    return out
+
+
+def _sentence_hits(text: str | None, words: list[str], measures: list[str] | None = None,
+                   quant: bool = False, weights: dict[str, float] | None = None) -> tuple[bool, float, int]:
+    """Best sentence of ``text`` for an ask (T-242 fixes 6 and 7): (every ask word in ONE sentence, score, tokens).
+
+    The sentence that answers the ask is ranked, not the blob around it and not the whole answer turn.  The score
+    adds the ask words it carries (a word this reply prints once weighs more), a figure AND a period when the ask is
+    quantitative, two ask words close together, the ask's measure words (the paraphrase: "how much will they invest"
+    -> "we estimate to spend"), and takes a quarter as the answer to a year ask only after the full year itself."""
+    weights = weights or {}
+    best: tuple[bool, float, int] = (False, 0.0, 0)
+    year_ask = bool(_ASK_YEAR_SEARCH.search(" ".join(words))) and not bool(_QUARTER_WORD.search(" ".join(words)))
     for sentence in _SENTENCE_SPLIT.split(str(text or "")):
         tokens = re.findall(r"[a-z0-9]+", sentence.lower())
         if not tokens:
             continue
-        found = 0
-        matches = 0
+        low = " " + " ".join(tokens) + " "
+        found, score = 0, 0.0
         for word in words:
             if any(_token_matches(tok, word) for tok in tokens):
                 found += 1
-        for tok in tokens:
-            if any(_token_matches(tok, word) for word in words):
-                matches += 1
+                score += weights.get(word, 1.0)
+        measures_hit, phrases_hit = 0, 0
+        for term in measures or ():
+            if " " in term:
+                if term in low:
+                    measures_hit += 1
+                    phrases_hit += 1
+            elif any(tok.startswith(term) or _token_matches(tok, term) for tok in tokens):
+                measures_hit += 1
+        figure = 1 if (quant and _ASK_FIGURE.search(sentence) and _ASK_PERIOD.search(sentence)) else 0
         close = 0
         for start in range(max(0, len(tokens) - 1)):
             window = tokens[start:start + 4]
@@ -2552,16 +2755,30 @@ def _sentence_hits(text: str | None, words: list[str]) -> tuple[bool, int, int]:
             if len(distinct) >= 2:
                 close = 1
                 break
-        cand = (bool(words) and found == len(words), close, matches)
+        # the measure words matter most when the ask's own words do not reach the sentence (the paraphrase); a
+        # multi-word measure ("order book") still counts beside a word match, because it is the subject's own phrase
+        score += 2.0 * figure + 0.5 * close + (0.5 * min(measures_hit, 2) if not found
+                                               else 0.5 * min(phrases_hit, 1))
+        if year_ask and _QUARTER_WORD.search(sentence):
+            score -= 0.6        # the year's total, not one quarter of it
+        cand = (bool(words) and found == len(words), round(score, 3), -len(tokens))
         if cand > best:
             best = cand
-    return best
+    return best[0], best[1], -best[2]
 
 
-def _group_ask_rank(group: list[dict[str, Any]], words: list[str]) -> tuple[int, int, int]:
-    """All ask words present first, then close together, then how often -- the stable tie-break is existing order."""
-    all_hit, close, occ = _sentence_hits(" ".join(str(r.get("quote") or "") for r in group), words)
-    return (0 if all_hit else 1, -close, -occ)
+def _group_ask_rank(group: list[dict[str, Any]], words: list[str], measures: list[str] | None = None,
+                    quant: bool = False, weights: dict[str, float] | None = None,
+                    tie_words: list[str] | None = None) -> tuple[int, float, int, int]:
+    """Every ask word in one sentence first, then the sentence's weighted score, then fix-6 proximity (T-242 fix 7).
+
+    The proximity tie-break is the ``fix 6`` order (ask words close together, then how often) over the question's own
+    words: two rows that score the same fall back to the ranking that was already proven, and only a real gain from
+    the new sentence score outranks it.  The stable tie-break is the reply's existing order."""
+    text = " ".join(str(r.get("quote") or "") for r in group)
+    all_hit, score, _tokens = _sentence_hits(text, words, measures, quant, weights)
+    close, occ = _proximity(text, tie_words) if tie_words else (0, 0)
+    return (0 if all_hit else 1, -score, -close, -occ)
 
 
 def _term_hits(column: str, words: list[str]) -> tuple[str, list]:
@@ -2674,7 +2891,9 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     # T-242 fix 3: one named call is a bounded set, so its window is 25 remarks (the quote on a long call is
     # often past the tenth); any other question keeps the 10-statement window.
     cap, start = _window(limit, offset, 25 if named_day else 10)
-    want = cap + start
+    # T-242 fix 7: a named call is a bounded set, so ranking may widen past the 25-row window when the rows at the
+    # edge are ties; the next turns are fetched and every row tied with the last one shown is served.
+    want = cap + start + (_TIE_WIDEN if named_day else 0)
     # whole_turn: `limit` counts answer turns, not sentences, so fetch enough rows to find the turns the page needs
     # (T-164 r7: limit=20 used to return 188 rows because the LIMIT bounded matched sentences before expansion)
     # T-242 fix 4: within a named call ONE statement per answer turn is served, so the 25-turn window arrives as 25
@@ -2810,12 +3029,39 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     if topic and tagged_match is False and not obs_v:
         items = [[item] for item in page_items] + merged_stmts
     # T-242 fix 6: inside a named call the sentence that carries EVERY ask word comes first, then the one carrying
-    # the most; the stable sort keeps the reply's existing order for ties (fix 3/4/5 stay as they were).
-    if named_day:
-        ask_tokens = _ask_tokens(topic, terms, rank_terms)
-        if ask_tokens:
-            items.sort(key=lambda group: _group_ask_rank(group, ask_tokens))
-    page_groups = items[start:start + cap]
+    # the most; fix 7 adds the ask's measure words (paraphrase) and a figure + period when the ask is quantitative.
+    # The stable sort keeps the reply's existing order for ties (fix 3/4/5 stay as they were).
+    ask_tokens = _ask_tokens(topic, terms, rank_terms) if named_day else []
+    measures = _measure_words(topic, terms, rank_terms) if named_day else []
+    quant = bool(named_day and _ASK_QUANT.search(" ".join(x for x in (rank_terms, terms, topic) if x)))
+    weights = _ask_weights(items, ask_tokens) if ask_tokens else {}
+    tie_words = _ask_tokens(topic, terms, rank_terms, stop=False) if ask_tokens else []
+
+    def _key(group: list[dict[str, Any]]) -> tuple:
+        # T-242 fix 7: a question phrased with rank_terms is ranked by the sentence score; a bare topic search keeps
+        # the fix-6 order (every ask word in one sentence, then close, then often) that already answers it.
+        if rank_terms:
+            return _group_ask_rank(group, ask_tokens, measures, quant, weights, tie_words)
+        text = " ".join(str(r.get("quote") or "") for r in group)
+        close, occ = _proximity(text, ask_tokens)
+        return (0 if _sentence_hits(text, ask_tokens)[0] else 1, -close, -occ)
+
+    if named_day and ask_tokens:
+        items.sort(key=_key)
+    show = cap
+    if named_day and ask_tokens and len(items) > start + cap:
+        # a tie at the window's edge is not a reason to cut the matched target: widen until the rank changes -- but
+        # only while the byte cap can carry the extra rows, or the widened reply is cut back below the fix-4 window
+        edge = _key(items[start + cap - 1])
+        pending = sum(len(str(r.get("quote") or "")) + 160 for group in items[start:start + cap] for r in group)
+        while (start + show < len(items) and show < cap + _TIE_WIDEN
+               and _key(items[start + show]) == edge):
+            row_bytes = sum(len(str(r.get("quote") or "")) + 160 for r in items[start + show])
+            if pending + row_bytes > int(REPLY_BYTES * 0.9):
+                break
+            pending += row_bytes
+            show += 1
+    page_groups = items[start:start + show]
     out = [item for group in page_groups for item in group]
     fallback = "doc_page_bm25" if (topic and tagged_match is False and not obs_v and page_items) else None
     matched_total = len(merged_stmts) + len(page_items)    # items (answer turns, obs statements and page hits)
@@ -3034,11 +3280,25 @@ GUIDANCE_METRICS = ("revenue_growth", "ebitda_margin", "order_intake", "nim", "c
 _GUIDANCE_BALANCE = re.compile(r"\b(?:balance|remaining)\b(?!\s+sheet)|\brest of the (?:year|period)\b|"
                                r"\bnext (?:two|three|four) quarters\b", re.I)
 
+# T-242 fix 7: a target said for a wholly-owned subsidiary's board approval, a brand, a division or a segment is a
+# component's number, never the group's own full-year target (audit 7: ARE&M's 2,320 cr ARACT approval came first
+# while the call guides 1,700 cr for the group's FY27 capex).  Structural: the quote's own scope words.
+_GUIDANCE_COMPONENT = re.compile(
+    r"\b(?:w\s?o\s?s|wholly[- ]owned|subsidiary|board\s+of\s+[a-z0-9 .&,'-]{2,80}?\s+limited|"
+    r"proprietary\s+brand|brand|division|segment|joint\s+venture|jv|associate|step[- ]down)\b", re.I)
+
+
+def _guidance_group_target(row: dict[str, Any]) -> bool:
+    """Is this target the company's / group's own, not a component's or a subsidiary approval?"""
+    return not _GUIDANCE_COMPONENT.search(str(row.get("quote") or ""))
+
 
 def _guidance_elect(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """One current row per metric+period (T-242): a full-year target wins over the balance-of-year restatement of
-    the same target ("INR80 crores for the year" over "the balance INR75 crores for the next three quarters");
-    otherwise the first row served (the table is already newest first).  Returns (kept, alternatives)."""
+    """One current row per metric+period (T-242): the company's / group's own full-year target wins over a
+    component's or subsidiary approval's ("ARACT, WOS, has approved a capex of Rs. 2,320 crores" is not the group's
+    FY27 capex) and over the balance-of-year restatement of the same target ("INR80 crores for the year" over "the
+    balance INR75 crores for the next three quarters"); otherwise the first row served (the table is newest first).
+    Returns (kept, alternatives)."""
     groups: dict[tuple, list[dict[str, Any]]] = {}
     for row in rows:
         groups.setdefault((row["metric"], row["target_period"], row.get("entity") or ""), []).append(row)
@@ -3046,19 +3306,48 @@ def _guidance_elect(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], l
     alternatives: list[dict[str, Any]] = []
     for group in groups.values():
         full = [row for row in group if not _GUIDANCE_BALANCE.search(str(row.get("quote") or ""))]
-        chosen = (full or group)[0]
+        company = [row for row in (full or group) if _guidance_group_target(row)]
+        chosen = (company or full or group)[0]
         kept_ids.add(id(chosen))
         alternatives += [row for row in group if row is not chosen]
+    return [row for row in rows if id(row) in kept_ids], alternatives
+
+
+def _guidance_demote_components(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Hold back component / subsidiary-approval rows before the newest-document collapse (T-242 fix 7).
+
+    ``current_rows`` keeps every row of the newest document for a metric+period, so a later WOS board approval
+    replaces the group's own target before the election can choose (ARE&M: the ARACT WOS approval of 2,320 crores
+    came from a later document than the call's 1,700-crore group estimate).  A component row is never the group's
+    target: it goes to the reply's alternatives, labelled, and the group rows go on to the normal election."""
+    groups: dict[tuple, list[dict[str, Any]]] = {}
+    for row in rows:
+        groups.setdefault((row["metric"], row["target_period"]), []).append(row)
+    kept_ids: set[int] = set()
+    alternatives: list[dict[str, Any]] = []
+    for group in groups.values():
+        company = [row for row in group if _guidance_group_target(row)]
+        if company:
+            kept_ids.update(id(row) for row in company)
+            alternatives.extend(row for row in group if not _guidance_group_target(row))
+        else:
+            kept_ids.update(id(row) for row in group)
     return [row for row in rows if id(row) in kept_ids], alternatives
 
 
 def _guidance_alt(row: dict[str, Any]) -> dict[str, Any]:
     """A dropped current row, said plainly, so the reply shows the other target it elected against (T-242)."""
     balance = bool(_GUIDANCE_BALANCE.search(str(row.get("quote") or "")))
+    component = not _guidance_group_target(row)
+    if balance:
+        why = "balance-of-year restatement of the full-year target"
+    elif component:
+        why = "a component / subsidiary target, not the group's own full-year one"
+    else:
+        why = "an earlier target of the same metric and period"
     return {"metric": row["metric"], "period": row["target_period"], "low": row["low"], "high": row["high"],
             "unit": row["unit"], "said_on": row["said_on"], "quote": _trim(row["quote"], 240),
-            "why_not_preferred": "balance-of-year restatement of the full-year target" if balance
-            else "an earlier target of the same metric and period",
+            "why_not_preferred": why,
             "provenance": _prov("guidance", f"{row['doc_key']} p{row['page']}", row.get("known_at"),
                                 doc_type=row.get("doc_type"), title=_trim(row.get("title"), 120),
                                 row_id=row["id"])}
@@ -3174,9 +3463,10 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
             r["superseded_by"] = {"row_id": newest["id"], "said_on": newest["said_on"], "known_at": newest["known_at"]}
     alternatives: list[dict[str, Any]] = []
     if not history:
+        kept, component_alts = _guidance_demote_components(kept)   # T-242 fix 7: a component is never the group's
         kept = _guidance_current_rows(kept)   # the current target per metric+period, with its dropped-row count
-        kept, dropped = _guidance_elect(kept)  # T-242: one row per metric+period; full year over balance-of-year
-        alternatives = [_guidance_alt(r) for r in dropped[:12]]
+        kept, dropped = _guidance_elect(kept)  # T-242: one row per metric+period; group over balance-of-year
+        alternatives = [_guidance_alt(r) for r in component_alts + dropped][:12]
     for r in kept[:_cap(limit)]:
         previous = None
         if r["revision_of"] is not None:
@@ -3218,6 +3508,14 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
                 wanted = {_norm_measure(c) for c in cands}
                 pool = _obs_rows(sym, period=period, record_type="guidance", as_of=as_of, limit=200)
                 obs_g = [r for r in pool if _norm_measure(r["measure"]) in wanted][: _cap(limit)]
+        if metric and not obs_g:
+            # T-242 fix 7: a guidance observation filed under a placeholder measure
+            # (NEW:<revenue_or_ebitda_growth_expectation>) names no metric a user's word can match; the ask's own
+            # measure words inside the code do name it ("revenue growth" -> revenue + growth in the placeholder).
+            want = [w for w in re.split(r"[^a-z0-9]+", str(metric).lower()) if len(w) > 2]
+            if want:
+                pool = _obs_rows(sym, period=period, record_type="guidance", as_of=as_of, limit=200)
+                obs_g = [r for r in pool if all(w in _norm_measure(r["measure"]) for w in want)][: _cap(limit)]
         if metric and not obs_g and period:
             # T-242 fix 6: a guidance observation often prints the range but not the year it targets ("the range we
             # have always spoken is 65% to 67%").  Rows whose target period is unstated answer the period asked and
@@ -3235,10 +3533,17 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
                     "quote": _trim(r.get("statement"), 300), "speaker": r.get("speaker"), "revision_of": None,
                     "previous": None, "changed": False, "superseded_rows": 0, "is_latest": True,
                     "superseded_by": None, "status": r["status"], "check_status": r["status"],
-                    "source": "obs_fact", "doc_key": r["doc_key"], "page": r["page"], "provenance": r["provenance"]}
+                    "source": "obs_fact", "doc_key": r["doc_key"], "page": r["page"],
+                    "entity_scope": r.get("entity_scope"), "provenance": r["provenance"]}
             if r.get("period_source") == "unstated":
                 item["period_source"] = "unstated"       # the call printed the range, not the target year
             _add_money(item, r["value"], r["unit"], r["scale"])
+            if _scope_rank(r) >= 2:
+                # T-242 fix 7: another scope's target is never the company's answer; it is shown labelled
+                item["scope"] = _scope_label(r)
+                item["why_not_preferred"] = "a figure of another scope, not the company's own target"
+                alternatives.append(item)
+                continue
             out.append(item)
     if out:
         out.sort(key=lambda row: 0 if (row.get("status") or row.get("check_status")) == "verified" else 1)
@@ -4105,10 +4410,14 @@ def _fact_value(row: dict[str, Any]) -> tuple[Any, str | None, float]:
 def _fact_alt(row: dict[str, Any], period: str | None = None) -> dict[str, Any]:
     value, unit, scale = _fact_value(row)
     table, doc, page = _split_source(row.get("provenance") or {})
-    return _add_money({"value": value, "unit": unit,
-                       "period": period or row.get("period") or row.get("date") or row.get("quarter_end"),
-                       "basis": row.get("basis"), "table": table, "doc_key": doc, "page": page,
-                       "definition": row.get("definition")}, value, unit, scale)
+    alt = _add_money({"value": value, "unit": unit,
+                      "period": period or row.get("period") or row.get("date") or row.get("quarter_end"),
+                      "basis": row.get("basis"), "table": table, "doc_key": doc, "page": page,
+                      "definition": row.get("definition")}, value, unit, scale)
+    scope = _scope_label(row)     # T-242 fix 7: an alternative says whose figure it is ('industry figure')
+    if scope:
+        alt["scope"] = scope
+    return alt
 
 
 def _fact_mismatch(asked_period: str | None, asked_basis: str | None, row: dict[str, Any]) -> str | None:
@@ -4949,6 +5258,15 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
             out["held_quarantined"] = held[:10]
         return out
     row = rows[0]
+    if _scope_rank(row) >= 2:
+        # T-242 fix 7: another scope's figure (industry / country / peer / customer) is never the company's answer.
+        # It is still held, so it comes back labelled in ``alternatives`` and the reply says why it is not served.
+        label = _scope_label(row) or "another company's figure"
+        out = _fact_not_found(sym, metric, key, found, allnames, day,
+                              note=f"only a figure of another scope is held for this metric and period; the reply's "
+                                   f"alternatives show it as a {label}, which is not the company's own number")
+        out["alternatives"] = [_fact_alt(other) for other in rows[:3]]
+        return out
     if used == "fin":
         row = _fact_prefer_xbrl_annual(row, day) or row
     conflict_alt = None
@@ -5144,13 +5462,17 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
         item = {
             "measure": g("measure"), "record_type": g("record_type"), "status": g("status"),
             "source": g("source"), "doc_type": g("doc_type"), "doc_key": g("doc_key"), "page": g("page"),
-            "period": g("period"), "period_source": g("period_source"), "basis": g("basis"),
+            "period": g("period"), "period_source": g("period_source"), "period_kind": g("period_kind"),
+            "basis": g("basis"),
             "basis_source": g("basis_source"), "unit": g("unit"), "scale": g("scale"), "value": g("value"),
             "value_high": g("value_high"), "printed_label": g("printed_label"),
             "statement": g("statement"), "quote": _trim(g("statement") or g("printed_label"), 300),
             "speaker": g("speaker"), "direction": g("direction"), "question_context": g("question_context"),
             "segment": g("segment"), "geography": g("geography"), "customer": g("customer"),
             "entity_scope": g("entity_scope"), "known_at": g("known_at"),
+            # T-242 fix 7: the deck/section a row was read from names a component scope ('Highlights from Sale of
+            # Ethanol') that no segment column carries; scope ranking reads both.
+            "series_title": g("series_title"), "group_path": g("group_path"),
             "provenance": _prov("obs_fact", f"{g('doc_key')} p{g('page')}", g("known_at"),
                                  doc_type=g("doc_type"), title=_trim((g("series_title") if "series_title" in keys else None) or '', 120),
                                  row_id=g("observation_id")),
@@ -5166,6 +5488,10 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
                     pass
         _add_money(item, r["value"], r["unit"], r["scale"])
         out.append(item)
+    # T-242 fix 7: the company's own figure before a subsidiary / industry / country / peer / customer row, and a row
+    # of the asked period kind before an off-period one (a stable sort keeps the evidence order inside each rank).
+    if out and (period or _has_column("obs_fact", "entity_scope")):
+        out.sort(key=lambda row: (_scope_rank(row), _period_kind_rank(row, period)))
     return out
 
 
@@ -5255,7 +5581,9 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
         ask = " ".join(x for x in (rank_terms, topic, terms) if x)
     qwords = list(dict.fromkeys(w.lower() for w in re.findall(r"[\w₹%&\-\.]+", ask) if len(w) > 2))[:12]
     qword_alts = [([w] + [s.lower() for s in _synonyms_for(w)]) for w in qwords]
-    scored: list[tuple[tuple, dict[str, Any]]] = []
+    measure_words = _measure_words(topic, terms, rank_terms) if named_day else []
+    quant = bool(named_day and _ASK_QUANT.search(" ".join(x for x in (topic, terms, rank_terms) if x)))
+    scored: list[dict[str, Any]] = []
     for r in rows:
         keys = set(r.keys())
         g = lambda k: (r[k] if k in keys else None)
@@ -5278,7 +5606,7 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
             say_blob = str(stmt or "").lower()
         measure_blob = " ".join(str(x or "") for x in (g("measure"), g("printed_label"))).lower()
         say_score = sum(1 for alts in qword_alts if any(a in say_blob for a in alts)) if qword_alts else 0
-        sent_all, sent_close, sent_occ = _sentence_hits(stmt, qwords) if named_day else (False, 0, 0)
+        sent_all = _sentence_hits(stmt, qwords, measure_words, quant)[0] if (named_day and qwords) else False
         measure_score = sum(1 for alts in qword_alts if any(a in measure_blob for a in alts)) if qword_alts else 0
         t_score = say_score + measure_score
         p_rank = 0
@@ -5303,7 +5631,7 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
             "speaker": g("speaker"), "role": None, "section": None,
             "topics": g("measure"), "entities": None, "period_discussed": g("period") or None,
             "answer_turn": None, "match": "obs", "status": g("status"), "source": "obs_fact",
-            "page": g("page"), "doc_key": g("doc_key"), "doc_type": doc_type,
+            "entity_scope": g("entity_scope"), "page": g("page"), "doc_key": g("doc_key"), "doc_type": doc_type,
             "quote": _trim(stmt, QUOTE_CHARS),
             "provenance": _prov("obs_fact", f"{g('doc_key')} p{g('page')}", g("known_at"),
                                 title=title, doc_type=doc_type, row_id=g("observation_id")),
@@ -5311,17 +5639,26 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
         }
         if g("question_context"):
             item["question_context"] = _trim(g("question_context"), 300)
-        scored.append(((0 if (named_day and sent_all) else 1,
-                        -sent_close if named_day else 0,
-                        -sent_occ if named_day else 0,
-                        s_rank, day_rank, p_rank, -say_score, -measure_score), item))
-    scored.sort(key=lambda pair: pair[0])
-    return [pair[1] for pair in scored]
+        scored.append({"_all": sent_all, "_item": item, "_s_rank": s_rank, "_day": day_rank, "_p": p_rank,
+                       "_say": say_score, "_measure": measure_score})
+    if scored:
+        if named_day and qwords:
+            # T-242 fix 7: each ask word is weighted by how rare it is in THIS reply, then the sentence score decides
+            weights = _ask_weights([[rec["_item"]] for rec in scored], qwords)
+            for rec in scored:
+                rec["_score"] = _sentence_hits(str(rec["_item"].get("quote") or ""), qwords, measure_words, quant,
+                                               weights)[1]
+        scored.sort(key=lambda rec: (0 if (named_day and rec["_all"]) else 1,
+                                     -rec["_score"] if (named_day and qwords) else 0,
+                                     rec["_s_rank"], _scope_rank(rec["_item"]), rec["_day"], rec["_p"],
+                                     -rec["_say"], -rec["_measure"]))
+    return [rec["_item"] for rec in scored]
 
 
 def _obs_fin_rows(sym, measure, period, bas, as_of, cap):
     rows = _obs_rows(sym, measure=measure, period=period, record_type="number", as_of=as_of, limit=max(cap * 3, 20),
                      measure_exact=True)
+    rows.sort(key=lambda r: _ask_row_rank(r, measure, period))     # T-242 fix 7: company / asked period / unit first
     verified_keys = {(r["measure"], r["period"], r["basis"] or "not_stated")
                      for r in rows if r.get("status") == "verified"}
     out = []
@@ -5336,7 +5673,9 @@ def _obs_fin_rows(sym, measure, period, bas, as_of, cap):
                "status": r["status"], "check_status": r["status"], "source": "obs_fact",
                "doc_key": r["doc_key"], "page": r["page"], "quote": r.get("quote"),
                "period_source": r["period_source"], "basis_source": r["basis_source"], "known_at": r["known_at"],
-               "provenance": r["provenance"]}
+               "period_kind": r.get("period_kind"), "entity_scope": r.get("entity_scope"),
+               "series_title": r.get("series_title"), "group_path": r.get("group_path"),
+               "segment": r.get("segment"), "provenance": r["provenance"]}
         row["_table"], row["_known_at"], row["_rowid"], row["_check"] = "obs_fact", r["known_at"], None, r["status"]
         _add_money(row, r["value"], r["unit"], r["scale"])
         out.append(row)
@@ -5355,6 +5694,7 @@ def _obs_kpi_rows(sym, kpi, period, as_of, cap, basis=None):
             k_low = str(kpi or "").lower()
             rows = [r for r in cand
                     if not any(d in str(r.get("measure") or "").lower() and d not in k_low for d in derived)]
+    rows.sort(key=lambda r: _ask_row_rank(r, kpi, period))          # T-242 fix 7: company / asked period / unit first
     out = []
     for r in rows:
         rb = r.get("basis") or "not_stated"
@@ -5367,6 +5707,8 @@ def _obs_kpi_rows(sym, kpi, period, as_of, cap, basis=None):
                "status": r["status"], "check_status": r["status"], "source": "obs_fact",
                "doc_key": r["doc_key"], "page": r["page"],
                "period_source": r["period_source"], "basis_source": r["basis_source"], "known_at": r["known_at"],
+               "period_kind": r.get("period_kind"), "entity_scope": r.get("entity_scope"),
+               "series_title": r.get("series_title"), "group_path": r.get("group_path"),
                "provenance": r["provenance"]}
         _add_money(row, r["value"], r["unit"], r["scale"])
         out.append(row)

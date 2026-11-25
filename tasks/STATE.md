@@ -2,12 +2,12 @@
 History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
-- Stores `D:/RealityEngine/{p20/p20new.db,u8/u8.db,q12/q12.db,n10/n10.db,pilot10/pilot10.db}`; u8/p20/q12 rebuilt 11 Nov 17:10, backups `*_before_rebuild_2026-11-11.db`; reality-data restart needed.
+- Stores `D:/RealityEngine/{p20/p20new.db,u8/u8.db,q12/q12.db,n10/n10.db,pilot10/pilot10.db}`; u8/p20/q12 rebuilt 11 Nov 17:10, backups `*_before_rebuild_2026-11-11.db`.
 - Extraction: `v2/page_words.py` -> `page_layout.py` -> `page_route.py` (T-189, four routes; `table_or_chart` read on the page IMAGE, `needs_ocr` on its OCR words since T-238, plus the two T-242 deck options) -> `reference_geom.py` (T-185) -> `page_reader.py` writes page_cell verified/unverified/quarantined, served by `pilot3_cells`. T-199 atoms (`page_atom` v10): `docs/PILOT3_BLUEPRINT.md` T-199 block.
-- Checker T-225 (18 Nov): FROZEN 464/773 (60.0%), 0 wrong; target 95% not met, open. Notes: V2 contract "Round 1-5".
-- 24-26 Nov T-242: `grade_pack.py`, `docs/grading/`. audits 2-6: 33R8P3W4M / 32R12P4M / 45R3P / 36R1P11M / 36R5P1W5M1N. F3/4: 25-row window <19 kB; named call by call or filing date ±3 d. F5: named-call obs_fact statements + doc_page hits come from its PRINTED call-date documents, not the filing-date window; 16 audit-5 statements by call date 4R3P9M -> 15R1P. F6: held-but-quarantined guidance disclosed, obs_fact guidance fallback, PAT/as-on aliases, all-ask-word sentence first, filed beats call figure >20%; audit-6 replay 36R->45R.
-- OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD (`--start/--max-workers`), Zen rotates Nemotron VL / DeepSeek Flash by speed.
-- 26 Nov bulk hy4 reads: one Drive fetch per doc per run (`raw_store.shared_cache`, pages in doc order); was one rclone per page (60 at once).
+- Checker T-225 (18 Nov): FROZEN 464/773, 0 wrong; target 95% not met, open. Notes: V2 contract "Round 1-5".
+- 24-26 Nov T-242: `grade_pack.py`, `docs/grading/`. audits 2-6: 33R8P3W4M / 32R12P4M / 45R3P / 36R1P11M / 36R5P1W5M1N. F3/4: 25-row window <19 kB; named call by call or filing date ±3 d. F5: named-call obs_fact statements + doc_page hits come from its PRINTED call-date documents, not the filing-date window; 16 audit-5 statements by call date 4R3P9M -> 15R1P. F6: held-but-quarantined guidance disclosed, obs_fact guidance fallback, PAT/as-on aliases, all-ask-word sentence first, filed beats call figure >20%; audit-6 replay 36R->45R. F7: company figure first (other scope labelled), asked period+unit+scope, paraphrase sentence score, group-vs-WOS guidance; audit-7 29R->37R.
+- OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD, Zen rotates Nemotron VL / DeepSeek Flash by speed.
+- 26 Nov bulk hy4 reads: one Drive fetch per doc per run (`raw_store.shared_cache`); was one rclone per page.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 26 Nov (Wolf): results gate PASS 48/11/1/0 after gates; bulk results read running.
