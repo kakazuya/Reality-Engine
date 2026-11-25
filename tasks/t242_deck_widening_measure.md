@@ -87,8 +87,26 @@ dictionary does not carry, plus occasional letter-spacing (`ST AGE`, `USE R POOL
 what a high label-dictionary share means: the labels are dictionary words, the names are not. Pages below 0.70
 (shares down to 0.60) were not sampled here; the count table above is the cost of lowering SHARE.
 
-Reproduce (no model call):
+Re-run 25 Nov 2026 with the merged selection code (worktree `20261125T161136Z`): every count above reproduced
+exactly -- 677 stores, 17,571 deck rows (`table_or_chart` 4,683, `no_figures` 6,451, `needs_ocr` 6,143,
+`text_ok` 294), default reads 4,683, and the additions `--deck-few-figures` 2,307 / 0.60 3,240 / 0.65 2,483 /
+0.70 1,438 / 0.75 114. A sample's text is the store's `doc_page.text` for that `doc_key`/`page`, first 300
+characters; the throwaway script that drew the samples lived in the authoring worktree's `.tmp` and is not committed.
 
-```bash
-python .tmp/t242/measure_deck_widening.py   # writes .tmp/t242/measure.json
+Reproduce the counts (no model call), from the repo root:
+
+```python
+from pathlib import Path
+from reality_engine.v2.observations import pages_from_store
+root = Path("C:/RealityEngine/tg_build/universe_fy27")
+stores = [p / f"{p.name}.db" for p in root.iterdir()
+          if (p / "routes.csv").is_file() and (p / f"{p.name}.db").is_file()]
+
+def kept(**option):
+    return {(str(s), p["doc_key"], p["page"]) for s in stores
+            for p in pages_from_store(s, doc_types=("deck",), **option)}
+
+base = kept()
+print(len(base), len(kept(deck_few_figures=True) - base), len(kept(deck_jumbled_min=0.70) - base))
+# 4683 2307 1438
 ```

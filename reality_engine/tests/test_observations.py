@@ -1162,6 +1162,42 @@ def test_deck_jumbled_min_reads_only_the_pages_at_or_above_the_share():
         shutil.rmtree(ROUTES_DECK, ignore_errors=True)
 
 
+def test_run_forwards_the_widening_options_and_the_jumbled_marker(monkeypatch):
+    """T-242: run() hands both options to the selection and only a marked page's text_source to the reader, so the
+    five-argument reader wrapper keeps matching every other page."""
+    store = _make_route_rows([
+        ("d.pdf", 1, "deck", "needs_ocr",
+         "text layer jumbled: label-dictionary share 0.71 < 0.75 (109 of 153 tokens clean); OCR pending"),
+        ("d.pdf", 2, "deck", "table_or_chart", "table: labeled lines of printed figures"),
+    ])
+    selected = [{"store": str(store), "doc_key": "d.pdf", "page": 1, "text_source": "text_layer_jumbled"},
+                {"store": str(store), "doc_key": "d.pdf", "page": 2}]
+    flags: dict = {}
+    read: dict = {}
+
+    def fake_pages(store_db, **kwargs):
+        flags.update(kwargs)
+        return [dict(page) for page in selected]
+
+    def fake_page(store_db, doc_key, page, companies=None, text_only=False, **kwargs):
+        read[int(page)] = kwargs.get("text_source", "")
+        return {"store": store_db, "doc_key": doc_key, "page": int(page), "skip": "test"}
+
+    monkeypatch.setattr(obs, "pages_from_store", fake_pages)
+    monkeypatch.setattr(obs, "company_index", lambda dbs: {})
+    monkeypatch.setattr(obs, "process_page", fake_page)
+    monkeypatch.setattr(obs, "propose_measures", lambda *a, **k: {})
+    monkeypatch.setattr(obs, "index_new_measures", lambda con: 0)
+    monkeypatch.setattr(obs, "write_new_merges", lambda con, path: 0)
+    try:
+        obs.run([str(store)], limit=2, workers=1, out=ROUTES_DECK / "run_forward.db", doc_types=("deck",),
+                deck_few_figures=True, deck_jumbled_min=0.70)
+        assert flags["deck_few_figures"] is True and flags["deck_jumbled_min"] == 0.70
+        assert read == {1: "text_layer_jumbled", 2: ""}
+    finally:
+        shutil.rmtree(ROUTES_DECK, ignore_errors=True)
+
+
 JUMBLE_STORE = Path(".tmp/t230/test_c_jumble_store.db")
 JUMBLE_DECK = "D:/RealityEngine/raw/pilot60_history/SOMANYCERA/investor_presentation/jumble.pdf"
 JUMBLE_PAGE = "Somany Ceramics Investor Presentation May 2025\nRevenue from operations 1,268 1,150\nXKCDQW RTYPSD"
