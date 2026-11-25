@@ -566,3 +566,13 @@ def test_confirmation_question_and_good_night():
     assert not question_passage("So margins stay at 18%. Capex is 500 crores. Does that answer your question?")
     assert greeting_only("Thank you, everyone. Have a good night.")
     assert not greeting_only("Have a good night. Our order book is 5,000 crores.")
+
+
+def test_r2_regrade_tag_tails_and_question_context():
+    """fy27_v3 r2 re-grade (25 Nov): 6 wrong demotions of 40 (3 question_end tag tails, 3 no_referent)."""
+    from reality_engine.v2.obs_speaker import question_passage
+    assert not question_passage("The order book stands at around INR610 crores as of the quarter end, right?")
+    assert not question_passage("Okay? So the CAPEX for the new plant will be largely funded from internal accruals, right?")
+    assert question_passage("So margins are 18%, right?")                         # short: still a question
+    assert question_passage("We understand the plant runs at 70% utilisation now. Is that correct?")
+    assert question_passage("What is the capex plan for FY27?")
