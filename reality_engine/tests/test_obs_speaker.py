@@ -924,3 +924,167 @@ def test_short_answer_with_a_figure_product_or_referent_stays():
     rows[0]["question_context"] = "What was the FY27 growth?"
     ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
     assert rows and rows[0]["status"] == "verified"
+
+
+# ------------------------------------------------ T-242 statement window: sentence snap and referent widen
+#
+# The page text below is quoted from the 26 Nov 394 surprise audit (audit_tx394_2/pack.jsonl, rows 6/20/26/27/29/30/37),
+# with only the printed speaker label added so the synthetic page is a call.
+
+_WINDOW_HEAD = ("Sangam (India) Limited\n13th May 2024\nPage 5 of 17\n"
+                "Moderator: Welcome to the call.\nDarshil Pandya: What is the export range?\n")
+
+
+def _window_row(page: int, statement: str, speaker: str = "Anurag Soni", question_context: str = "") -> dict[str, Any]:
+    row = _statement(page, statement, speaker=speaker)
+    row["question_context"] = question_context
+    return row
+
+
+def _assert_verbatim(statement: str, page_text: str) -> None:
+    assert " ".join(statement.split()) in " ".join(page_text.split()), statement
+
+
+def test_statement_window_widens_it_that_range_to_the_previous_sentence():
+    """#27 SANGAMIND: 'It will remain in that range.' opens on 'It' and 'that range' with neither named."""
+    page = _WINDOW_HEAD + (
+        "Anurag Soni: So export is about 33% to 40% of our business. It will remain in that range. "
+        "So whatever growth we do in the company for the coming financial year.\n")
+    rows = [_window_row(1, "It will remain in that range.")]
+    stats = ospeaker.attach_statement_speakers(rows, [(1, page)], "SANGAMIND", ["Sangam (India) Limited"])
+    assert rows[0]["statement"] == "So export is about 33% to 40% of our business. It will remain in that range."
+    assert stats["widened"] == 1 and stats["noted"] == 0
+    _assert_verbatim(rows[0]["statement"], page)
+
+
+def test_statement_window_widens_this_materializes_to_the_debt_sentence():
+    """#6 LLOYDSME: 'as and when this materializes' - 'this' is the debt renegotiation in the sentence before."""
+    page = _WINDOW_HEAD + (
+        "Anurag Soni: Our consolidated net debt remains below INR20,000 crores. A significant part of this pertains "
+        "to the debt acquired as part of the Chemaf acquisition, which we are actively working to renegotiate on more "
+        "favourable terms which would bring our group net debt down meaningfully. We will keep investors informed as "
+        "and when this materializes. To summarize, a record first half.\n")
+    rows = [_window_row(1, "We will keep investors informed as and when this materializes.")]
+    stats = ospeaker.attach_statement_speakers(rows, [(1, page)], "LLOYDSME", ["Lloyds Metals and Energy Limited"])
+    assert rows[0]["statement"].startswith("A significant part of this pertains to the debt acquired")
+    assert rows[0]["statement"].endswith("We will keep investors informed as and when this materializes.")
+    assert stats["widened"] == 1
+    _assert_verbatim(rows[0]["statement"], page)
+
+
+def test_statement_window_widens_both_of_these_to_the_two_product_segments():
+    """#20 ZENTEC: 'both of these' refers to the two product segments named in the sentence before."""
+    page = _WINDOW_HEAD + (
+        "Anurag Soni: We have supplied one hard kill system now to the Indian Army. So when we look at the whole "
+        "scenario, the two major product segment that the world is actually really thirsting for, one is the training "
+        "to upgrade their skill set, and second is the threat to neutralize the drones. So we are in the sweet "
+        "intersection between both of these. And I think the patience of fellow shareholders is paying off now.\n")
+    rows = [_window_row(1, "So we are in the sweet intersection between both of these.")]
+    stats = ospeaker.attach_statement_speakers(rows, [(1, page)], "ZENTEC", ["Zen Technologies Limited"])
+    assert rows[0]["statement"].startswith("So when we look at the whole scenario")
+    assert rows[0]["statement"].endswith("So we are in the sweet intersection between both of these.")
+    assert stats["widened"] == 1
+    _assert_verbatim(rows[0]["statement"], page)
+
+
+def test_statement_window_widens_this_increase_to_the_price_sentence():
+    """#26 CAPACITE: 'this increase' is the wholesale-price increase named in the sentence before."""
+    page = _WINDOW_HEAD + (
+        "Anurag Soni: While significant increase in price has been witnessed for April 26 in the wholesale price "
+        "index, the company, as a prudent measure, has factored INR10 crores in procurement cost in FY26. If the "
+        "escalation receivable from the client matches this increase overall over the next 2 quarters, the provisions "
+        "so made will be reversed. Considering the current situation, the EBITDA guidance will be in the range of "
+        "15.5% to 16.5%.\n")
+    rows = [_window_row(1, "If the escalation receivable from the client matches this increase overall over the next "
+                           "2 quarters, the provisions so made will be reversed.")]
+    stats = ospeaker.attach_statement_speakers(rows, [(1, page)], "CAPACITE", ["Capacit'e Infraprojects Limited"])
+    assert rows[0]["statement"].startswith("While significant increase in price has been witnessed")
+    assert stats["widened"] == 1
+    _assert_verbatim(rows[0]["statement"], page)
+
+
+def test_statement_window_widens_the_brand_to_the_byd_range_sentence():
+    """#29 LANDMARK: 'The brand' is the BYD range named in the sentence before."""
+    page = _WINDOW_HEAD + (
+        "Anurag Soni: BYD closed calendar year '24 with a retail of nearly 3,500 cars. The Seal, the homologated "
+        "Atto 3 and the eMAX 7 have received a strong response. The brand has an ambition to sell upwards of 10,000 "
+        "units in the current calendar year. And to achieve this, they have a number of new launches planned. The "
+        "first amongst them being the Sealion 7 SUV.\n")
+    rows = [_window_row(1, "The brand has an ambition to sell upwards of 10,000 units in the current calendar year. "
+                           "And to achieve this, they have a number of new launches planned.")]
+    stats = ospeaker.attach_statement_speakers(rows, [(1, page)], "LANDMARK", ["Landmark Cars Limited"])
+    assert rows[0]["statement"].startswith("The Seal, the homologated Atto 3")
+    assert stats["widened"] == 1
+    _assert_verbatim(rows[0]["statement"], page)
+
+
+def test_statement_window_widens_those_issues_to_the_security_sentence():
+    """#30 INFOBEAN: 'those issues' are the difficulty/security concerns named in the sentence before."""
+    page = _WINDOW_HEAD + (
+        "Anurag Soni: Both of these are technically difficult. I mean one is technically difficult and the other one "
+        "is security concerns are there where companies are not willing to share their data to the AI engine because "
+        "they are worried that what happens to the data? So we are debating those issues at this point in time. How "
+        "much investment we have made in Gen-I? I would say we have 3 or 4 people working on that.\n")
+    rows = [_window_row(1, "So we are debating those issues at this point in time. How much investment we have made "
+                           "in Gen-I? I would say we have 3 or 4 people working on that.")]
+    stats = ospeaker.attach_statement_speakers(rows, [(1, page)], "INFOBEAN", ["Infobeans Technologies Limited"])
+    assert rows[0]["statement"].startswith("I mean one is technically difficult")
+    assert stats["widened"] == 1
+    _assert_verbatim(rows[0]["statement"], page)
+
+
+def test_statement_window_leaves_a_page_opening_fragment_and_notes_it():
+    """#37 POONAWALLA: the sentence starts on the previous page, so it is left alone and noted, never cut."""
+    page = ("Poonawalla Fincorp Limited\nJanuary 16, 2026\nPage 20 of 22\n"
+            "across the portfolio and you will get a firsthand sense of how individual products will be fairly solid. "
+            "Abhijit Tibrewal: Got it, Arvind sir.\nModerator: Thank you.\nArvind Kapil: Yes, that is right.\n")
+    statement = "across the portfolio and you will get a firsthand sense of how individual products will be fairly solid."
+    rows = [_window_row(1, statement, speaker="Arvind Kapil")]
+    stats = ospeaker.attach_statement_speakers(rows, [(1, page)], "POONAWALLA", ["Poonawalla Fincorp Limited"])
+    assert rows[0]["statement"] == statement
+    assert rows[0]["status"] == "verified"
+    assert "referent_outside_window" in rows[0]["status_reason"]
+    assert stats["noted"] == 1 and stats["widened"] == 0 and stats["snapped"] == 0
+
+
+def test_statement_window_snaps_a_mid_sentence_start_back_to_its_sentence():
+    """Rule 1: 'across the portfolio ...' cut out of a sentence is moved back to that sentence's start."""
+    page = _WINDOW_HEAD + (
+        "Anurag Soni: We added two plants in the first half across the portfolio and you will get a firsthand sense "
+        "of how individual products will be fairly solid. That was the main driver.\n")
+    rows = [_window_row(1, "across the portfolio and you will get a firsthand sense of how individual products will "
+                           "be fairly solid.")]
+    stats = ospeaker.attach_statement_speakers(rows, [(1, page)], "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["statement"].startswith("We added two plants in the first half across the portfolio")
+    assert stats["snapped"] == 1
+    _assert_verbatim(rows[0]["statement"], page)
+
+
+def test_statement_window_keeps_a_sentence_start_with_a_named_subject():
+    page = _WINDOW_HEAD + ("Anurag Soni: Our asset quality has seen a temporary transitory increase in delinquency. "
+                           "We carry provisions of INR273 crores.\n")
+    statement = "Our asset quality has seen a temporary transitory increase in delinquency."
+    rows = [_window_row(1, statement)]
+    stats = ospeaker.attach_statement_speakers(rows, [(1, page)], "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["statement"] == statement
+    assert stats["snapped"] == 0 and stats["widened"] == 0 and stats["noted"] == 0
+
+
+def test_statement_window_keeps_an_anaphor_resolved_by_question_context():
+    page = _WINDOW_HEAD + "Anurag Soni: It will remain at the same margin.\n"
+    rows = [_window_row(1, "It will remain at the same margin.",
+                        question_context="Q (Rahul): What is the margin guidance for FY27?")]
+    stats = ospeaker.attach_statement_speakers(rows, [(1, page)], "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["statement"] == "It will remain at the same margin."
+    assert stats["widened"] == 0
+
+
+def test_statement_window_never_crosses_a_speaker_label():
+    page = _WINDOW_HEAD + ("Darshil Pandya: The value added share is 47% of turnover.\n"
+                           "Anurag Soni: It will remain in that range.\n")
+    rows = [_window_row(1, "It will remain in that range.")]
+    stats = ospeaker.attach_statement_speakers(rows, [(1, page)], "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["statement"] == "It will remain in that range."
+    assert "The value added share" not in rows[0]["statement"]
+    assert stats["widened"] == 0 and stats["noted"] == 1
+

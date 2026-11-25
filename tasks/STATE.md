@@ -4,20 +4,19 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
 - Stores `D:/RealityEngine/{p20/p20new.db,u8/u8.db,q12/q12.db,n10/n10.db,pilot10/pilot10.db}`; u8/p20/q12 rebuilt 11 Nov 17:10, backups `*_before_rebuild_2026-11-11.db`; reality-data restart needed.
 - Extraction: `v2/page_words.py` -> `page_layout.py` -> `page_route.py` (T-189, four routes; `table_or_chart` read on the page IMAGE, `needs_ocr` on its OCR words since T-238, plus the two T-242 deck options) -> `reference_geom.py` (T-185) -> `page_reader.py` writes page_cell verified/unverified/quarantined, served by `pilot3_cells`. T-199 atoms (`page_atom` v10): `docs/PILOT3_BLUEPRINT.md` T-199 block.
-- Checker T-225 (18 Nov): FROZEN 464/773 (60.0%), 0 wrong; target 95% not met, open. Notes: V2 contract "Round 1-5".
+- Checker T-225 (18 Nov): FROZEN 464/773 (60.0%), 0 wrong; 95% target open.
 - 24-26 Nov T-242: `grade_pack.py`, `docs/grading/`. audits 2-6: 33R8P3W4M / 32R12P4M / 45R3P / 36R1P11M / 36R5P1W5M1N. F3/4: 25-row window <19 kB, Share Capital+period = printed line; named call filtered by call or filing date ±3 d. F5: named-call obs_fact statements + doc_page hits come from its PRINTED call-date documents, not the filing-date window; 16 audit-5 statements by call date 4R3P9M -> 15R1P.
-- OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD (`--start/--max-workers`), Zen rotates Nemotron VL / DeepSeek Flash by speed.
-- 26 Nov bulk hy4 reads: one Drive fetch per doc per run (`raw_store.shared_cache`, pages in doc order); was one rclone per page (60 at once).
+- OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD, Zen rotates Nemotron VL / DeepSeek Flash by speed.
+- 26 Nov bulk hy4: one Drive fetch per doc per run (`raw_store.shared_cache`); was one rclone/page.
+- 26 Nov T-242 statement window: `obs_speaker.widen_statement` sentence-snap + referent widen (4,697/2,228 noted, 13.1%/13.7% changed, 0 crossings); `observations.dedupe_repeats` in `--recheck`; `tasks/t242_statement_window_measure.md`.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 26 Nov (Wolf): results gate PASS 48/11/1/0 after gates; bulk results read running.
 00000. 25 Nov 19:30 (Eagle) events: r7b (fund_raise) and r8 (order_win) merged; fresh7 gate (40 never-seen stores, code cb741c24) FAILS: order_win 35/10/14/1, fund_raise 31/8/16/0 -> VERIFIED_KINDS stays empty (served unverified). Retrieval fix 1 merged 20:00 (tools serve verified obs_fact first; audit Qs 13->20/20) -> fresh-question audit after MCP restart. NEXT: hy4 model reading + script check (Shivam's call pending).
 00000. 26 Nov deck widening (+2,307 few-figure, +1,438 jumbled 0.70) reading into obs_decks_wide.db (ckpt 1-2 carried); sonnet_settle OFF till Shivam's OK.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
-1. T-214/T-218 Telegram build: plan `tasks/handoff/T-214_TG_BUILD_PLAN.md`, queue `D:/RealityEngine/tg_build/build_queue.csv`, stores `tg_build/measure10/c01..c91`; repair notes `tasks/store_repair/INDEX.md`, grid `reports/store_repair_grid.xlsx`.
-2. T-213: r15 MERGED (`answer/answer_checker.py` C1-C5 + repair): run B 54/9/1 -> 57/7/0; next checks on Telegram stores, frozen halves.
-3. T-210 merged; T-211 monthly job next (Wolf).
-
+1. T-214/T-218 Telegram build: `tasks/handoff/T-214_TG_BUILD_PLAN.md`, queue `D:/RealityEngine/tg_build/build_queue.csv`, stores `tg_build/measure10/c01..c91`; `tasks/store_repair/INDEX.md`, `reports/store_repair_grid.xlsx`.
+2. T-213 r15 merged (`answer_checker.py` C1-C5 + repair): 57/7/0; next checks on Telegram stores, frozen halves.
 ## Recipes
 Store copy: checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE`. Merge: grader row first; merge_worker; drop root PROGRESS_NOTES.md; tests per file; docs; remove worktree; log in worker_reviews.jsonl. Store diff: `reality_engine.scripts.store_diff`.
 - 25 Nov AR re-grade gates merged (Hydrogen, T-242): 5(c) unnamed-sub 184 unverified, 535 reset to company, 0 R changed. Next: --recheck AR copy, non-author grade, then load.
