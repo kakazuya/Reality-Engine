@@ -320,3 +320,38 @@ Carry forward:
 - Update 03:58: reviews 5 (HY1 labels, future labels, vacuous basis guard, nine-month) and 6 (basis vote needs contrary facts) fixed; basis by XBRL vote added (round 26: 3,544 verified, none lost); a header-keyed vote was measured worse and reverted. Report: D:/RealityEngine/reports/2026-11-20_t226_overnight.html.
 - Carry forward: F4 (c31 p3 header groups snapped one column off: geometry, pre-existing); a production caller that writes verified/unverified cells to the stores (design with Shivam); 34 worktrees exist, mostly Wolf-agy-* from 17-18 Nov: tell Shivam/Wolf (branches must be merged or deleted in 24 h).
 - Correction 20 Nov 15:10: overnight times above were estimated, not read; real commit times are in git. I stopped at 03:58 citing the 06:30 DeepSeek peak, wrongly: about 2.5 h of off-peak time was left. Later on 20 Nov `TZ=Asia/Kolkata date` in Git Bash printed UTC as IST (memory: reference-ist-clock-git-bash); use plain `date`.
+
+## 2026-11-26 01:00 IST, Eagle (before compaction; 25 Nov full day)
+- Work: T-242 gates and fixes all day. Transcripts:
+  - fixes merged: r3 greeting/question_end, pleasantry/defer/generic speaker, closing/deferral, non-call docs/moderator/short remarks (a1a1b41b, 7c644e34);
+  - fy27 ckpt_0003 re-grade 48/10/1/1 (r3 copy swapped live); 394 ckpt 6 failed, then 6-11 passed (ckpt 10: 58/2/0/0; ckpt 11 49/8/1/2, at the bar);
+  - universe transcripts fully read (6,701 pages); universe pre-load surprise audit 48/11/0/1; fy27 surprise audit (Wolf, Sonnet) 45/9/2/4 -> fixed.
+  Events (filings):
+  - order_win rounds 7-8 and fund_raise r7/r7b merged;
+  - every fresh-store gate FAILED: fresh5, fresh6 (31/4/23/2), fresh7 order_win 35/10/14/1 and fund_raise 31/8/16/0;
+  - VERIFIED_KINDS empty; events served unverified. The loader re-applies the live gate (735d8c58).
+  Loading: decks + universe transcripts loaded into all 681 universe stores; obs_fact loaded into the 24 pilot-store overlap symbols, with frozen copies *_before_obs_2026-11-25.db (Shivam OK); the registry got universe stores after the pilots; aurobindo moved to C:.
+  Retrieval:
+  - fix 1 (mine, Hydrogen) and Wolf's fixes 2-4 merged; audits went 4/40 -> 45/48;
+  - live after Shivam's /mcp (AADHARHFC AUM now 326 Bn from verified obs_fact).
+  AR: ckpt_0002 failed twice (invented periods; then subset/flow/scope); gates merged; re-grade pending (Wolf). Results pilot gate recorded PASS 48/11/1/0 (bulk results read started, Wolf). Deck-wide ckpt_0003 recorded PASS 52/7/1/0. hy4 split into two loops (transcripts; AR) and made never-exit; hy4_ctl.ps1 pidfile control (30a013be). sonnet_settle stopped (quota burn), then fixed by Wolf.
+- Worked:
+  - non-author grades on fresh packs, every fix measured against ALL earlier graded R sets (0 R broken), small same-session follow-ups, in-process measurement when a reparse is slow;
+  - building gate sets AFTER the fix merges;
+  - reading the usage meter (usage_status.json) to plan quota.
+- Failed + why:
+  - regex rounds for filing events fit their evidence set; 3 fresh sets brought 3 new phrasings, so the proposal is a switch to hy4 model reading plus a script check (Shivam's call pending);
+  - I built fresh6 BEFORE the r7 merge, so that grade measured r6 code;
+  - I left --ar-sections off the AR job (19% of reads were waste);
+  - I wrote a pilot store on the D: HDD (moved);
+  - Wolf's kill-by-name at 21:14 killed every worker and MCP server (rule_guard now blocks it);
+  - Wolf's window burned in 47 minutes on a stale-reading quota guard;
+  - watchers pointed at DB files gave false stalls.
+- Improvements: gate a kind only on stores built with merged code; record the code commit in every build log; check every graded set before claiming "0 R broken"; pace quota from measured cost per call (compact above 300k context).
+- Carry forward:
+  - (1) transcript surprise audit 2 (dsh 76ad80de, read-only) is running: review it, and fix if it fails;
+  - (2) recheck + reload the live transcript DBs for the 5c828b61/ecd44bbb rules;
+  - (3) the filing-events approach decision (model reading) is pending with Shivam;
+  - (4) move-out EOD 26 Nov: hy4/uploader/job_watch remote control tested over Tailscale; push needs Shivam's OK (591+ commits ahead); a stale worktree folder 20261125T162132Z-5c828b61 is locked by a vector-index handle;
+  - (5) the ckpt_0011 weak rows (fragments, referents, WELENT speaker) go into the next v3 fix;
+  - (6) heartbeats are staggered 12.5 min with Wolf overnight; Hydrogen takes hard grades (Shivam 26 Nov 00:35).
