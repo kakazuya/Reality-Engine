@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-25 17:25 IST (dsh)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-25 19:55 IST (dsh)
 History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -6,7 +6,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Extraction: `v2/page_words.py` -> `page_layout.py` -> `page_route.py` (T-189, four routes; only table_or_chart read, on the page IMAGE) -> `reference_geom.py` (T-185) -> `page_reader.py` writes page_cell verified/unverified/quarantined, served by `pilot3_cells`. T-199 atoms (`page_atom` v10): `docs/PILOT3_BLUEPRINT.md` T-199 block.
 - Checker T-225 merged 18 Nov: Dots right cells kept dev 384/426, FROZEN 464/773 (60.0%, baseline 47.7%), 0 wrong; Beam frozen 8 wrong (text layer). Target >=95% not met; T-225 open. Split `D:/RealityEngine/t225_split`; notes V2 contract "Round 1-5".
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
-- 24-25 Nov T-242: empty window page = `no_rows`; `scripts/grade_pack.py` builds the 60-row pack (checkpoint first, seeded fill, 2x30 parts); rubrics `docs/grading/`.
+- 24-25 Nov T-242: empty window page = `no_rows`; `scripts/grade_pack.py` builds the 60-row pack (checkpoint first, seeded fill, 2x30 parts); rubrics `docs/grading/`. 25 Nov: `obs_speaker` drops figure-free closing remarks/after-call deferrals (0.03%/0.01%, 0 R; `tasks/t242_closing_measure.md`).
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 25 Nov 19:50 (Wolf): deck gates merged (bounds 81, combined labels 11, heading basis 242 of 66,526 verified); next: --recheck obs_decks_fy27 copy, swap, load_symbols.

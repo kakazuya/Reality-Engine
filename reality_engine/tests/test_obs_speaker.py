@@ -676,6 +676,57 @@ def test_thanks_welcome_praise_and_defer_are_dropped_with_ligature_normalisation
     assert not greeting_only("We have pre-poned the date of handing over to the client.")
 
 
+def test_closing_remarks_and_deferrals_are_dropped():
+    """T-242 (25 Nov): figure-free closing remarks and after-call deferrals carry no statement."""
+    from reality_engine.v2.obs_speaker import greeting_only
+
+    # KTKBANK closing remarks (regrade_tx394_r4 #56): a recovery list, then confidence/team/assurance platitudes.
+    assert greeting_only(
+        "liabilities, assets, guidance I had already given, continuous efforts for recovery, continuous effort "
+        "for slippage improvement, continuous effort for recovery under NPA as well as technically written off "
+        "account and improving the other income through third-party products, all these products, through all "
+        "these sources, bank is quite confident. With my team, I am able to drive this business forward. That "
+        "is an assurance from my side. Thank you very much. Thank you one and all.")
+    # ANTHEM closing remarks (audit_txfy27 #10): a closing thank-you plus generic governance platitudes.
+    assert greeting_only(
+        "Thank you everybody. Once again, it was very nice talking to all of you. As we have said before, Anthem "
+        "endeavors to be totally transparent, be accurate, and continues to be well-governed. This is something "
+        "that we are very mindful of and we will continue to do that.")
+    # ELLEN (tx394_ckpt7 #17): a pure after-call deferral.
+    assert greeting_only("Regarding your question on FY23, maybe we'll be able to get back to you post this call.")
+    assert greeting_only("We wish you all a good evening.")
+    assert greeting_only("We look forward to interacting again next quarter.")
+    assert greeting_only("Please reach out to our investor relations team for any further queries.")
+    assert greeting_only("We can take this offline.")
+
+
+def test_closing_or_deferral_with_a_figure_or_substance_is_kept():
+    from reality_engine.v2.obs_speaker import greeting_only
+
+    assert not greeting_only("We will get back to growth of 15%.")
+    assert not greeting_only("Thank you. Our order book is strong.")
+    assert not greeting_only("Thank you. Guidance for the year is unchanged.")
+    assert not greeting_only("Thank you. We expect margins to expand next year.")
+    assert not greeting_only("Thank you. We will continue to invest in capacity.")
+    assert not greeting_only("Thank you for the question, Mr. Jehan. Yes, that could be the ballpark where you "
+                             "could see about Rs. 80 Crores this year and Rs. 80 Crores next year.")
+    # ICICIGI (audit_txfy27 #17): closing pleasantries wrapping an outlook; the "But ..." clause keeps it.
+    assert not greeting_only(
+        "Thank you so much for joining in. We look forward to the new financials with renewed hope. We have "
+        "definitely as a team been excited as to how we have been able to close H2 over H1 and more so Q4 over "
+        "the rest of it. We are positive in terms of how things can work out for General Insurance industry at "
+        "large and with the reforms that the regulator has put in place. But at the same time, we hope that the "
+        "world moves in a much more peaceful manner in times to come.")
+
+
+def test_closing_deferral_row_is_dropped_by_attach_statement_speakers():
+    deferral = "Regarding your question on FY23, maybe we'll be able to get back to you post this call."
+    pages = [(2, "Synth Corp Limited\nRamesh Iyer: " + deferral + "\n")]
+    rows = [_statement(2, deferral, speaker="Ramesh Iyer")]
+    ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows == []
+
+
 def test_ligature_normalisation_never_mutates_stored_statement():
     raw_kept = "Our revenue o\u01afset cost \ufb02uctua\u019fons by 12%."
     pages = [(2, f"Synth Corp Limited\nRamesh Iyer: Very \ufb01ne ques\u019fon, Ashok.\n{raw_kept}\n")]
