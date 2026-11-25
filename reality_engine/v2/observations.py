@@ -4207,20 +4207,62 @@ def deck_bound_reason(row: dict[str, Any]) -> str:
     return ""
 
 
-def deck_combined_label_reason(row: dict[str, Any]) -> str:
-    """Return a reason when ``printed_label`` joins two financial measures ('&', 'and', '+') and ``measure`` names one."""
+def _deck_value_line(page_text: str, label: str, value_text: str) -> str:
+    """Return the page line holding ``value_text`` (preferring the line or nearest line after ``label``)."""
+    if not page_text or not value_text:
+        return ""
+    lines = [norm_space(ln) for ln in page_text.splitlines() if norm_space(ln)]
+    vt_forms = [vf for vf in value_forms(value_text) if vf]
+    if not vt_forms:
+        return ""
+
+    def has_val(ln: str) -> bool:
+        return any(vf in ln for vf in vt_forms)
+
+    label_probe = norm_match(label)[:24].lower()
+    if label_probe:
+        for ln in lines:
+            if label_probe in norm_match(ln).lower() and has_val(ln):
+                return ln
+        for i, ln in enumerate(lines):
+            if label_probe in norm_match(ln).lower():
+                for cand in lines[i + 1 : i + 12]:
+                    if has_val(cand):
+                        return cand
+    for ln in lines:
+        if has_val(ln):
+            return ln
+    return ""
+
+
+def _deck_figure_count(text: str) -> int:
+    """Count printed numeric figures in ``text``, ignoring calendar dates."""
+    cleaned = re.sub(
+        r"\b(?:\d{1,2}(?:st|nd|rd|th)?\s+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?,?\s+\d{2,4}\b",
+        " ",
+        text,
+        flags=re.I,
+    )
+    return len(_numbers_in(cleaned))
+
+
+def deck_combined_label_reason(row: dict[str, Any], page_text: str = "") -> str:
+    """Return a reason when ``printed_label`` joins two financial measures ('&', 'and', '+') for ONE figure."""
     label = norm_space(row.get("printed_label"))
     measure = norm_space(row.get("measure"))
+    vt = norm_space(row.get("value_text"))
     if not label or not measure or len(label.split()) > 12:
         return ""
-    if re.search(r"\brespectively\b", label, re.I):
+    if re.search(r"\brespectively\b", label, re.I) or _deck_figure_count(label) >= 2:
+        return ""
+    if label and vt and re.search(r"(?:&|\band\b|\+)\s*$", label, re.I) and _deck_figure_count(f"{label} {vt}") >= 2:
         return ""
     cleaned = re.sub(r"\([^)]*\)", "", label).strip()
     cleaned = re.sub(r"(\d[a-zA-Z]*)\+", r"\1", cleaned)
     cleaned = DECK_COMBINED_QUALIFIER_TAIL_RE.sub("", cleaned).strip()
     cleaned = DECK_SINGLE_TERM_ALLOWLIST_RE.sub(" ", cleaned)
-    if len(_numbers_in(cleaned)) >= 2:
-        return ""        # prose listing two separate figures ('35.0% Gross Margin & 13.0% EBITDA Margin')
+    if _deck_figure_count(cleaned) >= 2:
+        return ""
     parts = [part.strip() for part in DECK_COMBINED_SPLIT_RE.split(cleaned) if part.strip()]
     if len(parts) < 2:
         return ""
@@ -4232,11 +4274,16 @@ def deck_combined_label_reason(row: dict[str, Any]) -> str:
     all_concepts = set().union(*matched_parts)
     if len(all_concepts) < 2:
         return ""
+    if len(all_concepts - {"margin", "growth"}) <= 1:
+        return ""        # X & Margin, X & X Margin, X & Growth, X & X Growth: same underlying metric
     measure_norm = (measure[len(NEW_PREFIX):] if measure.startswith(NEW_PREFIX) else measure).lower()
     in_measure = {cid for cid in all_concepts if _deck_measure_has_concept(measure_norm, cid)}
-    if in_measure and len(in_measure) < len(all_concepts):
-        return f"deck_combined_label: {label!r} joins multiple measures while stored measure is {measure!r}"
-    return ""
+    if not (in_measure and len(in_measure) < len(all_concepts)):
+        return ""
+    value_line = _deck_value_line(page_text, label, vt)
+    if value_line and (re.search(r"\brespectively\b", value_line, re.I) or _deck_figure_count(value_line) >= 2):
+        return ""
+    return f"deck_combined_label: {label!r} joins multiple measures while stored measure is {measure!r}"
 
 
 def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> None:
@@ -4252,7 +4299,7 @@ def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> Non
             continue
         reason = deck_bound_reason(row)
         if not reason:
-            reason = deck_combined_label_reason(row)
+            reason = deck_combined_label_reason(row, page_text)
         if reason:
             row["status"] = "unverified"
             row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", reason) if p)

@@ -237,27 +237,55 @@ def test_deck_bound_gates_floors_and_bounds_but_keeps_exact_values():
 
 
 def test_deck_combined_label_gates_split_measures_and_keeps_allowlist():
-    # Positive catches named in review + audit:
-    right_catches = [
-        _deck_row(measure="share_of_profit_of_jv_and_associates",
-                  printed_label="Other income & share of associate", value=8.4, value_text="8.4"),
-        _deck_row(measure="count.atms", printed_label="ATMs and Cash Recyclers",
-                  value=10000.0, value_text="10,000", unit="ATMs"),
-        _deck_row(measure="goodwill", printed_label="Goodwill & Intangibles",
-                  value=15175.0, value_text="15,175"),
-        _deck_row(measure="gnpa_pct", printed_label="GNPA & NNPA stood at",
-                  value=0.29, value_text="0.29%", unit="%"),
-        _deck_row(measure="pat_margin", printed_label="EBITDA and PAT margins",
-                  value=10.5, value_text="10.5%", unit="%"),
-        _deck_row(measure="ebit_growth_yoy", printed_label="EBIT and PBT grew",
-                  value=14.1, value_text="14.1%", unit="%"),
-        _deck_row(measure="total_comprehensive_income",
-                  printed_label="Revenue + Other Comprehensive Income", value=500.0, value_text="500"),
-    ]
-    obs.apply_number_gates(right_catches, "deck")
+    # Positive catches (one combined figure per row/column):
+    assoc = _deck_row(measure="share_of_profit_of_jv_and_associates",
+                      printed_label="Other income & share of associate", value=8.4, value_text="8.4")
+    atms = _deck_row(measure="count.atms", printed_label="ATMs and cash recyclers",
+                     value=12796.0, value_text="12,796", unit="ATMs")
+    goodwill = _deck_row(measure="goodwill", printed_label="Goodwill & Intangibles Assets",
+                         value=15175.0, value_text="15,175")
+    tci = _deck_row(measure="total_comprehensive_income",
+                    printed_label="Revenue + Other Comprehensive Income", value=300.8, value_text="300.8")
+    obs.apply_number_gates([assoc], "deck", page_text="Other income & share of associate\n8.4\n16.5")
+    obs.apply_number_gates([atms], "deck", page_text="the Bank had 12,796 ATMs and cash recyclers across India.")
+    obs.apply_number_gates([goodwill], "deck", page_text="Goodwill & Intangibles Assets\n15,175")
+    obs.apply_number_gates([tci], "deck", page_text="Revenue + Other Comprehensive Income\n300.8")
+    right_catches = [assoc, atms, goodwill, tci]
     assert all(r["status"] == "unverified" and "deck_combined_label:" in r["status_reason"] for r in right_catches), [
         (r["printed_label"], r["status"], r["status_reason"]) for r in right_catches
     ]
+
+    # Four round-3 right cases that must stay verified:
+    # 1) 'EBITDA and PAT margins for Q2 stood at 22.1% / 10.5%'
+    asahi_page = "EBITDA and PAT margins for Q2 stood at 22.1% and 10.5%, respectively."
+    asahi_ebitda = _deck_row(measure="ebitda_margin", printed_label="EBITDA and PAT margins for Q2 stood at",
+                             value=22.1, value_text="22.1%", unit="%")
+    asahi_pat = _deck_row(measure="pat_margin", printed_label="EBITDA and PAT margins for Q2 stood at",
+                          value=10.5, value_text="10.5%", unit="%")
+    obs.apply_number_gates([asahi_ebitda, asahi_pat], "deck", page_text=asahi_page)
+    assert asahi_ebitda["status"] == "verified" and asahi_pat["status"] == "verified"
+
+    # 2) 'GNPA & NNPA stood at 0.29% and 0.12%'
+    bajaj_page = "16. GNPA & NNPA stood at 0.29% and 0.12% as of 30 June 2026."
+    bajaj_gnpa = _deck_row(measure="gnpa_pct", printed_label="GNPA & NNPA stood at",
+                           value=0.29, value_text="0.29%", unit="%")
+    bajaj_nnpa = _deck_row(measure="nnpa_pct", printed_label="GNPA & NNPA stood at 0.29% and",
+                           value=0.12, value_text="0.12%", unit="%")
+    obs.apply_number_gates([bajaj_gnpa, bajaj_nnpa], "deck", page_text=bajaj_page)
+    assert bajaj_gnpa["status"] == "verified" and bajaj_nnpa["status"] == "verified"
+
+    # 3) 'EBIT Margin & PBT Margin ... 8.0%'
+    crompton_page = "EBIT Margin & PBT Margin expanded by 10 bps to 8.0% and 30 bps to 6.5%"
+    crompton_ebit = _deck_row(measure="ebit_margin", printed_label="EBIT Margin & PBT Margin expanded by 10 bps to",
+                              value=8.0, value_text="8.0%", unit="%")
+    obs.apply_number_gates([crompton_ebit], "deck", page_text=crompton_page)
+    assert crompton_ebit["status"] == "verified"
+
+    # 4) 'EBITDA & EBITDA Margin' column header -> ebitda 531 (and 'EBITDA & Margin')
+    bbox_ebitda = _deck_row(measure="ebitda", printed_label="EBITDA & Margin", value=531.0, value_text="531")
+    aequs_ebitda = _deck_row(measure="ebitda", printed_label="EBITDA & EBITDA Margin", value=215.0, value_text="215")
+    obs.apply_number_gates([bbox_ebitda, aequs_ebitda], "deck", page_text="EBITDA & EBITDA Margin\n215")
+    assert bbox_ebitda["status"] == "verified" and aequs_ebitda["status"] == "verified"
 
     # Negative cases, single-term allowlist, and all wrongly caught labels from Wolf's review (must stay verified)
     kept = [

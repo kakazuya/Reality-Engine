@@ -3145,19 +3145,19 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   (2) `deck_combined_label_reason`: marks a verified row unverified (`deck_combined_label: ...`) only when BOTH
   sides of `&`, `and`, or `+` in `printed_label` match the `DECK_COMBINED_CONCEPTS` financial-measure vocabulary
   (revenue/sales, income, other income, EBITDA, EBIT, PBT, PAT, profit, margin, GNPA, NNPA, goodwill, intangibles,
-  share of profit/associate/JV, ATMs, cash recyclers, branches, deposits, advances, AUM, opex, capex) and the stored
-  `measure` names only one side (catching `'Other income & share of associate'`, `'ATMs and cash recyclers'`,
-  `'Goodwill & Intangibles Assets'`, `'GNPA & NNPA stood at'`, `'EBITDA and PAT margins'`, `'EBIT and PBT grew'`),
-  while keeping single-term allowlist pairs (`DECK_SINGLE_TERM_ALLOWLIST_RE`), `before`/`net of`/`excluding`
-  qualifiers, multi-figure prose, and non-vocabulary splits (`Admin and Other Costs`, `Basic Metals & Metal Industry`,
-  `Branches across 18 states and 3 UTs`, `Stores in Bihar + Jharkhand + UP`);
+  share of profit/associate/JV, ATMs, cash recyclers, branches, deposits, advances, AUM, opex, capex), the stored
+  `measure` names only one side, AND the combined label carries ONE figure (skipping labels/page lines with >=2
+  figures, `'respectively'`, or `X & Margin` / `X & X Margin` / `X & Growth` pairs). Keeps `'EBITDA and PAT margins
+  for Q2 stood at 22.1% / 10.5%'`, `'GNPA & NNPA stood at 0.29% and 0.12%'`, `'EBIT Margin & PBT Margin ... 8.0%'`,
+  and `'EBITDA & EBITDA Margin'`; catches `'Other income & share of associate'`, `'Goodwill & Intangibles Assets'`,
+  `'ATMs and cash recyclers'`, and `'Revenue + Other Comprehensive Income'`;
   (3) `heading_basis(page_text, SECTION_BASIS_RE)` (shared helper extracted from `apply_ar_row_gates`): fills an empty
   `basis` with `basis_source='page_heading'` when the first 300 characters of the page name exactly one of
   `Consolidated` or `Standalone` (fixing BLUESTONE p40 `'Consolidated | INR mn'`); the ALLTIME p12 starred-column
   case (`H1FY27*` / `*Consolidated`) is left untouched and documented as known.
   Measured read-only on a SQLite backup copy of `D:/RealityEngine/hy4_out/obs_decks_fy27.db` (66,526 verified number
   rows, `REALITY_RAW_FETCH=0`, pages from `C:/RealityEngine/tg_build/universe_fy27`): Rule 1 changes 81 (0.12%),
-  Rule 2 changes 36 (0.05%), Rule 3 fills 242 (0.36%), all under the 4% stop bar. Tests: 4 new tests in
+  Rule 2 changes 11 (0.02%), Rule 3 fills 242 (0.36%), all under the 4% stop bar. Tests: 4 new tests in
   `reality_engine/tests/test_deck_guards.py` (21 pass).
 
 - **AR row gates: non-figures and outside entities (T-242, 25 Nov 2026, Wolf).** AR bulk ckpt_0001 failed 51/5/1/3 (Sonnet x2; W+J 6.7%): a GRI index page number, a clause '(1)', the 3 of 'in the past 3 years', and an industry 2030 projection were verified. `apply_ar_row_gates` now marks a verified AR number unverified when its measure names a reference number (`AR_REFERENCE_MEASURE_RE`: page_ref, clause, note/section/regulation/reference number, serial no) -> `ar_not_a_figure`; when the value only repeats its label's duration ('past/last N years', `_label_duration_echo`) -> `ar_not_a_figure`; or when the row's entity_scope is industry, country or peer (`AR_OUTSIDE_SCOPES`; customer left alone) -> `ar_outside_entity`. Rows stay served, labelled. On obs_ar_fy27.db: 39 + 259 of 11,086 verified (2.7%); a 14-row sample of the outside rows were all outside figures (IMF growth, repo rate, industry output). Test `test_ar_ckpt_0001_non_figures_and_outside_entities_are_unverified` (keeps a portfolio fee, a customer split and a 3-year dividend total). `--recheck --stores-root` in `reality_engine/v2/observations.py` now loads every `cNN/cNN.db` under the root (like `--reparse`, instead of `seed_stores`'s default 5-store `--sample`) and `recheck_db` counts skipped pages in `stats['no_store']`, so rechecking an AR DB reaches every store and applies `apply_ar_row_gates` (`test_recheck_db_applies_ar_row_gates_to_verified_ar_rows`, `test_recheck_cli_stores_root_scans_every_store_beyond_default_sample`). `_label_duration_echo` also catches `'N years (immediately) preceding/before/prior/ago'` and `'period of N years'` (digits or number words across `printed_label`, `period`, `measure`), and `_is_target_year` marks a verified whole year 1990-2100 with no unit (or unit `'year'`) and a `target`/`by`/`goal`/`net zero`/`year` cue in `printed_label` or `measure` as `ar_not_a_figure` while keeping 2040 counts/money with their units (`test_ar_duration_echo_variants_and_target_year_are_unverified`).
