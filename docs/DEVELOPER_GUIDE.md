@@ -3193,3 +3193,20 @@ python -m reality_engine.scripts.grade_pack --db <observation db> --ckpt <ckpt.j
 ```
 
 Graders score the halves with `docs/grading/statement_rubric.md` (R/P/W/J plus the `qc` column that checks `question_context` against the printed analyst question) and `docs/grading/number_rubric.md` (R/P/W/J for deck/AR numbers: the printed value, the company's own, measure/period/unit/scale/basis right; J for page/note/clause numbers, years and label-duration echoes). Tests: `python -m pytest -q reality_engine/tests/test_grade_pack.py` -> 4 passed.
+
+## Skills catalog and rule hooks (T-242 skills, Shivam 25 Nov 2026)
+
+Repeatable workflows live as project skills in `.claude/skills/<name>/SKILL.md` (tracked in git, seen by Wolf and Eagle; call by name or let the description trigger them). Each is a short, exact recipe: inputs, commands, accept bar, pitfalls from past failures. Update a skill in the same change as the workflow it describes.
+
+| Skill | Use |
+|---|---|
+| `free-model-bakeoff` | choose a free model for a reading/OCR job; gate each on one call; never call paid ids |
+| `checkpoint-grade` | 60-row non-author grade of a reader checkpoint; `read_gate` record; fix.md on fail |
+| `hy4-store-load` | recheck on a copy, verify, swap with backup, `load_symbols`, frozen copies for frozen banks |
+| `retrieval-audit` | 48 fresh questions, in-process lookups, R/P/W/M/N, comparison with earlier audits |
+| `worker-brief-merge` | prescriptive brief template, review, merge recipe, review row, `By:` line |
+| `row-contract` | fields every number / statement / guidance row must carry and the checks behind them |
+
+Standing rules are enforced in two layers:
+- `reality_engine/scripts/rule_guard.py`, a **PreToolUse** hook in `.claude/settings.json` (Bash, PowerShell, Read, Grep, Glob, Edit, Write): blocks (exit 2) the private Manual Dumps folder, `Downloads\Telegram Desktop`, reading credential files or printing `*KEY*/*TOKEN*` variables, `git push` of anything but an explicit `main` (dry runs pass), and paid model ids (DeepInfra, Zen MiMo/hy4, paid Kilo/OpenRouter routes). Text written through a `cat`/`tee` heredoc is not scanned (it is data); interpreter heredocs are. A guard error never blocks. `--explain` lists the rules. Replayed on 9,855 past calls: 1 block, a real Telegram Desktop access; 0 false blocks. Tests: `reality_engine/tests/test_rule_guard.py`.
+- `ops_gate.py` (Stop hook) keeps the state rules that a single call cannot show: DB on the HDD, two hy4 writers, heartbeat, idle workers, quota pace, worker limit.

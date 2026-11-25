@@ -227,6 +227,7 @@ tasks/efficiency/rule_events.jsonl
 # Local tool folders and outputs that do not belong in git (1 Nov 2026)
 .claude/*
 !.claude/settings.json
+!.claude/skills/
 .codex-remote-attachments/
 tmp_*.py
 tasks/backtests/*.gz

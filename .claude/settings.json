@@ -61,6 +61,18 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|Read|Grep|Glob|Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/reality_engine/scripts/rule_guard.py\"",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }
