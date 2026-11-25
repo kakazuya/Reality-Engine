@@ -12,7 +12,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 26 Nov (Wolf): results gate PASS 48/11/1/0 after gates; bulk results read running.
-00000. 25 Nov 19:30 (Eagle) events: r7b (fund_raise) and r8 (order_win) merged; fresh7 gate (40 never-seen stores, code cb741c24) FAILS: order_win 35/10/14/1, fund_raise 31/8/16/0 -> VERIFIED_KINDS stays empty (served unverified). Retrieval fix 1 merged 20:00 (tools serve verified obs_fact first; audit Qs 13->20/20) -> fresh-question audit after MCP restart. NEXT: hy4 model reading + script check (Shivam's call pending).
+00000. 26 Nov 03:20 (Eagle) events: Shivam switched order_win/fund_raise to hy4 model + script check; merged (agy c858aea0, fp 546696b94a21): fresh5-7 graded W/J 69/70 fixed or unverified, R kept 92%. VERIFIED_KINDS empty until a fresh8 60-row grade per kind (Eagle).
 00000. 26 Nov deck widening (+2,307 few-figure, +1,438 jumbled 0.70) reading into obs_decks_wide.db (ckpt 1-2 carried); sonnet_settle OFF till Shivam's OK.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
 1. T-214/T-218 Telegram build: plan `tasks/handoff/T-214_TG_BUILD_PLAN.md`, queue `D:/RealityEngine/tg_build/build_queue.csv`, stores `tg_build/measure10/c01..c91`; repair notes `tasks/store_repair/INDEX.md`, grid `reports/store_repair_grid.xlsx`.
@@ -20,5 +20,5 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 ## Recipes
 Store copy: checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE`. Merge: grader row first; merge_worker; drop root PROGRESS_NOTES.md; tests per file; docs; remove worktree; log in worker_reviews.jsonl. Store diff: `reality_engine.scripts.store_diff`.
 - 25 Nov AR re-grade gates merged (Hydrogen, T-242): 5(c) unnamed-sub 184 unverified, 535 reset to company, 0 R changed. Next: --recheck AR copy, non-author grade, then load.
-- 25 Nov: tx rules 5c828b61 in; recheck tx DBs (Eagle)
+- 26 Nov: tx recheck waits for 0e8b95f3 (referent window + dedupe) (Eagle)
 26 Nov 01:40 NEXT (Wolf): fix 5 merged (15R/16); audit 6; review dsh 69650793 (OCR AIMD+Zen rotation), 437c0e4f (PDF cache); AR ar_r3 grade; deck swap; pack-up EOD.
