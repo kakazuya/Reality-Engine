@@ -6,7 +6,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Extraction: `v2/page_words.py` -> `page_layout.py` -> `page_route.py` (T-189, four routes; `table_or_chart` read on the page IMAGE, `needs_ocr` on its OCR words since T-238, plus the two T-242 deck options) -> `reference_geom.py` (T-185) -> `page_reader.py` writes page_cell verified/unverified/quarantined, served by `pilot3_cells`. T-199 atoms (`page_atom` v10): `docs/PILOT3_BLUEPRINT.md` T-199 block.
 - Checker T-225 (18 Nov): FROZEN 464/773 (60.0%), 0 wrong; target 95% not met, open. Notes: V2 contract "Round 1-5".
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
-- 24-26 Nov T-242: `grade_pack.py`, `docs/grading/`. audits 2/3/4/5: 33R8P3W4M / 32R12P4M / 45R3P / 36R1P11M. F3/4: 25-row window <19 kB, Share Capital+period = printed line; named call filtered by call or filing date ±3 d. F5: named-call obs_fact statements + doc_page hits come from its PRINTED call-date documents, not the filing-date window; 16 audit-5 statements by call date 4R3P9M -> 15R1P.
+- 24-26 Nov T-242: `grade_pack.py`, `docs/grading/`. audits 2-6: 33R8P3W4M / 32R12P4M / 45R3P / 36R1P11M / 36R5P1W5M1N. F3/4: 25-row window <19 kB, Share Capital+period = printed line; named call filtered by call or filing date ±3 d. F5: named-call obs_fact statements + doc_page hits come from its PRINTED call-date documents, not the filing-date window; 16 audit-5 statements by call date 4R3P9M -> 15R1P.
 - 25 Nov deck OCR fill (`scripts/ocr_fill.py`, Nemotron VL, Kilo): pilot 40 pages 0 errors, only 6 with >=4 figures.
 - 26 Nov bulk hy4 reads: one Drive fetch per doc per run (`raw_store.shared_cache`, pages in doc order); was one rclone per page (60 at once).
 
