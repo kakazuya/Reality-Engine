@@ -3816,6 +3816,134 @@ AR_OTHER_ENTITY_RUNNING_RE = re.compile(
 AR_NEW_NODE_FAMILY = {"revenue": "money", "cost": "money", "capex": "money", "debt": "money",
                       "equity": "money", "working_capital": "money", "capacity": "capacity",
                       "margin": "percent"}
+# T-242 AR ckpt_0002: period printed check, date-as-value junk drop, prose-only basis clear, consolidated scope reset
+_AR_MONTH_RE = (r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|"
+                r"Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)")
+AR_SPAN_END_RE = re.compile(r"(?:19|20)\d{2}\s*[-\u2013/]\s*(\d{2})\b")
+AR_SHORT_DATE_YEAR_RE = re.compile(
+    rf"(?:\b{_AR_MONTH_RE}\.?\s*[-,/]?\s*['\u2019]?|\b\d{{1,2}}[./-]\d{{1,2}}[./-])(\d{{2}})\b",
+    re.I,
+)
+AR_DATE_MONTH_DAY_YEAR_RE = re.compile(
+    rf"^(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,?\s+)?"
+    rf"(?:(?P<m1>{_AR_MONTH_RE})\.?\s+(?P<d1>\d{{1,2}})(?:st|nd|rd|th)?,?\s*(?P<y1>(?:19|20)\d{{2}})"
+    rf"|(?P<d2>\d{{1,2}})(?:st|nd|rd|th)?\s+(?P<m2>{_AR_MONTH_RE})\.?,?\s+(?P<y2>(?:19|20)\d{{2}})"
+    rf"|(?P<m3>{_AR_MONTH_RE})\.?\s*[-,/]?\s*['\u2019]?(?P<y3>(?:19|20)\d{{2}}|\d{{2}}))$",
+    re.I,
+)
+AR_DATE_DMY_RE = re.compile(r"^(?P<d>\d{1,2})([./-])(?P<m>\d{1,2})\2(?P<y>(?:19|20)?\d{2})$")
+AR_DATE_ISO_RE = re.compile(r"^(?P<y>(?:19|20)\d{2})-(?P<m>\d{1,2})-(?P<d>\d{1,2})(?:[T ]\d{2}:\d{2}.*)?$")
+AR_HEADING_CONSOLIDATED_RE = re.compile(
+    r"^(?:notes?\s+(?:to(?:\s+(?:the\s+)?accounts?)?|forming\s+part\s+of|on)|accompanying\s+notes?\s+(?:to|forming)|"
+    r"(?:notes?\s+(?:to\s+(?:the\s+)?accounts?\s+)?)?forming\s+part\s+of|"
+    r"statement\s+of|"
+    r"schedules?\s+to|annexures?\s+to|(?:independent\s+)?auditors?['\u2019]?\s+report\s+on|ind\s+as\s+)?\s*"
+    r"(?:the\s+)?consolidated\b|"
+    r"(?:material|significant)\s+accounting\s+polic(?:y|ies)\b.*\bconsolidated\b|"
+    r"^\s*notes?\s*\(\s*consolidated\s*\)|"
+    r"^\s*consolidated\s+(?:financial|statement|balance|profit|cash|results?|highlights|figures?|"
+    r"accounts?|notes?|segment|schedule)\b|"
+    r"\(\s*(?:on\s+)?consolidated\s*(?:basis)?\s*\)",
+    re.I,
+)
+AR_PROSE_CONSOLIDATED_RE = re.compile(
+    r"\b(?:were|was|are|is|been|be|have|has|had|which|that|who|being|would|could|should|will|also|then|got|gets)\s+consolidated\b|"
+    r"\b(?:in|of|as\s+per|from|with|under|into|on|for)\s+(?:the\s+)?consolidated\s+"
+    r"(?:financial|statement|balance|profit|cash|accounts?|results?)\b",
+    re.I,
+)
+AR_CONS_GROUP_HEAD_RE = re.compile(r"\b(?:consolidated|the\s+group)\b", re.I)
+AR_SUBSIDIARY_NAME_RE = re.compile(
+    r"\b(?:private\s+limited|pvt\.?\s+ltd|limited|ltd\.?|llp|inc\.?|corp\.?|corporation|"
+    r"gmbh|s\.?a\.?r\.?l\.?|s\.?a\.?|s\.?l\.?u\.?|s\.?r\.?l\.?|llc|sdn\s+bhd|b\.v\.?|pte\.?\s+ltd|"
+    r"co\.?\s+ltd|plc|ag|nv|pty\s+ltd|subsidiar(?:y|ies)|joint\s+venture|associate|step[\s-]+down)\b",
+    re.I,
+)
+
+
+def _is_ar_date_value(value_text: str) -> bool:
+    """True when an AR number row's ``value_text`` parses as a calendar date (never a quantity)."""
+    vt = norm_space(value_text)
+    if not vt:
+        return False
+    m = AR_DATE_MONTH_DAY_YEAR_RE.match(vt)
+    if m:
+        day = m.group("d1") or m.group("d2")
+        if day is not None:
+            return 1 <= int(day) <= 31
+        return True
+    m_dmy = AR_DATE_DMY_RE.match(vt)
+    if m_dmy:
+        return 1 <= int(m_dmy.group("d")) <= 31 and 1 <= int(m_dmy.group("m")) <= 12
+    m_iso = AR_DATE_ISO_RE.match(vt)
+    if m_iso:
+        return 1 <= int(m_iso.group("m")) <= 12 and 1 <= int(m_iso.group("d")) <= 31
+    return False
+
+
+def _ar_period_reason(period: str, page_text: str, previous_text: str) -> str:
+    """Return ``period_no_year`` or ``period_not_printed`` reason when an AR period lacks a printed year."""
+    period_s = norm_space(period)
+    if not period_s:
+        return ""
+    years4 = re.findall(r"(?:19|20)\d{2}", period_s)
+    fy2 = re.findall(r"(?<![A-Za-z])FY\s*['\u2019-]?\s*(\d{2})\b", period_s, re.I)
+    span2 = AR_SPAN_END_RE.findall(period_s)
+    short2 = AR_SHORT_DATE_YEAR_RE.findall(period_s)
+    if not (years4 or fy2 or span2 or short2):
+        return f"period_no_year: {period_s!r} names no year"
+    combined = f"{page_text}\n{previous_text}"
+    if period_in_text(period_s, combined):
+        return ""
+    for s2 in span2:
+        if f"20{s2}" in combined or f"19{s2}" in combined or re.search(rf"(?<![A-Za-z])FY\s*['\u2019-]?\s*{s2}\b", combined, re.I):
+            return ""
+    for sd in short2:
+        if f"20{sd}" in combined or re.search(rf"(?:[-/'\u2019]|FY\s*){sd}\b", combined, re.I):
+            return ""
+    for f2 in fy2:
+        prev = f"{int(f2) - 1:02d}"
+        if f"20{prev}-{f2}" in combined or f"20{prev}-20{f2}" in combined or f"20{prev}\u2013{f2}" in combined or f"20{f2}" in combined:
+            return ""
+    return f"period_not_printed: {period_s!r} is not printed on the page or previous page"
+
+
+def _ar_is_consolidated_heading_line(line: str) -> bool:
+    """True when one printed line is a heading or table title naming ``consolidated`` (never running prose)."""
+    s = norm_space(line)
+    if not s or not re.search(r"\bconsolidated\b", s, re.I):
+        return False
+    if AR_HEADING_CONSOLIDATED_RE.search(s):
+        return True
+    if AR_PROSE_CONSOLIDATED_RE.search(s) or len(s) > 90:
+        return False
+    if s.endswith(".") and not re.search(r"\b(?:contd|ltd|inc|co)\.$", s, re.I) and len(s.split()) > 6:
+        return False
+    if re.search(r"\b(?:is|are|was|were|have|has|had|which|that|shall|will|would|should|being|into)\b", s, re.I):
+        return False
+    return True
+
+
+def _ar_has_consolidated_heading(row: dict[str, Any], page_text: str) -> bool:
+    if row.get("basis_source") in ("page_heading", "previous_page_heading", "page_footnote", "deck"):
+        return True
+    for key in ("series_title", "printed_axis", "group_path"):
+        val = norm_space(row.get(key))
+        if val and re.search(r"\bconsolidated\b", val, re.I) \
+                and (AR_HEADING_CONSOLIDATED_RE.search(val) or not AR_PROSE_CONSOLIDATED_RE.search(val)):
+            return True
+    return any(_ar_is_consolidated_heading_line(ln) for ln in (page_text or "").splitlines())
+
+
+def _ar_names_subsidiary(row: dict[str, Any], company: str) -> bool:
+    label = norm_space(row.get("printed_label"))
+    if AR_SUBSIDIARY_NAME_RE.search(label):
+        return True
+    for key in ("series_title", "group_path"):
+        val = norm_space(row.get(key))
+        if val and AR_SUBSIDIARY_NAME_RE.search(val) and not (company and _is_own_entity(val, company)):
+            return True
+    return False
 
 
 def ar_scale_note(page_text: str) -> tuple[str, str, float] | None:
@@ -3903,13 +4031,27 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             entity_match = AR_OTHER_ENTITY_RUNNING_RE.search(page_text)
         if entity_match and not _is_own_entity(entity_match.group(1), company):
             other_entity = norm_space(entity_match.group(1)).strip(" .,;|")
+    cons_group_head = bool(AR_CONS_GROUP_HEAD_RE.search(text[:300]))
+    has_prose_consolidated = bool(CONSOLIDATED_RE.search(page_text) or CONSOLIDATED_PAGE_RE.search(page_text))
+    kept: list[dict[str, Any]] = []
     for row in rows:
         if norm_space(row.get("record_type") or "number") != "number":
+            kept.append(row)
             continue
+        if _is_ar_date_value(str(row.get("value_text") or "")):
+            continue
+        kept.append(row)
         stated_basis = str(row.get("basis") or "")
         if basis and stated_basis != basis and (basis_source == "page_heading" or not stated_basis):
             row["basis"] = basis            # a carried basis never replaces a stated one
             row["basis_source"] = basis_source
+        if row.get("basis") == "consolidated" and has_prose_consolidated \
+                and not _ar_has_consolidated_heading(row, page_text):
+            row["basis"] = ""
+            row["basis_source"] = ""
+        if str(row.get("entity_scope") or "") == "subsidiary" and cons_group_head \
+                and not _ar_names_subsidiary(row, company):
+            row["entity_scope"] = "company"
         unit = norm_space(row.get("unit"))
         cues = " ".join(norm_space(row.get(key)) for key in
                         ("measure", "printed_label", "printed_axis", "series_title"))
@@ -3953,6 +4095,8 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             reason = f"ar_not_a_figure: {row.get('value')!r} is a target year ({label!r}), not a figure"
         elif str(row.get("entity_scope") or "") in AR_OUTSIDE_SCOPES:
             reason = f"ar_outside_entity: entity_scope {row.get('entity_scope')!r} is not the company's own figure"
+        if not reason:
+            reason = _ar_period_reason(str(row.get("period") or ""), page_text, previous_text)
         if not reason and headline and AR_BUCKET_LABEL_RE.search(label) \
                 and not _measure_names_qualifier(measure, label):
             reason = f"ar_qualified_label: {label!r} is an ageing/overdue bucket, not {measure}"
@@ -3976,6 +4120,7 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
         if reason:
             row["status"] = "unverified"
             row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", reason) if p)
+    rows[:] = kept
 
 
 AR_REFERENCE_MEASURE_RE = re.compile(
@@ -6537,9 +6682,14 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             before_gate = sum(1 for row in updated if row["status"] == "verified")
             apply_ar_statement_gate(updated)
             stats["ar_statement_rows"] += before_gate - sum(1 for row in updated if row["status"] == "verified")
+            before_ar = list(updated)
             apply_ar_row_gates(updated, raw_text,   # T-242: unit / qualifier / narrative / basis row gates
                                company_names.get(store_symbol.get(store_db, ""), ""),
                                page_text_of(store_db, doc_key, int(page) - 1))     # T-242: carried basis
+            for row in before_ar:
+                if all(row is not kept_row for kept_row in updated):
+                    con.execute("DELETE FROM observation WHERE observation_id=?", (int(row["observation_id"]),))
+                    stats["ar_dropped"] = int(stats.get("ar_dropped", 0)) + 1
             stats["basis_prev_page"] += sum(1 for row in updated
                                             if row.get("basis_source") == "previous_page_heading")
         for row in updated:
