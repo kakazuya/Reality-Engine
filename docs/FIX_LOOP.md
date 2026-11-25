@@ -43,7 +43,10 @@ not scoped is the waste this exists to remove. `--baseline` copies that DB to `-
 byte-identical outside the selection) and a scoped re-read replaces only its own pages/documents, so nothing else
 moves. The observations `--recheck` path filters both pages and rows (the `where` goes into the row query); a re-read
 re-processes exactly the selection (no seeded sampling, no `--limit` cap) and deletes those pages' old rows before
-reading.
+reading. At the end of a `--recheck`, `observations.dedupe_repeats` (T-242) keeps one row per exact repeat, preferring
+the `verified` row and then the lowest `observation_id`; the key is the row's whole printed content, so two distinct
+statements of one speaker or two differently labelled figures on a page (`Total 0`, `North 0`) are not repeats. It is
+scoped to the selected pages when `--only` is given and reports its count in `stats["repeats_dropped"]`.
 
 ## The golden sets
 

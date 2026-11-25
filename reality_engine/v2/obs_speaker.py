@@ -1532,6 +1532,251 @@ def preceding_question(statement: str, page_list: list[tuple[int, str]], page: i
     return f"Q ({name}): {body[:300]}"
 
 
+# --------------------------------------------------------------------------- T-242 statement window (26 Nov 2026)
+#
+# A statement must read as a self-contained passage and stay a verbatim substring of its page.  The model sometimes
+# starts it mid-sentence ("across the portfolio and you will get ...") or on the sentence after the words that give
+# it meaning ("this materializes", "both of these", "The brand").  Both fixes are structural and page-local: snap
+# the start back to the sentence start inside the same speaker turn, then prepend the previous sentence of that turn
+# when the first sentence only refers back to it.  A statement whose sentence or referent starts on an earlier page
+# (a turn carried across a page break) is left alone and noted with ``referent_outside_window``, never cut from
+# another page, so every stored statement stays a substring of its own page.
+
+_SENTENCE_BREAK_RE = re.compile(r"[.!?]\s+")
+_ABBREV_END_RE = re.compile(r"(?:Mr|Mrs|Ms|Dr|Shri|Sh|Prof|Sr|Smt|Er|Capt|vs|etc)\.$", re.I)
+_DATE_LINE_RE = re.compile(
+    r"^(?:\d{1,2}(?:st|nd|rd|th)?[\s-]+)?"
+    r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s,.-]+\d{2,4}$"
+    r"|^\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}$", re.I)
+_LEAD_IN_RE = re.compile(
+    r"^(?:(?:so|and|but|yes|yeah|well|okay|ok|now|then|also|however|therefore|thus|hence|actually|basically|"
+    r"essentially|finally|first|firstly|second|secondly|again)\b[,\s]+)+", re.I)
+# A pronoun or demonstrative that opens the sentence only works if an earlier sentence names its referent.
+_OPEN_ANAPHOR_RE = re.compile(
+    r"^(?:it|they|such|both|this|these|those)\b"
+    r"|^that\s+(?:is|was|will|would|can|could|has|have|had|means|does|did|seems|appears|remains|should|may|"
+    r"might|must)\b", re.I)
+# A demonstrative carrying a noun names that noun's referent elsewhere ("this increase", "that range").
+_DEMONSTRATIVE_NOUN_RE = re.compile(
+    r"\b(?:this|these|those|that)\s+(?!(?:year|years|quarter|quarters|half|month|months|week|weeks|period|periods"
+    r"|time|fiscal|season|morning|afternoon|evening|regard|context|point|view|sense|stage|extent|respect|manner"
+    r"|way|place|case|juncture|being|maybe|perhaps|the|and|or|for|with|from|which|who|when|where"
+    r"|why|how|as|in|on|of|to|by|at|is|was|are|were|be|been|will|would|can|could|has|have|had|does|did"
+    r"|[a-z]{4,}ly)\b)[A-Za-z][A-Za-z-]{2,}\b", re.I)
+_BOTH_OF_RE = re.compile(r"\bboth\s+of\s+(?:these|those|them)\b", re.I)
+_THE_SAME_RE = re.compile(
+    r"\bthe\s+same\b(?!\s+(?:time|way|manner|extent|level|pace|rate|quarter|year|month|period|day|place)\b)", re.I)
+# A definite sentence subject ("The brand has ...") whose noun this whitelist does not claim is an anaphor.
+_DEFINITE_OPEN_RE = re.compile(r"[Tt]he\s+([a-z][a-z-]{2,})\b")
+_SELF_CONTAINED_NOUNS = frozenset({
+    "company", "companies", "business", "group", "board", "management", "bank", "firm", "organisation",
+    "organization", "market", "markets", "industry", "sector", "economy", "government", "regulator", "quarter",
+    "quarters", "year", "years", "period", "periods", "half", "month", "months", "week", "time", "results",
+    "result", "revenue", "revenues", "margin", "margins", "guidance", "outlook", "growth", "demand", "capex",
+    "debt", "cash", "portfolio", "strategy", "plan", "plans", "team", "order", "orders", "book", "sales",
+    "cost", "costs", "opex", "profit", "profitability", "balance", "sheet", "asset", "assets", "liability",
+    "liabilities", "equity", "capital", "turnover", "volume", "volumes", "price", "prices", "inflation", "rate",
+    "rates", "policy", "project", "projects", "plant", "plants", "facility", "facilities", "product", "products",
+    "segment", "segments", "customer", "customers", "client", "clients", "employee", "employees", "share",
+    "shares", "dividend", "buyback", "listing", "consolidated", "standalone", "domestic", "international",
+    "export", "exports", "import", "imports", "first", "second", "third", "last", "next", "current", "previous",
+    "same", "other", "only", "entire", "whole", "total", "overall", "main", "key", "new", "old", "above",
+    "below", "remaining", "full", "strong", "weak", "best", "worst", "average", "normal", "usual", "reported",
+    "adjusted", "underlying", "net", "gross", "latest", "healthy", "muted", "lower", "higher", "larger",
+    "smaller", "domestic.", "consolidated.",
+})
+_ANAPHOR_STOP = _CONTENT_STOP | {"this", "that", "these", "those", "both", "they", "them", "such", "same", "which"}
+_PREV_SENTENCE_MAX_WORDS = 60
+_WINDOW_NOTE = "referent_outside_window: the sentence or its referent starts on an earlier page or turn"
+# A page's cover/registration block (phone, email, CIN, dial-in line) is not speech: never snap or widen across it.
+_FRONT_MATTER_RE = re.compile(
+    r"@|https?://|www\.|\b(?:mobile|e-?mail|telephone|phone|fax|website|cin|registered\s+office|"
+    r"corporate\s*&\s*registered|disclaimer|dial[- ]?in|passcode|webcast|note\s*:)\b|"
+    r"^[ \t]*(?:management|analysts?|participants?|corporate\s+participants|management\s+participants|"
+    r"executives|panelists)\b|"
+    r"\b\d{7,}\b|(?:[\d+()\-]\s*){10,}\d|\b\d{1,2}:\d{2}\s*(?:am|pm|ist)\b|"
+    r"\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2},?\s+\d{4}\b", re.I | re.M)
+_LABEL_ONLY_LINE_RE = re.compile(
+    r"(?m)^[ \t]*(?:[•−\-*][ \t]*)?[A-Za-z][A-Za-z0-9&.'-]*(?:[ \t]+[A-Za-z0-9&.'-]+){0,3}[ \t]*:[ \t]*$")
+# A block of honourific name lines is a participant roster, not speech.
+_ROSTER_LINE_RE = re.compile(r"(?m)^[ \t]*(?:MR|MRS|MS|DR|SHRI|SMT)\.?\s+[A-Z]")
+
+
+def _content_heads(text: str) -> set[str]:
+    """Content words of ``text`` as 5-letter stems, so "increase"/"increases" share a head."""
+    return {w.lower().rstrip("s")[:5] for w in _CONTENT_WORD_RE.findall(text)} - {
+        w.rstrip("s")[:5] for w in _ANAPHOR_STOP}
+
+
+def _ends_at_sentence_break(text: str) -> bool:
+    """True when ``text`` ends at . ! or ? that is not an abbreviation dot."""
+    stripped = text.rstrip()
+    if not stripped or stripped[-1] not in ".!?":
+        return False
+    return not (stripped[-1] == "." and _ABBREV_END_RE.search(stripped))
+
+
+def _page_prose_start(text: str) -> int:
+    """Offset of the first prose line on a page (past the running header: title, date, "Page N of M")."""
+    pos = 0
+    for line in text.splitlines(keepends=True):
+        s = line.strip()
+        if s and not _PAGE_HEADER_LINE.match(s) and not re.fullmatch(r"\d{1,3}", s) \
+                and not _DATE_LINE_RE.match(s) and (s[0].islower() or len(s) >= 80
+                                                    or len(s.split()) >= 6 or bool(re.search(r"[.!?]\s", s))):
+            return pos
+        pos += len(line)
+    return 0
+
+
+def _front_matter(text: str) -> bool:
+    """True when ``text`` is a page's cover/registration block or a bare colon label, never speech."""
+    return bool(_FRONT_MATTER_RE.search(text) or _LABEL_ONLY_LINE_RE.search(text)
+                or len(_ROSTER_LINE_RE.findall(text)) >= 2)
+
+
+def _sentence_starts(page_text: str, body: int, pos: int) -> list[int]:
+    """Sentence starts inside one turn, from the turn body up to ``pos`` (the turn body counts as one)."""
+    starts = [body]
+    for m in _SENTENCE_BREAK_RE.finditer(page_text, body, pos):
+        if m.start() > body and page_text[m.start()] == "." \
+                and _ABBREV_END_RE.search(page_text[max(body, m.start() - 8):m.start() + 1]):
+            continue
+        if m.end() <= pos:
+            starts.append(m.end())
+    return sorted(set(starts))
+
+
+def _statement_span(page_text: str, statement: str) -> tuple[int, int] | None:
+    """Span of ``statement`` on its page, or None when it cannot be located there."""
+    st = statement.strip()
+    pos = find_observation_pos(page_text, "", "", st)
+    if pos is None:
+        return None
+    if page_text.startswith(st, pos):
+        return pos, pos + len(st)
+    tail = st[-40:] if len(st) > 40 else st
+    pat = _flex_regex(tail)
+    m = pat.search(page_text, pos) if pat else None
+    if m:
+        return pos, m.end()
+    return None
+
+
+def _window_body_start(page_text: str, pos: int, page_num: int, analysts: Iterable[str],
+                       known_names: set[str], question_context: str = "") -> tuple[int, bool] | None:
+    """Start of the speaker turn holding ``pos``: (offset, whether a printed label starts it), or None when the
+    nearest label is an analyst/moderator and widening would cross into a question.
+
+    ``extract_turns`` is not the only source: a designation label it rejects (``Mr. Karan Bhagat - MD & CEO,
+    360 ONE WAM:``, rejected there because its hint carries a digit from "360") is still a printed turn boundary,
+    so every label form is scanned up to ``pos`` and the nearest one bounds the turn.
+    """
+    labels: list[tuple[str, int]] = []
+    for t in extract_turns(page_text, page_num, known_names=known_names):
+        if t.end <= pos:
+            labels.append((t.name, t.end))
+    for m in _DESIG_TURN_RE.finditer(page_text, 0, pos):
+        labels.append((m.group(1).strip(), m.end()))
+    for m in _LABEL_LINE_RE.finditer(page_text, 0, pos):
+        labels.append((m.group("name").strip(), m.end()))
+    for m in _COLON_TURN_RE.finditer(page_text, 0, pos):
+        raw = m.group(1).strip()
+        if _is_valid_speaker_name(raw):
+            labels.append((raw, m.end()))
+        else:                    # a section heading ("Outlook: Optimistic for FY26"): speech starts next line
+            line_end = page_text.find("\n", m.end())
+            labels.append(("", min(pos, line_end + 1 if line_end != -1 else pos)))
+    analyst_list = list(analysts)
+    quoted = re.match(r"Q\s*\(([^)]+)\)\s*:", question_context or "")
+    if quoted:
+        analyst_list.append(quoted.group(1).strip())   # the stored question names its asker
+    if labels:
+        name, end = max(labels, key=lambda item: item[1])
+        if end <= pos and name and ((analyst_list and _name_matches_list(name, analyst_list))
+                                    or _norm_name(name) in _MODERATOR_NAMES):
+            return None
+        return end, True
+    return _page_prose_start(page_text), False
+
+
+def _first_sentence_has_anaphor(sentence: str) -> bool:
+    """True when the sentence opens on, or carries, a demonstrative whose referent it does not name."""
+    text = _LEAD_IN_RE.sub("", sentence.strip())
+    if _OPEN_ANAPHOR_RE.match(text):
+        return True
+    definite = _DEFINITE_OPEN_RE.match(text)
+    if definite and definite.group(1).lower() not in _SELF_CONTAINED_NOUNS:
+        return True
+    return bool(_DEMONSTRATIVE_NOUN_RE.search(sentence) or _BOTH_OF_RE.search(sentence)
+                or _THE_SAME_RE.search(sentence))
+
+
+def _only_anaphor(sentence: str) -> bool:
+    """True when a sentence carries an anaphor and no content of its own (``It was good.``)."""
+    if not _first_sentence_has_anaphor(sentence):
+        return False
+    return len(_content_heads(sentence)) <= 2
+
+
+def widen_statement(statement: str, page_text: str, page_num: int = 0, question_context: str = "",
+                    *, analysts: Iterable[str] = (), known_names: Iterable[str] = (),
+                    ) -> tuple[str, bool, bool, str]:
+    """T-242: snap ``statement`` back to its sentence start, then prepend its referent's sentence; page-local.
+
+    Returns ``(statement, snapped, widened, note)``.  The statement stays a verbatim substring of ``page_text``:
+    a start is only moved back inside the same printed speaker turn (never across a label, into an analyst's
+    question, or before the page), the prepended sentence is the previous one of that turn and at most 60 words,
+    and ``note`` is ``referent_outside_window: ...`` when either move is impossible.  ``snapped``/``widened`` are
+    True only when the text changes.
+    """
+    st = str(statement or "")
+    if not st.strip() or not page_text:
+        return st, False, False, ""
+    span = _statement_span(page_text, st)
+    if span is None:
+        return st, False, False, ""
+    pos, stmt_end = span
+    body = _window_body_start(page_text, pos, page_num, analysts, set(known_names), question_context)
+    if body is None:                          # the nearest label is the analyst asking: never widen into a question
+        return st, False, False, ""
+    body_start, labelled = body
+    prefix = page_text[body_start:pos]
+    snapped = False
+    if prefix.strip() and not _ends_at_sentence_break(prefix):
+        starts = _sentence_starts(page_text, body_start, pos)
+        if (len(starts) > 1 or labelled) and not _front_matter(page_text[starts[-1]:pos]):
+            pos = starts[-1]
+            bullet = re.match(r"[•−\-*][ \t]+", page_text[pos:pos + 4])
+            if bullet:                     # a printed bullet is not part of the sentence
+                pos += bullet.end()
+            snapped = True
+        else:
+            return st, False, False, _WINDOW_NOTE   # the sentence began on an earlier page or in a page header
+    elif not prefix.strip() and not labelled and st.lstrip()[:1].islower():
+        return st, False, False, _WINDOW_NOTE       # the page opens on the middle of a carried sentence
+    if snapped:
+        st = page_text[pos:stmt_end].strip()
+    first = (_sentences(st) or [""])[0]
+    if not first or not _first_sentence_has_anaphor(first):
+        return st, snapped, False, ""
+    if _content_heads(first) & _content_heads(question_context):
+        return st, snapped, False, ""            # the question already holds the referent
+    starts = _sentence_starts(page_text, body_start, pos)
+    previous = [s for s in starts if s < pos]
+    if not previous:
+        return st, snapped, False, _WINDOW_NOTE  # the turn (or the carried sentence) starts on an earlier page
+    prev_start = previous[-1]
+    prev_sentence = page_text[prev_start:pos].strip()
+    if not prev_sentence or len(prev_sentence.split()) > _PREV_SENTENCE_MAX_WORDS \
+            or _front_matter(page_text[prev_start:pos]):
+        return st, snapped, False, _WINDOW_NOTE
+    if _only_anaphor(prev_sentence):
+        return st, snapped, False, _WINDOW_NOTE  # the previous sentence is also only an anaphor
+    widened = " ".join(page_text[prev_start:stmt_end].split())
+    return widened, snapped, True, ""
+
+
 def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int, str]],
                               symbol: str = "", company_names: Iterable[str] = ()) -> dict[str, int]:
     """T-242: carry a page-break speaker, resolve/flag a junk label and a referentless reply, in place.
@@ -1543,7 +1788,8 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
     ``question_context`` is filled from ``preceding_question``; a model-written one is never replaced.
     """
     stats = {"statements": 0, "carried": 0, "resolved": 0, "empty": 0, "unverified": 0, "question_filled": 0,
-             "not_a_call": 0, "moderator": 0, "not_a_person": 0, "short_remarks": 0}
+             "not_a_call": 0, "moderator": 0, "not_a_person": 0, "short_remarks": 0,
+             "snapped": 0, "widened": 0, "noted": 0}
     indexes = [i for i, row in enumerate(rows) if str(row.get("record_type") or "") == "statement"]
     if not indexes:
         return stats
@@ -1563,14 +1809,32 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
     company_keys.discard("")
     need: list[tuple[int, int, str, str, str, str]] = []
     retry: set[int] = set()
+    notes: dict[int, str] = {}
+    texts = dict(page_list)
+    known_names = {_norm_name(n) for n in [*pool, *analysts, *moderator_names] if n}
     for i in indexes:
         row = rows[i]
+        page = int(row.get("page") or 0)
+        page_text = texts.get(page, "")
+        if page_text:                       # T-242 (26 Nov): sentence snap + referent widen, page-local
+            statement, snapped, widened, note = widen_statement(
+                str(row.get("statement") or ""), page_text, page, str(row.get("question_context") or ""),
+                analysts=analysts, known_names=known_names)
+            if snapped or widened:
+                row["statement"] = statement
+                if snapped:
+                    stats["snapped"] += 1
+                if widened:
+                    stats["widened"] += 1
+            if note:
+                notes[i] = note
+                stats["noted"] += 1
         speaker = " ".join(str(row.get("speaker") or "").split())
         if not speaker:
             retry.add(i)
         # every statement is checked against the printed labels (fy27_v3 ckpt_0002: two W were a speaker carried past
         # an in-document handover, "Over to you, Alok" + "Alok Gupta:")
-        need.append((i, int(row.get("page") or 0), "", "", str(row.get("statement") or ""), ""))
+        need.append((i, page, "", "", str(row.get("statement") or ""), ""))
     found = attribute_document(page_list, need) if need else {}
     for i in indexes:
         stats["statements"] += 1
@@ -1664,6 +1928,8 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
             if row.get("status") == "verified":
                 row["status"] = "unverified"
                 stats["unverified"] += 1
+        if i in notes:                    # a detail note only: the window rule never changes a status
+            row["status_reason"] = "; ".join(p for p in (str(row.get("status_reason") or ""), notes[i]) if p)
     for i in indexes:                              # 394_v3 ckpt_0001 J (NLCINDIA p1): a filing letter's closing line
         row = rows[i]
         # only the letter's own wording, whoever signs it: a company secretary's real opening remarks stay (Wolf)

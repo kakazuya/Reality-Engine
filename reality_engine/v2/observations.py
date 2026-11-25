@@ -7507,6 +7507,46 @@ def _kept_pages(pages: Iterable[tuple[str, int]]) -> Any:
             yield doc_key, page
 
 
+def dedupe_repeats(con: sqlite3.Connection, pages: Iterable[tuple[Any, Any]] | None = None) -> int:
+    """T-242: drop exact repeat rows, keeping the verified one first and then the lowest observation_id.
+
+    The key is the ticket's ``(doc_key, page, measure, normalised value_text, speaker)`` widened to the row's whole
+    printed content (label, period, basis, dimensions, unit, statement, ...): both statement rows and number rows
+    print no value_text of their own ("So we are debating those issues" vs the next statement; "Total 0" vs
+    "North 0"), so the narrow key collapsed distinct observations.  Only a row identical in every content column
+    is a repeat.  ``pages`` scopes the pass to the re-checked selection (a scoped ``--recheck`` must not touch the
+    rest of the DB).
+    """
+    page_keys = {(str(dk), int(pg)) for dk, pg in pages} if pages is not None else None
+    cur = con.execute("SELECT * FROM observation")
+    columns = [str(d[0]) for d in cur.description or ()]
+    skip = {"observation_id", "status", "status_reason", "read_at"}
+    content_idx = [i for i, name in enumerate(columns) if name not in skip]
+    pos = {name: i for i, name in enumerate(columns)}
+    keep: dict[tuple[Any, ...], tuple[int, bool]] = {}
+    drop: list[tuple[int]] = []
+    for row in cur.fetchall():
+        if page_keys is not None and (str(row[pos["doc_key"]]), int(row[pos["page"]])) not in page_keys:
+            continue
+        key = tuple("" if (v := row[i]) is None else " ".join(v.split()).lower() if isinstance(v, str) else v
+                    for i in content_idx)
+        verified = str(row[pos["status"]] or "") == "verified"
+        oid = int(row[pos["observation_id"]])
+        current = keep.get(key)
+        if current is None:
+            keep[key] = (oid, verified)
+            continue
+        current_id, current_verified = current
+        if (verified and not current_verified) or (verified == current_verified and oid < current_id):
+            drop.append((current_id,))
+            keep[key] = (oid, verified)
+        else:
+            drop.append((oid,))
+    if drop:
+        con.executemany("DELETE FROM observation WHERE observation_id=?", drop)
+    return len(drop)
+
+
 def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                companies: dict[str, tuple[str, str]] | None = None,
                only: Any = None) -> dict[str, Any]:
@@ -7558,7 +7598,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                              "basis_page": 0, "basis_prev_page": 0, "basis_deck_heading": 0,
                              "ar_statement_rows": 0, "no_store": 0,
                              "results_junk": 0, "results_units": 0, "results_scope_reset": 0,
-                             "results_unverified": 0}
+                             "results_unverified": 0, "repeats_dropped": 0}
     pages = list(con.execute("SELECT DISTINCT doc_key, page FROM observation ORDER BY doc_key, page"))
     if only is not None:                      # T-233: a scoped recheck touches only the selected pages
         pages = [p for p in pages if only.page(doc_store.get(str(p[0])), str(p[0]), int(p[1]))]
@@ -7921,6 +7961,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
     if stale:
         con.execute("UPDATE observation SET period_source='deck_asof' WHERE period_source='deck_period'")
         stats["deck_asof_renamed"] = int(stale)
+    stats["repeats_dropped"] = dedupe_repeats(con, pages)   # T-242: one row per exact repeat, verified first
     con.commit()
     if stats["unproven_upgrades"]:
         stats["stopped"] = (f"{stats['unproven_upgrades']} rows would verify without a new printed source; "

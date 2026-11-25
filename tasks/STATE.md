@@ -7,6 +7,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Checker T-225 (18 Nov): FROZEN 464/773 (60.0%), 0 wrong; target 95% not met, open. Notes: V2 contract "Round 1-5".
 - 24-26 Nov T-242: `grade_pack.py`, `docs/grading/`. audits 2-6: 33R8P3W4M / 32R12P4M / 45R3P / 36R1P11M / 36R5P1W5M1N; 7 (fresh, paraphrased) 29R16P1W1M1N. F3/4: 25-row window <19 kB; named call by call or filing date ±3 d. F5: named-call obs_fact statements + doc_page hits come from its PRINTED call-date documents, not the filing-date window; 16 audit-5 statements by call date 4R3P9M -> 15R1P. F6: held-but-quarantined guidance disclosed, obs_fact guidance fallback, PAT/as-on aliases, all-ask-word sentence first, filed beats call figure >20%; audit-6 replay 36R->45R.
 - OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD (`--start/--max-workers`), Zen rotates Nemotron VL / DeepSeek Flash by speed.
+- 26 Nov tx statement window (Eagle, 0e8b95f3): sentence snap + referent widen, page-local; recheck dedupes exact repeats.
 - 26 Nov `gate_not_company`: industry/country/peer/customer rows never verified (read + recheck); recheck keeps not_company/subsidiary_unnamed.
 - 26 Nov bulk hy4 reads: one Drive fetch per doc (`raw_store.shared_cache`).
 

@@ -2622,3 +2622,49 @@ def test_resume_samples_from_unread_pages_only(tmp_path, monkeypatch):
     monkeypatch.setattr(obs, "write_new_merges", lambda con, path: 0)
     obs.run(["s"], limit=2, workers=1, out=out, doc_types=("deck",), resume=True)
     assert sorted(seen) == [9, 10]
+
+# ---------------------------------------------------------------- T-242: repeat-row dedupe in the --recheck path
+
+
+def _insert_obs(con, *, oid, page, record_type, measure, value_text, statement, speaker, status,
+                printed_label=""):
+    con.execute(
+        "INSERT INTO observation (observation_id, symbol, doc_key, page, known_at, record_type, measure, "
+        "printed_label, value_text, statement, speaker, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        (oid, "SYNTH", DECK, page, KNOWN_AT, record_type, measure, printed_label, value_text, statement, speaker,
+         status))
+
+
+def test_dedupe_repeats_keeps_the_verified_row_then_the_lowest_id_and_scopes_by_page():
+    con = obs.create_db(":memory:")
+    _insert_obs(con, oid=10, page=1, record_type="number", measure="revenue", value_text="100",
+                statement="", speaker="A", status="verified")
+    _insert_obs(con, oid=11, page=1, record_type="number", measure="revenue", value_text="100",
+                statement="", speaker="A", status="verified")          # exact repeat, dropped
+    _insert_obs(con, oid=12, page=1, record_type="number", measure="revenue", value_text="100",
+                statement="", speaker="B", status="verified")          # another speaker, kept
+    _insert_obs(con, oid=13, page=2, record_type="number", measure="margin", value_text="10%",
+                statement="", speaker="A", status="unverified")
+    _insert_obs(con, oid=14, page=2, record_type="number", measure="margin", value_text="10%",
+                statement="", speaker="A", status="verified")          # verified beats the lower id, kept
+    _insert_obs(con, oid=15, page=2, record_type="statement", measure="", value_text="",
+                statement="We grew.", speaker="A", status="verified")
+    _insert_obs(con, oid=16, page=2, record_type="statement", measure="", value_text="",
+                statement="We grew.", speaker="A", status="unverified")  # exact statement repeat, dropped
+    _insert_obs(con, oid=17, page=2, record_type="statement", measure="", value_text="",
+                statement="We added two plants.", speaker="A", status="verified")   # distinct, kept
+    # same page, measure, value and speaker but a different printed label: three observations, never one repeat
+    for oid, label in ((18, "Total"), (19, "North"), (20, "South")):
+        _insert_obs(con, oid=oid, page=2, record_type="number", measure="revenue", value_text="0",
+                    statement="", speaker="A", status="verified", printed_label=label)
+    assert obs.dedupe_repeats(con, [(DECK, 2)]) == 2        # only page 2 is scoped
+    rows = {r[0] for r in con.execute("SELECT observation_id FROM observation")}
+    assert rows == {10, 11, 12, 14, 15, 17, 18, 19, 20}     # page 1 untouched; verified 14 kept over 13
+    assert obs.dedupe_repeats(con, None) == 1               # an unscoped pass now clears page 1's repeat
+    rows = {r[0] for r in con.execute("SELECT observation_id FROM observation")}
+    assert rows == {10, 12, 14, 15, 17, 18, 19, 20}
+    key = ("SELECT COUNT(*) FROM (SELECT doc_key, page, record_type, measure, printed_label, value_text, statement, "
+           "speaker FROM observation GROUP BY doc_key, page, record_type, measure, printed_label, value_text, "
+           "statement, speaker HAVING COUNT(*) > 1)")
+    assert con.execute(key).fetchone()[0] == 0
+    con.close()
