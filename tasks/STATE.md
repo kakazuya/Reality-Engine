@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-25 19:55 IST (dsh)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 01:40 IST (dsh)
 History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -6,8 +6,8 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Extraction: `v2/page_words.py` -> `page_layout.py` -> `page_route.py` (T-189, four routes; `table_or_chart` read on the page IMAGE, `needs_ocr` on its OCR words since T-238, plus the two T-242 deck options) -> `reference_geom.py` (T-185) -> `page_reader.py` writes page_cell verified/unverified/quarantined, served by `pilot3_cells`. T-199 atoms (`page_atom` v10): `docs/PILOT3_BLUEPRINT.md` T-199 block.
 - Checker T-225 merged 18 Nov: Dots right cells kept dev 384/426, FROZEN 464/773 (60.0%, baseline 47.7%), 0 wrong; Beam frozen 8 wrong (text layer). Target >=95% not met; T-225 open. Split `D:/RealityEngine/t225_split`; notes V2 contract "Round 1-5".
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
-- 24-25 Nov T-242: `grade_pack.py` + `docs/grading/`. audits 2/3/4: 33R8P3W4M / 32R12P4M / 45R3P (fix 3; quote first 14/16). Fix 3: call rank, 25/named call, label subset. Fix 4: named call filters both sources (call or filing date ±3 d), 25 rows whole under 19 kB, Share Capital+period = printed line (BIGBLOC wrong-call 15->0).
-- 25 Nov deck OCR fill (`scripts/ocr_fill.py`, Nemotron VL, Kilo): pilot 40 pages 0 errors, only 6 with >=4 figures (rest covers/dividers).
+- 24-26 Nov T-242: `grade_pack.py`, `docs/grading/`. audits 2/3/4/5: 33R8P3W4M / 32R12P4M / 45R3P / 36R1P11M. F3/4: 25-row window <19 kB, Share Capital+period = printed line; named call filtered by call or filing date ±3 d. F5: named-call obs_fact statements + doc_page hits come from its PRINTED call-date documents, not the filing-date window; 16 audit-5 statements by call date 4R3P9M -> 15R1P.
+- 25 Nov deck OCR fill (`scripts/ocr_fill.py`, Nemotron VL, Kilo): pilot 40 pages 0 errors, only 6 with >=4 figures.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 26 Nov 00:10 (Wolf): results pilot FAIL 33/12/6/9 -> gates merged (0 R changed); re-grade of results_r5.db next; results reading blocked till pass.

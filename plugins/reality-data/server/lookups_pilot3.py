@@ -286,6 +286,27 @@ def _near_day(day: str, want: dt.date, days: int = 3) -> bool:
         return False
 
 
+def _named_call_docs(sym: str, day: str, days: int = 3) -> list[str]:
+    """The documents one named call is served from (T-242 fix 5): a document matches when the call date its
+    transcript prints (``MAX(transcript_statement.call_date)`` per resolved doc key) OR its filing date is within
+    ``days`` of the day named.  A filing-date window alone dropped the statements and page hits of every call filed
+    more than 3 days after it was held (11 of the 16 calls sampled in retrieval audit 5)."""
+    if not _has_table("doc"):
+        return []
+    want = dt.date.fromisoformat(day)
+    matched: set[str] = set()
+    for r in _q("SELECT doc_key, filing_date FROM doc WHERE symbol=?", (sym,)):
+        if r["doc_key"] and _near_day(str(r["filing_date"] or ""), want, days):
+            matched.add(str(r["doc_key"]))
+    if _has_table("transcript_statement"):
+        for r in _q("SELECT d.doc_key AS dk, MAX(t.call_date) AS cd FROM transcript_statement t "
+                    "JOIN doc d ON d.doc_key=COALESCE((SELECT a.doc_key FROM doc_alias a WHERE a.symbol=t.symbol "
+                    "AND a.alias_key=t.doc_key), t.doc_key) WHERE t.symbol=? GROUP BY 1", (sym,)):
+            if r["dk"] and _near_day(str(r["cd"] or ""), want, days):
+                matched.add(str(r["dk"]))
+    return sorted(matched)
+
+
 def _fy2(text: str) -> str:
     return text[-2:]
 
@@ -2453,6 +2474,10 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     # every other call are dropped, not merely ranked lower: audit 4 found 85 of 240 served rows from another call.
     named_day = from_day if from_day and from_day == to_day else None
     named_lo, named_hi = _day_span(named_day) if named_day else (None, None)
+    # T-242 fix 5: the documents the named call is served from -- its printed call date OR its filing date within
+    # 3 days.  The obs_fact statements and the doc_page hits are then fetched for these documents, not by a
+    # filing-date window that loses every call filed more than 3 days after it was held.
+    named_docs = _named_call_docs(sym, named_day) if named_day else []
     named_sql, named_args = "", []
     if named_day:
         named_sql = (" AND (t.call_date BETWEEN ? AND ? OR (d.filing_date IS NOT NULL "
@@ -2531,7 +2556,7 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     if _has_table("obs_fact"):
         obs_items = _obs_statement_rows(sym, topic=topic, terms=terms, period=period, rank_terms=rank_terms,
                                         latest=latest, status=status, date_from=from_day, date_to=to_day,
-                                        as_of=as_of)
+                                        as_of=as_of, call_docs=named_docs)
     if obs_items:
         def _norm_sent(s: str | None) -> str:
             return re.sub(r"\s+", " ", (s or "")).strip().lower()
@@ -2569,7 +2594,10 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     # the same 3 days, because the call's own document is often filed a few days after the date printed in it.
     ask = " ".join(x for x in (topic, terms, rank_terms) if x)
     page_from, page_to = (named_lo, named_hi) if named_day else (date_from, date_to)
-    hits = _call_page_hits(sym, ask, None, None, page_from, page_to, as_of, latest, want) if ask else []
+    if named_docs:
+        page_from, page_to = None, None
+    hits = (_call_page_hits(sym, ask, None, None, page_from, page_to, as_of, latest, want,
+                            doc_keys=named_docs or None) if ask else [])
     page_items = [{"call_date": r["filing_date"], "call_period": None, "speaker": None, "role": None,
                    "section": None, "topics": None, "entities": None, "period_discussed": None,
                    "answer_turn": None, "match": "text", "page": r["page"], "doc_key": r["doc_key"],
@@ -2733,7 +2761,7 @@ def analyst_questions(symbol: str, n_calls: int = 4, as_of: str | None = None) -
 
 def _call_page_hits(sym: str, topic: str | None, terms: str | None, rank_terms: str | None,
                     date_from: str | None, date_to: str | None, as_of: str | None, latest: bool,
-                    cap: int) -> list[sqlite3.Row]:
+                    cap: int, doc_keys: list[str] | None = None) -> list[sqlite3.Row]:
     """bm25 over the ``doc_page`` text of EVERY held document type (calls, decks, annual reports, results, press
     releases, announcements): the page's own sentence around the match, newest first.  The same phrase-first
     matcher ``pilot3_search`` uses, so a theme the tagger never emitted is answered from the page that prints it
@@ -2752,6 +2780,9 @@ def _call_page_hits(sym: str, topic: str | None, terms: str | None, rank_terms: 
         if val:
             date_sql += f" AND {col} {op} ?"
             date_args.append(val)
+    if doc_keys:     # T-242 fix 5: a named call's own documents (printed call date OR filing date within 3 days)
+        date_sql += f" AND d.doc_key IN ({','.join('?' * len(doc_keys))})"
+        date_args.extend(doc_keys)
     latest_sql, latest_args = "", []
     if latest:
         latest_sql = (" AND COALESCE(d.known_at, d.filing_date)=(SELECT MAX(COALESCE(d2.known_at, d2.filing_date)) "
@@ -4780,7 +4811,7 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
                         period: str | None = None, rank_terms: str | None = None,
                         latest: bool = False, status: str | None = None,
                         date_from: str | None = None, date_to: str | None = None,
-                        as_of: str | None = None) -> list[dict[str, Any]]:
+                        as_of: str | None = None, call_docs: list[str] | None = None) -> list[dict[str, Any]]:
     """Fetch and rank ``obs_fact`` statement rows with latest, period, rank_terms, topic and status."""
     where = ["o.symbol=?", "o.record_type='statement'"]
     args: list[Any] = [sym]
@@ -4795,8 +4826,6 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
     # matches when that call date OR its filing date is within 3 days of the day named.
     named_day = date_from if date_from and date_to and date_from == date_to else None
     named_at = dt.date.fromisoformat(named_day) if named_day else None
-    if named_day:
-        date_from, date_to = _day_span(named_day)
     if latest:
         where.append(f"substr(COALESCE(o.known_at,''),1,10)=(SELECT MAX(substr(COALESCE(o2.known_at,''),1,10)) "
                      f"FROM obs_fact o2 WHERE o2.symbol=? AND o2.record_type='statement'{extra.replace('o.', 'o2.')})")
@@ -4818,6 +4847,17 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
     # document date and fall back to known_at only when the document holds none.
     doc_day = f"COALESCE(d.filing_date, substr(COALESCE(o.known_at,''),1,10))" if _has_table("doc") \
         else "substr(COALESCE(o.known_at,''),1,10)"
+    # T-242 fix 5: a named call is served from the documents its printed call date OR its filing date puts within
+    # 3 days, so a call held on 2026-11-03 and filed 2026-11-10 keeps its obs_fact statements (the filing-date
+    # window alone dropped them, and the Python near-day check below can only drop rows, never rescue them).
+    if named_day and call_docs:
+        where.append(f"(COALESCE(d.doc_key, o.doc_key) IN ({','.join('?' * len(call_docs))}) "
+                     f"OR (d.doc_key IS NULL AND {doc_day} BETWEEN ? AND ?))")
+        args.extend(call_docs)
+        args.extend(_day_span(named_day))
+        date_from = date_to = None       # the document set IS the named-call filter; no filing-date window beside it
+    elif named_day:
+        date_from, date_to = _day_span(named_day)
     if date_from:
         where.append(f"{doc_day} >= ?")
         args.append(date_from)
