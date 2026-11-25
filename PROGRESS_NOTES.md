@@ -1,0 +1,1 @@
+T-242 fix 2 done: lookups_pilot3 named-call rank + natural-date periods + printed-label election + guidance election + holding route; tests test_retrieval_fix2.py 5 pass, test_lookups_pilot3.py 103 pass/1 skip, test_obs_wiring.py 15 pass; audit-2 re-run 38R/7P/3W/2M of 48 (was 33/8/3/4); docs DEVELOPER_GUIDE + STATE.md updated; next: controller runs audit 3 after MCP restart.
