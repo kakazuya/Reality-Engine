@@ -44,7 +44,9 @@ must not be used, and a document filed after it must never be cited.
 - pilot3_ratio: margins, ROE/ROCE, growth, PE/PB, days, market cap.
 - pilot3_kpi: company-stated KPIs (order book, segment revenue, NIM, shipments, ...).
 - pilot3_guidance: forward targets and their revisions, with the quote and call date.
-- pilot3_statements: what management said in a call (topic / terms / period / role).
+- pilot3_statements: what management said in a call (topic / terms / period / role). For a question about ONE call
+  ("In the 2026-05-27 call, what did management say about X?"), pass that call's date as date_from AND date_to
+  (both YYYY-MM-DD): only that call's statements are then served, best match first.
 - pilot3_topic: everything held on one theme across every call and document -- use it FIRST for list and
   "what did they say about X" questions, and raise limit when the reply says items were cut.
 - pilot3_cells: every figure read from a table or chart page (results statements, decks, segment tables).

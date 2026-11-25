@@ -613,7 +613,10 @@ def pilot3_holding(symbol: str, as_of: str, quarter_end: str | None = None,
         "Management statements from concall transcripts as exact quotes with speaker, role and call date. "
         "topic = tag (margin, guidance, capex, order, demand, debt ...) that ranks the tagged statements first, "
         "terms = words that must all appear, date_from/date_to on the call date, role = ceo | cfo | md | mgmt, "
-        "as_of. period (Q4FY26 / FY26) and rank_terms (the question's own words) put the statements of that "
+        "as_of. For a question about one call ('In the 2026-05-27 call, what did management say about X?'), pass "
+        "that call's date as date_from and date_to (both YYYY-MM-DD): only that call's statements are then served, "
+        "best match first, and the window is 25 statements instead of 10. period (Q4FY26 / FY26) and rank_terms "
+        "(the question's own words) put the statements of that "
         "period, carrying those words, first; the newest call breaks a tie. latest=true keeps only the newest "
         "call. topic_matched=false says no statement carries that tag; the call page text is then searched "
         "(bm25, newest call first) and fallback='doc_page_bm25' marks those rows. The tagged statements are joined by "
@@ -626,7 +629,7 @@ def pilot3_holding(symbol: str, as_of: str, quarter_end: str | None = None,
 )
 def pilot3_statements(symbol: str, topic: str | None = None, terms: str | None = None,
                       date_from: str | None = None, date_to: str | None = None, as_of: str | None = None,
-                      limit: int = 10, role: str | None = None, period: str | None = None,
+                      limit: int | None = None, role: str | None = None, period: str | None = None,
                       rank_terms: str | None = None, latest: bool = False, offset: int = 0,
                       documents: str | None = None) -> dict[str, Any]:
     return _safe(lambda: _p3.statements(symbol, topic=topic, terms=terms, date_from=date_from, date_to=date_to,
