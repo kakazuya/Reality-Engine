@@ -50,6 +50,10 @@ shape, then checks them independently of the model:
   pronoun-only passage with no measure is unverified ``no_subject``; a guidance row whose value no statement row on
   its page carries is flagged ``guidance_without_statement``; the question a short answer needs is kept in
   ``question_context`` beside the verbatim answer.
+* (T-242 deck widening) ``--deck-few-figures`` also reads a deck page routed ``no_figures`` for "1-3 printed
+  figures", and ``--deck-jumbled-min SHARE`` reads a deck ``needs_ocr`` page whose "text layer jumbled" reason
+  prints a label-dictionary share >= SHARE on its own text layer (its rows carry
+  ``text_source='text_layer_jumbled'``).  Both decide on the ``reason`` text in ``routes.csv`` and never rewrite it.
 
 Output is a separate SQLite file (``--out``, default ``.tmp/t230/obs.db``); a store is only ever
 read.  Tables: ``observation``, ``measure_dict``, ``measure_new``, ``dim_vocab``.
@@ -3174,6 +3178,7 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
     every printed check has run against those words and the row carries ``text_source='ocr'``.
     """
     reasons = list(row.pop("_scale_notes", []))
+    jumbled = row.get("text_source") == "text_layer_jumbled"   # T-242: a --recheck keeps the page's read marker
     row["text_source"] = ""
     if is_not_a_measure(row):
         return "quarantined", reasons + ["not_a_measure: director/tenure row, not a business quantity"]
@@ -3190,7 +3195,7 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
     if not in_layer and not in_ocr:
         return "unverified", reasons + [
             "image_text: the value is printed in the page image, not in its text layer or OCR"]
-    row["text_source"] = "ocr" if (ocr_page or not in_layer) else "text_layer"
+    row["text_source"] = "ocr" if (ocr_page or not in_layer) else ("text_layer_jumbled" if jumbled else "text_layer")
     status = "unverified" if reasons else "verified"
     for field in ("printed_label", "printed_axis", "group_path"):
         if not row.get(field):
@@ -6747,10 +6752,12 @@ def expand_transcript_windows(selected: list[dict[str, Any]], window: int) -> li
 
 def process_page(store_db: str | Path, doc_key: str, page: int,
                  companies: dict[str, tuple[str, str]] | None = None,
-                 text_only: bool = False) -> dict[str, Any]:
+                 text_only: bool = False, text_source: str = "") -> dict[str, Any]:
     """One page: image + text layer -> model reply -> checked observation rows.
 
     ``text_only`` (T-234) sends the stored text layer without the page image, for a text-only reader.
+    ``text_source`` (T-242) marks a page read on a text layer the router did not normally send: a jumbled deck
+    layer reads as ``'text_layer_jumbled'`` on every row that verified against it.
     """
     stop = quota_seconds()
     if stop > 0:                     # the shared key is in its quota window: leave the page for the resume run
@@ -6846,6 +6853,10 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                        if meta.get("doc_type") == "annual_report" else "",
                        has_consolidated=_ar_doc_has_consolidated(store_db, doc_key)
                        if meta.get("doc_type") == "annual_report" else False)
+    if text_source:                     # T-242: a jumbled deck layer read as such, not as a clean text layer
+        for row in result["rows"]:
+            if row.get("text_source") == "text_layer":
+                row["text_source"] = text_source
     if transcript and any(str(r.get("record_type") or "") == "statement" for r in result["rows"]):
         # T-242: the same statement-speaker carry/resolve as --reparse, from the doc's stored pages
         try:
@@ -7041,15 +7052,31 @@ def _ocr_pages(store_db: str) -> frozenset[tuple[str, int]]:
         return frozenset()
 
 
+FEW_FIGURES_REASON = re.compile(r"(?<!\d)[1-3] printed figures \(fewer than \d+\)")
+JUMBLED_SHARE_REASON = re.compile(r"text layer jumbled: label-dictionary share (\d+(?:\.\d+)?)")
+
+
+def jumbled_share(reason: str) -> float | None:
+    """The label-dictionary share a ``needs_ocr`` reason prints for a 'text layer jumbled' page (None otherwise)."""
+    match = JUMBLED_SHARE_REASON.search(reason or "")
+    return float(match.group(1)) if match else None
+
+
 def pages_from_store(store_db: str | Path, doc_types: Iterable[str] = ("deck",),
                      routes: Iterable[str] = ("table_or_chart", "needs_ocr"), skip_statements: bool = False,
                      dropped: dict[str, int] | None = None,
-                     ar_sections: bool = False) -> list[dict[str, Any]]:
+                     ar_sections: bool = False, deck_few_figures: bool = False,
+                     deck_jumbled_min: float = 0.0) -> list[dict[str, Any]]:
     """The routed pages a reader may read, from the ``routes.csv`` beside the store.
 
     T-238: a ``needs_ocr`` row is readable once the store's ``<stem>_ocr.db`` holds words for it -- the reader gets
     the OCR text layer and the checks run on the OCR words (``text_source='ocr'``).  A ``needs_ocr`` row with no
     OCR words yet is still skipped.
+
+    T-242: ``deck_few_figures`` adds the deck pages routed ``no_figures`` for 1-3 printed figures, and
+    ``deck_jumbled_min`` adds the deck ``needs_ocr`` pages whose 'text layer jumbled' reason prints a
+    label-dictionary share >= it (read on their own text layer, no OCR words needed; the page carries
+    ``text_source='text_layer_jumbled'``).  Both read the row's ``reason`` text, never a rewritten routes.csv.
     """
     wanted_types = {rp._doc_type_norm(t) for t in doc_types}
     wanted_routes = set(routes)
@@ -7061,8 +7088,7 @@ def pages_from_store(store_db: str | Path, doc_types: Iterable[str] = ("deck",),
     if routes_csv.is_file():
         with routes_csv.open(newline="", encoding="utf-8") as fh:
             for row in csv.DictReader(fh):
-                if row.get("route") not in wanted_routes:
-                    continue
+                route = row.get("route") or ""
                 doc_type = rp._doc_type_norm(row.get("doc_type", ""))
                 if doc_type not in wanted_types or doc_type == "transcript":
                     continue
@@ -7070,13 +7096,28 @@ def pages_from_store(store_db: str | Path, doc_types: Iterable[str] = ("deck",),
                     page = int(row["page"])
                 except (KeyError, ValueError):
                     continue
-                if row.get("route") == "needs_ocr":
+                reason = row.get("reason") or ""
+                page_text_source = ""
+                if doc_type == "deck" and route == "needs_ocr" and deck_jumbled_min > 0:
+                    share = jumbled_share(reason)
+                    if share is not None and share >= deck_jumbled_min:
+                        page_text_source = "text_layer_jumbled"
+                if not page_text_source and route not in wanted_routes:
+                    if doc_type == "deck" and deck_few_figures and route == "no_figures" \
+                            and FEW_FIGURES_REASON.search(reason):
+                        pass                                 # a 1-3 figure deck page: readable, plain text layer
+                    else:
+                        continue
+                if route == "needs_ocr" and page_text_source != "text_layer_jumbled":
                     if have_ocr is None:
                         have_ocr = _ocr_pages(str(store_db))
                     if (str(row["doc_key"]), page) not in have_ocr:
                         continue
-                pages.setdefault((row["doc_key"], page), {"store": str(store_db), "doc_key": row["doc_key"],
-                                                          "page": page, "doc_type": doc_type})
+                page_row: dict[str, Any] = {"store": str(store_db), "doc_key": row["doc_key"],
+                                            "page": page, "doc_type": doc_type}
+                if page_text_source:
+                    page_row["text_source"] = page_text_source
+                pages.setdefault((row["doc_key"], page), page_row)
     selected = list(pages.values())
     if ar_sections:
         ar_pages = [p for p in selected if p.get("doc_type") == "annual_report"]
@@ -7605,14 +7646,16 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
         doc_types: Iterable[str] = ("deck",), seed: int = 11,
         required: Iterable[tuple[str, int]] = (), propose_limit: int = 300,
         resume: bool = False, skip_statements: bool = False,
-        only: Any = None, text_only: bool = False, ar_sections: bool = False) -> dict[str, Any]:
+        only: Any = None, text_only: bool = False, ar_sections: bool = False,
+        deck_few_figures: bool = False, deck_jumbled_min: float = 0.0) -> dict[str, Any]:
     pages: list[dict[str, Any]] = []
     dropped_by_reason: dict[str, int] = {}
     for store_db in store_dbs:
         if only is not None and not only.store(store_db):
             continue
         pages.extend(pages_from_store(store_db, doc_types=doc_types, skip_statements=skip_statements,
-                                      dropped=dropped_by_reason, ar_sections=ar_sections))
+                                      dropped=dropped_by_reason, ar_sections=ar_sections,
+                                      deck_few_figures=deck_few_figures, deck_jumbled_min=deck_jumbled_min))
     if only is not None:                      # T-233: a scoped re-read is exactly the selection, not a sample
         pages = [p for p in pages if only.page(p["store"], p["doc_key"], p["page"])]
         selected = pages
@@ -7680,7 +7723,10 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
         if items is None:
-            futures = {pool.submit(process_page, p["store"], p["doc_key"], p["page"], companies, text_only): p
+            # T-242: only a jumbled-layer page carries a text_source, so a reader wrapper of the old five-argument
+            # signature keeps working for every other page.
+            futures = {pool.submit(process_page, p["store"], p["doc_key"], p["page"], companies, text_only,
+                                   **({"text_source": p["text_source"]} if p.get("text_source") else {})): p
                        for p in selected}
         else:                                   # T-242 v3: one call per transcript window
             futures = {(pool.submit(process_window, item[0]["store"], item[0]["doc_key"],
@@ -7846,6 +7892,11 @@ def main(argv: list[str] | None = None) -> int:
                         help="drop financial-statement/notes pages before any model call (stage F)")
     parser.add_argument("--ar-sections", action="store_true",
                         help="annual_report: read only ar_sections.kept_pages (T-242)")
+    parser.add_argument("--deck-few-figures", action="store_true",
+                        help="T-242: also read deck pages routed no_figures for 1-3 printed figures")
+    parser.add_argument("--deck-jumbled-min", type=float, default=0.0,
+                        help="T-242: also read deck needs_ocr pages whose 'text layer jumbled' reason prints a "
+                             "label-dictionary share >= SHARE (0 = off, the default)")
     parser.add_argument("--only", default="",
                         help="T-233 selector JSON: re-process only these stores/doc_keys/pages")
     parser.add_argument("--baseline", default="",
@@ -7947,7 +7998,8 @@ def _run_main(args: argparse.Namespace, store_dbs: list[str], doc_types: list[st
     return run(store_dbs, args.limit, args.workers, args.out,
                 doc_types=doc_types, seed=args.seed, required=required,
                 propose_limit=args.propose_limit, resume=args.resume, skip_statements=args.skip_statements,
-                only=only, text_only=args.text_only, ar_sections=args.ar_sections)
+                only=only, text_only=args.text_only, ar_sections=args.ar_sections,
+                deck_few_figures=args.deck_few_figures, deck_jumbled_min=args.deck_jumbled_min)
 
 
 def _report(stats: dict[str, Any]) -> int:

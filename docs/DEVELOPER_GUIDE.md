@@ -2901,6 +2901,27 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   balance sheet in ACC's deck) and an unnamed subsidiary's margin are still tagged `company` by the reader: prompt work.
   Grader warning: some decks print the value BEFORE its label (BLACKROSE p, 4 of 60 pages); grade by the arithmetic.
 
+- **Deck page widening, two options (`reality_engine/v2/observations.py`, `pages_from_store`/`process_page`, T-242,
+  25 Nov 2026, DeepSeek).** Both add deck pages the router today sends nowhere, both decide on the stored `reason`
+  text in `routes.csv` (never rewritten), and both are off by default on their own:
+  **`--deck-few-figures`** (`deck_few_figures`) also reads a deck page routed `no_figures` whose reason prints
+  `N printed figures (fewer than 4)` with N in 1-3 (`FEW_FIGURES_REASON`): +2,307 pages on the 677 universe stores
+  that hold a routes.csv, on top of the 4,683 `table_or_chart` deck pages read today.
+  **`--deck-jumbled-min SHARE`** (`deck_jumbled_min`, float, 0 = off) also reads a deck `needs_ocr` page whose reason
+  prints `text layer jumbled: label-dictionary share X` (`JUMBLED_SHARE_REASON`, `jumbled_share()`) with X >= SHARE,
+  straight from its own text layer, no OCR words needed: +1,438 pages at 0.70, +2,483 at 0.65, +3,240 at 0.60 (the
+  whole ladder, per-option samples in `tasks/t242_deck_widening_measure.md`).
+  `process_page(..., text_source=...)` marks every row that verified against that layer
+  `text_source='text_layer_jumbled'` (a page whose OCR words exist still reads on OCR: `ocr_read` wins and the marker
+  is not applied); `evaluate_status` keeps the marker through `--recheck`. `run()` passes the marker only for a page
+  that carries one, so the old five-argument `process_page` monkeypatch in tests still matches. The deck prompt is
+  unchanged (`read_gate` fingerprint `ea5e621d2826`). Counts, the SHARE ladder and the 20 random additions per option
+  (seed 21, first 300 characters of text) are in `tasks/t242_deck_widening_measure.md`, which also carries the
+  no-model-call snippet that reproduces the counts. Tests in
+  `reality_engine/tests/test_observations.py`: `test_deck_few_figures_option_reads_only_the_one_to_three_figure_pages`,
+  `test_deck_jumbled_min_reads_only_the_pages_at_or_above_the_share`,
+  `test_a_jumbled_deck_page_read_records_text_layer_jumbled_on_its_rows`,
+  `test_run_forwards_the_widening_options_and_the_jumbled_marker`.
 - **Annual-report useful sections (`v2/ar_sections.py`, T-242, 24 Nov 2026, Wolf).** `kept_pages(pages)` picks the AR
   table pages worth a hy4 read: MD&A, highlights, segment, operations (order book, capacity), subsidiaries (AOC-1),
   off-balance notes (contingent liabilities, related parties, borrowing terms, ageing, revenue split), ratios,
