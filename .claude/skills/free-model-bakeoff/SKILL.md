@@ -25,6 +25,9 @@ Inputs: the job (what the model reads and returns), N pages (default 15, >= 8 co
 Same prompt for all, e.g. OCR: "Transcribe all text on this slide exactly, in reading order. Keep every number with its label, unit and column or period header. Output plain text only."
 Per model: figure recall (right figure with right label / truth), precision (output figures that are on the page / output figures), invented numbers (count, separately), median s/page, errors, observed caps (rate-limit after how many calls).
 
+Run tips (25 Nov bake-off): use `opencode run --standalone` per call (parallel calls through the shared service drop sockets); pick figure-dense pages (that sample had 3 of 15 with figures); never stop a stuck run by process name, only by its PID; fetch raw PDFs via `raw_store`, never scan the disk.
+Last result (25 Nov, OCR of image-only deck slides, 15 pages / 52 figures): Nemotron 3.5 Super VL (opencode `-free` = kilo `:free`) recall 49/52, precision 55/56, 58 s/page; DeepSeek V4.1 Flash Free 45/49, 41 s/page. No image input: kilo-auto, big-pickle, flint-40b, iceman, tidepool-alpha, nemotron-3.5-lightning. Gemma 4 31B on OpenRouter: 429 shared pool. Results: `C:/RealityEngine/t242/ocr_bakeoff/results.md`.
+
 ## 5. Decide
 Winner = highest recall with precision >= 0.95 and zero invented numbers; speed breaks ties. Name a runner-up for when the winner's cap trips.
 Write `results.md` (table + recommendation) beside the pages, log the run in the run ledger (DEVELOPER_GUIDE s7), and before bulk use run the 60-row maker-checker-verifier grade (skill `checkpoint-grade`).
