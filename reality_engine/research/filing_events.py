@@ -183,7 +183,8 @@ _RAISE_DEBT_VETO = re.compile(
     r"|\b(?:certificate\s+regarding\s+)?payment\s+of\s+interest\b|\binterest\s+payment\b"
     r"|\brecord\s+date\s+for\s+(?:interest|redemption)\b", re.I)
 _RAISE_DONE = re.compile(
-    r"\b(?:allotted|allotment|allotting|raised|subscribed|sanctioned|issued|issuing|issuance|opened|closed)\b", re.I)
+    r"\b(?:allotted|allotment|allotting|raised|subscribed|sanctioned|issued|issuing|issuance|opened|closed"
+    r"|concluded|completed)\b", re.I)
 _SIZE_CUE = re.compile(
     r"(?:aggregat\w*|amount\w*|issue\s+size|\bsize\b|raising|raise|up\s*to|upto|of)\s*(?:Rs\.?|INR|₹)\s*"
     r"(?P<v>[\d,]+(?:\.\d+)?)\s*(?P<u>crores?|cr\.?|lakhs?|lacs?|million|mn|billions?|bn)\b", re.I)
@@ -215,6 +216,29 @@ _RAISE_OUTBOUND_VETO = re.compile(
     r"|\bacquisition\s+of\s+(?:equity\s+)?shares\s+in\b"
     r"|\bshare\s+subscription\s+and\s+shareholders\s+agreement\b"
     r"|\btarget\s+company\b",
+    re.I,
+)
+# T-242 round 7: a fund_raise needs the LISTED company as ISSUER.  A subscription to or investment in
+# another entity's securities, an acquisition of another company's shares (cash or swap), a loan granted to
+# a subsidiary, a sale/divestment of a stake and a security that is another company's are never the
+# company's own issue, whatever the title says (#10, #14, #24, #29, #33, #38, #50).
+_RAISE_FOREIGN_ISSUE_VETO = re.compile(
+    r"\bsubscri(?:be|bed|ption|bing)\s+to\b[^.]{0,100}?\b(?:rights|preferential|public|further)\s+"
+    r"(?:issue|offer)\s+of\b(?!\s*(?:the\s+Company|our\s+Company|equity\s+shares|shares|securities))"
+    r"|\b(?:subsidiar(?:y|ies)|associate(?:\s+compan(?:y|ies))?|joint\s+venture)\b[^.]{0,200}?"
+    r"\b(?:has|have|had|is|was)\b[^.]{0,60}?\ballot(?:ted|ment\s+of)\b"
+    r"|\bstrategic\s+investment\b[^.]{0,120}\bacquisition\b"
+    r"|\bstrategic\s+sale\b|\bsale\s+of\b[^.]{0,80}\bto\b"
+    r"|\bacquisition\s+of\s+[\d,]{3,}\s*(?:\([^)]*\)\s*)?(?:equity\s+)?shares\b"
+    r"|\bdivest(?:ed|ment|s|ing)?\b[^.]{0,80}\b(?:stake|shareholding|subsidiar(?:y|ies)|business)\b"
+    r"|\bsale\s+of\b[^.]{0,60}\b(?:stake|shareholding)\b"
+    r"|\bissuance\s+of\s+(?!the\s+Company\b|Company\b)(?-i:[A-Z])[\w&.'’\-]*"
+    r"(?:\s+(?-i:[A-Z])[\w&.'’\-]*)?['’]s\s+(?:\w+\s+){0,4}(?:CCPS|CCDs?|shares?|securities|warrants?)\b"
+    r"|\bloan\s+agreement\b|\bunsecured\s+loan\b|\bgrant(?:ed|ing|s)?\s+(?:an?\s+)?(?:unsecured\s+)?loan\b"
+    r"|\bco[-\s]?invest\b|\bequity\s+investments?\b|\bright\s+to\s+invest\b"
+    r"|\binvest(?:ed|ing|s)?\b[^.]{0,200}?\bin\b[^.]{0,20}?(?-i:[A-Z])[\w&.'\-]*\s+"
+    r"(?:Private|Limited|Pvt|LLP|Ltd)\b"
+    r"|\binvestments?\s+in\b[^.]{0,60}?(?-i:[A-Z])[\w&.'\-]*\s+(?:Private|Limited|Pvt|LLP|Ltd)\b",
     re.I,
 )
 # T-242: a kind enters VERIFIED_KINDS only after its own strict 60-row grade on stores NO fix was tuned on.
@@ -253,6 +277,8 @@ _RAISE_AGREEMENT_VETO = re.compile(
 _RAISE_PRIOR_STEP = re.compile(
     r"\bhad\s+(?:already\s+)?(?:been\s+)?allotted\b|\bhad\s+raised\b"
     r"|\b(?:already|previously)\s+(?:allotted|raised|issued)\b"
+    r"|\b(?:pertaining|informing)\s+(?:to|with\s+respect\s+to)\s+(?:the\s+)?allotment\s+of\b"
+    r"|\bwith\s+respect\s+to\s+(?:the\s+)?allotment\s+of\b"
     r"|\b(?:in|since)\s+the\s+FY\s?\d{2,4}\b|\b(?:in|during|since)\s+(?:the\s+)?(?:financial\s+)?year\s+\d{4}\b"
     r"|\b(?:past|earlier|previous)\s+(?:year|issue|allotment|qip|round)\b", re.I)
 _RAISE_COMPONENT = re.compile(
@@ -807,8 +833,12 @@ def _capex_candidate(title: str, head: str) -> bool:
                for sentence in _clauses(head))
 
 
-def classify(title: str, head: str, filing_date: str | None = None) -> list[str]:
-    """The classes one announcement names, at most once each, from its title and first two pages."""
+def classify(title: str, head: str, filing_date: str | None = None, text: str | None = None) -> list[str]:
+    """The classes one announcement names, at most once each, from its title and first two pages.
+
+    ``text`` (the held pages) is only read for a raise whose step amount is printed past page 2 (KPIGREEN #47):
+    the class still needs the size, so a title-and-head cue alone never makes a fund_raise.
+    """
     body = _flat(f"{title} {head}")
     is_results = bool(_RESULTS_RELEASE.search(_flat(f"{title} {head[:1500]}")))
     is_rollup = bool(_ORDER_ROLLUP.search(body)) or bool(_ORDER_INFLOW_TITLE.search(title))
@@ -840,7 +870,7 @@ def classify(title: str, head: str, filing_date: str | None = None) -> list[str]
 
     # fund raise: a decided raise (or an explicit raise title whose details are inside), not a rating or a
     # SEBI framework circular that merely says "fund raising".
-    if raise_fields(title, head, head):
+    if raise_fields(title, head, text or head):
         found.append("fund_raise")
     return found
 
@@ -2096,7 +2126,7 @@ def capacity_fields(title: str, head: str, text: str,
 
 _SHARES_BAD_CONTEXT = re.compile(
     r"authorised|authorized|paid[-\s]?up\s+capital|paid[-\s]?up\s+share\s+capital|share\s+capital"
-    r"|post[\s-]?(?:right|issue)|ratio|for\s+every|for\s+each", re.I)
+    r"|post[\s-]?(?:right|issue|effect|split)|ratio|for\s+every|for\s+each", re.I)
 
 
 def _shares_in(sentence: str) -> tuple[float | None, str | None]:
@@ -2125,48 +2155,281 @@ def _shares_in(sentence: str) -> tuple[float | None, str | None]:
     return total, span
 
 
-def _raise_component_near(sentence: str, start: int, end: int) -> bool:
-    """Do the words around a printed figure name a component of the step's consideration (25%/75%, balance)?"""
-    return bool(_RAISE_COMPONENT.search(sentence[max(0, start - 90):min(len(sentence), end + 90)]))
+# T-242 round 7: the step's size is the printed total of THIS step, else the securities ALLOTTED IN THIS
+# FILING times their issue price.  A figure that names a component of the consideration is not the step:
+# the green shoe ("up to X including a green shoe option of Rs Y": X is the amount, #2), a premium or
+# accrued interest (#7), a base issue, cash/balance consideration of an acquisition (#49, #60), a partly
+# paid tranche.  The component cue sits immediately before its figure ("premium amounting to Rs X"), so
+# only the prefix is read: a genuine total may follow the same words ("including a premium ..., aggregating
+# to Rs X") and keeps its own figure.  A price is the issue price of the security this step converts
+# (warrants at 260, CCDs at 1,00,000), never the 75%/25% instalment or a share's conversion price.
+_RAISE_COMPONENT_BEFORE = re.compile(
+    r"\b(?:green\s*shoe(?:\s+option)?|premium(?:\s+and\s+accrued\s+interest)?|accrued\s+interest"
+    r"|base\s+issue|cash\s+consideration|balance\s+consideration|upfront\s+(?:payment|consideration))"
+    r"\b(?:\s+(?:and|of|amounting|aggregating|to|up\s*to|upto|an?|the|only|total))*\s*$", re.I)
+_RAISE_PRICE_BAD = re.compile(
+    r"\bconversion\s+price\b|\b(?:25|75)\s*(?:%|per\s*cent)\b|\bremaining\b|\bbalance\b"
+    r"|\bupfront\b|\bup-front\b|\bdiscount\b", re.I)
+# a clause about the balance/instalment a warrant holder paid is not the step's total: the RUSHIL
+# conversion letters print the 75% receipt with "aggregating to" (fresh5 #17, #19, #21, #41).
+_RAISE_BALANCE_CLAUSE = re.compile(
+    r"\bremaining\s+(?:75|25)\s*%|\bbalance\s+subscription\s+amount\b|\bin\s+aggregate\s+towards\b"
+    r"|\bbeing\s+(?:25|75)\s*%\b|\bbalance\s+(?:payment|amount|consideration)\b"
+    r"|\bi\.?\s?e\.?\s+\(?(?:25|75)\s*%|\b(?:25|75)\s*%\s+of\s+the\s+(?:issue|exercise)\s+price\b", re.I)
+# the count THIS clause allots/issues/converts, right after the verb ("approved the allotment of 66,00,000
+# equity shares"), never a total, a balance or a background count (#17, #19, #21, #31, #41).
+_STEP_COUNT = re.compile(
+    r"\b(?:approved|allotted|allotment\s+of|issued|outstanding\s+of|issue\s+and\s+allotment\s+of|issue\s+of"
+    r"|issuance\s+of|conversion\s+of|converted\s+(?:total\s+)?|converts?\s+(?:total\s+)?)"
+    r"[,\s]+(?:up\s*to\s+|upto\s+)?(?P<n>\d[\d,]*)\s*(?:\([^)]{0,120}\)\s*)?"
+    r"(?:(?:fully|partly)\s+)?(?:paid[-\s]?up\s+)?"
+    r"(?:(?:compulsorily\s+)?convertible\s+)?(?:equity\s+)?"
+    r"(?P<kind>shares?|warrants?|debentures?|CCDs?|NCDs?|securities|preference\s+shares?)\b", re.I)
+# "convert total 1,10,00,000 warrants into 1,10,00,000 equity shares": the ALLOTTED security is the share
+# count, not the pre-conversion warrant count (the split can make them differ ten-fold, #19, #41).
+_CONVERT_INTO = re.compile(
+    r"\bconvert(?:ed|s)?\s+(?:total\s+)?[\d,]{3,}[^.]{0,60}?\binto\s+(?P<n>[\d,]{3,})\s*"
+    r"(?:\([^)]{0,120}\)\s*)?(?:fully\s+paid[-\s]?up\s+)?(?:equity\s+)?shares?\b", re.I)
+_RAISE_FULL_AMOUNT = re.compile(
+    r"(?P<cue>total\s+aggregat\w*|aggregat\w*(?:\s+consideration)?|amount\w*|issue\s+size"
+    r"|size\s+of\s+(?:the\s+)?issue|total\s+consideration|consideration)"
+    r"\s*(?:of|to|for)?\s*(?:up[-\s]*to|upto)?\s*(?:Rs\.?|INR|₹)\s*(?P<v>\d[\d,]{6,}(?:\.\d+)?)(?:\s*/-)?",
+    re.I)
+# the SEBI template row that states the step's total ("total number of securities ... issued", "for an
+# aggregate consideration of Rs X"): the row is the printed total even without a raise verb in it (#32).
+_RAISE_STEP_TOTAL = re.compile(
+    r"\btotal\s+(?:number\s+of\s+securities|amount\s+(?:for\s+which|of))\b"
+    r"|\bfor\s+an\s+aggregate\s+consideration\b|\baggregate\s+consideration\s+of\b", re.I)
+# a clause about a proposed allottee that fell away, or about an acquisition's consideration, is not this
+# filing's raise (#16, #60).
+_RAISE_NOT_STEP = re.compile(
+    r"\bbecame\s+ineligible\b|\bcould\s+not\s+be\s+allotted\b|\bno\s+longer\s+(?:eligible|an?\s+allottee)\b"
+    r"|\bnot\s+(?:been\s+)?allotted\b|\bwarrants?\b[^.]{0,60}\blapsed\b"
+    r"|\btill\s+date\b|\b(?:after|before)\s+this\s+allotment\b|\bincluding\s+(?:the\s+)?(?:current|this)\s+allotment\b"
+    r"|\baccordingly,?\s+total\b|\bout\s+of\s+the\s+balance\b", re.I)
+_RAISE_OTHER_DEAL = re.compile(
+    r"\bcash\s+consideration\b[^.]{0,160}\bacquisition\b"
+    r"|\bbalance\s+consideration\b[^.]{0,60}\bcash\b"
+    r"|\bconsideration\s+other\s+than\s+cash\b"
+    r"|\bacquisition\b[^.]{0,240}\bconsideration\b", re.I)
 
 
-def _raise_size(sentence: str, body: str) -> tuple[float | None, str | None, int]:
-    """(size in crore, printed span, computed?) of one raise clause: aggregate, else shares x printed price."""
-    for size_match in _SIZE_CUE.finditer(sentence):
-        prefix = sentence[max(0, size_match.start() - 60):size_match.start()]
-        if _MARKET_CAP_CUE.search(prefix):
+def _raise_component_before(sentence: str, start: int) -> bool:
+    """Is the figure at ``start`` the component the words immediately before it name (premium, green shoe)?"""
+    return bool(_RAISE_COMPONENT_BEFORE.search(sentence[max(0, start - 110):start]))
+
+
+def _raise_component_after(sentence: str, start: int, end: int) -> bool:
+    """Is the figure itself an instalment/balance component ("being 25% of", "remaining exercise price")?"""
+    return bool(_RAISE_COMPONENT.search(sentence[end:end + 90])
+                or _RAISE_COMPONENT.search(sentence[max(0, start - 12):start]))
+
+
+def _step_count(sentence: str) -> tuple[float | None, str | None]:
+    """The count of securities THIS clause allots, issues or converts, never a cumulative or balance count."""
+    if _RAISE_STEP_TOTAL.search(sentence):
+        # a SEBI template row ("total number of securities ... issued") states the security count itself
+        row = re.search(
+            r"(?:securities|issued|to\s+be\s+issued)\s+(?:approximately\s+)?(?P<n>\d[\d,\s]{2,}?)\s*"
+            r"(?:\([^)]{0,120}\)\s*)?(?:(?:fully|partly)\s+)?(?:paid[-\s]?up\s+)?(?:equity\s+)?shares?\b",
+            sentence, re.I)
+        if row:
+            digits = re.sub(r"[^\d]", "", row.group("n"))
+            if digits and int(digits) >= 100:
+                return float(digits), "shares"
+    into = _CONVERT_INTO.search(sentence)
+    if into:
+        try:
+            value = float(into.group("n").replace(",", ""))
+            if value >= 100:
+                return value, "equity shares"
+        except ValueError:
+            pass
+    for match in _STEP_COUNT.finditer(sentence):
+        try:
+            value = float(match.group("n").replace(",", ""))
+        except ValueError:
             continue
-        value = _to_cr(size_match.group("v"), size_match.group("u"))
-        if value is not None and not _raise_component_near(sentence, size_match.start(), size_match.end()):
-            return value, size_match.group(0), 0
-    for full in re.finditer(r"(?:aggregat\w*|amount|issue\s+size|size)[^.;]{0,50}?(?:Rs\.?|INR|₹)\s*"
-                            r"(?P<v>\d[\d,]{6,})(?:\s*/-)?", sentence, re.I):
-        prefix = sentence[max(0, full.start() - 60):full.start()]
-        if _MARKET_CAP_CUE.search(prefix) or _raise_component_near(sentence, full.start(), full.end()):
+        if value >= 100:
+            return value, match.group("kind")
+    return None, None
+
+
+def _raise_instrument(sentence: str) -> str | None:
+    """The security this clause converts: CCDs/warrants are converted, the resulting shares are not priced."""
+    if re.search(r"\bCCDs?\b|compulsorily\s+convertible\s+debentures?", sentence, re.I):
+        return "ccd"
+    if re.search(r"\bwarrants?\b", sentence, re.I) and re.search(r"\bconvers|convert|exercis", sentence, re.I):
+        return "warrant"
+    return None
+
+
+def _instrument_price(sentence: str, body: str, instrument: str | None,
+                      count_kind: str | None) -> tuple[float | None, str | None]:
+    """The issue price of the security this step converts/allots, never an instalment or a share's conversion price."""
+    units: list[str] = []
+    kind = (count_kind or "").lower()
+    if "share" in kind:
+        if instrument == "warrant":
+            units = [r"warrants?", r"(?:equity\s+)?shares?"]
+        else:
+            units = [r"(?:equity\s+)?shares?"]
+    elif "warrant" in kind:
+        units = [r"warrants?"]
+    elif "debenture" in kind or "ccd" in kind:
+        units = [r"(?:CCDs?|debentures?)"]
+    else:
+        units = [r"(?:equity\s+)?shares?", r"warrants?", r"(?:CCDs?|debentures?)"]
+    for unit in units:
+        for strict in (True, False):
+            for source in (sentence, body):
+                for match in _PRICE.finditer(source):
+                    prefix = source[max(0, match.start() - 100):match.start()]
+                    if _raise_component_before(source, match.start()) or _RAISE_PRICE_BAD.search(prefix[-60:]) \
+                            or re.search(r"\b(?:conversion|exercise)\s+$", prefix, re.I):
+                        continue
+                    try:
+                        price = float(match.group("v").replace(",", ""))
+                    except ValueError:
+                        continue
+                    if not (0.01 <= price <= 100_000):
+                        continue
+                    window = source[match.start():match.end() + 180]
+                    other = re.search(r"\bper\s+(CCDs?|debentures?|warrants?|(?:equity\s+)?shares?)",
+                                      window, re.I)
+                    if other and not re.fullmatch(unit, other.group(1), re.I):
+                        continue
+                    if re.search(r"\b(?:per|each)\s+" + unit + r"\b", window, re.I) \
+                            or re.match(r"issue\s+price", match.group(0), re.I) \
+                            or re.search(r"\bissue\s+$", prefix, re.I):
+                        return price, match.group(0)
+                    if not strict and re.search(r"\beach\b", source[match.end():match.end() + 50], re.I) \
+                            and re.search(unit, source[:match.start()], re.I):
+                        return price, match.group(0)
+    return None, None
+
+
+def _raise_size_family(sentence: str) -> str:
+    """The coarse instrument a size belongs to, so a second instrument in one filing still adds (#15)."""
+    if re.search(r"\bwarrants?\b", sentence, re.I):
+        return "warrant"
+    if re.search(r"\bCCDs?\b|compulsorily\s+convertible", sentence, re.I):
+        return "ccd"
+    if re.search(r"\bNCDs?\b|non[-\s]*convertible", sentence, re.I):
+        return "ncd"
+    if re.search(r"\b(?:preference|OCRPS|CCPS)\b", sentence, re.I):
+        return "preference"
+    if re.search(r"\bshares?\b|\bQIP\b|qualified\s+institutions?|preferential|rights\s+issue", sentence, re.I):
+        return "equity"
+    return "other"
+
+
+# T-242 r7b: a warrant/CCD conversion receives the BALANCE of the issue price at conversion and the letter
+# prints it.  The printed receipt is the step ("upon receipt of amount aggregating to Rs X ... (being remaining
+# 75% of the issue price per warrant)", RATNAVEER #17), never a computed 100% from the full issue price; when
+# only the per-unit balance is printed ("Post receipt of balance amount at the rate of Rs. 48.75 per warrant,
+# N Equity Shares have been allotted") the step is N x that balance price (MANAKCOAT #22, #41, #45).
+_RAISE_BALANCE_MARK = re.compile(r"\bbeing\s+(?:the\s+)?remaining\s+(?:25|75)\s*%", re.I)
+_RAISE_AGGREGATE_RS = re.compile(
+    r"\baggregat(?:ing|ed)?\s*(?:to|upto|up\s*to)?\s*(?:Rs\.?|INR|₹)\s*(?P<v>\d[\d,]{6,}(?:\.\d+)?)", re.I)
+_RAISE_BALANCE_UNIT = re.compile(
+    r"(?:Rs\.?|INR|₹)\s*(?P<v>[\d,]+(?:\.\d+)?)\s*(?:/-)?\s*(?:per|each)\s+(?:warrant|equity\s+share|share)\b", re.I)
+# T-242 r7b: the listed company's OWN issue is an issuance, whatever else the pages mention.  A share swap that
+# pays another company's sellers in the company's own shares allots its own paper, so "acquisition"/"investment"
+# on the same page is the consideration, not another issuer (#24, #50); a priced issuance ("at a price of Rs
+# X per share") is the company's raise, an unpriced swap tranche inside a cash raise still is not (#49).
+_OWN_PRICED_ISSUE = re.compile(
+    r"\b(?:issue|issued|issuance|issuing|allotment|allotted)\b[\s\S]{0,200}?\b(?:equity\s+|preference\s+)?shares?\b"
+    r"[\s\S]{0,160}?\bprice\s+(?:of|per)\s+(?:Rs\.?|INR|₹)\s*\d[\d,]*", re.I)
+_OWN_ISSUE_RAISE = re.compile(
+    r"\b(?:issuance|issue|allotment)\s+(?:of\s+)?(?:the\s+)?(?:[\d,]+\s+)?(?:non[-\s]?convertible\s+)?"
+    r"(?:debentures?|NCDs?)\b", re.I)
+
+
+def _balance_receipt(body: str) -> tuple[float, str, str] | None:
+    """(crore, printed span, clause) of the balance a conversion letter says it received, else None."""
+    for match in _RAISE_AGGREGATE_RS.finditer(body):
+        window = body[match.end():match.end() + 240]
+        if _RAISE_BALANCE_MARK.search(window):
+            return (round(_digits(match.group("v")) / 1e7, 4), match.group(0),
+                    body[max(0, match.start() - 200):match.end() + 240])
+    return None
+
+
+def _balance_unit_price(body: str) -> float | None:
+    """The balance price per warrant/share the letter prints ("at the rate of Rs. 48.75 per warrant")."""
+    for match in _RAISE_BALANCE_UNIT.finditer(body):
+        before = body[max(0, match.start() - 220):match.start()]
+        if not _RAISE_BALANCE_CLAUSE.search(before):
             continue
-        return round(_digits(full.group("v")) / 1e7, 4), full.group(0), 0
-    amounts = []
+        try:
+            price = float(match.group("v").replace(",", ""))
+        except ValueError:
+            continue
+        if 0.01 <= price <= 100_000:
+            return price
+    return None
+
+
+def _raise_count_size(sentence: str, body: str) -> tuple[float | None, str | None, int, int]:
+    """The securities THIS clause allots or converts, times the issue price of that security."""
+    shares, count_kind = _step_count(sentence)
+    if shares is None and _PRICE.search(sentence):
+        # a SEBI template cell prints the count without a raise verb ("Up to 48,134 Equity Shares of the
+        # Company ... at a price of INR 1454.30"); the price in the same clause anchors it (#18).
+        shares, _span = _shares_in(sentence)
+        count_kind = "equity shares" if shares else None
+    if shares is None:
+        return None, None, 0, 0
+    balance = _balance_unit_price(body)
+    if balance:
+        # a warrant conversion pays the BALANCE of the issue price at conversion: count x the balance price
+        # the letter prints, never count x the full issue price (MANAKCOAT #22, #41, #45).
+        return round(shares * balance / 1e7, 4), f"{count_kind or 'shares'} x balance price {balance:g}", 1, 0
+    price, price_span = _instrument_price(sentence, body, _raise_instrument(sentence), count_kind)
+    if shares and price:
+        label = price_span or f"{price:g}"
+        return round(shares * price / 1e7, 4), f"{count_kind or ''} x {label}", 1, 0
+    return None, None, 0, 0
+
+
+def _raise_size(sentence: str, body: str) -> tuple[float | None, str | None, int, int]:
+    """(size in crore, printed span, computed?, rank) of one raise clause: its printed total, else its own count x price."""
+    best: tuple[int, float, str] | None = None
+    balance = bool(_RAISE_BALANCE_CLAUSE.search(sentence))
+    for match in _RAISE_FULL_AMOUNT.finditer(sentence):
+        if _raise_component_before(sentence, match.start()) \
+                or _raise_component_after(sentence, match.start(), match.end()):
+            continue
+        value = round(_digits(match.group("v")) / 1e7, 4)
+        rank = 2 if re.search(r"aggregat|total|size", match.group("cue"), re.I) else 1
+        if best is None or (rank, value) > (best[0], best[1]):
+            best = (rank, value, match.group(0))
+    for match in _SIZE_CUE.finditer(sentence):
+        prefix = sentence[max(0, match.start() - 60):match.start()]
+        if _MARKET_CAP_CUE.search(prefix) or _raise_component_before(sentence, match.start()) \
+                or _raise_component_after(sentence, match.start(), match.end()):
+            continue
+        value = _to_cr(match.group("v"), match.group("u"))
+        if value is None or value <= 0:
+            continue
+        rank = 2 if re.search(r"aggregat|total|size", match.group(0), re.I) else 1
+        if best is None or (rank, value) > (best[0], best[1]):
+            best = (rank, value, match.group(0))
+    if best is not None and not _RAISE_BALANCE_CLAUSE.search(sentence):
+        return best[1], best[2], 0, best[0]
+    if balance:
+        return _raise_count_size(sentence, body)
     for value, span, start in _amounts_rs(sentence):
         prefix = sentence[max(0, start - 60):start]
-        if _MARKET_CAP_CUE.search(prefix):
+        if _MARKET_CAP_CUE.search(prefix) or _raise_component_before(sentence, start) \
+                or _raise_component_after(sentence, start, start + len(span)):
             continue
-        if re.search(r"issue\s+price|price\s+of|price\s+per|face\s+value|nominal\s+value|premium"
-                     r"|at\s+(?:a\s+)?price", prefix, re.I):
-            continue
-        if _raise_component_near(sentence, start, start + len(span)):
-            continue
-        amounts.append((value, span))
-    if amounts:
-        value, span = max(amounts, key=lambda pair: pair[0])
-        return value, span, 0
-    shares, shares_span = _shares_in(sentence)
-    price_match = _PRICE.search(sentence) or _PRICE.search(body)
-    if shares and price_match:
-        price = float(price_match.group("v").replace(",", ""))
-        if not (0.01 <= price <= 100_000):
-            return None, None, 0
-        return round(shares * price / 1e7, 4), f"{shares_span or ''} x {price_match.group(0)}", 1
-    return None, None, 0
+        if best is None or value > best[1]:
+            best = (1, value, span)
+    if best is not None and not balance:
+        return best[1], best[2], 0, best[0]
+    return _raise_count_size(sentence, body)
 
 
 _RAISE_STAGE_RANK = {"allotment": 5, "completion": 4, "approval": 3, "listing": 2, "proposed": 1}
@@ -2177,12 +2440,12 @@ _RAISE_STAGE_RANK = {"allotment": 5, "completion": 4, "approval": 3, "listing": 
 # Equity Shares" completed the allotment whatever the title of the letter says (#1, #5, #23, #25, #40, #46,
 # #49); a bare "allotted" stays excluded when it is a plan ("to be allotted", "will be allotted").
 _ALLOTMENT_DONE = re.compile(
-    r"\b(?:issue|issuance)\s+and\s+allotment\b"
+    r"\b(?:completed|has|have|had)\s+(?:the\s+)?(?:issue|issuance)\s+and\s+allotment\b"
     r"|\b(?:has|have|had)\s+(?:today\s+|also\s+)?(?:been\s+)?allotted\b"
     r"|\b(?:shares?|warrants?|debentures?|securities|NCDs?)\s+(?:have|has|were|was)\s+been\s+allotted\b"
     r"|\ballotment\s+of\s+[\d,]{3,}\s*(?:\([^)]{0,140}\)\s*)?(?:equity\s+)?(?:shares?|warrants?|debentures?"
     r"|NCDs?|securities)\b"
-    r"|\b(?:considered\s+and\s+)?approved[^;]{0,160}?\b(?:the\s+)?allotment\s+of\s+[\d,]{3,}"
+    r"|\b(?:considered\s+and\s+)?approved\s+(?:the\s+)?allotment\s+of\s+[\d,]{3,}"
     r"|\ballotted\s+(?:on|today|pursuant)\b"
     r"|\b(?<!\bbe\s)(?<!\bbeen\s)allotted\s+[\d,]"
     r"|\bbasis\s+of\s+allotment\b", re.I)
@@ -2205,7 +2468,27 @@ _SEBI_TEMPLATE_LINE = re.compile(
 _RAISE_NOTICE = re.compile(
     r"\bnotice\s+of\s+(?:the\s+)?(?:postal\s+ballot|extra[-\s]?ordinary\s+general\s+meeting|egm"
     r"|annual\s+general\s+meeting|agm)\b"
-    r"|\bpostal\s+ballot\s+notice\b|\b(?:egm|agm)\s+to\s+be\s+held\b", re.I)
+    r"|\bpostal\s+ballot\s+notice\b|\b(?:egm|agm)\s+to\s+be\s+held\b"
+    r"|\bprior\s+intimation\b[^.]{0,140}\b(?:special\s+)?resolution\b"
+    r"|\bresolution\b[^.]{0,80}\bto\s+be\s+passed\s+at\b[^.]{0,40}\b(?:agm|egm|annual|extra)\b", re.I)
+# T-242 round 7: a recommendation to seek members' approval, a resolution to be passed at the AGM or the
+# AGM's own business ("for raising of funds") is proposed, not approved: the board has not approved the
+# issue itself (#11, #45, #47, #59).  The round-5 #6/#33 shape -- the board approved the raising AND
+# convened the EGM -- has no "for raising of funds" and stays an approval.
+_RAISE_RECOMMEND = re.compile(
+    r"\brecommend\w*\b[^.]{0,90}\b(?:seeking|seek)\b[^.]{0,50}\b(?:approval|consent)\b"
+    r"|\brecommend\w*\b[^.]{0,90}\b(?:offer|issue|allot|raising|raise)\b[^.]{0,80}"
+    r"\b(?:shareholders?|members?)\b", re.I)
+_RAISE_AGM_AGENDA = re.compile(
+    r"\b(?:members?|shareholders?)\b[^.]{0,100}\bwill\s+(?:inter\s+alia\s+)?consider\b"
+    r"[^.]{0,140}\b(?:resolutions?|issues?)\b"
+    r"|\bseek(?:ing)?\s+(?:the\s+)?approval\s+of\s+the\s+(?:members?|shareholders?)\b"
+    r"[^.]{0,320}?\bfor\s+(?:raising|saising)\s+of\s+(?:funds?|fands?)\b", re.I)
+# a press release after the issue completed reports the completed step, not a proposal (#55)
+_RAISE_CONCLUDED = re.compile(
+    r"\b(?:successfully\s+)?(?:concluded|completed|closed|closes)\b[^.]{0,60}\b(?:capital\s+raise|raise|QIP"
+    r"|qualified\s+institutions?|issue|placement)\b"
+    r"|\b(?:raised|raises)\s+(?:USD|US\s?\$|INR|Rs\.?|₹)\b", re.I)
 _RAISE_NOTICE_DONE = re.compile(
     r"\b(?:voting|scrutini[sz]er'?s?)\s+results?\b|\bresults?\s+of\s+(?:the\s+)?(?:postal\s+ballot|egm|agm)\b"
     r"|\bsummary\s+of\s+proceedings\b|\boutcome\s+of\s+(?:the\s+)?(?:egm|agm|postal\s+ballot)\b"
@@ -2245,6 +2528,12 @@ def _raise_stage(title: str, head: str) -> str:
         return "proposed"               # a board that approved only the draft notice has not raised anything yet
     if _RAISE_NOTICE.search(opening) and not _RAISE_NOTICE_DONE.search(opening):
         return "proposed"
+    if _RAISE_CONCLUDED.search(stage_text):
+        return "allotment"              # a press release says the issue completed: report the completed step
+    if _RAISE_RECOMMEND.search(stage_text):
+        return "proposed"               # the board recommended seeking members' approval; nothing is issued yet
+    if _RAISE_AGM_AGENDA.search(stage_text):
+        return "proposed"               # the AGM's own business (a resolution to be passed), not a board approval
     if _RAISE_IN_PRINCIPLE.search(stage_text):
         return "approval"               # an exchange in-principle approval is not the listing
     if _RAISE_LISTING.search(title_low):
@@ -2260,8 +2549,9 @@ def _raise_stage(title: str, head: str) -> str:
     return "proposed"
 
 
-def _raise_step_sizes(title: str, head: str, text: str) -> tuple[list[tuple[float, str | None, int]], list[str]]:
-    """(the distinct sizes THIS step prints, the clauses they were printed in).
+def _raise_step_sizes(title: str, head: str, text: str) \
+        -> tuple[list[tuple[float, str | None, int]], list[str], list[str]]:
+    """(the distinct sizes THIS step prints, the clauses they were printed in, their instrument families).
 
     T-242 round 5: a clause that records an earlier step is cut at that cue, a clause that states the capital
     before/after the issue is cut at the capital phrase, and a clause that quotes a component of this step's
@@ -2272,12 +2562,26 @@ def _raise_step_sizes(title: str, head: str, text: str) -> tuple[list[tuple[floa
     is_results = bool(_RESULTS_RELEASE.search(_flat(f"{title} {head[:1500]}")))
     text = _RAISE_OCR_SPACE.sub(",", text)
     body = _flat(f"{title} {text}")
+    receipt = _balance_receipt(body)
+    if receipt is not None:
+        # the title still names this step's count and issue price, so it stays a winner beside the receipt
+        winners = [title, receipt[2]] if title else [receipt[2]]
+        return [(receipt[0], receipt[1], 0)], winners, [_raise_size_family(receipt[2])]
+    # the subject line names the step ("Allotment of 75,000 Equity shares upon conversion of warrants"): the
+    # count it prints is what THIS filing allot, and the letter's later background/balance figures cannot
+    # replace it (#17, #19, #21, #41).
+    if title and _step_count(title)[0] is not None:
+        title_size = _raise_size(title, body)
+        if title_size[0] is not None:
+            return [(title_size[0], title_size[1], title_size[2])], [title], [_raise_size_family(title)]
     sentences = [title] + _clauses(text)
-    sizes: list[tuple[float, str | None, int]] = []
+    sizes: list[tuple[float, str | None, int, str, int]] = []
     winners: list[str] = []
     continuation = False
     for sentence in sentences:
-        if _RAISE_DEBT_VETO.search(sentence) or _RAISE_OUTBOUND_VETO.search(sentence):
+        if _RAISE_DEBT_VETO.search(sentence) or _RAISE_OUTBOUND_VETO.search(sentence) \
+                or _RAISE_NOT_STEP.search(sentence) \
+                or (_RAISE_OTHER_DEAL.search(sentence) and not _OWN_PRICED_ISSUE.search(sentence)):
             continuation = False
             continue
         cut = len(sentence)
@@ -2292,7 +2596,8 @@ def _raise_step_sizes(title: str, head: str, text: str) -> tuple[list[tuple[floa
         if is_results and _FINANCIAL_METRIC.search(sentence):
             continuation = False
             continue
-        has_cue = bool(_RAISE_CUE.search(sentence) and _RAISE_ISSUANCE.search(sentence))
+        has_cue = bool(_RAISE_CUE.search(sentence) and _RAISE_ISSUANCE.search(sentence)) \
+            or bool(_RAISE_STEP_TOTAL.search(sentence))
         if not has_cue and not (continuation and (_SIZE_CUE.search(sentence) or _amounts_rs(sentence)
                                                   or _SHARES.search(sentence) or _PRICE.search(sentence))):
             continuation = False
@@ -2304,11 +2609,12 @@ def _raise_step_sizes(title: str, head: str, text: str) -> tuple[list[tuple[floa
             continuation = False
             continue
         decided = has_cue and (_DONE.search(sentence) or _RAISE_DONE.search(sentence) or _APPROVE.search(sentence)
+                               or _RAISE_STEP_TOTAL.search(sentence)
                                or re.search(r"allotment\s+of|allotted|issuance\s+of|issue\s+price"
                                             r"|being\s+the\s+issue\s+price", sentence, re.I))
         if not decided and not continuation:
             continue
-        value, span, computed = _raise_size(sentence, body)
+        value, span, computed, rank = _raise_size(sentence, body)
         if value is None:
             continuation = has_cue and decided and not is_results
             continue
@@ -2316,21 +2622,56 @@ def _raise_step_sizes(title: str, head: str, text: str) -> tuple[list[tuple[floa
             continuation = False
             continue
         continuation = False
-        sizes.append((round(value, 4), span, computed))
+        sizes.append((round(value, 4), span, computed, _raise_size_family(sentence), rank))
         winners.append(sentence)
-    # the same figure printed in two clauses is one size; a printed size beats a shares x price computation
+    # the same figure printed twice is one size; a declared total ("total aggregating to", "size of the
+    # issue") absorbs the smaller component prints of the same instrument (a base issue, a partly-paid
+    # tranche), and a printed size beats a shares x price computation.  A second instrument still adds (#15).
     merged: list[tuple[float, str | None, int]] = []
-    for value, span, computed in sorted(sizes, key=lambda item: -item[0]):
+    families: list[str] = []
+    ranks: list[int] = []
+    for value, span, computed, family, rank in sorted(sizes, key=lambda item: -item[0]):
         for index, (known, _kspan, kcomputed) in enumerate(merged):
             if abs(value - known) <= 0.01 * max(1.0, known):
-                if not computed and kcomputed:
+                if rank > ranks[index] or (not computed and kcomputed):
                     merged[index] = (value, span, computed)
+                    ranks[index] = rank
+                    families[index] = family
                 break
         else:
             merged.append((value, span, computed))
-    if any(not computed for _value, _span, computed in merged):
-        merged = [item for item in merged if not item[2]]
-    return merged, winners
+            families.append(family)
+            ranks.append(rank)
+    kept: list[tuple[float, str | None, int]] = []
+    kept_families: list[str] = []
+    for index, (value, span, computed) in enumerate(merged):
+        family = families[index]
+        if any(ranks[other] == 2 and families[other] == family and merged[other][0] > value
+               for other in range(len(merged)) if other != index):
+            continue                      # a component of the same instrument's declared total
+        if computed and any(families[other] == family and not merged[other][2]
+                            for other in range(len(merged))):
+            continue                      # the instrument's printed total beats a shares x price read
+        kept.append((value, span, computed))
+        kept_families.append(family)
+    if any(not computed for _value, _span, computed in kept):
+        kept = [item for item in kept if not item[2]]      # a printed total is the step, never computed beside it
+    return kept, winners, kept_families
+
+
+def _raise_family_ok(instrument: str | None, family: str) -> bool:
+    """Does a printed size belong to the instrument the row reports?  A QIP row never takes the NCD resolution."""
+    if instrument in (None, "mixed", "borrowing", "other") or family == "other":
+        return True
+    if instrument == "ncd":
+        return family == "ncd"
+    if instrument in ("qip", "rights", "equity"):
+        return family in ("equity", "warrant", "ccd", "preference")
+    if instrument == "preferential":
+        return family in ("equity", "warrant", "ccd", "preference", "ncd")
+    if instrument == "warrant":
+        return family in ("warrant", "equity", "ccd")
+    return True
 
 
 def raise_step_amount(text: str) -> tuple[float | None, str | None]:
@@ -2341,7 +2682,7 @@ def raise_step_amount(text: str) -> tuple[float | None, str | None]:
     and the capital before or after the issue are not this step: a filing that prints 8,00,000 shares at Rs 124
     and a Rs 4,65,00,000 receipt of the earlier warrant subscription is worth Rs 9,92,00,000, not both.
     """
-    merged, _winners = _raise_step_sizes("", _flat(text), _flat(text))
+    merged, _winners, _families = _raise_step_sizes("", _flat(text), _flat(text))
     if not merged:
         return None, None
     amount = round(sum(value for value, _span, _computed in merged), 4)
@@ -2359,6 +2700,11 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
         return None                 # a note deep in a financial statement is not the company's raise
     opening = re.split(r"\bAnnexure\b", head, maxsplit=1, flags=re.I)[0][:1200]
     flat_opening = _flat(f"{title} {opening}")
+    merged, winners, families = _raise_step_sizes(title, head, text)
+    if _RAISE_FOREIGN_ISSUE_VETO.search(_flat(f"{title} {head}")) and not any(
+        _OWN_PRICED_ISSUE.search(winner) or _OWN_ISSUE_RAISE.search(winner) for winner in winners
+    ):
+        return None                 # the listed company is not the issuer: another entity's issue, an acquisition, a loan
     whole = _flat(f"{title} {head}")
     if _RAISE_AGREEMENT_VETO.search(whole) \
             and not _OWN_ISSUE_TITLE.search(_flat(title)):
@@ -2372,16 +2718,26 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
         return None                 # an exchange advisory or lock-in letter about an earlier issue is not one
     if _RAISE_GENERIC_CUE.search(whole) and not _RAISE_SECURITY.search(whole):
         return None                 # "fund raising through debt" names no security: nothing was issued
-    if _RAISE_OUTBOUND_VETO.search(flat_opening) and not re.search(
+    if _RAISE_OUTBOUND_VETO.search(flat_opening) and not _OWN_PRICED_ISSUE.search(flat_opening) and not re.search(
         r"\braising\s+of\s+funds\b|\bfund\s*[- ]?rais|\bQIP\b|\brights\s+issue\b|\bpreferential\s+(?:issue|allotment)\b"
         r"|\bnon[-\s]?convertible\b|\bNCDs?\b",
         flat_opening, re.I,
     ):
         return None
-    merged, winners = _raise_step_sizes(title, head, text)
+    body = _flat(f"{title} {text}")
+    clean_body = _SEBI_TEMPLATE_LINE.sub(" ", body)
+    instrument, best_count = None, 0
+    for name, rx in _INSTRUMENTS:
+        count = sum(1 for _ in rx.finditer(clean_body))
+        if count > best_count:       # the words the filing repeats most name the instrument; tie keeps priority
+            instrument, best_count = name, count
+    if re.search(r"\bany\s+instrument\s+or\s+security\b|\bor\s+(?:a|any)\s+combination\s+thereof\b", clean_body, re.I) \
+            and sum(1 for _name, rx in _INSTRUMENTS[:6] if rx.search(clean_body)) >= 3:
+        instrument = "mixed"
+    # a size belongs to the instrument the row reports: a QIP notice never takes the NCD resolution's amount
+    merged = [size for size, family in zip(merged, families) if _raise_family_ok(instrument, family)]
     if not merged:
         return None                      # procedural filing: no size and no shares x price on the held pages
-    body = _flat(f"{title} {text}")
     amount = round(sum(value for value, _span, _computed in merged), 4)
     derived = 1 if len(merged) > 1 or any(computed for _value, _span, computed in merged) else 0
     price_match = next((m for m in (_PRICE.search(s) for s in winners) if m), None) or _PRICE.search(body)
@@ -2399,15 +2755,6 @@ def raise_fields(title: str, head: str, text: str) -> dict[str, Any] | None:
         implied = shares * price_per_share / 1e7
         if implied <= 0 or not (0.5 <= implied / amount <= 2):
             shares = None             # a post-issue total or a ratio, not the shares this raise issued
-    clean_body = _SEBI_TEMPLATE_LINE.sub(" ", body)
-    instrument, best_count = None, 0
-    for name, rx in _INSTRUMENTS:
-        count = sum(1 for _ in rx.finditer(clean_body))
-        if count > best_count:       # the words the filing repeats most name the instrument; tie keeps priority
-            instrument, best_count = name, count
-    if re.search(r"\bany\s+instrument\s+or\s+security\b|\bor\s+(?:a|any)\s+combination\s+thereof\b", clean_body, re.I) \
-            and sum(1 for _name, rx in _INSTRUMENTS[:6] if rx.search(clean_body)) >= 3:
-        instrument = "mixed"
     quote = " ".join(dict.fromkeys(winners))[:MAX_QUOTE]
     raw_counts = {float(m.group("v").replace(",", "")) for winner in winners for m in _SHARES.finditer(winner)}
     if instrument in ("warrant", "equity", "preferential") and len(raw_counts) > 1 \
@@ -2599,7 +2946,7 @@ def event_rows(doc: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
     filing_date = doc.get("filing_date")
     rows: list[dict[str, Any]] = []
     missing: list[str] = []
-    classes = classify(title, head, filing_date=filing_date)
+    classes = classify(title, head, filing_date=filing_date, text=text)
     amendment_fields = order_amendment_fields(title, head, text) or {} if "order_amendment" in classes else {}
     excluded = {round(float(amendment_fields["amount_inr_cr"]), 4)} \
         if amendment_fields.get("amount_inr_cr") is not None else None

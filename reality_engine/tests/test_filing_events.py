@@ -2163,6 +2163,93 @@ def test_t242_r6_a_press_release_headline_is_not_the_customer() -> None:
     assert "Lineage Power" in (row["detail"] or "")
 
 
+# ---- T-242 round 7: the step's own amount, the issuer, and the stage on unseen filings ----------------
+R7_AMOUNTS = {
+    # the green shoe is inside the printed "up to X including" total, never added (fresh5 #2)
+    "green_shoe": (
+        "The Finance Committee has approved the issuance of 1,87,500 secured redeemable non-convertible debentures "
+        "of face value of Rs. 1,00,000 each for an amount aggregating up to Rs. 1,875 crores including a green shoe "
+        "option of Rs. 500 crores, through private placement.", 1875.0),
+    # the premium and accrued interest figures are components; the printed total is the step (fresh5 #7)
+    "premium_total": (
+        "The Committee has approved allotment of 3,00,000 non-convertible debentures of face value of Rs. 1,00,000 "
+        "each with base issue of Rs. 2,500 crores and premium amounting to Rs. 1,00,62,500, total aggregating to "
+        "Rs. 3,002,10,46,600.", 3002.10466),
+    # the converted CCD count x the CCD issue price is the step, not the resulting post-split shares (fresh5 #23)
+    "ccd_conversion": (
+        "The Board has approved the conversion of 1,45,010 compulsorily convertible debentures of face value of "
+        "Rs. 1,00,000 each and thereupon allotment of 10,32,09,960 equity shares at a conversion price of Rs. 140.50 "
+        "per equity share. The CCDs were issued at an issue price of Rs. 1,00,000 per CCD.", 1450.1),
+    # a cumulative count and the 75% balance receipt are not the step; the shares it allots x price are
+    # (fresh5 #17, #19, #21, #31, #41)
+    "allotted_only": (
+        "Allotment of 75,000 Equity shares upon conversion of warrants pursuant to preferential issue. Out of "
+        "remaining 75% amount, 2 allottees have deposited Rs. 1,67,06,250/- in aggregate and have exercised their "
+        "right to convert total 75,000 warrants into 75,000 equity shares at an issue price of Rs. 297 per warrant. "
+        "The Company had allotted 41,30,000 convertible warrants on 23.12.2023.", 2.2275),
+}
+
+
+@pytest.mark.parametrize("case", list(R7_AMOUNTS))
+def test_t242_r7_raise_step_amount_shapes(case: str) -> None:
+    text, expected = R7_AMOUNTS[case]
+    amount, how = fe.raise_step_amount(text)
+    assert amount == pytest.approx(expected), (case, amount, how)
+    assert how, case
+
+
+@pytest.mark.parametrize("title,text", [
+    # the listed company subscribes to its subsidiary's rights issue: another entity's securities (fresh5 #10)
+    ("Outcome of the Board meeting",
+     "The Board approved the subscription to Rights issue of a wholly owned subsidiary for an amount not exceeding "
+     "INR 100 Crores, which would be utilised by the subsidiary for repayment of a loan."),
+    # the listed company acquires another company's shares: an investment, not its own issue (fresh5 #14)
+    ("Outcome of the board meeting",
+     "To make strategic investment by acquisition of 9,375 equity shares of a subsidiary from its existing founders "
+     "for a total consideration not exceeding INR 21,63,46,875."),
+    # an associate allots its preference shares TO the listed company (fresh5 #24)
+    ("Intimation under Regulation 30",
+     "The Board of Directors of an associate company has allotted 10,50,000 OCRPS of face value Rs. 10 each, "
+     "aggregating to Rs. 1,05,00,000, to the Company by way of a rights issue."),
+    # the company lends to its subsidiary: no security is issued (fresh5 #33)
+    ("Disclosure under Regulation 30 for Granting of loan to Wholly Owned Subsidiary",
+     "The Company has entered into a loan agreement with its wholly owned subsidiary to grant an unsecured loan "
+     "amount of Rs. 11,00,00,000 for working capital requirements."),
+    # the company sells a stake paid in the buyer's paper: a divestment (fresh5 #29)
+    ("Intimation of Press Release",
+     "The Company has successfully divested its stake in a gaming platform. The transaction, valued at INR 104.33 "
+     "crore, will be executed through the issuance of the buyer's Compulsory Convertible Preference Shares."),
+    # the company invests in a subsidiary's CCPS: an investment, not its own issue (fresh5 #38, #50)
+    ("Update on proposed investment",
+     "The Company has invested INR 39,99,93,608 in Aurora Bio Private Limited, a subsidiary of the Company, and "
+     "has the right to invest up to an additional amount of Rs. 35 Cr."),
+])
+def test_t242_r7_not_the_listed_company_as_issuer(title: str, text: str) -> None:
+    assert not [row for row in fe.event_rows(_doc(title, text))[0] if row["kind"] == "fund_raise"]
+
+
+@pytest.mark.parametrize("title,text,expected", [
+    # a board recommendation to seek members' approval is proposed (fresh5 #11)
+    ("Outcome of Board meeting",
+     "The Board recommended seeking approval of shareholders to offer, issue and allot secured or unsecured "
+     "non-convertible debentures or bonds on private placement basis up to Rs. 500 crore.", "proposed"),
+    # the AGM's own business (a resolution to be passed) is proposed (fresh5 #45, #47)
+    ("Prior Intimation of Special Resolution for approval to offer and allot non-convertible debentures",
+     "Members of the Company in the ensuing Annual General Meeting will inter alia consider Special Resolutions to "
+     "authorize the Board to offer, issue and allot non-convertible debentures up to Rs. 500 crore.", "proposed"),
+    # a press release that says the issue completed reports an allotment, not a proposal (fresh5 #55)
+    ("Press Release",
+     "The Company successfully concluded its capital raise of INR 6,437 Crores (USD 771 Mn approx.) through a "
+     "Qualified Institutions Placement (QIP). The issue closed on September 20, 2024.", "allotment"),
+    # a board approval subject to the EGM is approval, not allotment (fresh5 #22, #51)
+    ("Outcome of the Board Meeting",
+     "The Board has, subject to the approval of members, considered and approved the issue and allotment of "
+     "2,00,00,000 fully convertible warrants on a preferential basis aggregating up to Rs. 80,00,00,000.", "approval"),
+])
+def test_t242_r7_raise_stage_shapes(title: str, text: str, expected: str) -> None:
+    assert _row(fe.event_rows(_doc(title, text))[0], "fund_raise")["raise_stage"] == expected
+
+
 # ---- T-242 round 7: structural customer, subsidiary, value and duplicate rules ----------------------------
 def test_t242_r7_customer_rejects_fragments_segments_countries_headers_and_prefers_annexure() -> None:
     # Single generic words ('Public', 'Office') in a truncated title yield to the page-2 annexure awarder.
@@ -2441,3 +2528,88 @@ def test_t242_r7d_strips_bullets_and_marks_undisclosed_customer() -> None:
         )
         assert model_rows and model_rows[0]["customer"] is None
         assert "customer not disclosed" in (model_rows[0].get("detail") or "")
+
+
+# ---- T-242 round 7b: the own-share swap, the issuer, the printed balance and page-3 sizes ----------------
+def test_t242_r7b_the_companys_own_share_issue_is_the_raise() -> None:
+    """A swap that pays sellers in the company's own shares is an issuance, not an acquisition veto (r5 #18,
+    #24, #50); a board that also approves selling an investment still raised its own NCDs (r5 #3)."""
+    mindacorp = _doc(
+        "Outcome of Board meeting",
+        "The Board of Directors have accorded its approval for raising funds of upto Rs. 500 Crore (Rupees Five "
+        "Hundred Crore Only) through issuance of Non-Convertible Debentures on a private placement basis, in one "
+        "or more tranches. Approval of Sale of Investment in EVQ Point Solutions Pvt. Ltd.",
+        symbol="MINDACORP",
+    )
+    row = _row(fe.event_rows(mindacorp)[0], "fund_raise")
+    assert row["amount_inr_cr"] == 500.0 and row["raise_stage"] == "approval"
+
+    efcil = _doc(
+        "Outcome of Board Meeting is attached.",
+        "The Board of Directors has approved the issuance of up to 19,99,996 equity shares of the Company of face "
+        "value of Rs. 2 each, to the Sellers, at a price of Rs. 270 per equity share, for consideration other than "
+        "cash (being utilized towards discharge of the consideration for the acquisition of 10,44,783 equity "
+        "shares of Ultrafresh Modular Solutions Limited).",
+        symbol="EFCIL",
+    )
+    row = _row(fe.event_rows(efcil)[0], "fund_raise")
+    assert row["amount_inr_cr"] == 53.9999 and row["raise_stage"] == "approval"
+
+    aurionpro = _doc(
+        "Outcome of the Allotment committee Meeting held on Friday, December 19, 2025",
+        "Allotment of 48,134 Equity Shares at an Issue Price of Rs. 1454.30/- per share on a Preferential Basis for "
+        "Consideration other than cash. The said shares have been allotted for consideration other than cash, in "
+        "exchange for the acquisition of 366 equity shares representing 17.34% of the shareholding of InfrariskSG "
+        "Pte. Ltd ('Target Company'), on a preferential basis.",
+        symbol="AURIONPRO", filing_date="2025-12-19",
+    )
+    row = _row(fe.event_rows(aurionpro)[0], "fund_raise")
+    assert row["amount_inr_cr"] == 7.0001 and row["raise_stage"] == "allotment"
+
+
+def test_t242_r7b_a_conversion_stores_the_printed_balance() -> None:
+    """A warrant conversion receives the 75% balance: the printed receipt (RATNAVEER r5 #17) or count x the
+    balance price the letter prints (MANAKCOAT r5 #22, #41, #45), never a computed 100%."""
+    ratnaveer = _doc(
+        "Allotment of 34,31,446 Equity Shares of Rs.10 each to the promoter and Promoters group upon conversion "
+        "of Warrant",
+        "The Board of Directors considered and approved the allotment of 34,31,446 equity shares at an issue price "
+        "of Rs. 159.25 each, to person belonging to the Promoter Category, on preferential basis, upon receipt of "
+        "amount aggregating to Rs. 40,98,43,332/- (Rupees Forty Crore Ninety Eight Lacs Forty Three Thousand Three "
+        "Hundred and Thirty Two only) (being remaining 75% of the issue price per warrant) from the allottees.",
+        symbol="RATNAVEER", filing_date="2026-05-12",
+    )
+    row = _row(fe.event_rows(ratnaveer)[0], "fund_raise")
+    assert row["amount_inr_cr"] == 40.9843 and row["raise_stage"] == "allotment"
+
+    manakcoat = _doc(
+        "Kindly find enclosed announcement",
+        "The Board of Directors inter-alia considered and approved the following - (i) Allotment of 7,55,000 equity "
+        "shares having face value of Re. 1/- each at an issue price of Rs. 65/- each (including a premium of Rs. "
+        "64/- each), consequent upon the conversion of 7,55,000 Warrants issued at an Issue Price of Rs. 65/- each, "
+        "on preferential basis. Post receipt of balance amount at the rate of Rs. 48.75 per warrant (being 75% of "
+        "the issue price per warrant), 7,55,000 Equity Shares have been allotted.",
+        symbol="MANAKCOAT", filing_date="2025-06-06",
+    )
+    row = _row(fe.event_rows(manakcoat)[0], "fund_raise")
+    assert row["amount_inr_cr"] == 3.6806 and row["raise_stage"] == "allotment"
+
+
+def test_t242_r7b_a_raise_printed_past_page_two_still_classifies() -> None:
+    """KPIGREEN r5 #47 prints its allotment size on page 3: the class must still be fund_raise (the head alone
+    carries no amount)."""
+    pages = {
+        1: "KPI Green Energy Limited has informed the exchange regarding allotment of 1,01,00,000 fully "
+           "convertible equity warrants to Quyosh Energia Private Limited, an entity belonging to the Promoter "
+           "Group.",
+        2: "The Committee considered and approved the allotment at its meeting held on February 18, 2026.",
+        3: "Allotment of 1,01,00,000 (One Crore One Lakh) fully convertible equity warrants at an exercise price of "
+           "Rs. 470.30 (Rupees Four Hundred Seventy and Paise Thirty) aggregating upto Rs. 4,75,00,30,000/-.",
+    }
+    doc = {**_doc(
+        "KPI Green Energy Limited has informed the exchange regarding allotment of 1,01,00,000 fully convertible "
+        "equity warrants to Quyosh Energia Private Limited.",
+        pages[1], symbol="KPIGREEN", filing_date="2026-02-18",
+    ), "pages": pages, "head": f"{pages[1]}\n{pages[2]}", "text": "\n".join(pages[page] for page in sorted(pages))}
+    row = _row(fe.event_rows(doc)[0], "fund_raise")
+    assert row["amount_inr_cr"] == 475.003
