@@ -905,6 +905,23 @@ def _same_series(name: str, key: str) -> bool:
             or low == f"{k}_pct")
 
 
+# T-242: the tokens a measure code may append to a printed label and still BE that label's row.  A page prints
+# "Water withdrawal 7.17% YoY" -> label "Water withdrawal", measure NEW:water_withdrawal_reduction_yoy; the words
+# after the label are the movement the page reports, not a different measure.
+_MOVEMENT_TOKENS = {"growth", "yoy", "qoq", "pct", "pp", "change", "delta", "reduction", "reductions", "increase",
+                    "decrease", "improvement", "improvements", "decline", "grew", "grow", "rise", "rose", "fall",
+                    "fell", "up", "down"}
+
+
+def _label_covers(label: str, measure: str) -> bool:
+    """Do the label's words name this measure code?  Every label token of 3+ letters appears in the code, and every
+    extra code token is a movement word ('Dependence on third-party water' ->
+    NEW:third_party_water_dependence_reduction_yoy)."""
+    toks = {t for t in _norm_measure(label).split("_") if len(t) > 2}
+    mtoks = set(_norm_measure(measure).split("_")) - {""}
+    return bool(toks) and toks <= mtoks and not ((mtoks - toks) - _MOVEMENT_TOKENS)
+
+
 def _pick(table: str, col: str, symbol: str, name: str, extra: str = "") -> tuple[list[str], list[str]]:
     """Names to match for a user's metric word: exact first, then [_.]/NEW: normalized, else series/alias."""
     key = re.sub(r"[\s\-]+", "_", name.strip().lower())
@@ -2346,13 +2363,17 @@ def _statement_row(r: sqlite3.Row, match: str = "tag") -> dict[str, Any]:
 
 
 def statements(symbol: str, topic: str | None = None, terms: str | None = None, date_from: str | None = None,
-               date_to: str | None = None, as_of: str | None = None, limit: int = 10,
+               date_to: str | None = None, as_of: str | None = None, limit: int | None = None,
                role: str | None = None, period: str | None = None,
                rank_terms: str | None = None, latest: bool = False,
                 entities: str | None = None, whole_turn: bool = True, offset: int = 0,
                 documents: str | None = None, status: str | None = None) -> dict[str, Any]:
     """Management statements from concall transcripts, exact quotes: topic tag (margin, guidance, capex, order ...),
     free ``terms`` (all words must appear), call-date window, role (ceo / cfo / md / mgmt).
+
+    For a question about one call ('In the 2026-05-27 call, what did management say about X?'), pass that call's
+    date as ``date_from`` and ``date_to`` (both YYYY-MM-DD): only that call's statements are then served, best
+    match first, and the window is 25 statements instead of 10.
 
     ``period`` (Q4FY26 / FY26) and ``rank_terms`` (the question's own words) rank the rows: a statement of the
     period asked, carrying more of the question's words, comes first; the newest call breaks a tie.  ``latest``
@@ -2405,7 +2426,9 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
             period_args += [item, f"{item}%"]
     words = [w for w in re.findall(r"[\w₹%&\-\.]+", rank_terms or "") if len(w) > 2]
     score_sql, score_args = _term_hits("t.statement", words[:8])
-    cap, start = _window(limit, offset, 10)
+    # T-242 fix 3: one named call is a bounded set, so its window is 25 remarks (the quote on a long call is
+    # often past the tenth); any other question keeps the 10-statement window.
+    cap, start = _window(limit, offset, 25 if from_day and from_day == to_day else 10)
     want = cap + start
     # whole_turn: `limit` counts answer turns, not sentences, so fetch enough rows to find the turns the page needs
     # (T-164 r7: limit=20 used to return 188 rows because the LIMIT bounded matched sentences before expansion)
@@ -4538,6 +4561,9 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
             derived_tokens = {"growth", "pct", "pp", "change", "yoy", "qoq", "margin", "share", "ratio", "delta"}
             m_norm = _norm_measure(measure)
             m_tokens = set(m_norm.split("_"))
+            # T-242 fix 3 review (Wolf): a measure code with extra movement tokens is accepted only through the
+            # printed-label path below (the row prints the words asked), never from the asked words alone
+            # (revenue must not reach revenue_growth_yoy).
             cands = [c for c in cands if _norm_measure(c) == m_norm
                      or not ((set(_norm_measure(c).split("_")) & derived_tokens) - m_tokens)]
             if "mix" not in m_norm and "segment" not in m_norm:
@@ -4560,7 +4586,7 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
                 allow_derived = bool(m_tokens & movement)
                 cands = list(dict.fromkeys(
                     cands + [r[0] for r in lab if r[0]
-                             and (allow_derived
+                             and (allow_derived or _label_covers(measure, r[0])
                                   or not ((set(_norm_measure(r[0]).split("_")) & derived_tokens) - m_tokens))]))
             if cands:
                 where.append(f"o.measure IN ({','.join('?' * len(cands))})")
@@ -4640,7 +4666,7 @@ def _obs_rows(sym: str, measure: str | None = None, terms: str | None = None,
             item["check"] = {"status": g("check_status"), "by": g("checker"), "evidence": g("check_evidence")}
             if g("check_fields"):
                 try:
-                    item["check"]["corrected"] = json.loads(g("check_fields"))
+                    item["check"]["corrected"] = json.loads(str(g("check_fields")))
                 except ValueError:
                     pass
         _add_money(item, r["value"], r["unit"], r["scale"])
@@ -4700,8 +4726,15 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
         for lb in base_labels:
             plabels.append(lb.lower())
             plabels.append(re.sub(r"^([qh][1-4]|fy)(fy\d{2})$", r"\1 \2", lb.lower()))
-    rwords = [w.lower() for w in re.findall(r"[\w₹%&\-\.]+", rank_terms or "") if len(w) > 2][:8]
-    rword_alts = [([w] + [s.lower() for s in _synonyms_for(w)]) for w in rwords]
+    # T-242 fix 3: within ONE named call the ask's own words rank whichever argument a cheap model put them in
+    # (rank_terms, topic or terms), and a measure that names the ask scores beside a remark that prints it, so
+    # the best-matching remark comes first instead of merely the newest.  Without a named call the old order
+    # (newest call first) stands, so a better-matching older call never displaces it.
+    ask = rank_terms or ""
+    if date_from and date_from == date_to:
+        ask = " ".join(x for x in (rank_terms, topic, terms) if x)
+    qwords = list(dict.fromkeys(w.lower() for w in re.findall(r"[\w₹%&\-\.]+", ask) if len(w) > 2))[:12]
+    qword_alts = [([w] + [s.lower() for s in _synonyms_for(w)]) for w in qwords]
     scored: list[tuple[tuple, dict[str, Any]]] = []
     for r in rows:
         keys = set(r.keys())
@@ -4711,9 +4744,11 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
             continue
         if plan is not None and not _topic_hit(plan, stmt, g("measure")):
             continue
-        blob = " ".join(str(x or "") for x in (stmt, g("question_context"), g("measure"),
-                                               g("printed_label"), g("segment"))).lower()
-        t_score = sum(1 for alts in rword_alts if any(a in blob for a in alts)) if rword_alts else 0
+        say_blob = " ".join(str(x or "") for x in (stmt, g("question_context"))).lower()
+        measure_blob = " ".join(str(x or "") for x in (g("measure"), g("printed_label"))).lower()
+        say_score = sum(1 for alts in qword_alts if any(a in say_blob for a in alts)) if qword_alts else 0
+        measure_score = sum(1 for alts in qword_alts if any(a in measure_blob for a in alts)) if qword_alts else 0
+        t_score = say_score + measure_score
         p_rank = 0
         if plabels:
             p_blob = " ".join(str(x or "") for x in (g("period"), stmt, g("doc_title"))).lower()
@@ -4744,8 +4779,8 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
         }
         if g("question_context"):
             item["question_context"] = _trim(g("question_context"), 300)
-        scored.append(((s_rank, day_rank, p_rank, -t_score), item))
-    scored.sort(key=lambda pair: (pair[0][0], pair[0][1], pair[0][2], pair[0][3]))
+        scored.append(((s_rank, day_rank, p_rank, -say_score, -measure_score), item))
+    scored.sort(key=lambda pair: pair[0])
     return [pair[1] for pair in scored]
 
 
