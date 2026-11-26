@@ -10,7 +10,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - 26 Nov results gates r2+r3: cash-flow/adjustments, basis (standalone-only filer), duration fill, current/non-current, scope backing, statute junk.
 - 26 Nov AR gates r4: jv/associate scopes, printed-name scope, junk; deck untied values.
 - 26 Nov extractors (next build): guidance superseded/entity/split; KPI quote-scale check.
-- 26 Nov deck r7: scope, HoH/QoQ, quarter cue
+- 26 Nov deck r7/r8: scope, HoH/QoQ, quarter cue, segment not total
 - 26 Nov junk gates r5/r6: decorative slide numbers; bare FY tokens, 'N (word)' echoes.
 - 26 Nov `gate_not_company`: industry/country/peer/customer rows never verified (read + recheck); recheck keeps not_company/subsidiary_unnamed.
 - hy4 bulk: one Drive fetch per doc.
