@@ -884,4 +884,63 @@ def test_ar_junk_ordinals_are_dropped_not_served():
     assert keep["status"] == "verified"
 
 
+def test_ar_junk_r6_fy_tokens_and_boilerplate_counts_are_dropped_while_real_rows_survive():
+    """AR r4 regrade #50 APOORVA p.20 and #52 ABLBL p.126 drop; real counts, column headers and unit rows stay."""
+    # (a) bare FY token stored as first year (both AR and deck, with '' or 'Financial Year' pseudo-unit)
+    fy_apoorva = _r4_row(
+        measure="NEW:secretarial_audit_term_start", printed_label="i.e. from the Financial Year",
+        value_text="2026-27", value=2026.0, unit="Financial Year", period="2026-27")
+    fy_short = _r4_row(
+        measure="NEW:auditor_appointment_fy", printed_label="from F.Y. 2026-2027",
+        value_text="2026", value=2026.0, unit="", period="FY 2026-27")
+    fy_page = _r4_row(
+        measure="NEW:tenure_start", printed_label="Audit term start",
+        value_text="2026-27", value=2026.0, unit="", period="2026-27")
+    # (b) 'N (word)' boilerplate count in statutory-notice / publication / appointment sentence
+    newspaper = _r4_row(
+        measure="NEW:newspaper_edition_count",
+        printed_label="All Editions - 1 (one) English language national daily newspaper",
+        value_text="1", value=1.0, unit="English language national daily newspaper", period="FY 2025-26")
+    quorum = _r4_row(
+        measure="NEW:committee_quorum_members", printed_label="quorum of 2 (two) members",
+        value_text="2", value=2.0, unit="", period="FY 2025-26")
+
+    # Negatives that MUST survive:
+    # 1) real "1 (one) Executive Director" count with a dictionary measure
+    exec_dir = _r4_row(
+        measure="count.employees", printed_label="1 (one) Executive Director",
+        value_text="1", value=1.0, unit="", period="FY 2025-26")
+    # 2) year column header value (a real count 2026 sitting under a "Financial Year 2026-27" column header)
+    col_val = _r4_row(
+        measure="NEW:active_dealers", printed_label="Active dealers",
+        value_text="2026", value=2026.0, unit="", period="Financial Year 2026-27")
+    # 3) a "Financial Year 2026-27" revenue row with a real unit
+    fy_rev = _r4_row(
+        measure="revenue.value", printed_label="Revenue for Financial Year 2026-27",
+        value_text="2,026", value=2026.0, unit="INR Lakhs", period="FY 2026-27")
+    fy_rev_new = _r4_row(
+        measure="NEW:segment_revenue", printed_label="Revenue for Financial Year 2026-27",
+        value_text="2,026", value=2026.0, unit="Rs crore", period="FY 2026-27")
+
+    page = (
+        "Financial Year 2026-27\nActive dealers 2026\n"
+        "for a term of five (5) consecutive Financial Years, i.e. \n"
+        "from the Financial Year 2026-27 till the Financial Year 2030-31\n"
+        "All Editions - 1 (one) English language national daily newspaper\n"
+        "quorum of 2 (two) members\n"
+        "Corporate Affairs Committee comprised of 1 (one) Executive Director.\n"
+        "Revenue for Financial Year 2026-27 2,026"
+    )
+    rows = [fy_apoorva, fy_short, fy_page, newspaper, quorum, exec_dir, col_val, fy_rev, fy_rev_new]
+    obs.apply_ar_row_gates(rows, page, "")
+    assert rows == [exec_dir, col_val, fy_rev, fy_rev_new]
+    assert all(r["status"] == "verified" for r in rows)
+
+    # Deck path shares junk_ordinal_reason too
+    deck_rows = [dict(fy_apoorva), dict(newspaper), dict(fy_rev)]
+    obs.apply_number_gates(deck_rows, "deck", page_text=page)
+    assert len(deck_rows) == 1 and deck_rows[0]["measure"] == "revenue.value"
+
+
+
 

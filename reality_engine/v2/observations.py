@@ -3944,6 +3944,19 @@ AR_APPOINTMENT_CUE_RE = re.compile(
 AR_BUSINESS_TENURE_RE = re.compile(
     r"employee|average|median|loan|lease|debt|contract|warranty|concession|licen[cs]e|policy|customer|"
     r"amortis|amortiz|useful_life", re.I)
+# T-242 r6 (ar_r4_regrade): bare FY span first-year tokens and 'N (word)' boilerplate counts drop.
+AR_FY_SPAN_RE = re.compile(
+    r"\b(?:FY|F\.?\s*Y\.?|Financial\s+Year)\s*['\u2019\-]?\s*((?:19|20)\d{2})\s*[-/]\s*(?:\d{2}|(?:19|20)\d{2})\b", re.I)
+AR_N_WORD_RE = re.compile(
+    r"\b(\d{1,2})\s*\(\s*(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
+    r"thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)\s*\)", re.I)
+_AR_SMALL_NUMBER_WORDS = {w: i for i, w in enumerate(
+    ("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
+     "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"), 1)}
+AR_BOILERPLATE_COUNT_CUE_RE = re.compile(
+    r"\b(?:newspapers?|editions?|terms?|tenure|years?|yrs?|members?|quorum|publication|published|statutory\s+notice|daily)\b", re.I)
+_AR_NON_UNIT_LABEL_RE = re.compile(r"^(?:financial|fiscal|calendar|assessment)\s+years?$|^f\.?y\.?$|^a\.?y\.?$", re.I)
+_AR_EXTRA_REAL_UNIT_RE = re.compile(r"\b(?:percentage|kilograms?|kgs?|grams?|gms?|tonnes?|shares?)\b", re.I)
 # T-242 r4: the reporting company's own equity-method lines ("Investment in joint ventures 5,916.51",
 # "Share of profit of associates (21)") are the COMPANY's figures even on a JV/associate page.
 AR_EQUITY_METHOD_LABEL_RE = re.compile(
@@ -4028,7 +4041,52 @@ def _ar_parent_backed(row: dict[str, Any], page_text: str, previous_text: str) -
     return False
 
 
-def junk_ordinal_reason(row: dict[str, Any], deck: bool = False) -> str:
+def _has_real_unit(unit: str) -> bool:
+    u = norm_space(unit)
+    return bool(u and not _AR_NON_UNIT_LABEL_RE.match(u) and (infer_unit_family(u) or _AR_EXTRA_REAL_UNIT_RE.search(u)))
+
+
+def _junk_r6_reason(row: dict[str, Any], measure: str, label: str, value_text: str, page_text: str) -> str:
+    """T-242 r6: bare FY tokens ('Financial Year 2026-27' -> 2026) and 'N (word)' boilerplate counts."""
+    if not measure.startswith(NEW_PREFIX) or _has_real_unit(norm_space(row.get("unit"))):
+        return ""
+    try:
+        num = float(row["value"]) if row.get("value") is not None else None
+    except (TypeError, ValueError):
+        return ""
+    whole = int(round(num)) if num is not None and abs(num - round(num)) <= 1e-9 else None
+    if whole is None:
+        return ""
+    lbl_norm, vt_norm = norm_match(label), norm_match(value_text)
+    page_norm = norm_match(page_text) if page_text else ""
+    fy_windows = [norm_match(f"{label} {value_text}")]
+    if page_norm and lbl_norm and (idx := page_norm.find(lbl_norm)) >= 0:
+        fy_windows.append(page_norm[idx:idx + len(lbl_norm) + 30])
+    for txt in fy_windows:
+        for match in AR_FY_SPAN_RE.finditer(txt):
+            if int(match.group(1)) == whole:
+                return f"junk_fy_token: {value_text!r} is a bare financial-year token ({match.group(0)!r}), not a figure"
+    if page_norm and re.fullmatch(r"(?:19|20)\d{2}\s*[-/]\s*(?:\d{2}|(?:19|20)\d{2})", vt_norm):
+        vt_dense = re.sub(r"\s+", "", vt_norm)
+        for match in AR_FY_SPAN_RE.finditer(page_norm):
+            if int(match.group(1)) == whole and re.sub(r"\s+", "", match.group(0)).endswith(vt_dense):
+                return f"junk_fy_token: {value_text!r} is a bare financial-year token ({match.group(0)!r}), not a figure"
+    if 1 <= whole <= 20:
+        contexts = [norm_match(" ".join(p for p in (label, norm_space(row.get("series_title")), norm_space(row.get("group_path"))) if p))]
+        if page_text and lbl_norm:
+            raw_clean = UNICODE_DASH_RE.sub("-", str(page_text))
+            hits = [norm_space(c) for c in re.split(r"\n+|(?<=[.;])\s+", raw_clean) if lbl_norm in norm_space(c)]
+            contexts.extend(hits or [c for c in re.split(r"(?<=[.;])\s+", page_norm) if lbl_norm in c])
+        measure_words = measure[len(NEW_PREFIX):].replace("_", " ")
+        for ctx in contexts:
+            for match in AR_N_WORD_RE.finditer(ctx):
+                if int(match.group(1)) == _AR_SMALL_NUMBER_WORDS[match.group(2).lower()] == whole \
+                        and AR_BOILERPLATE_COUNT_CUE_RE.search(f"{ctx} {measure_words}"):
+                    return f"junk_boilerplate_count: {value_text!r} echoes a {match.group(0)!r} boilerplate count in {label!r}"
+    return ""
+
+
+def junk_ordinal_reason(row: dict[str, Any], deck: bool = False, page_text: str = "") -> str:
     """T-242 r4: an edition/AGM ordinal, a celebration slogan or an appointment term is not a figure (AR, deck).
 
     ``34th Annual Report``, ``Celebrating 40 years of innovation`` and ``consecutive term of five (5) years`` are
@@ -4038,6 +4096,9 @@ def junk_ordinal_reason(row: dict[str, Any], deck: bool = False) -> str:
     T-242 r5: ``deck=True`` also applies :func:`deck_junk_reason` (a card/section/page serial, a digit of the
     slide title's own period, an establishment year/foundation ordinal, a standard/model code, a brand digit).
     The AR row gates keep the default: those cues only mean junk on a marketing slide.
+
+    T-242 r6: bare financial-year tokens (``Financial Year 2026-27`` -> 2026) and ``N (word)`` boilerplate counts
+    (``1 (one) English language national daily newspaper`` -> 1) on ``NEW:`` measures without a real unit drop.
     """
     measure = norm_space(row.get("measure"))
     label = norm_space(row.get("printed_label"))
@@ -4055,6 +4116,8 @@ def junk_ordinal_reason(row: dict[str, Any], deck: bool = False) -> str:
             and not AR_BUSINESS_TENURE_RE.search(measure):
         return (f"junk_tenure_echo: {row.get('value')!r} repeats an appointment's term in {label!r}, "
                 f"not a business figure")
+    if r6_reason := _junk_r6_reason(row, measure, label, value_text, page_text):
+        return r6_reason
     if deck:
         return deck_junk_reason(row)
     return ""
@@ -4965,8 +5028,8 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             continue
         if _is_ar_date_value(str(row.get("value_text") or "")):
             continue
-        if junk_ordinal_reason(row):
-            continue                     # T-242 r4: an edition ordinal / appointment term is dropped, no row
+        if junk_ordinal_reason(row, page_text=page_text):
+            continue                     # T-242 r4/r6: edition ordinal / appointment term / FY / boilerplate dropped
         kept.append(row)
         stated_basis = str(row.get("basis") or "")
         if basis and (stated_basis != basis or (basis_source == "page_heading" and not row.get("basis_source"))) \
@@ -6003,7 +6066,7 @@ def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> Non
         if norm_space(row.get("record_type") or "number") != "number":
             kept.append(row)
             continue
-        if junk_ordinal_reason(row, deck=True):
+        if junk_ordinal_reason(row, deck=True, page_text=page_text):
             continue
         kept.append(row)
         if basis and not norm_space(row.get("basis")):
