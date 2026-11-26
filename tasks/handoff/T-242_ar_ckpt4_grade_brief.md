@@ -5,7 +5,7 @@ permission: read-only
 Ticket: T-242
 
 Goal: grade 60 annual-report rows strictly against the page text: rows read by the live hy4 loop into
-D:/RealityEngine/hy4_out/obs_ar_fy27.db (author of the prompt: Wolf), 24 from audit checkpoint 4 plus a seeded fill
+D:/RealityEngine/hy4_out/obs_ar_fy27.db (author of the prompt: Wolf), 15 from audit checkpoint 4 plus a seeded fill
 (seed 1214). ckpt_0003 failed 37/11/12/0 (subset-as-total, related-party scope); AR gates r5 not yet merged. Bar: at least 70% right and at most 5% wrong + junk.
 
 Files:
