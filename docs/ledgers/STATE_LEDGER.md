@@ -8865,3 +8865,15 @@
 +- XBRL check covers `fin_quarter_xbrl` + `fin_annual_line`; match only at the printed digit (`xbrl_near` otherwise).
 -00000. 26 Nov deck-wide rechecked copy loaded (39,941 rows); OCR rows quarantined.
 ```
+
+## 2026-11-27T02:14:30 | kakazuya (Eagle) | branch main
+```diff
+-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 22:40 IST (dsh T-242 tx statements r6)
++# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-27 02:30 IST (dsh T-242 results r3f)
+-- 26 Nov results gates r2-r3c + r3d/r3e/r3d2 merged (two-values-one-date, component/total, CF on prior page, BS no duration, note scope, ordinals); full --recheck owed after cleanup; r3f for ckpt_0003/0004 kinds (`tasks/t242_results_measure.md`).
++- 26 Nov results gates r2-r3f merged (two-values-one-date, component/total, CF section, BS no duration, note scope, OCR brackets/split digits, garbled quarantine, change vs balance); full --recheck owed after cleanup (`tasks/t242_results_measure.md`).
+-- 26 Nov events: read-provenance columns on `event` rows (T-242, dsh); script rows `read_model='script'`.
+-- 26 Nov xbrl check now also covers `fin_annual_line` (BS/H1/FY/CF): 2,448 match / 132 unit fix / 232 contradict; annual contradictions 70% real in the seed-7 sample, not installed; matches safe. `tasks/t242_xbrl_annual_measure.md`.
++- XBRL check covers `fin_quarter_xbrl` + `fin_annual_line`; match only at the printed digit (`xbrl_near` otherwise).
+-00000. 26 Nov deck-wide rechecked copy loaded (39,941 rows); OCR rows quarantined.
+```
