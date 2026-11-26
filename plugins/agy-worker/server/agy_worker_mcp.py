@@ -12,8 +12,8 @@ from mcp.server import MCPServer  # noqa: E402
 import agy_core as core  # noqa: E402
 
 INSTRUCTIONS = (
-    "Antigravity CLI (agy) coding workers. The model is allowlisted to gemini-4-argon-high (default, Shivam 14 Nov: use Argon first, high only), "
-    "gemini-4-hydrogen-high (after Argon), gemini-3.8-flash-medium (the Flash-only account; Shivam 16 Nov: no model dropped, run the one he names, kept in runtime/current_model.txt) and claude-opus-5-5-medium (T-205 blind grader); any other id is "
+    "Antigravity CLI (agy) coding workers. The model is allowlisted to gemini-4-hydrogen-high (default), gemini-4-neon-high / "
+    "gemini-4-neon-xhigh (hardest reasoning or review only, sparingly; Shivam 26 Nov), gemini-3.8-flash-medium (company question search, kept in runtime/current_model.txt) and claude-opus-5-5-medium (T-205 blind grader); Argon is no longer used; any other id is "
     "refused. start_worker returns at once with a job_id; each job runs headless in its own Wolf-agy-<job_id> "
     "worktree and auto-commits its diff when it ends. worker_status gives done/outcome, elapsed, tool calls by tool, "
     "tokens (input, output, thinking, cache) and denied actions, parsed from the job's event log without any model "
@@ -24,8 +24,8 @@ server = MCPServer(name="agy-worker", version="0.1.0", instructions=INSTRUCTIONS
 
 
 @server.tool(name="start_worker", description=(
-    "Start one agy coding job from a complete prescriptive brief. model is allowlisted: gemini-4-argon-high "
-    "(default), gemini-4-hydrogen-high, claude-opus-5-5-medium; any other id is refused. use_worktree "
+    "Start one agy coding job from a complete prescriptive brief. model is allowlisted: gemini-4-hydrogen-high "
+    "(default), gemini-4-neon-high, gemini-4-neon-xhigh, gemini-3.8-flash-medium, claude-opus-5-5-medium; any other id is refused. use_worktree "
     "(default true) creates branch Wolf-agy-<job_id> from base (default HEAD). timeout_seconds is the hard limit "
     "(default 3600). test_cmd is recorded for the reviewer. Returns job_id at once."))
 def start_worker(brief: str, use_worktree: bool = True, base: str | None = None, timeout_seconds: int = 3600,

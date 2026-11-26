@@ -1,7 +1,7 @@
 """agy-worker core (T-112): run Antigravity CLI (`agy`) coding jobs headless in a Wolf- worktree, like dsh-worker.
 
 The model is the job's own, allowlisted to MODELS (Shivam's ruling 13 Nov 2026: coding stays on
-gemini-4-argon-high first, then gemini-4-hydrogen-high (14 Nov), the T-205 answer arm uses gemini-4-hydrogen-high, the blind grader claude-opus-5-5-medium).
+gemini-4-hydrogen-high by default, gemini-4-neon-high/xhigh for the hardest work and gemini-3.8-flash-medium for question search (26 Nov ladder; Argon dropped), the T-205 answer arm uses gemini-4-hydrogen-high, the blind grader claude-opus-5-5-medium).
 Shivam 16 Nov: no model is dropped for good. gemini-3.8-flash-medium stays allowlisted (his other Antigravity account
 has only Flash), and the model in use is the one he names: it is kept in ``<runtime>/current_model.txt`` and read by
 ``current_model()`` at every start; without that file the default is MODEL.
@@ -26,10 +26,12 @@ from pathlib import Path
 
 MODEL = "gemini-4-hydrogen-high"  # Shivam 17 Nov: Hydrogen high for coding and reasoning (account neo47verma)
 MODELS = {  # the only models a job may run (T-205 round 13); anything else is refused before a job is created
+    # 26 Nov reasoning ladder (tasks/RULINGS.md): Hydrogen high in peak / after DeepSeek fails; Neon 4 high/xhigh
+    # only for the hardest reasoning or review, sparingly; Argon dropped (question search -> Flash 3.8 medium).
     "gemini-4-hydrogen-high": "coding and reasoning (Shivam 17 Nov)",
-    "gemini-4-argon-medium": "searching questions for companies (Shivam 17 Nov)",
-    "gemini-4-argon-high": "kept allowlisted; not the default since 17 Nov",
-    "gemini-3.8-flash-medium": "the account that has only Flash: question harvest, boilerplate code (Shivam 16 Nov; medium only)",
+    "gemini-4-neon-high": "hardest reasoning/review, sparingly (Shivam 26 Nov)",
+    "gemini-4-neon-xhigh": "hardest reasoning/review, sparingly (Shivam 26 Nov)",
+    "gemini-3.8-flash-medium": "searching questions for companies while its lifetime lasts (Shivam 26 Nov); boilerplate code",
     "claude-opus-5-5-medium": "T-205 blind grader",
 }
 SERVER_DIR = Path(__file__).resolve().parent
