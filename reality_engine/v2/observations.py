@@ -7205,6 +7205,13 @@ def create_db(path: str | Path) -> sqlite3.Connection:
     # T-241 (24 Nov): a reader of the output DB (a quality check, a row count) held a shared lock past sqlite's
     # default 5 s and the run died at commit with "database is locked"; wait instead.
     con = sqlite3.connect(str(path), timeout=120)
+    if str(path) != ":memory:":
+        # 26 Nov: reading never stops now, and loaders/graders/tools read these DBs while a loop writes; in the
+        # default DELETE journal a long write transaction locked them out past 300 s. WAL lets readers read.
+        try:
+            con.execute("PRAGMA journal_mode=WAL")
+        except sqlite3.OperationalError:
+            pass                                # another connection holds it: next open switches
     con.executescript(SCHEMA)
     columns = {row[1] for row in con.execute("PRAGMA table_info(observation)")}
     for name, ddl in MIGRATIONS:                 # an output DB written before stage B keeps its rows
