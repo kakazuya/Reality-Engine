@@ -1,5 +1,23 @@
 """T-242: results-page number gates (junk references, entity scope, holding/fragment values, unit line)."""
+import shutil
+import uuid
+from pathlib import Path
+
+import pytest
+
 from reality_engine.v2 import observations as obs
+
+
+@pytest.fixture()
+def tmp_path():
+    """A writable scratch folder: the sandbox's pytest basetemp root can be ACL-locked (test_observations)."""
+    base = Path(".tmp") / f"t242_results_{uuid.uuid4().hex}"
+    base.mkdir(parents=True, exist_ok=True)
+    try:
+        yield base
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
+
 
 
 def row(**kw):
@@ -773,3 +791,121 @@ def test_r3d_bare_date_ocr_bracket_and_residue_counter(tmp_path):
     res = collect_r3d_residue(db_path)
     assert res["group_count"] == 1 and res["row_count"] == 2
     assert res["sample"][0][1][0]["symbol"] == "AGARWALEYE"
+
+
+# T-242 r3e -- the five structural fixes from results ckpt_0002 (Eagle's fix note, pack results_ckpt2).
+def test_r3e_component_under_a_comprise_heading_keeps_the_heading_family():
+    page = (
+        "Cash And Cash Equivalents Comprise :\n"
+        "Cash\n16.99\n10.49\n"
+        "Bank Balance :\nCurrent Account\n0.37\n39.50\n"
+        "Total\n17.36\n49.99"
+    )
+    component = row(measure="other_bank_balances", printed_label="Current Account", value_text="0.37",
+                    value=0.37, period="Half Year Ended September 30, 2026")
+    plain = row(measure="other_bank_balances", printed_label="Current Account", value_text="0.37",
+                value=0.37, period="Year ended March 31, 2026")
+    obs.apply_results_row_gates([component], page)
+    obs.apply_results_row_gates([plain], "Bank Balance :\nCurrent Account\n0.37")
+    assert component["measure"] == "cash_and_cash_equivalents"
+    assert "results_component_family" in component["status_reason"]
+    assert plain["measure"] == "other_bank_balances"
+
+
+def test_r3e_component_that_repeats_the_block_total_is_unverified():
+    page = (
+        "Cash and cash equivalents at the end of the period\n5\n10\n"
+        "Cash and Cash Equivalents include:\n"
+        "Cash in hand\n2\n2\n"
+        "Balances with Banks\n-\n-\n"
+        "- on Current/Cash Credit Accounts\n8\n10"
+    )
+    total_misread = row(measure="cash_and_cash_equivalents", printed_label="- on Current/Cash Credit Accounts",
+                        value_text="10", value=10.0, period="30.09.2025")
+    component = row(measure="cash_and_cash_equivalents", printed_label="- on Current/Cash Credit Accounts",
+                    value_text="8", value=8.0, period="30.09.2026")
+    obs.apply_results_row_gates([total_misread], page)
+    obs.apply_results_row_gates([component], page)
+    assert total_misread["status"] == "unverified"
+    assert "results_component_is_total" in total_misread["status_reason"]
+    assert component["status"] == "verified"
+
+
+def test_r3e_cf_line_under_a_title_carried_from_the_previous_page_is_remapped():
+    previous = "ARCHIDPLY INDUSTRIES LIMITED\nStatement Of Cash Flow\nAmount in Rs.\nFOR YEAR ENDED 31 MARCH, 2026"
+    page = "Amount in Rs.\nPARTICULARS\nInterest Received\n9.92\n10.16"
+    income = row(measure="finance_income", printed_label="Interest Received", value_text="10.16", value=10.16,
+                 period="FOR YEAR ENDED 31 MARCH, 2025")
+    obs.apply_results_row_gates([income], page, previous_page_text=previous)
+    assert income["measure"] == "NEW:interest_received_cash_flow"
+    assert income["status"] == "unverified"
+    assert "results_cash_flow_measure" in income["status_reason"]
+
+
+def test_r3e_interest_received_on_a_profit_and_loss_page_keeps_its_measure():
+    page = "Statement of Profit and Loss\nRevenue from operations\n100.00\nInterest Received\n9.92"
+    previous = "Statement of Profit and Loss\nRevenue from operations\n90.00"
+    income = row(measure="finance_income", printed_label="Interest Received", value_text="9.92", value=9.92,
+                 period="Year ended March 31, 2026")
+    obs.apply_results_row_gates([income], page, previous_page_text=previous)
+    assert income["measure"] == "finance_income"
+
+
+def test_r3e_a_cash_flow_line_already_carrying_a_cash_flow_measure_is_kept():
+    page = "Statement of Cash Flow\nNet cash flow from investing activities\n(1,742)"
+    flow = row(measure="cash_flow.investing", printed_label="Net cash flow from investing activities",
+               value_text="(1,742)", value=-1742.0, period="Half year ended September 30, 2026")
+    obs.apply_results_row_gates([flow], page)
+    assert flow["measure"] == "cash_flow.investing" and flow["status"] == "verified"
+
+
+def test_r3e_a_stock_measure_takes_no_flow_duration_fill():
+    page = (
+        "CONSOLIDATED AUDITED STATEMENT OF ASSETS AND LIABILITIES AS AT MARCH 31, 2026\n"
+        "As at 31.03.2026\nAs at 31.03.2025\n"
+        "EQUITY AND LIABILITIES\nShareholders' Funds\nMinority Interest\n29.76\n216.15"
+    )
+    filled = row(measure="non_controlling_interest", printed_label="Minority Interest", value_text="29.76",
+                 value=29.76, period="Half year ended 31.03.2026", period_source="column_header")
+    already = row(measure="non_controlling_interest", printed_label="Minority Interest", value_text="29.76",
+                  value=29.76, period="As at 31.03.2026")
+    flow = row(measure="revenue_from_operations", printed_label="Revenue from operations", value_text="100.00",
+               value=100.0, period="Half year ended 31.03.2026", period_source="column_header")
+    obs.apply_results_row_gates([filled], page)
+    obs.apply_results_row_gates([already], page)
+    obs.apply_results_row_gates([flow], page)
+    assert filled["period"] == "As at 31.03.2026" and filled["status"] == "verified"
+    assert "results_stock_duration" in filled["status_reason"]
+    assert already["period"] == "As at 31.03.2026"
+    assert flow["period"] == "Half year ended 31.03.2026"
+
+
+def test_r3e_a_note_naming_a_subsidiary_sets_the_entity_scope():
+    page = (
+        "Notes:\n"
+        "4. During the quarter ended March 31, 2026, Alankit Imaginations Limited, Wholly owned subsidiary has "
+        "issued 3,50,000 fully paid up equity shares at Rs 750 per share ( Face value Rs. 10 Per equity Shares and "
+        "Share premium of Rs. 740 per equity share) by way of right Issue fully subscribed by the Holding company\n"
+        "5. Figures have been re-grouped to make them comparable"
+    )
+    subsidiary = row(measure="face_value_per_share", printed_label="Face value", value_text="Rs. 10", value=10.0,
+                     unit="Rs.", scale=1.0, period="quarter ended March 31, 2026")
+    own_page = ("Notes:\n4. Alankit Limited has issued 3,50,000 fully paid up equity shares at Rs 750 per share "
+                "( Face value Re. 1 Per equity Share)")
+    own = row(measure="face_value_per_share", printed_label="Face value", value_text="Re. 1", value=1.0,
+              unit="Rs.", scale=1.0, period="quarter ended March 31, 2026")
+    obs.apply_results_row_gates([subsidiary], page, "Alankit Limited")
+    obs.apply_results_row_gates([own], own_page, "Alankit Limited")
+    assert subsidiary["entity_scope"] == "subsidiary" and subsidiary["status"] == "unverified"
+    assert "results_note_entity" in subsidiary["status_reason"]
+    assert own["entity_scope"] == "company" and own["status"] == "verified"
+
+
+def test_r3e_an_ordinal_is_not_a_figure():
+    ordinal = row(measure="NEW:board_report_number", printed_label="Board's Report", value_text="33rd",
+                  value=33.0, unit="Lakhs", scale=100000.0, period="financial year ended March 31, 2026")
+    quarters = row(measure="NEW:quarters_reported", printed_label="Quarters reported", value_text="3",
+                   value=3.0, unit="", unit_family="", scale=1.0, period="Year ended March 31, 2026")
+    obs.apply_results_row_gates([ordinal, quarters], "approved the 33rd Board's Report for the 3rd quarter")
+    assert ordinal["status"] == "quarantined" and "ordinal" in ordinal["status_reason"]
+    assert quarters["status"] == "verified" and quarters["value"] == 3.0

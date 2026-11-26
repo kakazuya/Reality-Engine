@@ -1,8 +1,24 @@
 from pathlib import Path
+import shutil
 import sqlite3
+import uuid
+
+import pytest
 
 from reality_engine.v2 import ar_sections as ars
 from reality_engine.v2 import observations as obs
+
+
+@pytest.fixture()
+def tmp_path():
+    """A writable scratch folder: the sandbox's pytest basetemp root can be ACL-locked (test_observations)."""
+    base = Path(".tmp") / f"t242_ar_sections_{uuid.uuid4().hex}"
+    base.mkdir(parents=True, exist_ok=True)
+    try:
+        yield base
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
+
 
 
 def test_drop_heading_beats_keep_words():
