@@ -6458,7 +6458,164 @@ def deck_combined_label_reason(row: dict[str, Any], page_text: str = "") -> str:
     return f"deck_combined_label: {label!r} joins multiple measures while stored measure is {measure!r}"
 
 
-def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> None:
+_DECK_SUBSIDIARY_SUFFIX_RE = re.compile(
+    r"\b(?:securities|finance|finserv|life|general|insurance|capital|housing|holdings?|bank|amc|trust|"
+    r"ventures?|payments?|mobility|motors?|pharma|labs|laboratories|healthcare|logistics|retail|brands?|"
+    r"media|industries|enterprises|solutions|services|systems|technologies|tech|infra|infrastructure|"
+    r"power|energy|projects?|properties|realty|hotels?|chemicals?|foods?|agro|steel|metals?|textiles?)\b", re.I)
+_DECK_NON_SUBSIDIARY_RE = re.compile(
+    r"^(?:bse|nse|national\s+stock\s+exchange|crisil|icra|care(?:\s+ratings?)?|india\s+ratings?|"
+    r"acuite|brickwork|infomerics|bloomberg|reuters|sebi|nsdl|cdsl|rbi|irdai)\b", re.I)
+_DECK_PROSE_ENTITY_RE = re.compile(
+    r"\b(?:acquired|acquires|merged|sold|divested|invested|incorporated|commenced|is\s+one\s+of|stake\s+in|"
+    r"announced|reported|leading\s+provider)\b", re.I)
+_DECK_HEADING_STOP_RE = re.compile(
+    r"\b(?:financial\s+(?:summary|highlights|snapshot|results?|statements?)|profit\s*(?:&|and)\s*loss|"
+    r"balance\s*sheet|cash\s*flow|quarterly|annual|standalone|consolidated|overview|update|commentary|"
+    r"performance|segment|business|emerging\s+business|investor\s+presentation|particulars|key\s+ratios|"
+    r"annexures?|snapshot|highlights)\b", re.I)
+_DECK_ENTITY_LINE_RE = re.compile(
+    r"\b([A-Z0-9][A-Za-z0-9&.,'()\- ]{1,70}?(?:Private\s+Limited|Pvt\.?\s+Ltd\.?|Limited|Ltd\.?|LLP|Inc\.?|PLC|Corp\.?|GmbH))\b")
+_DECK_GROWTH_CUES = {
+    "hoh": re.compile(r"\b(?:h[\s-]*o[\s-]*h|half[\s-]+on[\s-]+half|half[\s-]+over[\s-]+half)\b", re.I),
+    "qoq": re.compile(r"\b(?:q[\s-]*o[\s-]*q|quarter[\s-]+on[\s-]+quarter|quarter[\s-]+over[\s-]+quarter)\b", re.I),
+    "yoy": re.compile(r"\b(?:y[\s-]*o[\s-]*y|year[\s-]+on[\s-]+year|year[\s-]+over[\s-]+year)\b", re.I),
+}
+_DECK_GROWTH_MEASURE_RE = re.compile(r"^(NEW:)?(.+?[._]growth_)(yoy|qoq|hoh)$", re.I)
+_DECK_QUARTER_PROSE_RE = re.compile(
+    r"\b(?:during\s+the\s+quarter|for\s+the\s+quarter|in\s+the\s+quarter|this\s+quarter|"
+    r"corresponding\s+quarter\s+of\s+(?:the\s+)?(?:previous|last)\s+year)\b", re.I)
+_DECK_QUARTER_TOK_RE = re.compile(r"\b(?:Q([1-4])|([1-4])Q)\b", re.I)
+_DECK_FORWARD_Q_RE = re.compile(
+    r"\b(?:expected|commence|commissioning|launch|target|by|outlook|pipeline|upcoming|next\s+quarter)[^.\n]{0,40}\b(?:Q[1-4]|[1-4]Q)\b", re.I)
+_DECK_GUIDANCE_RE = re.compile(
+    r"\b(?:guidance|target|aspir\w+|expected|annualised|annualized|full[\s-]*year|for\s+the\s+year|year\s+ended)\b", re.I)
+
+
+def _deck_entity_in_heading(line: str, company: str, segment_hint: str = "") -> str:
+    s = norm_space(line)
+    if not s or len(s) > 130 or _DECK_PROSE_ENTITY_RE.search(s):
+        return ""
+    for m in _DECK_ENTITY_LINE_RE.finditer(s):
+        cand = norm_space(m.group(1)).strip(" .,;:-|")
+        if cand and not RESULTS_AUDIT_FIRM_RE.search(cand) and not _DECK_NON_SUBSIDIARY_RE.search(cand) \
+                and not _is_own_entity(cand, company):
+            return cand
+    parts = [p.strip(" .,;:-|") for p in re.split(r"\s*(?:[–—|:]|\s-\s)\s*", s) if p.strip(" .,;:-|")]
+    comp_first = (re.findall(r"[A-Za-z]+", company) or [""])[0].lower()
+    for part in parts if len(parts) >= 2 else ([s] if segment_hint else []):
+        words = part.split()
+        if not (2 <= len(words) <= 6) or fiscal_periods(part) or _DECK_HEADING_STOP_RE.search(part) \
+                or _DECK_NON_SUBSIDIARY_RE.search(part) or RESULTS_AUDIT_FIRM_RE.search(part) or _is_own_entity(part, company):
+            continue
+        if not all(w[0].isupper() for w in words if w.lower() not in ("and", "of", "for", "the", "in")):
+            continue
+        if _DECK_SUBSIDIARY_SUFFIX_RE.search(part) or (comp_first and words[0].lower() == comp_first) \
+                or (segment_hint and part.lower() == segment_hint.lower()):
+            return part
+    return ""
+
+
+def _deck_heading_entity(row: dict[str, Any], page_text: str, company: str) -> str:
+    """T-242 r7: named subsidiary/parent heading the slide, series, group, or line above (never the own company)."""
+    if not company:
+        return ""
+    seg = norm_space(row.get("segment")) if str(row.get("entity_scope") or "") in ("subsidiary", "parent") else ""
+    candidates = [norm_space(row.get("series_title")), norm_space(row.get("group_path"))]
+    lines = [norm_space(ln) for ln in str(page_text or "").splitlines() if norm_space(ln)]
+    label, vt = norm_space(row.get("printed_label")).lower(), norm_space(row.get("value_text")).lower()
+    row_idx = next((i for i, ln in enumerate(lines) if (label and label in ln.lower()) or (vt and vt in ln.lower())), -1)
+    for i in range(row_idx - 1, -1, -1):
+        if _is_own_entity(lines[i], company) or RESULTS_STATEMENT_TITLE_RE.search(lines[i]):
+            break
+        candidates.append(lines[i])
+    candidates.extend(lines[:5])
+    if seg:
+        candidates.extend(ln for ln in lines if seg.lower() in ln.lower())
+    return next((ent for txt in candidates if txt and (ent := _deck_entity_in_heading(txt, company, seg))), "")
+
+
+def _deck_scope_update(row: dict[str, Any], page_text: str, company: str) -> None:
+    scope = str(row.get("entity_scope") or "")
+    if not company or scope not in ("company", "", "subsidiary", "parent"):
+        return
+    other = _deck_heading_entity(row, page_text, company)
+    if scope in ("subsidiary", "parent") and not other:
+        row["entity_scope"], row["scope_source"] = "company", "deck_own_statement"
+    elif other:
+        row["entity_scope"], row["scope_source"] = "subsidiary" if scope in ("company", "") else scope, "deck_subsidiary_heading"
+        if row["entity_scope"] == "subsidiary" and not norm_space(row.get("segment")):
+            row["segment"] = other
+
+
+def _deck_growth_basis_update(row: dict[str, Any], page_text: str) -> None:
+    """T-242 r7: H-o-H/HoH/half-on-half -> *_growth_hoh (never *_qoq); Q-o-Q -> qoq; Y-o-Y -> yoy."""
+    old_measure = norm_space(row.get("measure"))
+    m = _DECK_GROWTH_MEASURE_RE.match(old_measure)
+    if not m:
+        return
+    cues = lambda t: {k for k, rx in _DECK_GROWTH_CUES.items() if rx.search(t)}
+    row_cues = cues(" ".join(norm_space(row.get(k)) for k in ("printed_label", "printed_axis", "series_title", "group_path")))
+    vt = norm_space(row.get("value_text"))
+    line_cues = next((lc for ln in str(page_text or "").splitlines() if vt and vt in ln and len(lc := cues(ln)) == 1), set())
+    page_cues = cues(page_text or "")
+    target = (next(iter(row_cues)) if len(row_cues) == 1
+              else next(iter(line_cues)) if line_cues
+              else next(iter(page_cues)) if len(page_cues) == 1
+              else "hoh" if (m.group(3).lower() == "qoq" and "hoh" in page_cues and "qoq" not in page_cues
+                             and re.match(r"^\s*H[12]\b", norm_space(row.get("period")), re.I)) else "")
+    if not target or target == m.group(3).lower():
+        return
+    bare = m.group(2) + target
+    if bare in _MEASURE_FAMILY:
+        row["measure"] = bare
+        return
+    row["measure"] = NEW_PREFIX + bare
+    if not norm_space(row.get("new_definition")):
+        row["new_definition"] = f"{bare.replace('_', ' ')} ({target.upper()})"
+    if not norm_space(row.get("new_driver_node")):
+        root = _MEASURE_NODE.get(old_measure, "none").split(":")[0].split(".")[0].strip().lower()
+        row["new_driver_node"] = root if root in NEW_NODES else "none"
+
+
+def _deck_period_quarter_update(row: dict[str, Any], page_text: str, deck_asof: str = "") -> None:
+    """T-242 r7: a quarterly figure on a slide/sentence naming a quarter takes Qn FYxx instead of bare FYxx."""
+    period = norm_space(row.get("period"))
+    if not ANNUAL_FY_RE.match(period) or row.get("period_kind") in ("target", "estimate", "span"):
+        return
+    fy_num = _fiscal_year(period)
+    row_ctx = " ".join(norm_space(row.get(k)) for k in ("printed_label", "printed_axis", "series_title", "group_path"))
+    if fy_num is None or "guidance" in (row.get("measure") or "").lower() or _DECK_GUIDANCE_RE.search(row_ctx):
+        return
+    joined = re.sub(r"[ \t]*\n[ \t]*(?=[a-z(,])", " ", str(page_text or ""))
+    sents = [norm_space(s) for s in re.split(r"(?<!\d)\.(?!\d)(?:\s+|$)|[\n;]+", joined) if norm_space(s)]
+    label, vt = norm_space(row.get("printed_label")).lower(), norm_space(row.get("value_text")).lower()
+    idx = next((i for i, s in enumerate(sents) if (label and label in s.lower()) or (vt and vt in s.lower())), -1)
+    own_sent, next_sent = (sents[idx], sents[idx + 1] if idx + 1 < len(sents) else "") if idx >= 0 else ("", "")
+    if _DECK_GUIDANCE_RE.search(own_sent):
+        return
+    q_nums = {m.group(1) or m.group(2) for src in (row_ctx, _DECK_FORWARD_Q_RE.sub(" ", own_sent))
+              for m in _DECK_QUARTER_TOK_RE.finditer(src)}
+    if not q_nums and page_text:
+        sp = slide_period(page_text)
+        if sp and _fiscal_year(sp) == fy_num and (sm := _DECK_QUARTER_TOK_RE.search(sp)):
+            q_nums.add(sm.group(1) or sm.group(2))
+    has_prose_q = bool(_DECK_QUARTER_PROSE_RE.search(row_ctx) or _DECK_QUARTER_PROSE_RE.search(own_sent)
+                       or (own_sent and _DECK_QUARTER_PROSE_RE.search(next_sent)))
+    fy_label = f"FY{fy_num % 100:02d}"
+    if len(q_nums) == 1:
+        row["period"], row["period_kind"], row["period_source"] = f"Q{next(iter(q_nums))} {fy_label}", "actual", "deck_quarter_cue"
+    elif has_prose_q:
+        if deck_asof and _fiscal_year(deck_asof) == fy_num and (dm := _DECK_QUARTER_TOK_RE.search(deck_asof)):
+            row["period"], row["period_kind"], row["period_source"] = f"Q{dm.group(1) or dm.group(2)} {fy_label}", "actual", "deck_quarter_cue"
+        elif str(row.get("status") or "") == "verified":
+            row["status"] = "unverified"
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "",
+                                                        f"deck_quarter_not_fy: figure describes a quarter, not full-year {period!r}") if p)
+
+
+def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "", company: str = "",
+                         deck_asof: str = "") -> None:
     """T-242: script gates for deck number rows (bounds, combined labels, empty basis, untied values).
 
     T-242 r4: a junk ordinal (an annual-report/AGM edition, a celebration slogan, an appointment term) is dropped
@@ -6467,6 +6624,9 @@ def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> Non
     T-242 r5: a decorative number from a cover/divider/marketing slide (a serial, a title-period digit, an
     establishment year, a standard/model code, a brand digit) is dropped too, OCR or not
     (see :func:`deck_junk_reason`).
+    T-242 r7: scope backing (subsidiary/parent kept only for a different named entity heading; a named subsidiary
+    heading updates company->subsidiary with segment), growth basis words (H-o-H/Q-o-Q/Y-o-Y), and quarter cues
+    over bare FY titles.
     """
     basis = heading_basis(page_text, SECTION_BASIS_RE) if page_text else ""
     kept: list[dict[str, Any]] = []
@@ -6480,6 +6640,9 @@ def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "") -> Non
         if basis and not norm_space(row.get("basis")):
             row["basis"] = basis
             row["basis_source"] = "page_heading"
+        _deck_scope_update(row, page_text, company)
+        _deck_growth_basis_update(row, page_text)
+        _deck_period_quarter_update(row, page_text, deck_asof)
         if str(row.get("status") or "") != "verified":
             continue
         reason = deck_bound_reason(row)
@@ -6523,7 +6686,7 @@ def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2:
                        page_text: str = "", company: str = "", previous_text: str = "",
                        report_fy: str = "", has_consolidated: bool = False,
                        stats: dict[str, Any] | None = None, previous_page_text: str = "",
-                       store_db: str = "", doc_key: str = "") -> None:
+                       store_db: str = "", doc_key: str = "", deck_asof: str = "") -> None:
     """T-242: the number gates that depend on the document type (a call number, an AR statement line, an AR row, a deck row, a results row).
 
     ``previous_text`` is the page before this one, for the AR row gates' carried basis and the results rows'
@@ -6538,7 +6701,7 @@ def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2:
         apply_ar_row_gates(rows, page_text, company, previous_text, report_fy=report_fy,
                            has_consolidated=has_consolidated)
     elif doc_type == "deck":
-        apply_deck_row_gates(rows, page_text)
+        apply_deck_row_gates(rows, page_text, company=company, deck_asof=deck_asof)
     elif doc_type == "results":
         doc_note, doc_dual_statement, doc_standalone_only = (None, False, False)
         if store_db and doc_key:
@@ -8350,7 +8513,7 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                                         transcript_v2=transcript and transcript_v2_mode(),
                                         deck_guards=meta.get("doc_type") == "deck")
     own_name = next((full for sym, full in (companies or {}).values() if sym == meta["symbol"]), "")
-    if not own_name and meta.get("doc_type") in ("annual_report", "results"):
+    if not own_name and meta.get("doc_type") in ("annual_report", "results", "deck"):
         own_name = _store_company_name(store_db, meta["symbol"])
     doc_type = str(meta.get("doc_type") or "")
     prev_txt = previous_pages_text(store_db, doc_key, page) if doc_type == "results" \
@@ -8363,7 +8526,8 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                        if meta.get("doc_type") == "annual_report" else False,
                        previous_page_text=page_text_of(store_db, doc_key, page - 1)
                        if doc_type == "results" else "",
-                       store_db=str(store_db) if doc_type == "results" else "", doc_key=str(doc_key))
+                       store_db=str(store_db) if doc_type == "results" else "", doc_key=str(doc_key),
+                       deck_asof=deck_period(store_db, doc_key, check_text) if doc_type == "deck" else "")
     if text_source:                     # T-242: a jumbled deck layer read as such, not as a clean text layer
         for row in result["rows"]:
             if row.get("text_source") == "text_layer":
@@ -9157,7 +9321,9 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                                             if row.get("basis_source") == "previous_page_heading")
         elif deck_page:
             before_deck = list(updated)
-            apply_deck_row_gates(updated, raw_text)
+            apply_deck_row_gates(updated, raw_text,
+                                 company=company_names.get(store_symbol.get(store_db, ""), ""),
+                                 deck_asof=deck_asof)
             for row in before_deck:
                 if all(row is not kept_row for kept_row in updated):
                     con.execute("DELETE FROM observation WHERE observation_id=?", (int(row["observation_id"]),))
@@ -9209,14 +9375,16 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     stats["downgraded"] += 1
             con.execute("UPDATE observation SET measure=?, printed_label=?, geography=?, series_id=?, unit=?, "
                         "unit_family=?, scale=?, value_kind=?, is_total=?, period=?, period_kind=?, period_source=?, "
-                        "basis=?, basis_source=?, series_kind=?, adjusted=?, stage=?, entity_scope=?, customer=?, "
-                        "text_source=?, status=?, status_reason=? WHERE observation_id=?",
+                        "basis=?, basis_source=?, series_kind=?, adjusted=?, stage=?, entity_scope=?, segment=?, "
+                        "customer=?, text_source=?, new_definition=?, new_driver_node=?, status=?, status_reason=? "
+                        "WHERE observation_id=?",
                         (row["measure"], row["printed_label"], row["geography"], row["series_id"], row["unit"],
                          row["unit_family"], row["scale"], row.get("value_kind") or "",
                          1 if row.get("_is_total") else 0, row["period"],
                          row["period_kind"], row["period_source"], row["basis"], row.get("basis_source") or "",
                          row["series_kind"], row["adjusted"], row["stage"], row["entity_scope"],
-                         row.get("customer") or "", row.get("text_source") or "", status, reason,
+                         row.get("segment") or "", row.get("customer") or "", row.get("text_source") or "",
+                         row.get("new_definition") or "", row.get("new_driver_node") or "", status, reason,
                          row["observation_id"]))
             stats["changed"] += 1
             if (row.get("text_source") or "") == "ocr":

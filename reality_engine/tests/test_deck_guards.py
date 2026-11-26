@@ -643,3 +643,75 @@ def test_ocr_grade1_rows_are_dropped_and_kept_rows_survive_in_build():
     assert [r["measure"] for r in rows] == ["revenue.value"], rows
     assert rows[0]["status"] == "verified", rows[0]["status_reason"]
 
+
+# ------------------------------------------- T-242 r7: scope backing, growth basis words, quarter-vs-year period
+
+
+def test_deck_scope_backing_resets_own_statement_and_sets_named_subsidiary():
+    # ANURAS id 28: own company + Consolidated heading resets subsidiary -> company
+    anuras = _deck_row(measure="ebit", printed_label="EBIT", value=1189.0, value_text="1,189",
+                       unit="Rs Mn", period="Q1FY27", basis="consolidated", entity_scope="subsidiary")
+    anuras_page = "Anupam Rasayan India Limited |\nConsolidated Quarterly Profit & Loss Statement\nEBIT 1,189"
+    # BAJFINANCE id 26: subsidiary slide heading sets company -> subsidiary with segment = name, keeps verified
+    bajfin = _deck_row(measure="finance_cost", printed_label="Interest expenses", value=385.0, value_text="385",
+                       unit="Rs Cr", period="H1 FY27", entity_scope="company", segment="")
+    bajfin_page = "Financial summary – Bajaj Financial Securities\nInterest expenses 385"
+    # Keep-case: real named-subsidiary table keeps subsidiary
+    named_sub = _deck_row(measure="NEW:embedded_value", printed_label="EV", value=2677.0, value_text="2,677",
+                          unit="USD MM", period="FY26", entity_scope="subsidiary", segment="Bajaj Life",
+                          series_title="Bajaj Life – Embedded Value & ROEV")
+    obs.apply_number_gates([anuras], "deck", page_text=anuras_page, company="Anupam Rasayan India Limited")
+    obs.apply_number_gates([bajfin], "deck", page_text=bajfin_page, company="Bajaj Finance Limited")
+    obs.apply_number_gates([named_sub], "deck", page_text="Bajaj Life – Embedded Value & ROEV\nEV 2,677",
+                           company="Bajaj Finserv Limited")
+    assert anuras["entity_scope"] == "company" and anuras["status"] == "verified"
+    assert (bajfin["entity_scope"], bajfin["segment"], bajfin["status"]) == (
+        "subsidiary", "Bajaj Financial Securities", "verified")
+    assert (named_sub["entity_scope"], named_sub["segment"], named_sub["status"]) == (
+        "subsidiary", "Bajaj Life", "verified")
+
+
+def test_deck_growth_basis_words_rewrite_hoh_qoq_yoy_and_keep_yoy():
+    hoh = _deck_row(measure="finance_cost_growth_qoq", printed_label="Interest expenses", value=93.0,
+                    value_text="93%", unit="%", period="H1 FY27")
+    hoh_page = "Q2 FY27 Q2 FY26 Y-o-Y H1 FY27 H1 FY26 H-o-H\nInterest expenses 206 110 87% 385 200 93%"
+    qoq = _deck_row(measure="revenue_growth_yoy", printed_label="Revenue growth Q-o-Q", value=5.0,
+                    value_text="5%", unit="%", period="Q2 FY27")
+    yoy = _deck_row(measure="revenue_growth_qoq", printed_label="Revenue growth Y-o-Y", value=12.0,
+                    value_text="12%", unit="%", period="Q2 FY27")
+    kept_yoy = _deck_row(measure="revenue_growth_yoy", printed_label="Gross Revenues", value=-6.0,
+                         value_text="(6%)", unit="%", period="FY26")
+    obs.apply_number_gates([hoh], "deck", page_text=hoh_page)
+    obs.apply_number_gates([qoq], "deck", page_text="Revenue growth Q-o-Q 5%")
+    obs.apply_number_gates([yoy], "deck", page_text="Revenue growth Y-o-Y 12%")
+    obs.apply_number_gates([kept_yoy], "deck", page_text="FY26 FY25 Y-o-Y\nGross Revenues 10,333 10,966 (6%)")
+    assert hoh["measure"] == "NEW:finance_cost_growth_hoh" and hoh["status"] == "verified"
+    assert qoq["measure"] == "revenue_growth_qoq"
+    assert yoy["measure"] == "revenue_growth_yoy"
+    assert kept_yoy["measure"] == "revenue_growth_yoy" and kept_yoy["status"] == "verified"
+
+
+def test_deck_quarter_cue_beats_bare_fy_and_keeps_full_year_fy27():
+    # BMW id 25: "during the quarter" / "corresponding quarter" takes Q1 FY27 from deck_asof (or gates if unknown)
+    bmw_page = ("Management Commentary\nWe are pleased to report a robust start to FY27.\n"
+                "Profit after tax grew 25.8% year-on-year to ₹1,912 lakh, with a PAT margin of 10.8%, "
+                "expanding 92 bps over the corresponding quarter of the previous year.\n"
+                "Our performance during the quarter was supported by downstream capacities.\n"
+                "Bokaro is progressing well, with revenue generation expected to commence in Q2 FY27.")
+    bmw = _deck_row(measure="pat_margin", printed_label="PAT margin of 10.8%", value=10.8,
+                    value_text="10.8%", unit="%", period="FY27")
+    bmw_unresolved = dict(bmw)
+    q1_explicit = _deck_row(measure="pat_margin", printed_label="Q1 PAT margin", value=11.2,
+                            value_text="11.2%", unit="%", period="FY27")
+    full_year = _deck_row(measure="NEW:ebitda_guidance_range", printed_label="EBITDA guidance up ₹1,000 Cr to",
+                          value=26000.0, value_text="₹26,000-₹27,000 Cr", unit="Cr", period="FY27")
+    obs.apply_number_gates([bmw], "deck", page_text=bmw_page, deck_asof="Q1 FY27")
+    obs.apply_number_gates([bmw_unresolved], "deck", page_text=bmw_page)
+    obs.apply_number_gates([q1_explicit], "deck", page_text="FY27 Highlights\nQ1 PAT margin 11.2%")
+    obs.apply_number_gates([full_year], "deck",
+                           page_text="Q2 FY27 growth. Raises FY27 guidance: EBITDA guidance up ₹1,000 Cr to ₹26,000-₹27,000 Cr")
+    assert bmw["period"] == "Q1 FY27" and bmw["status"] == "verified"
+    assert bmw_unresolved["status"] == "unverified" and "deck_quarter_not_fy" in bmw_unresolved["status_reason"]
+    assert q1_explicit["period"] == "Q1 FY27" and q1_explicit["status"] == "verified"
+    assert full_year["period"] == "FY27" and full_year["status"] == "verified"
+
