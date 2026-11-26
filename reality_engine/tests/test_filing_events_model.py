@@ -665,3 +665,475 @@ def test_fold_same_raise_keeps_quantified_allotted_twin() -> None:
     kept = fe._fold_same_raise([r1, r2], amends)
     assert len(kept) == 1 and kept[0]["doc_key"] == "d2" and kept[0]["amount_inr_cr"] == 350.0
 
+
+# ---- T-242 model-first r2 (fresh8 W/J/P kinds + counter-tests) --------------------------------------------
+@pytest.mark.parametrize("label,title,pages,reply_kw", [
+    (
+        "other_than_cash_p4",
+        "Results of postal ballot",
+        {1: "Sub: Results of postal ballot.", 4: "1- Approval for issuance of 1,86,07,969 equity shares of the company on preferential basis for consideration other than cash."},
+        {"is_event": True, "event_type": "fund_raise", "stage": "approved_shareholders", "instrument": "preferential", "shares": 18607969},
+    ),
+    (
+        "scheme_of_amalgamation",
+        "Allotment of equity shares to the shareholders of Transferor Company (QCIL) pursuant to the Scheme of Amalgamation",
+        {1: "Sub: Allotment of equity shares. Ref: Scheme of Amalgamation between Quality Care India Limited and Aster DM Healthcare Limited."},
+        {"is_event": True, "event_type": "fund_raise", "stage": "allotted", "instrument": "equity", "shares": 353551410},
+    ),
+    (
+        "mip_options_exercise",
+        "Company has allotted 22,040 equity shares pursuant to TVS SCS Management Incentive Plan II (MIP II)",
+        {1: "The Company has allotted 22,040 equity shares of INR 1/- each pursuant to exercise of options under TVS SCS Management Incentive Plan II, 2018."},
+        {"is_event": True, "event_type": "fund_raise", "stage": "allotted", "instrument": "equity", "shares": 22040},
+    ),
+    (
+        "subsidiary_drhp_ipo_ofs",
+        "Please refer the attachment.",
+        {1: "NLC India Renewables Limited (NIRL), a wholly owned subsidiary Company of NLC India Limited, has filed the Draft Red Herring Prospectus (DRHP) pertaining to the proposed Initial Public Offer (IPO) of equity shares of NIRL comprising a Fresh Issue aggregating up to Rs. 33,000 Million and an Offer for Sale (OFS) up to 10,00,00,000 equity shares."},
+        {"is_event": True, "event_type": "fund_raise", "stage": "filed_offer_doc", "instrument": "ipo",
+         "amounts": [{"value_text": "Rs. 33,000 Million", "number": 33000, "unit": "million", "currency": "INR", "role": "total_issue"}]},
+    ),
+])
+def test_r2_step1_not_a_fund_raise_skipped(label: str, title: str, pages: dict[int, str], reply_kw: dict[str, Any]) -> None:
+    doc = _doc(title, pages=pages, doc_key=f"fr-{label}")
+    skips: list[dict[str, Any]] = []
+    rows = fe.model_rows(doc, ["fund_raise"], _reply(**reply_kw), skips_out=skips)
+    assert rows == []
+    assert len(skips) == 1 and skips[0]["reason"]
+
+
+def test_r2_step1_counter_cash_preferential_and_multi_item_board_stay() -> None:
+    cash_doc = _doc(
+        "Outcome of Board Meeting",
+        "The Board approved issuance of 13,00,000 equity shares on a preferential issue basis for cash consideration aggregating up to Rs. 72,15,00,000.",
+    )
+    rows = fe.model_rows(
+        cash_doc, ["fund_raise"],
+        _reply(
+            event_type="fund_raise", stage="approved_board", instrument="preferential",
+            amounts=[{"value_text": "Rs. 72,15,00,000", "number": 721500000, "unit": "unit", "currency": "INR", "role": "total_issue"}],
+            shares=1300000,
+        ),
+    )
+    assert len(rows) == 1 and rows[0]["amount_inr_cr"] == pytest.approx(72.15)
+
+    # Multi-item board outcome (cash warrant conversion + separate scheme swap ratio item on page 3) stays
+    multi_doc = _doc(
+        "Outcome of the Board Meeting held on August 12, 2024",
+        pages={
+            1: "2. Allotment of 3,53,761 Equity Shares pursuant to conversion of warrants. The Company has received Rs. 2,57,36,112.75/-.",
+            3: "Pursuant to revision in Valuation Report, the share swap ratio has been changed from 124 to 120.",
+        },
+    )
+    m_rows = fe.model_rows(
+        multi_doc, ["fund_raise"],
+        _reply(
+            event_type="fund_raise", stage="allotted", instrument="equity",
+            amounts=[{"value_text": "Rs. 2,57,36,112.75/-", "number": 25736112.75, "unit": "unit", "currency": "INR", "role": "total_issue"}],
+            shares=353761, price_per_share=72.75,
+        ),
+    )
+    assert len(m_rows) == 1 and m_rows[0]["amount_inr_cr"] == pytest.approx(2.5736)
+
+
+def test_r2_step2_board_intimation_skipped_and_counter_egm_notice_stays() -> None:
+    bm1 = _doc(
+        "Board Meeting intimation",
+        "Pursuant to Regulations 29 and 50 of SEBI LODR, the Board Meeting of Uno Minda Limited will be held on Monday, September 14, 2026, in which it may, inter-alia, consider and approve the raising of funds through issue of Listed Non-Convertible Debentures.",
+        doc_key="bm-1",
+    )
+    bm2 = _doc(
+        "Intimation of Forthcoming Board Meeting- 27/11/2024",
+        "A meeting of the Board of Directors of the company has been scheduled to be held on Wednesday, 27th day of November, 2024 to transact: 1. To consider & approve the allotment of 100 equity shares pursuant to approval obtained from shareholders in EGM held on 12th November, 2024.",
+        doc_key="bm-2",
+    )
+    for d in (bm1, bm2):
+        skips: list[dict[str, Any]] = []
+        rows = fe.model_rows(
+            d, ["fund_raise"],
+            _reply(event_type="fund_raise", stage="approved_board", instrument="preferential"),
+            skips_out=skips,
+        )
+        assert rows == []
+        assert len(skips) == 1 and skips[0]["stage"] == "intimation"
+
+    # Counter: Regulation 29(1)(d) EGM notice (shareholders' meeting) stays
+    egm = _doc(
+        "Intimation under regulation 29(1)(d) of SEBI LODR",
+        "Notice of Extra-Ordinary General Meeting ('EGM'): the EGM of the Members of the Company will be held on June 25, 2025 to consider and approve issuance of 14,770,100 equity shares for INR 3,849,088,060.",
+    )
+    e_rows = fe.model_rows(
+        egm, ["fund_raise"],
+        _reply(
+            event_type="fund_raise", stage="filed_offer_doc", instrument="preferential",
+            amounts=[{"value_text": "INR 3,849,088,060", "number": 3849088060, "unit": "unit", "currency": "INR", "role": "total_issue"}],
+            shares=14770100,
+        ),
+    )
+    assert len(e_rows) == 1 and e_rows[0]["amount_inr_cr"] == pytest.approx(384.9088)
+
+
+def test_r2_step3_amounts_unit_legs_price_shares_boilerplate_and_computed() -> None:
+    # 3(a) parenthetical "(Indian Rupees Three Billion ...)" must not multiply full rupees by 100; >1,00,000 cr refused
+    vssl = _doc(
+        "Notice of EGM",
+        "Issue of 14,770,100 equity shares for an aggregate amount of INR 3,849,088,060 (Indian Rupees Three Billion Eight Hundred Forty Nine Million Eighty Eight Thousand and Sixty only).",
+    )
+    r_vssl = fe.model_rows(
+        vssl, ["fund_raise"],
+        _reply(
+            event_type="fund_raise", stage="filed_offer_doc", instrument="preferential",
+            amounts=[{"value_text": "INR 3,849,088,060 (Indian Rupees Three Billion Eight Hundred Forty Nine Million Eighty Eight Thousand and Sixty only)",
+                      "number": 3849088060, "unit": "unit", "currency": "INR", "role": "total_issue"}],
+        ),
+    )[0]
+    assert r_vssl["amount_inr_cr"] == pytest.approx(384.9088)
+
+    huge = _doc("Huge", "Raising Rs. 2,50,000 Crore.")
+    r_huge = fe.model_rows(
+        huge, ["fund_raise"],
+        _reply(
+            event_type="fund_raise", stage="approved_board", instrument="other",
+            amounts=[{"value_text": "Rs. 2,50,000 Crore", "number": 250000, "unit": "crore", "currency": "INR", "role": "total_issue"}],
+        ),
+    )[0]
+    assert r_huge["status"] == "quarantined" and r_huge["amount_inr_cr"] is None
+
+    # 3(b) same-meeting legs across multiple events AND multiple total_issue inside one event; no double-count on combined total
+    sejal_3legs = _doc(
+        "Outcome of Board Meeting",
+        "1. Equity shares aggregating up to Rs. 21,17,61,500. 2. Warrants aggregating up to Rs. 10,84,88,500/-. 3. QIP not exceeding Rs. 100 Crores.",
+    )
+    r_legs = fe.model_rows(
+        sejal_3legs, ["fund_raise"],
+        json.dumps({"events": [
+            {"is_event": True, "event_type": "fund_raise", "stage": "approved_board", "instrument": "preferential", "shares": 347150,
+             "amounts": [{"value_text": "Rs. 21,17,61,500", "number": 211761500, "unit": "unit", "currency": "INR", "role": "total_issue"}]},
+            {"is_event": True, "event_type": "fund_raise", "stage": "approved_board", "instrument": "warrants", "shares": 177750,
+             "amounts": [{"value_text": "Rs. 10,84,88,500/-", "number": 108488500, "unit": "unit", "currency": "INR", "role": "total_issue"}]},
+            {"is_event": True, "event_type": "fund_raise", "stage": "approved_board", "instrument": "qip",
+             "amounts": [{"value_text": "Rs. 100 Crores", "number": 100, "unit": "crore", "currency": "INR", "role": "total_issue"}]},
+        ]}),
+    )
+    assert len(r_legs) == 1
+    assert r_legs[0]["amount_inr_cr"] == pytest.approx(132.025, rel=1e-4)
+    assert r_legs[0]["instrument"] == "mixed"
+    assert "sum of printed legs" in r_legs[0]["detail"]
+
+    bhag_2totals = _doc(
+        "Preferential Issue",
+        "Annexure A: Issue of 12,06,895 equity shares aggregating Rs.41,99,99,460/-. Annexure B: Issue of 2,94,539 equity shares aggregating Rs.10,24,99,572/-.",
+    )
+    r_bhag = fe.model_rows(
+        bhag_2totals, ["fund_raise"],
+        _reply(
+            event_type="fund_raise", stage="approved_board", instrument="preferential",
+            amounts=[
+                {"value_text": "Rs.41,99,99,460/-", "number": 419999460, "unit": "unit", "currency": "INR", "role": "total_issue"},
+                {"value_text": "Rs.10,24,99,572/-", "number": 102499572, "unit": "unit", "currency": "INR", "role": "total_issue"},
+            ],
+            shares=1501434,
+        ),
+    )
+    assert len(r_bhag) == 1 and r_bhag[0]["amount_inr_cr"] == pytest.approx(52.2499, rel=1e-4)
+
+    # Counter 3(b): two events sharing the SAME combined total_issue must not double count
+    combined = _doc("Allotment", "Allotment of 81,77,068 shares and 1,11,70,000 warrants aggregating ₹905,44,27,824/-.")
+    r_comb = fe.model_rows(
+        combined, ["fund_raise"],
+        json.dumps({"events": [
+            {"is_event": True, "event_type": "fund_raise", "stage": "allotted", "instrument": "preferential", "shares": 8177068,
+             "amounts": [{"value_text": "₹905,44,27,824/-", "number": 9054427824, "unit": "unit", "currency": "INR", "role": "total_issue"}]},
+            {"is_event": True, "event_type": "fund_raise", "stage": "allotted", "instrument": "warrants", "shares": 11170000,
+             "amounts": [{"value_text": "₹905,44,27,824/-", "number": 9054427824, "unit": "unit", "currency": "INR", "role": "total_issue"}]},
+        ]}),
+    )
+    assert len(r_comb) == 1 and r_comb[0]["amount_inr_cr"] == pytest.approx(905.4428, rel=1e-4)
+
+    # 3(c) + 3(f): face + premium -> issue price = 207, computed amount = 650000 * 207 / 1e7 = 13.455 cr
+    modinatur = _doc(
+        "Trading Approval",
+        "Trading of 6,50,000 Equity Shares of Rs. 10.00/- each issued at a premium of Rs. 197.00/- per share.",
+    )
+    r_modi = fe.model_rows(
+        modinatur, ["fund_raise"],
+        _reply(event_type="fund_raise", stage="in_principle", instrument="preferential", shares=650000, price_per_share=197.0),
+    )[0]
+    assert r_modi["price_per_share"] == pytest.approx(207.0)
+    assert r_modi["amount_inr_cr"] == pytest.approx(13.455)
+    assert r_modi["method"] == "computed" and r_modi["value_text"] is None
+    assert "650,000 x Rs 207 / 1e7" in r_modi["detail"]
+
+    # Counter 3(c) + 3(d): "including premium" keeps issue price, Indian comma 10x slip on shares fixed, printed total keeps method='model'
+    hfcl = _doc(
+        "Allotment of Warrants",
+        "Upon receipt of ₹138.75 crore, the Committee allotted 7,50,00,000 (Seven Crore Fifty Lakh) Warrants at ₹74/- per warrant.",
+    )
+    r_hfcl = fe.model_rows(
+        hfcl, ["fund_raise"],
+        _reply(
+            event_type="fund_raise", stage="allotted", instrument="warrants",
+            amounts=[{"value_text": "₹138.75 crore", "number": 138.75, "unit": "crore", "currency": "INR", "role": "total_issue"}],
+            shares=750000000, price_per_share=74.0,
+        ),
+    )[0]
+    assert r_hfcl["shares"] == pytest.approx(75000000.0)
+    assert r_hfcl["amount_inr_cr"] == pytest.approx(138.75) and r_hfcl["method"] == "model"
+
+    # 3(e): "About <Company>:" boilerplate amount rejected
+    pdsl = _doc(
+        "Press Release",
+        pages={
+            1: "Press Release titled Qualified Institutions Placement of the Company.",
+            2: "PDS Successfully Raises crore (~$51mn) Through A QIP.\nAbout PDS Limited: (www.pdsltd.com)\nPDS engages dedicated talent and 370cr in FY24.",
+        },
+    )
+    r_pdsl = fe.model_rows(
+        pdsl, ["fund_raise"],
+        _reply(
+            event_type="fund_raise", stage="allotted", instrument="qip",
+            amounts=[{"value_text": "370cr", "number": 370, "unit": "crore", "currency": "INR", "role": "total_issue"}],
+        ),
+    )[0]
+    assert r_pdsl["amount_inr_cr"] is None and r_pdsl["value_text"] is None
+
+
+def test_r2_step4_duplicates_same_text_and_revised_outcome() -> None:
+    amends: list[dict[str, Any]] = []
+    same_body = "Proceedings of 25th Annual General Meeting held on September 27, 2024: Issue of Convertible Equity Warrants. " * 3
+    r1 = {
+        "symbol": "STEELXIND", "kind": "fund_raise", "doc_key": "d-agm-1", "filing_date": "2024-09-27",
+        "known_at": "2024-09-27T19:16:26", "raise_stage": "approved_shareholders", "shares": None,
+        "amount_inr_cr": None, "amount_usd_mn": None, "title": "Proceedings of 25th AGM", "_text_full": same_body,
+    }
+    r2 = {
+        "symbol": "STEELXIND", "kind": "fund_raise", "doc_key": "d-agm-2", "filing_date": "2024-09-27",
+        "known_at": "2024-09-27T20:06:50", "raise_stage": "approved_shareholders", "shares": None,
+        "amount_inr_cr": None, "amount_usd_mn": None, "title": "Proceeding of 25th AGM", "_text_full": same_body,
+    }
+    kept_same = fe._fold_same_raise([r1, r2], amends)
+    assert len(kept_same) == 1 and len(amends) == 1
+
+    # Same-day "Revised outcome" supersedes original
+    amends2: list[dict[str, Any]] = []
+    orig = {
+        "symbol": "SEJALLTD", "kind": "fund_raise", "doc_key": "d-orig", "filing_date": "2025-09-15",
+        "known_at": "2025-09-15T11:59:43", "raise_stage": "approved_board", "shares": 400000.0,
+        "amount_inr_cr": None, "amount_usd_mn": None, "title": "Outcome of Board Meeting", "_text_full": "orig",
+    }
+    rev = {
+        "symbol": "SEJALLTD", "kind": "fund_raise", "doc_key": "d-rev", "filing_date": "2025-09-15",
+        "known_at": "2025-09-15T21:20:19", "raise_stage": "approved_board", "shares": 1300000.0,
+        "amount_inr_cr": 94.35, "amount_usd_mn": None, "title": "Revised outcome", "_text_full": "revised",
+    }
+    kept_rev = fe._fold_same_raise([orig, rev], amends2)
+    assert len(kept_rev) == 1 and kept_rev[0]["doc_key"] == "d-rev"
+    assert amends2[0]["doc_key"] == "d-orig" and amends2[0]["amends"] == "d-rev"
+
+    # Counter: different-day approval -> allotment stays 2 rows
+    amends3: list[dict[str, Any]] = []
+    appr = {
+        "symbol": "ACME", "kind": "fund_raise", "doc_key": "d-appr", "filing_date": "2025-09-15",
+        "known_at": "2025-09-15T11:00:00", "raise_stage": "approved_board", "shares": 1000000.0,
+        "amount_inr_cr": 100.0, "amount_usd_mn": None, "title": "Outcome of Board Meeting", "_text_full": "board",
+    }
+    allot = {
+        "symbol": "ACME", "kind": "fund_raise", "doc_key": "d-allot", "filing_date": "2025-10-15",
+        "known_at": "2025-10-15T15:00:00", "raise_stage": "allotted", "shares": 1000000.0,
+        "amount_inr_cr": 100.0, "amount_usd_mn": None, "title": "Allotment of shares", "_text_full": "allotted",
+    }
+    assert len(fe._fold_same_raise([appr, allot], amends3)) == 2
+
+
+def test_r2_step5_order_win_capex_bg_repeat_band_and_inr_eqv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # 5(a) Capex/greenfield press release mentioning order as background -> skipped
+    capex_pr = _doc(
+        "Press release titled \"Uno Minda to setup greenfield plant for four wheeler EV Powertrain products\"",
+        "Uno Minda today announced that its Board has approved a new greenfield plant. Uno Minda has already secured e-axle order from a key anchor customer. Project cost is Rs 423 Crore.",
+        doc_key="ow-capex",
+    )
+    skips_a: list[dict[str, Any]] = []
+    assert fe.model_rows(capex_pr, ["order_win"], _reply(event_type="order_win", stage="received"), skips_out=skips_a) == []
+    assert len(skips_a) == 1
+
+    # 5(b) Repeat/update "further to our disclosure dated ..." with no new value -> skipped + linked in build()
+    earlier = _doc(
+        "Letter of award received from Oil and Natural Gas Corporation Limited",
+        "Deep Industries Limited received LOA worth Rs. 1,402 Cr from ONGC.",
+        doc_key="ow-orig", symbol="DEEPINDS", filing_date="2024-09-07", known_at="2024-09-07T15:38:49",
+    )
+    repeat = _doc(
+        "Update with respect to Letter of Award received from Oil and Natural Gas Corporation Limited",
+        "This is further to our disclosure dated September 07, 2024, regarding receipt of Letter of Award from ONGC. The details has already been disclosed in the intimation dated September 07, 2024.",
+        doc_key="ow-rep", symbol="DEEPINDS", filing_date="2025-04-03", known_at="2025-04-03T12:00:00",
+    )
+    monkeypatch.setattr(fe, "load_docs", lambda store: [dict(earlier), dict(repeat)])
+
+    class FakeClient:
+        def __init__(self, *args: Any, **kwargs: Any) -> None: pass
+        def retry_after(self) -> float: return 0.0
+        def chat(self, prompt: str) -> tuple[int, str, tuple[int, int]]:
+            if "1,402 Cr" in prompt:
+                return 200, _reply(
+                    event_type="order_win", stage="loa", customer="ONGC",
+                    amounts=[{"value_text": "Rs. 1,402 Cr", "number": 1402, "unit": "crore", "currency": "INR", "role": "order_size"}],
+                ), (5, 5)
+            return 200, _reply(event_type="order_win", stage="loa", customer="ONGC"), (5, 5)
+
+    monkeypatch.setattr(fe, "Client", FakeClient)
+    out_db = tmp_path / "ev.db"
+    fe.build(stores=["cXX"], use_model=True, workers=1, out=out_db, cache=tmp_path / "c.json")
+    con = sqlite3.connect(out_db)
+    ev_dks = [r[0] for r in con.execute("SELECT doc_key FROM event").fetchall()]
+    am_rows = con.execute("SELECT doc_key, amends FROM amend").fetchall()
+    con.close()
+    assert ev_dks == ["ow-orig"]
+    assert ("ow-rep", "ow-orig") in am_rows
+
+    # 5(c) Multi-order + band floor ("INR 300Cr+") -> 2 rows, amount_inr_cr=None, detail notes band floor
+    bajel = _doc(
+        "Press Release",
+        "Bajel Projects Secures an Ultra-Mega Order worth INR 400 Cr+ and a Mega Order worth INR 300Cr+ from POWERGRID.",
+    )
+    b_rows = fe.model_rows(
+        bajel, ["order_win"],
+        json.dumps({"events": [
+            {"is_event": True, "event_type": "order_win", "stage": "received", "customer": "POWERGRID",
+             "amounts": [{"value_text": "INR 400 Cr+", "number": 400, "unit": "crore", "currency": "INR", "role": "order_size"}]},
+            {"is_event": True, "event_type": "order_win", "stage": "received", "customer": "POWERGRID",
+             "amounts": [{"value_text": "INR 300Cr+", "number": 300, "unit": "crore", "currency": "INR", "role": "order_size"}]},
+        ]}),
+    )
+    assert len(b_rows) == 2
+    assert all(r["amount_inr_cr"] is None and "band floor" in r["detail"] for r in b_rows)
+
+    # 5(d) INR equivalent beside foreign currency ("AED 27.6 Million equivalent to INR 71 Crores")
+    sejal_fx = _doc(
+        "Receipt of Order",
+        "Sejal Glass LLC has secured orders aggregating to approximately AED 27.6 Million equivalent to INR 71 Crores.",
+    )
+    r_fx = fe.model_rows(
+        sejal_fx, ["order_win"],
+        _reply(
+            event_type="order_win", stage="received",
+            amounts=[
+                {"value_text": "AED 27.6 Million", "number": 27.6, "unit": "million", "currency": "AED", "role": "order_size"},
+                {"value_text": "INR 71 Crores", "number": 71, "unit": "crore", "currency": "INR", "role": "other"},
+            ],
+        ),
+    )[0]
+    assert r_fx["amount_inr_cr"] == pytest.approx(71.0)
+    assert r_fx["value_text"] == "AED 27.6 Million"
+
+
+def test_r2_edge_regressions_kept_and_skipped() -> None:
+    """Regressions from first model_v2 pass: gloss words, non-IPO OFS, warrant conversion, past-EGM intimation, made-on date."""
+    # VASCONEQ #56: keep 'Crore' inside parenthetical gloss when leading number is small (660.79 < 100k)
+    vascon = _doc(
+        "Receipt of Order",
+        "Vascon Engineers Limited has received Letter of Award amounting to Rs. 660.79/- (Rupees Six Hundred & Sixty Crore and Seventy Nine Lakhs Only).",
+    )
+    v_rows = fe.model_rows(
+        vascon,
+        ["order_win"],
+        json.dumps({"events": [{
+            "is_event": True, "event_type": "order_win", "stage": "received", "customer": "Client",
+            "amounts": [{"value_text": "Rs. 660.79/- (Rupees Six Hundred & Sixty Crore and Seventy Nine Lakhs Only)",
+                         "number": 660.79, "unit": "crore", "currency": "INR", "role": "order_size"}],
+        }]}),
+    )
+    assert len(v_rows) == 1
+    assert v_rows[0]["amount_inr_cr"] == pytest.approx(660.79)
+
+    # NLCINDIA #10: NCD board outcome with Offer for Sale text in body stays kept
+    nlc = _doc(
+        "Outcome of Board Meeting - Raising of Funds through Non-Convertible Debentures",
+        "Sub: Outcome of Board Meeting.\nApproved raising of funds by issue of NCDs up to Rs. 1500 Crore.\n" + ("x " * 160) + "Item 6: Offer for Sale (OFS) update.",
+    )
+    n_rows = fe.model_rows(
+        nlc,
+        ["fund_raise"],
+        _reply(
+            event_type="fund_raise", instrument="ncd", stage="approved_board",
+            amounts=[{"value_text": "Rs. 1500 Crore", "number": 1500, "unit": "crore", "currency": "INR", "role": "total_issue"}],
+        ),
+    )
+    assert len(n_rows) == 1
+    assert n_rows[0]["amount_inr_cr"] == pytest.approx(1500.0)
+
+    # KAMATHOTEL #39: exercise of option of conversion of warrants past char 1200 on p1 + Item 5 share swap on p2 stays kept
+    kamat = _doc(
+        "We are attaching herewith, an Outcome of the Board Meeting held on August 12, 2024",
+        pages={
+            1: ("Sub.: Outcome of the Board Meeting. 1. Unaudited Financial Results approved. " + ("x " * 650)
+                + "2. Allotment of 3,53,761 Equity Shares pursuant to conversion of warrants allotted on preferential basis. "
+                + "The Company has received Rs. 2,57,36,112.75/- warrant exercise price."),
+            2: ("5. Updates on Proposed Scheme of Arrangement: share swap ratio has been changed from 124 to 120. "
+                "Excluding potential exercise of option of conversion of outstanding warrants."),
+        },
+    )
+    k_rows = fe.model_rows(
+        kamat,
+        ["fund_raise"],
+        _reply(
+            event_type="fund_raise", instrument="warrant", stage="allotted",
+            shares=353761, price_per_share=72.75,
+            amounts=[{"value_text": "Rs. 2,57,36,112.75/-", "number": 25736112.75, "unit": "unit", "currency": "INR", "role": "total_issue"}],
+        ),
+    )
+    assert len(k_rows) == 1
+    assert k_rows[0]["amount_inr_cr"] == pytest.approx(2.5736)
+
+    # BETA #49: Forthcoming Board Meeting citing past EGM is skipped as intimation
+    beta_int = _doc(
+        "Board Meeting Intimation - Forthcoming Board Meeting",
+        "Sub: Intimation of Forthcoming Board Meeting to consider preferential issue pursuant to approval at Extra Ordinary General Meeting held on 12th November, 2024.",
+    )
+    b_skips: list[dict[str, Any]] = []
+    b_rows = fe.model_rows(
+        beta_int,
+        ["fund_raise"],
+        _reply(
+            event_type="fund_raise", instrument="preferential", stage="approved_board",
+            amounts=[{"value_text": "Rs. 100 Crore", "number": 100, "unit": "crore", "currency": "INR", "role": "total_issue"}],
+        ),
+        skips_out=b_skips,
+    )
+    assert b_rows == []
+    assert len(b_skips) == 1 and b_skips[0]["stage"] == "intimation"
+
+    # RUSTOMJEE #39: repeat update referring to disclosure 'made on July 1, 2025' is skipped with _ref_date=2025-07-01
+    rustom_clar = _doc(
+        "Clarification on announcement made on July 1, 2025",
+        "Further to our disclosure dated made on July 1, 2025 regarding the order, we clarify the typographical error. Earlier communication dated 30/06/2025 noted.",
+    )
+    r_skips: list[dict[str, Any]] = []
+    r_rows = fe.model_rows(
+        rustom_clar,
+        ["order_win"],
+        _reply(event_type="order_win", stage="received", customer="Client", amounts=[]),
+        skips_out=r_skips,
+    )
+    assert r_rows == []
+    assert len(r_skips) == 1 and r_skips[0].get("_ref_date") == "2025-07-01"
+
+    # _fold_same_raise prefers printed value_text (method='model') over method='computed' twin
+    amends: list[dict[str, Any]] = []
+    comp_early = {
+        "symbol": "KRN", "kind": "fund_raise", "doc_key": "d-comp", "filing_date": "2025-08-01",
+        "known_at": "2025-08-01T10:00:00", "raise_stage": "allotted", "shares": 1000000.0,
+        "amount_inr_cr": 100.0, "amount_usd_mn": None, "method": "computed", "value_text": None,
+        "title": "Allotment", "_text_full": "allotment board",
+    }
+    printed_late = {
+        "symbol": "KRN", "kind": "fund_raise", "doc_key": "d-print", "filing_date": "2025-08-01",
+        "known_at": "2025-08-01T12:00:00", "raise_stage": "allotted", "shares": 1000000.0,
+        "amount_inr_cr": 100.0, "amount_usd_mn": None, "method": "model", "value_text": "Rs. 100 Crore",
+        "title": "Press Release - Allotment", "_text_full": "press release",
+    }
+    kept = fe._fold_same_raise([comp_early, printed_late], amends)
+    assert len(kept) == 1 and kept[0]["doc_key"] == "d-print"
+    assert amends[0]["doc_key"] == "d-comp" and amends[0]["amends"] == "d-print"
+
+
+
