@@ -1153,3 +1153,182 @@ def test_main_names_store_root_and_refuses_missing_store(tmp_path, monkeypatch, 
     assert rc == 2
     assert out.out.splitlines()[0].startswith(f"store root: {tmp_path}")
     assert "c999" in out.err
+
+
+def test_r3_fund_raise_w1_w2_w3_p_j_and_same_day_counters(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """T-242 r3 fund_raise: deduplicate repeated leg spans, keep multi-series tranches, price warrant conversions at
+    balance received, read pages past 4 / after empty opening pages, and fold same-day pointer/voting repeats."""
+    # W1(a): swap + cash where event 0 already holds both amounts and total shares (7,07,42,458) and event 1 repeats cash
+    swap_cash = _doc(
+        "Allotment of Equity Shares Pursuant to Preferential Issue",
+        "1. Allotment of 7,00,42,458 Equity Shares at INR 71.25 each aggregating to INR 499,05,25,132.50 for consideration other than cash. "
+        "2. Allotment of 7,00,000 Equity Shares at INR 71.25 each aggregating to INR 4,98,75,000/- for cash consideration. "
+        "Consequent to the aforesaid allotment of 7,07,42,458 Equity Shares, paid-up capital increased.",
+    )
+    r_sc = fe.model_rows(
+        swap_cash, ["fund_raise"],
+        json.dumps({"events": [
+            {"is_event": True, "event_type": "fund_raise", "stage": "allotted", "instrument": "preferential",
+             "shares": 70742458, "price_per_share": "INR 71.25",
+             "amounts": [
+                 {"value_text": "INR 499,05,25,132.50", "number": 4990525132.5, "unit": "unit", "currency": "INR", "role": "total_issue"},
+                 {"value_text": "INR 4,98,75,000/-", "number": 498750000.0, "unit": "unit", "currency": "INR", "role": "total_issue"},
+             ]},
+            {"is_event": True, "event_type": "fund_raise", "stage": "allotted", "instrument": "preferential",
+             "shares": 700000, "price_per_share": "INR 71.25",
+             "amounts": [
+                 {"value_text": "INR 4,98,75,000/-", "number": 498750000.0, "unit": "unit", "currency": "INR", "role": "total_issue"},
+             ]},
+        ]}),
+    )
+    assert len(r_sc) == 1
+    assert r_sc[0]["amount_inr_cr"] == pytest.approx(504.04, rel=1e-4)
+    assert r_sc[0]["shares"] == pytest.approx(70742458.0)
+
+    # W1(b): equity + warrants where event 0 carries both totals and event 1 repeats the warrant total
+    eq_war = _doc(
+        "Notice of Extraordinary General Meeting",
+        "Item 2: 17,55,182 equity shares at ₹290/- aggregating upto ₹50,90,02,780/-. "
+        "Item 3: 4,11,150 warrants at ₹290/- aggregating upto ₹11,92,33,500/-.",
+    )
+    r_ew = fe.model_rows(
+        eq_war, ["fund_raise"],
+        json.dumps({"events": [
+            {"is_event": True, "event_type": "fund_raise", "stage": "filed_offer_doc", "instrument": "preferential",
+             "shares": 1755182, "price_per_share": 290.0,
+             "amounts": [
+                 {"value_text": "₹50,90,02,780/-", "number": 509002780.0, "unit": "unit", "currency": "INR", "role": "total_issue"},
+                 {"value_text": "₹11,92,33,500/-", "number": 119233500.0, "unit": "unit", "currency": "INR", "role": "total_issue"},
+             ]},
+            {"is_event": True, "event_type": "fund_raise", "stage": "filed_offer_doc", "instrument": "warrants",
+             "shares": 411150, "price_per_share": 290.0,
+             "amounts": [
+                 {"value_text": "₹11,92,33,500/-", "number": 119233500.0, "unit": "unit", "currency": "INR", "role": "total_issue"},
+             ]},
+        ]}),
+    )
+    assert len(r_ew) == 1
+    assert r_ew[0]["amount_inr_cr"] == pytest.approx(62.8236, rel=1e-4)
+    assert r_ew[0]["shares"] == pytest.approx(2166332.0)
+
+    # W2: two distinct Series of equal printed tranche size (500 cr + 500 cr = 1000 cr)
+    ncd_2series = _doc(
+        "Allotment of 1,00,000 NCDs",
+        "(A) Allotment of 50,000 NCDs of face value ₹1,00,000/- each aggregating to ₹5,00,00,00,000/- (\"Series 1 Debentures\") "
+        "and (B) Allotment of 50,000 NCDs of face value ₹1,00,000/- each aggregating to ₹5,00,00,00,000/- (\"Series 2 Debentures\").",
+    )
+    r_ncd = fe.model_rows(
+        ncd_2series, ["fund_raise"],
+        _reply(
+            event_type="fund_raise", stage="allotted", instrument="ncd", shares=100000, price_per_share=100000.0,
+            amounts=[
+                {"value_text": "₹5,00,00,00,000/-", "number": 50000000000.0, "unit": "unit", "currency": "INR", "role": "tranche"},
+                {"value_text": "₹5,00,00,00,000/-", "number": 50000000000.0, "unit": "unit", "currency": "INR", "role": "tranche"},
+            ],
+        ),
+    )
+    assert len(r_ncd) == 1 and r_ncd[0]["amount_inr_cr"] == pytest.approx(1000.0)
+
+    # W3: warrant conversion stores balance received (65% = Rs 481 -> 847.5485 cr), never 100% (Rs 740 -> 1303.92 cr)
+    wconv = _doc(
+        "Outcome of Board Meeting",
+        "Allotment of 1,76,20,550 equity shares of face value Rs. 1 each pursuant to exercise and conversion of "
+        "1,76,20,550 convertible warrants against receipt of the balance subscription amount of Rs. 481 "
+        "(Rupees Four Hundred and Eighty-One) per warrant (i.e. 65% of the issue price of Rs. 740).",
+    )
+    r_wc = fe.model_rows(
+        wconv, ["fund_raise"],
+        _reply(
+            event_type="fund_raise", stage="allotted", instrument="equity", shares=17620550, price_per_share=740.0,
+            amounts=[{"value_text": "Rs. 740", "number": 740.0, "unit": "unit", "currency": "INR", "role": "other"}],
+        ),
+    )
+    assert len(r_wc) == 1
+    assert r_wc[0]["amount_inr_cr"] == pytest.approx(847.5485, rel=1e-4)
+    assert r_wc[0]["price_per_share"] == pytest.approx(481.0)
+
+    # Counter-test for W3: non-conversion rights allotment mentioning future balance calls still computes shares x issue price
+    rights = _doc(
+        "Allotment of shares via Rights Issue",
+        "Allotment of 30,85,17,476 partly paid-up equity shares at Rs. 32 per share (Rs. 16 paid on application and balance amount on calls).",
+    )
+    r_ri = fe.model_rows(
+        rights, ["fund_raise"],
+        _reply(event_type="fund_raise", stage="allotted", instrument="rights", shares=308517476, price_per_share=32.0, amounts=[]),
+    )
+    assert len(r_ri) == 1 and r_ri[0]["amount_inr_cr"] == pytest.approx(987.2559, rel=1e-4)
+
+    # P + J via build(): pages past 4, empty P1-P2, same-day pointer + voting-results folds, and distinct same-day stays 2
+    store_db = tmp_path / "c99.db"
+    con = sqlite3.connect(store_db)
+    con.executescript(
+        "CREATE TABLE company (name TEXT);"
+        "CREATE TABLE doc (doc_key TEXT, symbol TEXT, isin TEXT, doc_type TEXT, title TEXT, filing_date TEXT, known_at TEXT, pages INT);"
+        "CREATE TABLE doc_page (doc_key TEXT, page INT, text TEXT);"
+    )
+    con.execute("INSERT INTO company VALUES ('Test Corp Limited')")
+    docs_seed = [
+        ("d-pb", "PBCO", "INE000000001", "announcement", "Notice of Postal Ballot", "2026-02-24", "2026-02-24T10:00:00", 6,
+         {1: "Sub: Notice of Postal Ballot issued by the Company seeking shareholders' approval for raising of funds via QIP.", 2: "Notes", 3: "E-voting", 4: "Procedure",
+          5: "RESOLVED THAT consent of members be and is hereby accorded to issuance of Equity Shares through QIP for an aggregate amount not exceeding 100 Crore (Rupees One Hundred Crore only).",
+          6: "Explanatory statement."}),
+        ("d-empty", "EMPCO", "INE000000002", "announcement", "Outcome of Fund Raising Committee - Allotment", "2026-07-19", "2026-07-19T22:00:00", 6,
+         {1: "", 2: "", 3: "Allottee list Equity Shares allotted", 4: "List continued",
+          5: "Total 100%",
+          6: "RESOLVED THAT allotment of 86,80,555 equity shares at Rs. 1,440 per share, aggregating to ¥1,25,000 lakhs, is approved."}),
+        ("d-emp-close", "EMPCO", "INE000000002", "announcement", "Outcome of Fund Raising Committee", "2026-07-19", "2026-07-19T16:00:00", 1,
+         {1: "Approved closure of QIP and issue price of Rs. 1,440 for 86,80,555 Equity Shares."}),
+        ("d-39", "PTRCO", "INE000000003", "announcement", "Outcome of Board Meeting", "2026-06-18", "2026-06-18T14:48:00", 1,
+         {1: "REF/PTR/2026/39 Approved issue of 7,00,000 equity shares at Rs. 71.25 aggregating to Rs. 4,98,75,000/-."}),
+        ("d-40", "PTRCO", "INE000000003", "announcement", "Attached", "2026-06-18", "2026-06-18T14:52:00", 1,
+         {1: "REF/PTR/2026/40 Sub: General Announcement. The details have been disclosed vide letter REF/PTR/2026/39 dated June 18, 2026 regarding preferential issue."}),
+        ("d-vr", "VRCO", "INE000000004", "announcement", "Intimation regarding postal ballot result and Scrutinizer''s Report", "2026-03-28", "2026-03-28T17:03:00", 1,
+         {1: "Voting results and Scrutinizer''s Report: QIP fund raising resolution passed."}),
+        ("d-reg30", "VRCO", "INE000000004", "announcement", "Intimation under Regulation 30 of SEBI(LODR) Regulations,2015", "2026-03-28", "2026-03-28T17:11:00", 1,
+         {1: "Shareholders approved raising of funds through QIP via Postal Ballot."}),
+    ]
+    for dk, sym, isin, dt, title, fd, ka, npg, pmap in docs_seed:
+        con.execute("INSERT INTO doc VALUES (?,?,?,?,?,?,?,?)", (dk, sym, isin, dt, title, fd, ka, npg))
+        for pno, ptxt in pmap.items():
+            con.execute("INSERT INTO doc_page VALUES (?,?,?)", (dk, pno, ptxt))
+    con.commit()
+    con.close()
+
+    from reality_engine.research import driver_claims
+    monkeypatch.setattr(driver_claims, "STORE_ROOT", tmp_path)
+    monkeypatch.setattr(fe, "store_path", lambda s: store_db)
+
+    class FakeClient:
+        def __init__(self, *a: Any, **kw: Any) -> None: pass
+        def retry_after(self) -> float: return 0.0
+        def chat(self, prompt: str) -> tuple[int, str, tuple[int, int]]:
+            if "Notice of Postal Ballot" in prompt:
+                assert "not exceeding 100 Crore" in prompt
+                return 200, _reply(event_type="fund_raise", stage="filed_offer_doc", instrument="qip", amounts=[]), (5, 5)
+            if "1,25,000 lakhs" in prompt:
+                return 200, _reply(event_type="fund_raise", stage="allotted", instrument="qip", price_per_share=1440.0, amounts=[]), (5, 5)
+            if "closure of QIP" in prompt:
+                return 200, _reply(event_type="fund_raise", stage="approved_board", instrument="qip", shares=8680555, price_per_share=1440.0, amounts=[]), (5, 5)
+            if "4,98,75,000/-" in prompt:
+                return 200, _reply(
+                    event_type="fund_raise", stage="approved_board", instrument="preferential", shares=700000, price_per_share=71.25,
+                    amounts=[{"value_text": "Rs. 4,98,75,000/-", "number": 49875000, "unit": "unit", "currency": "INR", "role": "total_issue"}],
+                ), (5, 5)
+            if "vide letter REF/PTR/2026/39" in prompt:
+                return 200, _reply(event_type="fund_raise", stage="in_principle", instrument="preferential", amounts=[]), (5, 5)
+            return 200, _reply(event_type="fund_raise", stage="approved_shareholders", instrument="qip", amounts=[]), (5, 5)
+
+    monkeypatch.setattr(fe, "Client", FakeClient)
+    out_db = tmp_path / "out_r3.db"
+    fe.build(stores=["c99"], use_model=True, workers=1, out=out_db, cache=tmp_path / "cache.json")
+    out_con = sqlite3.connect(out_db)
+    out_con.row_factory = sqlite3.Row
+    ev_by_dk = {r["doc_key"]: dict(r) for r in out_con.execute("SELECT * FROM event").fetchall()}
+    am_by_dk = {r["doc_key"]: r["amends"] for r in out_con.execute("SELECT doc_key, amends FROM amend").fetchall()}
+    out_con.close()
+
+    assert ev_by_dk["d-pb"]["amount_inr_cr"] == pytest.approx(100.0) and ev_by_dk["d-pb"]["page"] == 5
+    assert ev_by_dk["d-empty"]["amount_inr_cr"] == pytest.approx(1250.0) and ev_by_dk["d-empty"]["page"] == 6
+    assert "d-emp-close" in ev_by_dk and "d-empty" in ev_by_dk
+    assert "d-39" in ev_by_dk and "d-40" not in ev_by_dk and am_by_dk["d-40"] == "d-39"
+    assert "d-reg30" in ev_by_dk and "d-vr" not in ev_by_dk and am_by_dk["d-vr"] == "d-reg30"

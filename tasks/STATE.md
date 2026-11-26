@@ -1,7 +1,8 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 14:55 IST (Wolf, results r3c merged)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 15:35 IST (Wolf)
 History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
+- 26 Nov Shivam: never block reading (all doc types read + load; >10% W+J sample loads unverified); XBRL cross-check (`v2/xbrl_crosscheck.py`) promotes/demotes results rows; `docs/CONTINUOUS_STORE_ARCHITECTURE.md`.
 - Stores `D:/RealityEngine/{p20/p20new.db,u8/u8.db,q12/q12.db,n10/n10.db,pilot10/pilot10.db}`; backups `*_before_rebuild_2026-11-11.db`.
 - Extraction: `v2/page_words.py`->`page_layout.py`->`page_route.py` (T-189; `table_or_chart` on IMAGE, `needs_ocr` on OCR since T-238 + T-242 deck options)->`reference_geom.py` (T-185)->`page_reader.py` -> `page_cell` verified/unverified/quarantined, served by `pilot3_cells`. T-199 atoms (`page_atom` v10): `PILOT3_BLUEPRINT.md`.
 - 24-26 Nov T-242 retrieval audits 4-9 (`grade_pack.py`, `docs/grading/`); fixes F3-F9 in DEVELOPER_GUIDE; audit9 23->32R.
@@ -18,7 +19,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Run ledger hook incremental.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
-00000. 26 Nov events: order_win gated again (fresh9 55/3/1/1); fund_raise failed fresh9 (49/5/4/2), r3 on agy 16860eb4. fresh10/11 built, unseen. filing_events needs T228_STORE_ROOT.
+00000. 26 Nov events: order_win gated (fresh9 55/3/1/1); fund_raise r3 merged (fresh9 W/P/J 11/11 fixed, 0 R changed), fresh10 grade next. filing_events needs T228_STORE_ROOT.
 00000. 26 Nov deck-wide: rechecked copy swapped into obs_decks_wide.db (backup _before_r5ocr), LOADED via SUPPLEMENTS 08:10 (39,941 rows, 176 stores). OCR rows QUARANTINED (grade2 FAIL 18R/13P/5W/24J); `ocr_fill --classify` merged.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
 1. T-214/T-218 Telegram build: plan `tasks/handoff/T-214_TG_BUILD_PLAN.md`, queue `D:/RealityEngine/tg_build/build_queue.csv`, stores `tg_build/measure10/c01..c91`; repair notes `tasks/store_repair/INDEX.md`, grid `reports/store_repair_grid.xlsx`.
