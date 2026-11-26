@@ -100,8 +100,17 @@ MODELS = {
                          "body": {"temperature": 0, "max_tokens": 16000}},
     "iceman-contributor-free": {"api": "chat", "price": (0.0, 0.0), "capped": False, "ceiling": 35,
                                 "body": {"temperature": 0, "max_tokens": 16000}},
+    # 26 Nov 2026 (T-242 Go bake-off): Beam and Iceman take TEXT ONLY (the endpoint's modalities.input lists no
+    # image), so a deck/results page is read with --text-only for them.  Beam's capability list has no "none":
+    # "low" is its floor.  Measured: default effort left the dense 5PAISA balance-sheet page empty after minutes;
+    # "low" read it in 65 s (50 rows, 40 verified).
     "beam-free": {"api": "chat", "price": (0.0, 0.0), "capped": False, "ceiling": 32,
-                  "body": {"temperature": 0, "max_tokens": 16000}},
+                  "body": {"temperature": 0, "max_tokens": 16000, "reasoning_effort": "low"}},
+    # HungerG is free on Go and takes images.  Its reasoning must be off: with it on, the reader's 16k cap is spent
+    # thinking and 21 of 40 pages came back empty (p90 300 s); `reasoning_effort: "none"` reads a dense deck page in
+    # 128 s (47 rows, 41 verified).
+    "hungerg-free": {"api": "chat", "price": (0.0, 0.0), "capped": False, "ceiling": 32,
+                     "body": {"temperature": 0, "max_tokens": 16000, "reasoning_effort": "none"}},
     # Tencent HY4 Flash, free on Go (18 Nov 2026: 60 reference pages, layout + image, 0 errors, ~8 s/page, 80% of
     # cells placed right; T-225). Daily free ceiling not yet measured: run until 429 and log it (Shivam 18 Nov).
     # reasoning_effort "none" is required: with "low" or no setting it spends all 8,000 tokens thinking and returns an

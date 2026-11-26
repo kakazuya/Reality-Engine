@@ -14,6 +14,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - 26 Nov junk gates r5/r6: decorative slide numbers; bare FY tokens, 'N (word)' echoes.
 - 26 Nov `gate_not_company`: industry/country/peer/customer rows never verified (read + recheck); recheck keeps not_company/subsidiary_unnamed.
 - hy4 bulk: one Drive fetch per doc.
+- 26 Nov Go reader bake-off (T-242): only `hy4-flash-free` is image-capable and fast on 40 shared pages (37/40, median 9.5 s); `beam-free` 34/40 at 18 s (text only), `iceman` 35/40 at 130 s (text only), `hungerg-free` 19/40 at 95 s (6-request cap, reasoning off). Registry: `extract_deck_figures.MODELS` (`hungerg-free` added, `beam-free` effort low); results + 30-row packs staged `.tmp/go_bakeoff_deliver/` (copy to `C:/RealityEngine/t242/go_bakeoff/`).
 - Run ledger hook incremental.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)

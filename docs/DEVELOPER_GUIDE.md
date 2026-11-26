@@ -2520,6 +2520,22 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   7,969/8,808 tokens per page), Gemma 1 page (240-300 s/page), and Ling, Particle, ERNIE and Ultra got 429 before
   their first page; the text set did not run. Details in `docs/V2_SCHEMA_CONTRACT.md` section 17.y; artifacts
   `.tmp/t234/`.
+- **T-242: free Go reader bake-off vs hy4 (26 Nov 2026).** All four free OpenCode Go ids read the same 40-page
+  sample (seed 1127: 15 transcript, 15 deck `table_or_chart`, 10 results pages from
+  `C:/RealityEngine/tg_build/universe_fy27`) with the production reader (`python -m
+  reality_engine.v2.observations`, one call per page, same prompt, scratch `--out` DBs only, $0 cost). Pages with
+  rows / 40, median and p90 seconds per call: `hy4-flash-free` 37, 9.5, 23.3; `beam-free` 34, 18.2, 29.5;
+  `iceman-contributor-free` 35, 129.6, 208.3; `hungerg-free` 19, 94.6, 112.3 (21 of 40 pages came back empty, 18
+  of them pages hy4 read, at its 6-request concurrency cap). Verified deck/results numbers that also appear in
+  hy4's verified set: beam 79.3% of hy4's, iceman 85.6%, hungerg 38.5%. So no other free Go model replaces hy4 for
+  the page read: the image-capable ones are far slower and thinner, and the text-only ones lose every image-only
+  or jumbled page. Findings wired into `reality_engine/scripts/extract_deck_figures.py` MODELS: `hungerg-free`
+  added with `reasoning_effort: "none"` and `beam-free` set to `"low"` (with reasoning left on both spend the
+  16k-token cap thinking and return empty pages; Beam has no `none`). Test
+  `reality_engine/tests/test_observations.py::test_hungerg_free_reader_entry`. Results, the sample list and the
+  per-model 30-row grade packs (20 verified + 10 unverified, built with `reality_engine.scripts.grade_pack`) go to
+  `C:/RealityEngine/t242/go_bakeoff/` -- the worker stages the same tree in its worktree `.tmp/go_bakeoff_deliver/`
+  because the sandbox cannot write outside the workspace.
 - **T-238: the OCR-routed pages (22 Nov 2026).** T-237 found hy4 reading only 56 of SOMANYCERA's 172 deck pages: 72
   pages were routed `needs_ocr` although the store's own `<stem>_ocr.db` already held their words, and Opus read
   2,005 numbers on them from the images; on the 91 set 5,338 deck pages (and 2,853 annual-report pages) sat in
