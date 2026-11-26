@@ -791,6 +791,65 @@ def test_prepared_remark_period_is_anchored_to_the_call():
     assert not rows[0].get("period")
 
 
+def test_r2_period_anchoring_comparatives_printed_call_and_figure_prepared_remarks():
+    """T-242 r2: comparatives never anchor, Q3 half-year needs 'nine months', Q4 skips 'last year',
+    printed call period overrides known_at, and figure-bearing prepared remarks take the call's period."""
+    assert ospeaker.anchored_period("Compared to last year revenue grew 20%.", "Q2 FY26") == ""
+    assert ospeaker.anchored_period("Machine price rose to 20 compared to last year 18.", "Q2 FY26") == ""
+    assert ospeaker.anchored_period("Margins expanded versus previous year.", "Q2 FY26") == ""
+    assert ospeaker.anchored_period("Shortfall in H1 FY '26 will be offset by Q3 FY 26.", "Q3 FY26") == ""
+    assert ospeaker.anchored_period("Execution ramps in the second half of FY26; YTD bookings are Rs 3,464 cr.", "Q2 FY26") == ""
+    assert ospeaker.anchored_period("Turnover grew 74% on a half year basis.", "Q3 FY26") == ""
+    assert ospeaker.anchored_period("Half year, actually nine months ended, grew 74%.", "Q3 FY26") == "9M FY26"
+    assert ospeaker.anchored_period("Our CASA grew last year by 10,000 crore on a YoY basis.", "Q4 FY25") == ""
+
+    # Printed header period beats a stale/later call_quarter(known_at) fallback passed as call_period.
+    pages = [
+        (1, "Synth Corp Limited\nQ2 & H1 FY26 Post Earnings Conference Call\n" + _CALL_HEAD + _CALL_TAIL),
+        (2, "Ramesh Iyer: Compared to last year revenue grew 20%.\n"
+            "Our margin of 27.3% is broadly in line with Q4 FY25.\n"
+            "Exports continue to drive demand.\n"
+            "Capex is INR 200 crore.\n"),
+    ]
+    rows = [
+        _statement(2, "Compared to last year revenue grew 20%.", speaker="Ramesh Iyer"),
+        _statement(2, "Our margin of 27.3% is broadly in line with Q4 FY25.", speaker="Ramesh Iyer"),
+        _statement(2, "Exports continue to drive demand.", speaker="Ramesh Iyer"),
+        dict(_statement(2, "Capex is INR 200 crore.", speaker="Ramesh Iyer"),
+             question_context="Q (Rahul): What is the FY28 capex?"),
+    ]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"], call_period="Q3 FY26")
+    assert stats["period_anchored"] == 2
+    assert rows[0]["period"] == "Q2 FY26" and rows[0]["period_source"] == "call_period"
+    assert rows[1]["period"] == "Q2 FY26" and rows[1]["period_source"] == "call_period"
+    assert not rows[2].get("period")        # no figure and no relative word -> stays empty
+    assert not rows[3].get("period")        # has question_context -> never anchored as prepared remark
+    from reality_engine.v2 import observations as obs
+    assert obs.call_quarter("2025-07-10", [(1, "Synth Corp Q4 FY25 Earnings Call")]) == "Q4 FY25"
+
+
+def test_r2_refusals_and_closing_wrapups_are_dropped_while_figure_keeps_them():
+    """T-242 r2: figure-free refusals to quantify and closing wrap-ups drop; any figure keeps the statement."""
+    for junk in (
+        "I don't want to give you any futuristic number without waiting.",
+        "Unfortunately, we do not calculate customers that way -- our revenue that way.",
+        "We are not in a position to share the breakup.",
+        "We don't give guidance on that.",
+        "Thank you all for joining. With this I conclude my opening remarks.",
+        "Synth Corp is progressing firmly in its version 2.0 growth phase, focusing on operational excellence, "
+        "market leadership and enhancing shareholder value.",
+    ):
+        assert ospeaker.greeting_only(junk), junk
+
+    for kept in (
+        "I don't want to give an exact number, but margin is around 18%.",
+        "We don't give guidance on that, though revenue should reach INR 500 crore.",
+        "In our version 2.0 growth phase we target 20% margin and enhancing shareholder value.",
+        "We do not give credit to unrated borrowers.",
+    ):
+        assert not ospeaker.greeting_only(kept), kept
+
+
 def test_ligature_normalisation_never_mutates_stored_statement():
     raw_kept = "Our revenue o\u01afset cost \ufb02uctua\u019fons by 12%."
     pages = [(2, f"Synth Corp Limited\nRamesh Iyer: Very \ufb01ne ques\u019fon, Ashok.\n{raw_kept}\n"),
