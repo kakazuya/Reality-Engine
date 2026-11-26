@@ -8,7 +8,8 @@ maker = the reader model; checker = the row_checks script layer; verifier = an i
    old pass no longer counts (rule 3: new instructions go through the same gate).
 2. During a run, each ``CHECKPOINT_PAGES`` pages read into an output DB (counted in its ``page_read`` ledger) write
    a seeded sample of ``SAMPLE_ROWS`` rows to ``<out>.audit/ckpt_NNNN.jsonl``.  A later run on that DB refuses to
-   start while any checkpoint has no grade file or a failed one, so a failed audit stops the reading.
+   start while any checkpoint has no grade file or a failed one (only with REALITY_READ_GATE_STRICT=1 since
+   Shivam's 26 Nov ruling: reading never stops; a graded sample over 10% W+J loads that output unverified).
 3. Coverage: ``python -m reality_engine.v2.read_gate status --out <db>`` prints the ledger counts; job_watch's hy4
    entry flags a stall when they stop growing.
 
@@ -102,8 +103,40 @@ def pending_checkpoints(out: str | Path) -> list[str]:
     return bad
 
 
+CORRUPT_SHARE = 0.10   # Shivam 26 Nov 2026: block only when more than 10% of the data is corrupt
+
+
+def latest_grade_share(out: str | Path) -> float | None:
+    """W+J share of the latest graded checkpoint of ``out`` (None when none is graded or counts are missing)."""
+    d = audit_dir(out)
+    grades = sorted(d.glob("ckpt_*.grade.json")) if d.is_dir() else []
+    for g in reversed(grades):
+        try:
+            counts = [int(x) for x in str(json.loads(g.read_text(encoding="utf-8")).get("counts", "")).split("/")]
+        except (ValueError, OSError):
+            continue
+        if len(counts) == 4 and sum(counts):
+            return (counts[2] + counts[3]) / sum(counts)
+    return None
+
+
+def verified_allowed(out: str | Path) -> bool:
+    """Rows of ``out`` may load as `verified` unless its latest graded sample is more than CORRUPT_SHARE W+J."""
+    share = latest_grade_share(out)
+    return share is None or share <= CORRUPT_SHARE
+
+
 def check(doc_types: list[str], pages: int, out: str | Path, gate_file: Path | None = None) -> None:
-    """Raise GateError unless this run may start (see the module docstring)."""
+    """Shivam 26 Nov 2026: reading is never blocked by a missing or failed grade ("don't block the readings; block
+    only when more than 10% of the database is corrupt").  Grades now decide what loads as verified (see
+    ``verified_allowed``); this only prints what is pending so reviewers can grade it.  The old blocking behaviour
+    runs only with REALITY_READ_GATE_STRICT=1."""
+    import os  # noqa: PLC0415
+    if os.environ.get("REALITY_READ_GATE_STRICT") != "1":
+        bad = pending_checkpoints(out)
+        if bad:
+            print(f"read_gate: not blocking; pending review for {out}: {'; '.join(bad)}", file=sys.stderr)
+        return
     bad = pending_checkpoints(out)
     if bad:
         raise GateError(f"audit checkpoints of {out} need a passing grade first: {'; '.join(bad)} "

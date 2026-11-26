@@ -9,6 +9,15 @@ from reality_engine.v2 import observations as obs
 from reality_engine.v2 import read_gate as rg
 
 
+@pytest.fixture(autouse=True)
+def _strict(request, monkeypatch):
+    """The tests below check the blocking gate, which since Shivam's 26 Nov ruling runs only when strict is on."""
+    if "default" not in request.node.name:
+        monkeypatch.setenv("REALITY_READ_GATE_STRICT", "1")
+    else:
+        monkeypatch.delenv("REALITY_READ_GATE_STRICT", raising=False)
+
+
 @pytest.fixture()
 def gates(tmp_path, monkeypatch):
     path = tmp_path / "gates.json"
@@ -157,3 +166,26 @@ def test_cli_prompt_choice_reaches_the_gate():
         assert rg.fingerprint("transcript") == "e95108f16e65"
     finally:
         obs.TRANSCRIPT_PROMPT = "v1"
+
+
+def test_default_never_blocks_reading_on_missing_or_failed_grades(tmp_path, gates, capsys):
+    """Shivam 26 Nov 2026: readings are never blocked; pending reviews are printed."""
+    out = tmp_path / "o.db"
+    d = rg.audit_dir(out)
+    d.mkdir()
+    (d / "ckpt_0001.jsonl").write_text("{}", encoding="utf-8")
+    (d / "ckpt_0002.jsonl").write_text("{}", encoding="utf-8")
+    (d / "ckpt_0002.grade.json").write_text(json.dumps({"verdict": "fail", "counts": "37/11/12/0"}), encoding="utf-8")
+    rg.check(["transcript"], 50_000, out)          # no GateError
+    assert "not blocking" in capsys.readouterr().err
+
+
+def test_default_verified_allowed_only_at_or_under_ten_percent(tmp_path):
+    out = tmp_path / "o.db"
+    d = rg.audit_dir(out)
+    d.mkdir()
+    assert rg.verified_allowed(out)                                   # never graded
+    (d / "ckpt_0001.grade.json").write_text(json.dumps({"verdict": "pass", "counts": "54/3/2/1"}), encoding="utf-8")
+    assert rg.latest_grade_share(out) == 0.05 and rg.verified_allowed(out)
+    (d / "ckpt_0002.grade.json").write_text(json.dumps({"verdict": "fail", "counts": "50/3/6/1"}), encoding="utf-8")
+    assert not rg.verified_allowed(out)                               # 7/60 = 11.7% > 10%

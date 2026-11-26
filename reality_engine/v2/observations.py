@@ -9916,11 +9916,12 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
             write_rows(con, rows)
             con.commit()                    # the page_read row too (write_rows of no rows does not commit)
             ckpt = read_gate.maybe_checkpoint(con, out)
-            if ckpt is not None:            # a failed or ungraded audit must stop the reading, not the next run
+            if ckpt is not None and os.environ.get("REALITY_READ_GATE_STRICT") == "1":
                 stats["stopped"] = f"audit checkpoint {ckpt.name} written: grade it (read_gate grade) to continue"
                 for other in futures:
                     other.cancel()
                 break
+            # Shivam 26 Nov 2026: a checkpoint is written for review and the reading goes on
             if result.get("ocr_text"):
                 con.execute("INSERT OR REPLACE INTO page_ocr VALUES (?,?,?,?,?)",
                             (result["doc_key"], int(result["page"]), result["ocr_text"], OCR_READER, ist_now()))

@@ -17,7 +17,10 @@ from pathlib import Path
 OBS_SOURCES = [
     ("deck_fy27", "D:/RealityEngine/hy4_out/obs_decks_fy27.db", "deck"),
     ("deck", "D:/RealityEngine/t230/obs_91_j.db", "deck"),
+    # Shivam 26 Nov 2026: load every read; an output whose latest graded sample is >10% W+J loads unverified
+    ("annual_report_fy27", "D:/RealityEngine/hy4_out/obs_ar_fy27.db", "annual_report"),
     ("annual_report", "D:/RealityEngine/t230/obs_ar_91_m.db", "annual_report"),
+    ("results_fy27", "D:/RealityEngine/hy4_out/obs_results_fy27.db", "results"),
     ("transcript_fy27_v3", "D:/RealityEngine/hy4_out/obs_transcripts_fy27_v3.db", "transcript"),
     ("transcript_394_v3", "D:/RealityEngine/hy4_out/obs_transcripts_394_v3.db", "transcript"),
     ("transcript", "D:/RealityEngine/t238/obs_transcripts_91o.db", "transcript"),
@@ -58,7 +61,7 @@ def _gate_event_rows(cols: list[str], rows: list[tuple]) -> tuple[list[tuple], i
         out.append(r)
     return out, moved
 
-DOC_TYPE = {"deck": "deck", "annual_report": "annual_report", "transcript": "transcript"}
+DOC_TYPE = {"deck": "deck", "annual_report": "annual_report", "transcript": "transcript", "results": "results"}
 
 # T-242 (24 Nov): Sonnet verdicts on UNVERIFIED rows, keyed by the source db's observation_id (sonnet_settle.py).
 # confirm / fix-with-fields -> check_status 'model_checked' (graded 29R/1P/0W each on the deck pilot); reject ->
@@ -139,6 +142,26 @@ def _create_tables(con, obs_cols):
             con.execute(f'ALTER TABLE filing_event ADD COLUMN "{c}"')
 
 
+def _cap_unverified(rows: list, cols: list[str], db_path: str) -> tuple[list, int]:
+    """Shivam 26 Nov 2026: every read is loaded; when the source output's latest graded audit sample is more than
+    10% wrong+junk (read_gate.verified_allowed), its `verified` rows load as `unverified` (served labelled)."""
+    from reality_engine.v2 import read_gate  # noqa: PLC0415
+    if "status" not in cols or read_gate.verified_allowed(db_path):
+        return rows, 0
+    si = cols.index("status")
+    ri = cols.index("status_reason") if "status_reason" in cols else None
+    out, n = [], 0
+    for r in rows:
+        if r[si] == "verified":
+            r = list(r)
+            r[si] = "unverified"
+            if ri is not None:
+                r[ri] = f"{r[ri] or ''}; graded_sample_over_10pct".lstrip("; ")
+            n += 1
+        out.append(r)
+    return out, n
+
+
 def _obs_vals(rows, source: str, checks: dict[int, tuple], id_pos: int | None, id_offset: int = 0,
               reader_pos: int | None = None, reader_mark: str = "") -> list[list]:
     """obs_fact insert values: the source row, source/doc_type, and the check verdict of its ORIGINAL id."""
@@ -202,6 +225,9 @@ def _load_store(store_path: Path, symbol: str | None = None) -> dict:
             done_sources.add(source)
             stats.setdefault("obs_db", {})[source] = db_path
             checks = load_checks(db_path) if id_pos is not None else {}
+            rows, capped = _cap_unverified(rows, obs_cols, db_path)
+            if capped:
+                stats.setdefault("capped_unverified", {})[source] = capped
             vals = _obs_vals(rows, source, checks, id_pos)
             if vals:
                 con.executemany(insert_sql, vals)
