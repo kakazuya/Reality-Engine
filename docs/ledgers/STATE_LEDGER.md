@@ -8825,3 +8825,17 @@
 -- 24-26 Nov T-242 retrieval audits 4-9 (`grade_pack.py`, `docs/grading/`); fixes F3-F9 in DEVELOPER_GUIDE; audit9 23->32R.
 +- Retrieval audits 4-10 (`docs/grading/`); audit10 (26 Nov, first after results/AR loads, 48 q): 34R/2P/4W/7M, statements 16/16; next: asked-duration match, AR NEW-code reach, auditor-note scope (`C:/RealityEngine/t242/retrieval_audit10/report.md`).
 ```
+
+## 2026-11-26T22:21:20 | kakazuya (Wolf) | branch main
+```diff
+-- 26 Nov AR gates r4: jv/associate scopes, printed-name scope, junk; deck untied values.
++- 26 Nov AR gates r4 swapped; r5+r6 code merged (subset-as-total, related-party scope, other-entity blocks, column periods); live AR DB not rechecked (6 h) - swap after a fresh recheck; r7 for ckpt_0004 kinds.
+```
+
+## 2026-11-26T22:21:42 | kakazuya (Wolf) | branch main
+```diff
+-- OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD (`--start/--max-workers`), Zen rotates Nemotron VL / DeepSeek Flash by speed.
+-- 26 Nov AR gates r4: jv/associate scopes, printed-name scope, junk; deck untied values.
+-- 26 Nov `gate_not_company`: industry/country/peer/customer rows never verified (read + recheck); recheck keeps not_company/subsidiary_unnamed.
++- 26 Nov AR gates r4 swapped; r5+r6 code merged (subset-as-total, related-party scope, other-entity blocks, column periods); live AR DB not rechecked (6 h) - swap after a fresh recheck; r7 for ckpt_0004 kinds.
+```

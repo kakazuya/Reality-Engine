@@ -1014,7 +1014,7 @@ UNIT_PATTERNS: tuple[tuple[str, str], ...] = (
     ("length", r"\bkm\b|kilomet(?:er|re)s?\b|\bmiles?\b"),
     ("area", r"\bsft\b|sq\.? ?ft|square feet|\bsqm\b|\bhectares?\b|\bacres?\b"),
     ("money", r"rs\b|inr\b|\u20b9|rupees?\b|crores?\b|\bcrs?\b|\bcr\b|lakhs?\b|lacs?\b|millions?\b|\bmn\b|"
-              r"billions?\b|\bbn\b|usd\b|us\$|\$|euros?\b|eur\b"),
+              r"billions?\b|\bbn\b|thousands?\b|hundreds?\b|usd\b|us\$|\$|euros?\b|eur\b"),
     ("time", r"\bdays?\b|\bmonths?\b|\byears?\b"),
     ("ratio", r"^x$|\btimes\b|\bmultiple\b"),
 )
@@ -1030,7 +1030,7 @@ JUNK_MEASURE = re.compile(
     r"registered|corporate|membership|stock)"
     r"(?:[._][a-z0-9]+)*$", re.I)
 LAKH_CRORE_RE = re.compile(r"\b(?:lakhs?|lacs?)\s*(?:crores?|crs?|cr)\b", re.I)
-SCALE_WORDS = ((r"thousands?", 1e3), (r"'000|000s", 1e3), (r"\blakhs?\b|\blacs?\b", 1e5),
+SCALE_WORDS = ((r"\bhundreds?\b", 100.0), (r"thousands?", 1e3), (r"'000|000s", 1e3), (r"\blakhs?\b|\blacs?\b", 1e5),
                (r"\bcrores?\b|\bcrs?\b|\bcr\.", 1e7), (r"\bmillions?\b|\bmn\b|\bmm\b", 1e6),
                (r"\bbillions?\b|\bbn\b", 1e9),
                (r"\btrillions?\b|(?:rs\.?|inr|\u20b9|\$|usd|us\$)\s*(?:in\s*)?\btn\b", 1e12))
@@ -3781,8 +3781,14 @@ def apply_ar_statement_gate(rows: list[dict[str, Any]]) -> None:
 
 
 AR_SCALE_NOTE_RE = re.compile(
-    r"\(\s*[^()]{0,20}?\bin\s+(lakhs?|lacs?|crores?|crs?|millions?|billions?|thousands?)\b[^()]{0,40}\)"
+    r"\(\s*[^()]{0,35}?\bin\s+(?:(?:[\u20b9`]|rs\.?|inr)\s*)?(lakhs?|lacs?|crores?|crs?|millions?|billions?|thousands?|hundreds?)\b[^()]{0,90}\)"
     r"|\(\s*times\s*\)", re.I)
+AR_UNBRACKETED_SCALE_NOTE_RE = re.compile(
+    r"(?:^|\n)\s*(?:all\s+)?(?:amounts?|figures?)\s+(?:are\s+)?in\s+"
+    r"(?:indian\s+rupees\s*(?:\([^)]{0,12}\)\s*)?|rupees\s+in\s+|rs\.?\s*|inr\s*|`\s*|\u20b9\s*)?"
+    r"(lakhs?|lacs?|crores?|crs?|millions?|billions?|thousands?|hundreds?)\b",
+    re.I,
+)
 AR_NOT_MONEY_CUE_RE = re.compile(
     r"\b(?:ratio|turnover|times|rank|margin|count|number of|shares?|units?|employees?)\b|%", re.I)
 AR_RATIO_CUE_RE = re.compile(r"\b(?:ratio|turnover|coverage|times)\b", re.I)
@@ -3826,11 +3832,70 @@ AR_BASIS_WORD_RE = re.compile(r"\b(?:standalone|consolidated)\b", re.I)
 AR_NET_CASH_LABEL_RE = re.compile(
     r"\bnet\s+cash\b(?!\s*(?:flow|generated|provided|from|used|in\b|out\b))", re.I)
 AR_OTHER_ENTITY_HEAD_RE = re.compile(
-    r"(?:^|\n)\s*([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Limited|Ltd\.?))"
-    r"\s*(?:and\s+its\s+subsidiaries\s+)?(?:standalone\s+|consolidated\s+|audited\s+|unaudited\s+)*"
-    r"(?:financial\s+statements?|notes?\s+to|balance\s+sheet|statement\s+of\s+(?:profit|financial))", re.I)
+    r"(?:^|\n)\s*(?:standalone\s+|consolidated\s+|audited\s+|unaudited\s+)*"
+    r"(?:financial\s+statements?|balance\s+sheet|"
+    r"statement\s+of\s+(?:profit(?:\s+and\s+loss)?|financial\s+position|cash\s+flows?|changes\s+in\s+equity))\s+of\s+"
+    r"(?!the\s+company\b)([A-Za-z][A-Za-z0-9&.,'()\- ]{2,70}?(?:Private\s+Limited|Pvt\.?\s*Ltd\.?|Limited|Ltd\.?))(?:\s|$|[,.])"
+    r"|(?:^|\n)\s*([A-Za-z][A-Za-z0-9&.,'()\- ]{2,70}?(?:Private\s+Limited|Pvt\.?\s*Ltd\.?|Limited|Ltd\.?))"
+    r"(?:\s*\n\s*|\s+)(?:and\s+its\s+subsidiaries\s+)?(?:standalone\s+|consolidated\s+|audited\s+|unaudited\s+)*"
+    r"(?:notes?\s+to(?:\s+the)?\s+(?:standalone\s+|consolidated\s+)?(?:financial\s+statements?|accounts)|"
+    r"financial\s+statements?|balance\s+sheet(?:\s+as\s+at)?|"
+    r"statement\s+of\s+(?:profit(?:\s+and\s+loss)?|financial\s+position|cash\s+flows?|changes\s+in\s+equity))\b",
+    re.I,
+)
+AR_OTHER_ENTITY_LINE_RE = re.compile(
+    r"(?:^|\n)\s*([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Pvt\.?\s*Ltd\.?|Limited|Ltd\.?))\s*(?=\n|$)",
+    re.I,
+)
+AR_OTHER_ENTITY_STMT_HEAD_RE = re.compile(
+    r"\b(?:notes?\s+to(?:\s+the)?\s+financial\s+statements?|financial\s+statements?|"
+    r"balance\s+sheet|statement\s+of\s+(?:profit|cash|changes))\b", re.I)
+AR_OTHER_ENTITY_STMT_BANNER_RE = re.compile(
+    r"(?:^|\n)\s*(?:(?:standalone|consolidated)\s+)?(?:financial\s+statements?|balance\s+sheet|"
+    r"statement\s+of\s+profit(?:\s+and\s+loss)?)\s*(?=\n|$)",
+    re.I,
+)
+AR_OTHER_ENTITY_BANNER_BLOCK_RE = re.compile(
+    r"\b(?:interest\s+in\s+other\s+entities|related[\s-]+part(?:y|ies)|ind[\s-]*as[\s-]*24|"
+    r"enterprises?\s+(?:over\s+which|owned)|significant\s+influence|key\s+manager(?:ial)?\s+personnel|"
+    r"post\s+employment\s+benefit|"
+    r"subsidiar(?:y|ies)|associates?|joint\s+ventures?|investments?\s+in|aoc[\s-]*1|form\s+aoc|"
+    r"stock\s+exchange|unclaimed\s+dividend|\biepf\b|"
+    r"sr\.?\s*no|name\s+of\s+(?:the\s+)?(?:entity|subsidiary|related|party|shareholder|promoter))\b",
+    re.I,
+)
+AR_OTHER_ENTITY_NON_STMT_RE = re.compile(
+    r"\b(?:csr\s+committee|corporate\s+social\s+responsibility|"
+    r"attendance\s+at\s+(?:the\s+)?board|board\s+meetings?\s+(?:held|attended)|"
+    r"(?:audit|nomination|remuneration|stakeholders?\s+relationship|risk\s+management)\s+committee|"
+    r"independent\s+auditors?['\u2019]?\s*report|"
+    r"annexure\s*(?:[\"'a-z0-9\-]+\s*)?to\s+(?:the\s+)?(?:independent\s+)?auditors?['\u2019]?\s*report|"
+    r"secretarial\s+audit\s+report|form\s+(?:no\.?\s*)?aoc[\s-]*1|"
+    r"statement\s+containing\s+salient\s+features\s+of\s+the\s+financial\s+statement|"
+    r"unclaimed\s+dividend\s+and\s+shares\s+transferred|investor\s+education\s+and\s+protection\s+fund|"
+    r"details\s+of\s+(?:investments|subsidiaries|related\s+party))\b",
+    re.I,
+)
+AR_OTHER_ENTITY_BAD_NAME_RE = re.compile(
+    r"^\s*(?:to\s+the\s+members|members\s+of|report|annexure|corporate\s+guarantee|"
+    r"guarantee\s+(?:by|of|for)|holding\b|parent\b|subsidiar|associate|joint\s+venture|"
+    r"in\s+respect\s+of|name\s+of|details\s+of|on\s+behalf|for\s+and\s+on\s+behalf|notes?\s+to|"
+    r"financial\s+statements?\s+of|cin\s*:)|"
+    r"\b(?:to\s+the\s+members\s+of|on\s+the\s+(?:standalone|consolidated)|corporate\s+guarantee)\b",
+    re.I,
+)
+AR_OTHER_ENTITY_OWN_EQUITY_RE = re.compile(
+    r"\b(?:equity_share_capital|preference_share_capital|share_capital|authorised_shares|"
+    r"other_equity|retained_earnings|reserves_and_surplus|total_equity|net_worth|"
+    r"capital_and_net_debt|capital_management|gearing_ratio)\b|"
+    r"\b(?:equity\s+share\s+capital|authorised\s+share\s+capital|issued,?\s+subscribed|"
+    r"other\s+equity|capital\s+management|statement\s+of\s+changes\s+in\s+equity)\b",
+    re.I,
+)
+AR_OTHER_ENTITY_SKIP_LINE_RE = re.compile(
+    r"\b(?:holding\s+company|parent\s+company|auditor|chartered\s+accountants?|for\s+and\s+on\s+behalf)\b", re.I)
 AR_OTHER_ENTITY_RUNNING_RE = re.compile(
-    r"(?:^|\n)\s*([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Limited|Ltd\.?))"
+    r"(?:^|\n)\s*([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Pvt\.?\s*Ltd\.?|Limited|Ltd\.?))"
     r"\s*\|\s*(?:FINANCIALS?|ANNUAL\s+REPORT)", re.I)
 AR_NEW_NODE_FAMILY = {"revenue": "money", "cost": "money", "capex": "money", "debt": "money",
                       "equity": "money", "working_capital": "money", "capacity": "capacity",
@@ -3878,7 +3943,7 @@ AR_SUBSIDIARY_NAME_RE = re.compile(
     r"gmbh|s\.?a\.?r\.?l\.?|s\.?a\.?|s\.?l\.?u\.?|s\.?r\.?l\.?|llc|sdn\.?\s*bhd\.?|b\.?v\.?|pte\.?\s*ltd\.?|"
     r"pte\.?|co\.?\s*ltd\.?|co\.|plc|ag|nv|pty\.?\s*ltd\.?|fze|fzco|wll|k\.?k\.?|"
     r"spa|kft|ltda|sa)\b|"
-    r"\bsp\.?\s*z\.?\s*o\.?\s*o\.?\b|"
+    r"\bsp\.?\s*z\.?\s*o\.?\s*o\.?\b|\bd\.?\s*o\.?\s*o\.?\b|"
     r"\b(?:foundation|partnership\s+firm|subsidiar(?:y|ies)|joint\s+venture|associate|step[\s-]+down)\b",
     re.I,
 )
@@ -4546,6 +4611,44 @@ def _ar_has_year(period_s: str) -> bool:
     )
 
 
+AR_TEXT_PERIOD_COL_RE = re.compile(
+    r"\b(?:period\s+to\s+which\s+(?:the\s+)?amounts?\s+relates?|year\s+of\s+dispute|"
+    r"period\s+of\s+dispute|dispute\s+period|forum\s+where\s+dispute\s+is\s+pending|"
+    r"period\s+to\s+which\s+demand\s+relates?)\b",
+    re.I,
+)
+
+
+def _ar_period_from_text_column_reason(row: dict[str, Any], page_text: str, previous_text: str) -> str:
+    """T-242 r5: a period equal to a non-period text column ('Period to which amounts relates', 'Year of dispute', 'Forum') -> unverified."""
+    period_s = norm_space(row.get("period"))
+    if not period_s or not _ar_has_year(period_s):
+        return ""
+    combined = norm_space(f"{previous_text[-1000:]}\n{page_text}")
+    col_match = AR_TEXT_PERIOD_COL_RE.search(combined)
+    if not col_match:
+        return ""
+    axis_s = norm_space(row.get("printed_axis"))
+    if axis_s and _ar_has_year(axis_s) and not period_in_text(period_s, axis_s) and not period_in_text(axis_s, period_s):
+        return (f"ar_period_from_text_column: {period_s!r} comes from a non-period text column, "
+                f"not the value column ({axis_s!r})")
+    label = norm_space(row.get("printed_label"))
+    value_text = norm_space(row.get("value_text"))
+    pt_norm = norm_space(page_text)
+    if label and value_text:
+        idx = pt_norm.lower().find(label.lower())
+        if idx >= 0:
+            v_idx = pt_norm.find(value_text, idx)
+            snippet = pt_norm[idx:v_idx] if v_idx > idx else pt_norm[idx:idx + 220]
+            if period_in_text(period_s, snippet):
+                head_slice = combined[col_match.start():col_match.start() + 300]
+                as_at_dates = re.findall(r"\bAs\s+at\s+[^\n]{4,30}?\d{4}\b", head_slice, re.I)
+                if as_at_dates and not any(period_in_text(period_s, d) for d in as_at_dates):
+                    return (f"ar_period_from_text_column: {period_s!r} comes from a non-period text column, "
+                            f"not the value column")
+    return ""
+
+
 def _ar_period_reason(row: dict[str, Any], page_text: str, previous_text: str,
                       report_fy_spec: tuple[int, int] | None) -> str:
     """Resolve relative AR periods when the report's year-end or split FY is known; never ``period_no_year``."""
@@ -4655,14 +4758,307 @@ def _ar_has_consolidated_heading(row: dict[str, Any], page_text: str) -> bool:
     return any(_ar_is_consolidated_heading_line(ln) for ln in (page_text or "").splitlines())
 
 
+AR_OWN_ISSUANCE_RE = re.compile(
+    r"\b(?:issue[d]?\s+and\s+allot(?:ted|ment)|allotment\s+of\s+(?:non[\s-]*convertible\s+debentures|"
+    r"ncds?|equity\s+shares?|shares?|debentures?|warrants?)|preferential\s+issue|rights\s+issue|"
+    r"qualified\s+institutional\s+placement|bonus\s+shares?\s+issued)\b|"
+    r"\b(?:ncds?|debentures?|equity\s+shares?)\b[^.\n]{0,40}\b(?:issued\s+and\s+allotted|allotted)\b",
+    re.I,
+)
+AR_RPT_BLOCK_RE = re.compile(
+    r"\brelated[\s-]+part(?:y|ies)\b|\bind[\s-]*as[\s-]*24\b|\bform\s+aoc[\s-]*2\b|\baoc[\s-]*2\b|"
+    r"\bnature\s+of\s+relationship\b|\brelationship\s+category\b|\btransactions?\s+with\s+related\b",
+    re.I,
+)
+AR_RPT_REL_COL_RE = re.compile(
+    r"\b(?:nature\s+of\s+relationship|relationship\s+category|relationship)\b", re.I
+)
+AR_RPT_SUBSIDIARY_VAL_RE = re.compile(
+    r"\b(?:(?:step[\s-]*down|stepdown|wholly\s+owned)\s+)?subsidiar(?:y|ies)\b", re.I
+)
+AR_RPT_NON_SUBSIDIARY_RE = re.compile(
+    r"\b(?:other\s+related\s+part(?:y|ies)|enterprises?\s+(?:owned|over\s+which|where\s+key\s+management|"
+    r"having\s+significant\s+influence)|significant\s+influence|key\s+manager(?:ial)?\s+personnel|\bkmp\b|"
+    r"relatives?\s+of\s+(?:kmp|key\s+management|directors?)|associates?|joint\s+ventures?|"
+    r"fellow\s+subsidiar(?:y|ies)|promoter\s+group|controlled\s+trust)\b",
+    re.I,
+)
+AR_RPT_HEAD_LINE_RE = re.compile(
+    r"^(?:[A-Z]\)|\([a-z0-9]+\)|[ivxlc]+[.)]|\d+[.)]|[a-z]\.)?\s*(?:details\s+of\s+transactions?\s+relating\s+to\s+)?"
+    r"(other\s+related\s+part(?:y|ies)|enterprises?\s+(?:owned|over\s+which|where\s+key\s+management)[^:\n]{0,80}|"
+    r"associates?(?:\s+and\s+joint\s+ventures?)?|joint\s+ventures?|key\s+manager(?:ial)?\s+personnel|"
+    r"(?:(?:step[\s-]*down|wholly\s+owned)\s+)?subsidiar(?:y|ies))"
+    r"(?:\s*,?\s*including\b[^:\n]{0,40})?\s*:?\s*$",
+    re.I,
+)
+AR_RPT_TX_HEAD_RE = re.compile(
+    r"^(?:\d{1,2}\s+)?((?:sale|purchase|rendering|receiving|receipt|payment|reimbursement|grant(?:ed|ing)?|"
+    r"avail(?:ed|ing)?)\s+of\s+[^\n]{3,90})$",
+    re.I,
+)
+AR_RPT_TX_NUM_ONLY_RE = re.compile(r"^\d{1,2}$")
+AR_AUTHORISED_EXCLUDE_RE = re.compile(
+    r"\b(?:issued|subscribed|paid[\s-]*up|outstanding|promoter|weighted\s+average|eps)\b", re.I
+)
+AR_TABLE_CELL_TOKEN_RE = re.compile(r"(?:\(?[\d,]+(?:\.\d+)?\)?|[-–—]|nil)", re.I)
+
+
+def _ar_is_own_issuance(row: dict[str, Any], page_text: str) -> bool:
+    """T-242 r5: a company's own issuance/allotment of shares or NCDs is never 'subsidiary' (#5 ANURAS)."""
+    measure_txt = norm_space(row.get("measure")).replace("_", " ")
+    series = norm_space(row.get("series_title"))
+    group = norm_space(row.get("group_path"))
+    label = norm_space(row.get("printed_label"))
+    if AR_RPT_BLOCK_RE.search(f"{series} {group}"):
+        return False
+    ctx = f"{measure_txt} {series} {group} {label}"
+    if AR_OWN_ISSUANCE_RE.search(ctx):
+        return True
+    if re.search(r"\bthe\s+company\s+issued\s+and\s+allotted\b", norm_space(page_text), re.I) \
+            and re.search(r"issued|allot|debenture|ncd", measure_txt, re.I):
+        return True
+    return False
+
+
+def _ar_rpt_relationship_and_category(row: dict[str, Any], page_text: str, previous_text: str) -> str:
+    """T-242 r5: in RPT blocks, keep 'subsidiary' only when the party's printed relationship says subsidiary;
+    also gate generic sale measures placed under a different printed transaction category (#3, #7)."""
+    series = norm_space(row.get("series_title"))
+    group = norm_space(row.get("group_path"))
+    measure = norm_space(row.get("measure")).lower()
+    label = norm_space(row.get("printed_label"))
+    combined_raw = f"{previous_text[-4500:]}\n{page_text}"
+    if not (AR_RPT_BLOCK_RE.search(f"{series} {group} {measure.replace('_', ' ')}")
+            or AR_RPT_BLOCK_RE.search(norm_space(page_text)[:1200])
+            or AR_RPT_BLOCK_RE.search(norm_space(previous_text)[-4500:])):
+        return ""
+    reason = ""
+    scope = str(row.get("entity_scope") or "")
+    # T-242 r6: only move scope when 'subsidiary'/'parent' came from the counterparty (never touch already-'company' rows).
+    # Moving a non-subsidiary RPT counterparty to 'company' (with customer=counterparty) fixes the scope and keeps valid
+    # company RPT transactions verified (ACC, AGL, A2ZINFRA, ADVENTHTL, AFSL); only category mismatches (#3) go unverified.
+    existing_customer = norm_space(row.get("customer"))
+    existing_segment = norm_space(row.get("segment"))
+    party_from_label = bool(
+        label and (
+            AR_SUBSIDIARY_NAME_RE.search(label)
+            or AR_ENTITY_NAME_RE.search(label)
+            or (existing_customer and normalize_name(existing_customer) == normalize_name(label))
+        )
+    )
+    party_name = label if party_from_label else existing_customer
+    if scope in ("subsidiary", "parent") and party_name and (
+            not existing_segment or normalize_name(existing_segment) == normalize_name(party_name)):
+        lines = [norm_space(ln) for ln in page_text.splitlines() if norm_space(ln)]
+        has_rel_col = bool(AR_RPT_REL_COL_RE.search(f"{previous_text[-500:]}\n{page_text[:700]}"))
+        lbl_low = party_name.lower()
+        lbl_head = lbl_low[:40]
+        hit_idx = -1
+        for i, ln in enumerate(lines):
+            if lbl_low in ln.lower() or (len(lbl_head) >= 12 and lbl_head in ln.lower()):
+                hit_idx = i
+                break
+        moved_scope = False
+        if has_rel_col and hit_idx >= 0:
+            rel_tokens: list[str] = []
+            for j in range(hit_idx + 1, min(len(lines), hit_idx + 6)):
+                tok = lines[j]
+                if tok.lower() in lbl_low:
+                    continue
+                if AR_SUBSIDIARY_NAME_RE.search(tok) and not AR_RPT_SUBSIDIARY_VAL_RE.search(tok) \
+                        and not AR_RPT_NON_SUBSIDIARY_RE.search(tok):
+                    break
+                if re.fullmatch(r"[\d,]+(?:\.\d+)?|-", tok) and (len(tok) > 2 or tok == "-"):
+                    break
+                rel_tokens.append(tok)
+            rel_win = " ".join(rel_tokens)
+            first_rel = rel_tokens[0] if rel_tokens else ""
+            if AR_RPT_SUBSIDIARY_VAL_RE.search(rel_win):
+                pass
+            elif AR_RPT_NON_SUBSIDIARY_RE.search(rel_win) or re.fullmatch(r"\d{1,2}", first_rel):
+                row["entity_scope"] = "company"
+                row["scope_source"] = "rpt_not_subsidiary"
+                if not row.get("customer"):
+                    row["customer"] = party_name
+                moved_scope = True
+        if not moved_scope and row.get("entity_scope") in ("subsidiary", "parent"):
+            # Check section/party-directory headings above the party across previous_text + page_text
+            comb_lines = [norm_space(ln) for ln in combined_raw.splitlines() if norm_space(ln)]
+            comb_hit = -1
+            offset = max(0, len(comb_lines) - len(lines))
+            for i in range(offset, len(comb_lines)):
+                if lbl_low in comb_lines[i].lower() or (len(lbl_head) >= 12 and lbl_head in comb_lines[i].lower()):
+                    comb_hit = i
+                    break
+            if comb_hit < 0:
+                for i, ln in enumerate(comb_lines):
+                    if lbl_low in ln.lower() or (len(lbl_head) >= 12 and lbl_head in ln.lower()):
+                        comb_hit = i
+                        break
+            if comb_hit >= 0:
+                # Look upward for the nearest party-category heading or inline directory label ("Subsidiaries, including: ...")
+                found_cat = ""
+                for i in range(comb_hit - 1, -1, -1):
+                    ln = comb_lines[i]
+                    if AR_RPT_HEAD_LINE_RE.match(ln):
+                        if AR_RPT_NON_SUBSIDIARY_RE.search(ln):
+                            found_cat = f"non_sub:{ln}"
+                        elif AR_RPT_SUBSIDIARY_VAL_RE.search(ln):
+                            found_cat = f"sub:{ln}"
+                        break
+                    if re.match(r"^(?:step[\s-]*down\s+)?subsidiar(?:y|ies)(?:\s*,?\s*including\b[^:]*)?\s*$", ln, re.I) \
+                            or re.search(r"^(?:step[\s-]*down\s+)?subsidiar(?:y|ies)(?:\s*,?\s*including\b[^:]*)?\s*:", ln, re.I):
+                        found_cat = f"sub:{ln}"
+                        break
+                    if re.search(r"^(?:other\s+related\s+parties|associates?|joint\s+ventures?|"
+                                 r"enterprises?\s+(?:owned|over\s+which|where))\s*(?:,\s*including\b[^:]*)?\s*:", ln, re.I):
+                        found_cat = f"non_sub:{ln}"
+                        break
+                if found_cat.startswith("non_sub:"):
+                    row["entity_scope"] = "company"
+                    row["scope_source"] = "rpt_not_subsidiary"
+                    if not row.get("customer"):
+                        row["customer"] = party_name
+    # Check printed transaction category vs generic sale/service measure (#3 AMBUJACEM)
+    if not reason and label and re.search(r"(?:sale|purchase)_of_(?:services|goods)", measure):
+        page_lines = [norm_space(ln) for ln in page_text.splitlines() if norm_space(ln)]
+        comb_lines = [norm_space(ln) for ln in combined_raw.splitlines() if norm_space(ln)]
+        lbl_low = label.lower()
+        offset = max(0, len(comb_lines) - len(page_lines))
+        hit = next((i for i in range(offset, len(comb_lines)) if lbl_low in comb_lines[i].lower()), -1)
+        if hit < 0:
+            hit = next((i for i, ln in enumerate(comb_lines) if lbl_low in ln.lower()), -1)
+        if hit >= 0:
+            for i in range(hit - 1, max(-1, hit - 400), -1):
+                ln = comb_lines[i]
+                if AR_RPT_TX_HEAD_RE.match(ln):
+                    low_h = ln.lower()
+                    if "sale_of_services" in measure and re.search(
+                            r"\bsale\s+of\s+(?:finished\s+)?goods\b|\bwork[\s-]*in[\s-]*progress\b|\bsale\s+of\s+power\b",
+                            low_h) and "service" not in low_h:
+                        return f"ar_rpt_category_mismatch: {measure} sits under printed category {ln!r}"
+                    if "sale_of_goods" in measure and re.search(
+                            r"\b(?:sale|rendering|receiving)\s+of\s+services?\b", low_h) and "goods" not in low_h:
+                        return f"ar_rpt_category_mismatch: {measure} sits under printed category {ln!r}"
+                    break
+    return reason
+
+
+def _ar_authorised_shares_update(row: dict[str, Any], page_text: str) -> None:
+    """T-242 r5: count.shares under an 'Authorised' heading -> NEW:authorised_shares (#48 ABFRL)."""
+    if norm_space(row.get("measure")) != "count.shares":
+        return
+    series = norm_space(row.get("series_title"))
+    group = norm_space(row.get("group_path"))
+    label = norm_space(row.get("printed_label"))
+    ctx = " | ".join(p for p in (series, group, label) if p)
+    if AR_AUTHORISED_EXCLUDE_RE.search(ctx):
+        return
+    authorised = bool(re.search(r"\bauthori[sz]ed\b", ctx, re.I))
+    if not authorised and label and page_text:
+        pt = norm_space(page_text)
+        idx = pt.lower().find(label.lower())
+        if idx >= 0:
+            before = pt[max(0, idx - 260):idx]
+            auth_m = list(re.finditer(r"\bauthori[sz]ed\b", before, re.I))
+            excl_m = list(AR_AUTHORISED_EXCLUDE_RE.finditer(before))
+            if auth_m and (not excl_m or auth_m[-1].start() > excl_m[-1].start()):
+                authorised = True
+    if authorised:
+        row["measure"] = "NEW:authorised_shares"
+        if not norm_space(row.get("new_definition")):
+            row["new_definition"] = "Authorised share capital (number of shares)"
+        if not norm_space(row.get("new_driver_node")):
+            row["new_driver_node"] = "equity"
+
+
+def _ar_wide_table_misaligned_reason(row: dict[str, Any], page_text: str) -> str:
+    """T-242 r5: wide (>8 col) tables with unequal cell counts or header-vs-row mismatch -> unverified (#59)."""
+    vt = norm_space(row.get("value_text"))
+    label = norm_space(row.get("printed_label"))
+    if not vt or not page_text or not label:
+        return ""
+    vt_clean = vt.replace(",", "").strip("()")
+    # 1. Pipe-delimited tables
+    pipe_lines = [ln.strip() for ln in page_text.splitlines() if ln.count("|") >= 7]
+    if pipe_lines:
+        header_cols = 0
+        for ln in pipe_lines:
+            cells = [norm_space(c) for c in ln.split("|") if norm_space(c)]
+            num_cells = sum(1 for c in cells if re.fullmatch(r"(?:\(?[\d,]+(?:\.\d+)?\)?|-|–|—|nil)", c, re.I))
+            if num_cells == 0 and len(cells) >= 8:
+                first_low = cells[0].lower()
+                header_cols = len(cells) - (1 if first_low in ("particulars", "description", "items", "item") else 0)
+            elif label.lower() in ln.lower() and vt in ln:
+                data_cells = cells[1:] if cells and not re.fullmatch(
+                    r"(?:\(?[\d,]+(?:\.\d+)?\)?|-|–|—|nil)", cells[0], re.I) else cells
+                if max(header_cols, len(data_cells)) > 8 and header_cols and len(data_cells) != header_cols:
+                    return (f"ar_wide_table_misaligned: row has {len(data_cells)} cells under "
+                            f"{header_cols}-column header")
+    # 2. Line-per-cell / multi-cell tables
+    cell_line_re = re.compile(r"^(?:\(?[\d,]+(?:\.\d+)?\)?|-|–|—|nil)(?:\s+(?:\(?[\d,]+(?:\.\d+)?\)?|-|–|—|nil))*$", re.I)
+    entries: list[tuple[str, list[str]]] = []
+    cur_label = ""
+    cur_cells: list[str] = []
+    text_gap = 0
+    for raw_ln in page_text.splitlines():
+        ln = raw_ln.strip()
+        if not ln:
+            continue
+        if cell_line_re.match(ln):
+            cur_cells.extend(AR_TABLE_CELL_TOKEN_RE.findall(ln))
+            text_gap = 0
+        else:
+            if cur_cells:
+                entries.append((cur_label, cur_cells))
+                cur_cells = []
+            cur_label = norm_space(ln)
+            text_gap += 1
+            if text_gap > 3:
+                entries.append(("__BREAK__", []))
+    if cur_cells:
+        entries.append((cur_label, cur_cells))
+    lbl_low = label.lower()
+    target_idx = -1
+    for i, (elbl, ecells) in enumerate(entries):
+        if elbl == "__BREAK__" or len(ecells) <= 8:
+            continue
+        if (lbl_low in elbl.lower() or elbl.lower() in lbl_low) and any(
+                c == vt or c.replace(",", "").strip("()") == vt_clean for c in ecells):
+            target_idx = i
+            break
+    if target_idx < 0:
+        return ""
+    target_len = len(entries[target_idx][1])
+    # Collect sibling rows in the same contiguous block (stop at __BREAK__), ignoring 2-cell year header rows
+    siblings: list[int] = []
+    for direction in (-1, 1):
+        j = target_idx + direction
+        taken = 0
+        while 0 <= j < len(entries) and taken < 6:
+            elbl, ecells = entries[j]
+            if elbl == "__BREAK__":
+                break
+            if len(ecells) >= 3 and not all(re.fullmatch(r"(?:19|20)\d{2}", c) for c in ecells):
+                siblings.append(len(ecells))
+                taken += 1
+            j += direction
+    diff_siblings = sum(1 for n in siblings if n != target_len)
+    if diff_siblings >= 2:
+        return (f"ar_wide_table_misaligned: {target_len}-cell row {label!r} sits in a wide table with "
+                f"unequal sibling row counts ({siblings[:6]})")
+    return ""
+
+
 def _ar_keep_subsidiary_scope(row: dict[str, Any], page_text: str, company: str) -> bool:
     """True when ``entity_scope='subsidiary'`` should stay ``subsidiary`` (entity named or sub/RPT/AOC table)."""
     label = norm_space(row.get("printed_label"))
     series = norm_space(row.get("series_title"))
     group = norm_space(row.get("group_path"))
     axis = norm_space(row.get("printed_axis"))
-    customer = norm_space(row.get("customer"))
     measure = norm_space(row.get("measure"))
+    if _ar_is_own_issuance(row, page_text):
+        return False
     if AR_SUBSIDIARY_TABLE_RE.search(" ".join([series, group, axis, label, norm_space(page_text)[:700]])):
         return True
     if "related_party" in measure.lower():
@@ -4677,7 +5073,7 @@ def _ar_keep_subsidiary_scope(row: dict[str, Any], page_text: str, company: str)
         for m in AR_PROPER_ENTITY_ACRONYM_RE.finditer(label):
             if m.group(1) not in AR_ACRONYM_PLAIN:
                 return True
-    for val in (series, group, customer):
+    for val in (series, group):
         if val and AR_SUBSIDIARY_NAME_RE.search(val) and not (company and _is_own_entity(val, company)):
             return True
     return False
@@ -4690,7 +5086,22 @@ AR_HEADLINE_HEAD_NOUNS: dict[str, tuple[str, ...]] = {
     "trade_receivables": ("receivable", "receivables", "debtor", "debtors"),
     "preference_share_capital": ("capital",),
     "equity_share_capital": ("capital",),
+    "raw_material_cost": ("raw", "material", "materials", "cost"),
+    "capital_work_in_progress": ("capital", "work", "cwip", "progress"),
 }
+AR_CURRENCY_TOKEN_RE = re.compile(
+    r"^(?:USD|EUR|EURO|GBP|SGD|CAD|JPY|CHF|AUD|AED|CNY|RMB|HKD|NZD|SEK|NOK|DKK|MYR|THB|SAR|QAR)$", re.I
+)
+AR_CURRENCY_SKIP_MEASURE_RE = re.compile(
+    r"(?:rate|sensitivity|strengthen|weaken|forex|exchange|currency|hedge|forward|swap|gain|loss|exposure)", re.I
+)
+AR_GRAND_OR_OTHER_EQUITY_RE = re.compile(r"^(?:grand\s+total|(?:total\s+)?other\s+equity)$", re.I)
+AR_ONE_RESERVE_RE = re.compile(
+    r"(?:retained_earnings|securities_premium|general_reserve|capital_reserve|capital_redemption_reserve|"
+    r"revaluation_reserve|statutory_reserve|debenture_redemption_reserve|hedging_reserve|esop_reserve|"
+    r"share_options_outstanding)", re.I
+)
+AR_TABLE_TOTAL_LINE_RE = re.compile(r"(?:^|\n)\s*(?:sub[\s-]*total|grand\s+total|total)\b", re.I)
 _AR_TOTAL_STOP_WORDS = frozenset({
     "of", "and", "or", "the", "for", "in", "on", "to", "by", "from", "at", "under", "with",
     "including", "excluding", "net", "gross", "other", "all", "volume", "amount", "number", "count", "value",
@@ -4793,13 +5204,22 @@ def _ar_doc_has_consolidated(store_db: str | Path, doc_key: str) -> bool:
     return has_cons
 
 
-def _ar_headline_head_nouns(measure: str) -> tuple[str, ...] | None:
+def _ar_headline_head_nouns(measure: str, page_text: str = "", label: str = "") -> tuple[str, ...] | None:
     bare = measure[len(NEW_PREFIX):] if measure.startswith(NEW_PREFIX) else measure
     bl = bare.lower()
     if AR_NON_TOTAL_SUFFIX_RE.search(bl):
         return None
     if bl in AR_HEADLINE_HEAD_NOUNS:
         return AR_HEADLINE_HEAD_NOUNS[bl]
+    if bl in ("loans", "loans_and_advances", "long_term_loans_and_advances", "short_term_loans_and_advances"):
+        # T-242 r5: one party's loan under a table printing a Sub-total/Total is a subset (#25 ABDL);
+        # keep a bare party-only row when no table total is on the page (test_ar_sections legacy check).
+        if page_text and label:
+            idx = page_text.lower().find(label.lower())
+            win = page_text[max(0, idx - 200):idx + 1200] if idx >= 0 else page_text
+            if AR_TABLE_TOTAL_LINE_RE.search(win):
+                return ("loan", "loans", "advance", "advances")
+        return None
     if bl == "borrowings" or bl.startswith("borrowings_") or bl.startswith("borrowings."):
         return ("borrowing", "borrowings", "debt", "debts", "loan", "loans")
     if bl.startswith("total_"):
@@ -4808,17 +5228,27 @@ def _ar_headline_head_nouns(measure: str) -> tuple[str, ...] | None:
     return None
 
 
-def _ar_subset_as_total_reason(row: dict[str, Any]) -> str:
+def _ar_subset_as_total_reason(row: dict[str, Any], page_text: str = "") -> str:
     measure = norm_space(row.get("measure"))
-    nouns = _ar_headline_head_nouns(measure)
-    if not nouns:
-        return ""
     lbl = norm_space(row.get("printed_label"))
     ser = norm_space(row.get("series_title"))
     grp = norm_space(row.get("group_path"))
+    ax = norm_space(row.get("printed_axis"))
     seg = norm_space(row.get("segment"))
     prod = norm_space(row.get("product"))
     bl = (measure[len(NEW_PREFIX):] if measure.startswith(NEW_PREFIX) else measure).lower()
+    # T-242 r5: an 'Other Equity' / 'Grand Total' row never maps to a single reserve (#39 ARSSINFRA)
+    if AR_GRAND_OR_OTHER_EQUITY_RE.match(lbl) and AR_ONE_RESERVE_RE.search(bl) and not AR_ONE_RESERVE_RE.search(ax):
+        return f"ar_subset_as_total: Other Equity/Grand Total row {lbl!r} cannot map to reserve {measure}"
+    # T-242 r5: a single foreign-currency column/row slice stored without currency on a canonical measure (#10 ACCELYA)
+    for cur_tok in (ax, lbl):
+        if cur_tok and AR_CURRENCY_TOKEN_RE.match(cur_tok) and not seg \
+                and not AR_CURRENCY_SKIP_MEASURE_RE.search(bl) \
+                and not re.search(rf"(?:^|_){re.escape(cur_tok.lower())}(?:$|_)", bl):
+            return f"ar_subset_as_total: currency slice {cur_tok!r} under {measure}"
+    nouns = _ar_headline_head_nouns(measure, page_text=page_text, label=lbl)
+    if not nouns:
+        return ""
     m_words = set(re.split(r"[^a-z0-9]+", bl))
     if (AR_SUBSET_MSME_RE.search(lbl) or AR_SUBSET_MSME_RE.search(seg)) and not AR_OTHER_THAN_MSME_RE.search(lbl):
         return f"ar_subset_as_total: MSME subset {lbl!r} under {measure}"
@@ -4842,7 +5272,7 @@ def _ar_subset_as_total_reason(row: dict[str, Any]) -> str:
         if any(re.search(rf"\b{re.escape(n)}\b", lbl, re.I) for n in nouns):
             return ""
         if (row.get("is_total") or row.get("_is_total")) and re.search(
-                r"\b(?:end\s+of\s+(?:the\s+)?year|closing\s+balance)\b", lbl, re.I):
+                r"\b(?:end\s+of\s+(?:the\s+)?year|closing\s+balance|as\s+at)\b", lbl, re.I):
             ctx = f"{ser} {grp}".lower()
             if any(re.search(rf"\b{re.escape(n)}\b", ctx) for n in nouns):
                 return ""
@@ -4964,7 +5394,8 @@ def _ar_is_company_section_scope(row: dict[str, Any], page_text: str, previous_t
 def ar_scale_note(page_text: str) -> tuple[str, str, float] | None:
     """The page's one printed scale note: ``(unit, family, scale)``; None when it prints none or several kinds."""
     kinds: set[tuple[str, float]] = set()
-    for match in AR_SCALE_NOTE_RE.finditer(norm_space(page_text)):
+    normed = norm_space(page_text)
+    for match in AR_SCALE_NOTE_RE.finditer(normed):
         word = (match.group(1) or "times").lower()
         if word == "times":
             kinds.add(("ratio", 1.0))
@@ -4972,13 +5403,187 @@ def ar_scale_note(page_text: str) -> tuple[str, str, float] | None:
             factor = _scale_factor(word)
             if factor:
                 kinds.add(("money", float(factor)))
+    if not kinds and page_text:
+        for match in AR_UNBRACKETED_SCALE_NOTE_RE.finditer(str(page_text)):
+            factor = _scale_factor(match.group(1).lower())
+            if factor:
+                kinds.add(("money", float(factor)))
     if len(kinds) != 1:
         return None
     family, factor = kinds.pop()
     if family == "ratio":
         return "Times", family, 1.0
-    unit = {1e3: "Thousands", 1e5: "Lakhs", 1e6: "Millions", 1e7: "Crores", 1e9: "Billions"}.get(factor)
+    unit = {100.0: "Hundreds", 1e3: "Thousands", 1e5: "Lakhs", 1e6: "Millions",
+            1e7: "Crores", 1e9: "Billions"}.get(factor)
     return (unit, family, factor) if unit else None
+
+
+AR_TABLE_START_RE = re.compile(
+    r"\b(?:particulars|sr\.?\s*no|s\.?\s*no|nature\s+of\s+trans|name\s+of\s+(?:the\s+)?(?:related|party|shareholder|promoter))\b",
+    re.I,
+)
+
+
+def _ar_is_non_other_entity_page(page_text: str) -> bool:
+    """True when the page is governance, CSR, board attendance, auditor report, AOC-1, or a subsidiary list."""
+    if not page_text:
+        return False
+    head = page_text[:600]
+    head_norm = norm_space(head)
+    if AR_SUB_COMPANY_SECTION_RE.search(head_norm) or AR_OTHER_ENTITY_NON_STMT_RE.search(head_norm):
+        return True
+    return False
+
+
+def _ar_clean_entity_candidate(raw_name: str) -> str:
+    name = norm_space(raw_name).strip(" .,;|")
+    if not name or AR_OTHER_ENTITY_SKIP_LINE_RE.search(name) or RESULTS_AUDIT_FIRM_RE.search(name) \
+            or AR_OTHER_ENTITY_BAD_NAME_RE.search(name):
+        return ""
+    return name
+
+
+def _ar_other_entity_single_page(page_text: str, company: str) -> tuple[str, bool]:
+    """Return ``(other_entity, sees_own_header)`` from one AR page's statement/running header."""
+    if not company or not page_text:
+        return "", False
+    if _ar_is_non_other_entity_page(page_text):
+        return "", True
+    head = page_text[:450]
+    m = AR_OTHER_ENTITY_HEAD_RE.search(head)
+    if m:
+        name = _ar_clean_entity_candidate(m.group(1) or m.group(2) or "")
+        if name:
+            if _is_own_entity(name, company):
+                return "", True
+            return name, False
+    rm = AR_OTHER_ENTITY_RUNNING_RE.search(page_text)
+    if rm:
+        name = _ar_clean_entity_candidate(rm.group(1))
+        if name:
+            if _is_own_entity(name, company):
+                return "", True
+            return name, False
+    # Bound subsidiary section title block (e.g. "Financial Statements\nStatutory Reports\nGJS Hotels Limited\n5. INVESTMENTS")
+    # Never fire inside Notes/RPT/Investments/Subsidiaries tables.
+    if AR_OTHER_ENTITY_STMT_BANNER_RE.search(head) and not AR_OTHER_ENTITY_BANNER_BLOCK_RE.search(head):
+        tbl_m = AR_TABLE_START_RE.search(head)
+        pre_table = head[:tbl_m.start()] if tbl_m else head
+        lines = [norm_space(ln) for ln in pre_table.splitlines() if norm_space(ln)]
+        banner_seen = False
+        for idx, name_raw in enumerate(lines):
+            if AR_OTHER_ENTITY_STMT_BANNER_RE.search(name_raw):
+                banner_seen = True
+                continue
+            if not banner_seen:
+                if _is_own_entity(name_raw, company):
+                    return "", True
+                continue
+            if AR_OTHER_ENTITY_BANNER_BLOCK_RE.search(name_raw) or re.match(r"^(?:note\s+)?\d+\.", name_raw, re.I):
+                break
+            if not re.match(
+                    r"^[A-Za-z][A-Za-z0-9&.,'()\- ]{2,70}?(?:Private\s+Limited|Pvt\.?\s*Ltd\.?|Limited|Ltd\.?)$",
+                    name_raw, re.I):
+                continue
+            name = _ar_clean_entity_candidate(name_raw)
+            if not name:
+                continue
+            if idx + 1 < len(lines) and (
+                    re.fullmatch(r"(?:\(?[\d,]+(?:\.\d+)?\)?|-|–|—|\d{1,2})", lines[idx + 1])
+                    or AR_SUBSIDIARY_NAME_RE.search(lines[idx + 1])):
+                continue
+            if _is_own_entity(name, company):
+                return "", True
+            if not re.search(r"\b(?:subsidiary|associate|joint\s+venture|promoter|nominee)\b", name, re.I):
+                return name, False
+    return "", False
+
+
+def _ar_other_entity_in(page_text: str, previous_text: str, company: str) -> str:
+    """T-242 r5/r6: detect another entity's statements on this page or on the preceding page of a bound run."""
+    ent, own_head = _ar_other_entity_single_page(page_text, company)
+    if ent:
+        return ent
+    if own_head or not previous_text:
+        return ""
+    if (AR_OTHER_ENTITY_STMT_HEAD_RE.search(page_text[:350])
+            or AR_OTHER_ENTITY_STMT_HEAD_RE.search(previous_text[:350])) \
+            and not AR_CONS_GROUP_HEAD_RE.search(page_text[:350]):
+        prev_ent, _ = _ar_other_entity_single_page(previous_text, company)
+        if prev_ent:
+            return prev_ent
+    return ""
+
+
+def _ar_company_is_holding(page_text: str, company: str) -> bool:
+    """True when the page names ``company`` as the Holding Company of the statements' entity (#47 AHLEAST)."""
+    if not company or not page_text or AR_CONS_GROUP_HEAD_RE.search(page_text[:350]) \
+            or _ar_is_non_other_entity_page(page_text) or AR_OTHER_ENTITY_BANNER_BLOCK_RE.search(page_text[:450]):
+        return False
+    for raw_ln in page_text.splitlines():
+        ln = norm_space(raw_ln)
+        if not ln or not re.search(r"\b(?:the\s+)?holding\s+company\b", ln, re.I):
+            continue
+        m = re.search(r"([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Pvt\.?\s*Ltd\.?|Limited|Ltd\.?))\s*,?\s*"
+                      r"(?:is\s+)?(?:the\s+)?holding\s+company\b", ln, re.I)
+        if m and _is_own_entity(m.group(1), company):
+            return True
+    return False
+
+
+def _ar_note_context(store_db: str | Path, doc_key: str, page: int,
+                     page_text: str, previous_text: str, company: str) -> tuple[tuple[str, str, float] | None, str]:
+    """Resolve multi-page AR note scale fallback and bound subsidiary entity across preceding pages."""
+    note_fallback: tuple[str, str, float] | None = None
+    other_entity_hint = ""
+    if not store_db or not doc_key:
+        return note_fallback, other_entity_hint
+    text_norm = norm_space(page_text)
+    cur_basis = heading_basis(text_norm) or (heading_basis(norm_space(previous_text)) if previous_text else "")
+    need_scale = (ar_scale_note(text_norm) is None and not AR_SCALE_NOTE_RE.search(text_norm)
+                  and (not previous_text or ar_scale_note(norm_space(previous_text)) is None))
+    need_entity = bool(company and not _ar_other_entity_in(page_text, previous_text, company)
+                       and not _ar_other_entity_single_page(page_text, company)[1]
+                       and not AR_CONS_GROUP_HEAD_RE.search(page_text[:350])
+                       and AR_OTHER_ENTITY_STMT_HEAD_RE.search(page_text[:350]))
+    if not need_scale and not need_entity:
+        return note_fallback, other_entity_hint
+    try:
+        con = connect_ro(store_db, timeout_s=60)
+        try:
+            cur = con.execute(
+                "SELECT page, text FROM doc_page WHERE doc_key=? AND page BETWEEN ? AND ? ORDER BY page DESC",
+                (str(doc_key), max(1, int(page) - 12), max(1, int(page) - 2)),
+            )
+            rows = [(int(r[0]), str(r[1] or "")) for r in cur] if cur is not None else []
+        finally:
+            con.close()
+    except Exception:
+        return note_fallback, other_entity_hint
+    for pg, pg_txt in rows:
+        pg_norm = norm_space(pg_txt)
+        if need_entity and int(page) - pg <= 6:
+            if AR_CONS_GROUP_HEAD_RE.search(pg_txt[:350]) or _ar_is_non_other_entity_page(pg_txt):
+                need_entity = False
+            else:
+                ent, own_head = _ar_other_entity_single_page(pg_txt, company)
+                if own_head:
+                    need_entity = False
+                elif ent:
+                    other_entity_hint = ent
+                    need_entity = False
+        if need_scale:
+            pg_basis = heading_basis(pg_norm)
+            if cur_basis and pg_basis and pg_basis != cur_basis:
+                need_scale = False
+                continue
+            cand = ar_scale_note(pg_txt)
+            if cand is not None and cand[1] == "money":
+                note_fallback = cand
+                need_scale = False
+        if not need_scale and not need_entity:
+            break
+    return note_fallback, other_entity_hint
 
 
 def ar_measure_family(row: dict[str, Any]) -> str:
@@ -5003,7 +5608,9 @@ def heading_basis(page_text: str, pattern: re.Pattern[str] = AR_HEADING_BASIS_RE
 
 def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company: str = "",
                        previous_text: str = "", report_fy: str = "",
-                       has_consolidated: bool = False) -> None:
+                       has_consolidated: bool = False,
+                       note_fallback: tuple[str, str, float] | None = None,
+                       other_entity_hint: str = "") -> None:
     """T-242: the annual-report number errors a script can catch from the row and its page.
 
     A fresh strict grade after the AR statement gate was 49 right / 4 partial / 7 wrong: a >3-year ageing bucket
@@ -5033,7 +5640,14 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
     :func:`apply_ar_statement_gate`.
     """
     text = norm_space(page_text)
-    note = ar_scale_note(text)
+    note = ar_scale_note(page_text)
+    if note is None and not AR_SCALE_NOTE_RE.search(text) and previous_text:
+        prev_note = ar_scale_note(previous_text)
+        if prev_note is not None and prev_note[1] == "money":
+            note = prev_note
+    if note is None and not AR_SCALE_NOTE_RE.search(text) and note_fallback is not None \
+            and note_fallback[1] == "money":
+        note = note_fallback
     # the page HEAD only (Wolf review): body text such as "as per the consolidated financial statements" in a
     # directors' report must not flip a row; a running head or a note title sits in the first 300 characters
     basis = heading_basis(text)
@@ -5047,14 +5661,12 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
                 and not AR_BASIS_WORD_RE.search(text):
             basis, basis_source = previous_heading, "previous_page_heading"
     # a bound subsidiary section names its entity in the page head, or (its field pages) only in the printed
-    # running header/footer; either one is another reporting entity, never the store company
-    other_entity = ""
-    if company:
-        entity_match = AR_OTHER_ENTITY_HEAD_RE.search(page_text[:300])
-        if entity_match is None:
-            entity_match = AR_OTHER_ENTITY_RUNNING_RE.search(page_text)
-        if entity_match and not _is_own_entity(entity_match.group(1), company):
-            other_entity = norm_space(entity_match.group(1)).strip(" .,;|")
+    # running header/footer, or on the preceding page of its statement run; either one is another reporting entity
+    direct_other_entity = _ar_other_entity_single_page(page_text, company)[0]
+    other_entity = _ar_other_entity_in(page_text, previous_text, company) or (
+        other_entity_hint if not _ar_is_non_other_entity_page(page_text) and not AR_CONS_GROUP_HEAD_RE.search(text[:350]) else ""
+    )
+    company_is_holding = bool(not other_entity and _ar_company_is_holding(page_text, company))
     cons_group_head = bool(AR_CONS_GROUP_HEAD_RE.search(text[:300]))
     has_prose_consolidated = bool(CONSOLIDATED_RE.search(page_text) or CONSOLIDATED_PAGE_RE.search(page_text))
     fy_spec = _parse_ar_fy_spec(report_fy) if report_fy else _parse_ar_fy_spec(
@@ -5070,6 +5682,7 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
         if junk_ordinal_reason(row, page_text=page_text):
             continue                     # T-242 r4/r6: edition ordinal / appointment term / FY / boilerplate dropped
         kept.append(row)
+        _ar_authorised_shares_update(row, page_text)
         stated_basis = str(row.get("basis") or "")
         if basis and (stated_basis != basis or (basis_source == "page_heading" and not row.get("basis_source"))) \
                 and (basis_source == "page_heading" or not stated_basis):
@@ -5081,6 +5694,12 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             row["basis_source"] = ""
         unnamed_subsidiary = False
         scope_unbacked = ""
+        rpt_reason = ""
+        if str(row.get("entity_scope") or "") == "subsidiary" and _ar_is_own_issuance(row, page_text):
+            row["entity_scope"] = "company"
+            row["scope_source"] = "own_issuance"
+        else:
+            rpt_reason = _ar_rpt_relationship_and_category(row, page_text, previous_text)
         if str(row.get("entity_scope") or "") == "subsidiary" \
                 and not _ar_keep_subsidiary_scope(row, page_text, company):
             if cons_group_head:
@@ -5108,8 +5727,16 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
                 and AR_STAKE_MEASURE_RE.search(str(row.get("measure") or "")) \
                 and AR_SUBSIDIARY_TITLE_RE.search(f"{text}\n{norm_space(previous_text)}"):
             row["entity_scope"], row["scope_source"] = "company", "subsidiary_holding_pct"
-        period_reason = _ar_period_reason(row, page_text, previous_text, fy_spec)
+        period_reason = (_ar_period_from_text_column_reason(row, page_text, previous_text)
+                         or _ar_period_reason(row, page_text, previous_text, fy_spec))
         unit = norm_space(row.get("unit"))
+        if unit:
+            try:
+                cur_scale = float(row.get("scale") or 1.0)
+            except (TypeError, ValueError):
+                cur_scale = 1.0
+            if cur_scale == 1.0 and (unit_factor := _scale_factor(unit)):
+                row["scale"] = float(unit_factor)
         cues = " ".join(norm_space(row.get(key)) for key in
                         ("measure", "printed_label", "printed_axis", "series_title"))
         if not unit and note and not _is_target_year(row):
@@ -5125,12 +5752,25 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             if fits:
                 row["unit"], row["unit_family"], row["scale"] = note_unit, note_family, note_scale
                 unit = note_unit
+        elif unit.lower() in ("number", "numbers") and note and note[1] == "money" \
+                and float(row.get("scale") or 1.0) == 1.0 \
+                and not re.search(r"\bexcept\b[^()]*\bshares?\b", text, re.I) \
+                and "share" in f"{row.get('measure') or ''} {row.get('printed_label') or ''}".lower():
+            try:
+                val_num = float(row["value"]) if row.get("value") is not None else None
+            except (TypeError, ValueError):
+                val_num = None
+            if val_num is not None and not val_num.is_integer():
+                row["unit"], row["scale"] = note[0], note[2]
+                unit = note[0]
         if str(row.get("status") or "") != "verified":
             continue
         measure = norm_space(row.get("measure"))
         headline = measure in _MEASURE_FAMILY and not AR_AGEING_MEASURE_RE.search(measure)
         reason = ""
-        unit_family = infer_unit_family(unit)
+        unit_family = "money" if unit.lower() in (
+            "hundreds", "thousands", "lakhs", "lacs", "crores", "millions", "billions"
+        ) else infer_unit_family(unit)
         # ponytail: only a unit with no alphabetic unit word ("`"), or a label noun on a money measure ("vehicle
         # loans" -> "vehicle"), is gated.  The vocabulary also misses real units ("Percentage", "kilograms"); gating
         # those would label mostly-right rows unverified, so the gate waits for the unit vocabulary to grow.
@@ -5154,6 +5794,8 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             reason = f"ar_outside_entity: entity_scope {row.get('entity_scope')!r} is not the company's own figure"
         if not reason:
             reason = period_reason
+        if not reason and rpt_reason:
+            reason = rpt_reason
         if not reason and headline and AR_BUCKET_LABEL_RE.search(label) \
                 and not _measure_names_qualifier(measure, label):
             reason = f"ar_qualified_label: {label!r} is an ageing/overdue bucket, not {measure}"
@@ -5169,17 +5811,32 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             cash_measure = measure[len(NEW_PREFIX):] if measure.startswith(NEW_PREFIX) else measure
             if cash_measure.startswith("net_debt") and AR_NET_CASH_LABEL_RE.search(cash_label):
                 reason = f"ar_net_cash_sign: {cash_label!r} is net cash, the opposite of {measure}"
-        if not reason and other_entity and not (
-                str(row.get("entity_scope") or "") == "subsidiary"
-                and normalize_name(str(row.get("segment") or "")) == normalize_name(other_entity)):
-            row["entity_scope"], row["segment"] = "subsidiary", other_entity
-            reason = f"ar_other_entity: {other_entity!r} statements, not {company}"
+        if not reason and (other_entity or company_is_holding):
+            row_ctx = " ".join(norm_space(row.get(k)) for k in ("measure", "series_title", "group_path", "printed_label"))
+            non_stmt_row = bool(AR_SUB_COMPANY_SECTION_RE.search(row_ctx) or AR_OTHER_ENTITY_NON_STMT_RE.search(row_ctx)
+                                or re.search(r"\b(?:board_meetings|csr_|committee_meetings|sitting_fees)\b", measure, re.I))
+            own_equity_tie = bool(
+                not direct_other_entity
+                and not company_is_holding
+                and (AR_OTHER_ENTITY_OWN_EQUITY_RE.search(row_ctx) or AR_OTHER_ENTITY_OWN_EQUITY_RE.search(text[:600]))
+            )
+            if not non_stmt_row and not own_equity_tie:
+                if other_entity and not (
+                        str(row.get("entity_scope") or "") == "subsidiary"
+                        and _entity_key(str(row.get("segment") or "")) == _entity_key(other_entity)):
+                    row["entity_scope"], row["segment"] = "subsidiary", other_entity
+                    reason = f"ar_other_entity: {other_entity!r} statements, not {company}"
+                elif not other_entity and company_is_holding:
+                    row["entity_scope"] = "subsidiary"
+                    reason = f"ar_other_entity: subsidiary statements (holding company is {company})"
         if not reason:
-            reason = _ar_subset_as_total_reason(row)
+            reason = _ar_subset_as_total_reason(row, page_text=page_text)
         if not reason:
             reason = _ar_flow_as_stock_reason(row, page_text)
         if not reason:
             reason = _ar_current_mismatch_reason(row)
+        if not reason:
+            reason = _ar_wide_table_misaligned_reason(row, page_text)
         if not reason and scope_unbacked:
             reason = scope_unbacked
         if not reason and str(row.get("entity_scope") or "") in ("jv", "associate") \
@@ -5205,9 +5862,9 @@ RESULTS_REFERENCE_MEASURE_RE = re.compile(
     r"(?:reference|section|rule|clause|serial|circular|scrip|statutory|legal_year|reference_year)", re.I)
 RESULTS_SCALE_NOTE_RE = re.compile(
     r"\b(?:figures?|amounts?)\b[^.\n]{0,8}?\b(?:in|ln)\b\s*"
-    r"(l\s*akhs?|lacs?|crores?|crs?|millions?|billions?|thousands?)\b"
+    r"(l\s*akhs?|lacs?|crores?|crs?|millions?|billions?|thousands?|hundreds?)\b"
     r"|(?:\b(?:rupees?|rs\.?|inr)\b|\u20b9|`)\s*(?:in|ln)\s*"
-    r"(l\s*akhs?|lacs?|crores?|crs?|millions?|billions?|thousands?)\b",
+    r"(l\s*akhs?|lacs?|crores?|crs?|millions?|billions?|thousands?|hundreds?)\b",
     re.I)
 RESULTS_SCALE_ISH_UNIT_RE = re.compile(r"akh|lak|lac|crore|million|billion|thousand", re.I)
 RESULTS_STATEMENT_TITLE_RE = re.compile(
@@ -5254,7 +5911,8 @@ def results_scale_note(text: str) -> tuple[str, str, float] | None:
     if len(factors) != 1:
         return None
     factor = factors.pop()
-    unit = {1e3: "Thousands", 1e5: "Lakhs", 1e6: "Millions", 1e7: "Crores", 1e9: "Billions"}.get(factor)
+    unit = {100.0: "Hundreds", 1e3: "Thousands", 1e5: "Lakhs", 1e6: "Millions",
+            1e7: "Crores", 1e9: "Billions"}.get(factor)
     return (unit, "money", factor) if unit else None
 
 
@@ -6426,9 +7084,10 @@ def _measure_names_qualifier(measure: str, label: str) -> bool:
 
 
 def _entity_key(name: str) -> str:
-    """Letters-and-digits key of a company name, without a leading "The" ("A. K." == "AK")."""
-    normalized = re.sub(r"^the\s+", "", normalize_name(name).strip())
-    return re.sub(r"[^a-z0-9]+", "", normalized)
+    """Letters-and-digits key of a company name, normalising corporate suffixes, punctuation and leading 'The'."""
+    cleaned = re.sub(r"[^a-z0-9]+", " ", norm_space(name).lower()).strip()
+    cleaned = re.sub(r"\b(?:the|limited|ltd|private|pvt|company|co|corporation|corp|incorporated|inc|and)\b", " ", cleaned)
+    return re.sub(r"\s+", "", cleaned)
 
 
 def _is_own_entity(name: str, company: str) -> bool:
@@ -6438,15 +7097,16 @@ def _is_own_entity(name: str, company: str) -> bool:
     ("The Bombay Dyeing and Manufacturing Company Limited"), and initials are spaced ("A. K." vs "AK"), so the
     comparison drops a leading "The" and compares a letters-and-digits key and its first 12 characters.
     A shared 12-character head is deliberately read as own: failing to gate a subsidiary is cheaper than gating
-    the company's own rows.
+    the company's own rows.  When ``company`` is a single bare ticker word ("ARSSINFRA", "AJRINFRA"), a legal
+    name that starts with it ("ARSS Infrastructure Projects Limited", "AJR Infra and Tolling Limited") is own.
     """
     own, printed = _entity_key(company), _entity_key(name)
     if not own or not printed:
         return False
     if own == printed:
         return True
-    if printed.startswith(own):         # the parent's name plus more words is a subsidiary ("Tata Motors Finance")
-        return False
+    if printed.startswith(own):
+        return len(norm_space(company).split()) == 1 and len(own) >= 6
     head = min(len(own), len(printed), 12)
     return head >= 3 and own[:head] == printed[:head]
 
@@ -7032,7 +7692,8 @@ def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2:
                        page_text: str = "", company: str = "", previous_text: str = "",
                        report_fy: str = "", has_consolidated: bool = False,
                        stats: dict[str, Any] | None = None, previous_page_text: str = "",
-                       store_db: str = "", doc_key: str = "", deck_asof: str = "") -> None:
+                       store_db: str = "", doc_key: str = "", deck_asof: str = "",
+                       page: int = 0) -> None:
     """T-242: the number gates that depend on the document type (a call number, an AR statement line, an AR row, a deck row, a results row).
 
     ``previous_text`` is the page before this one, for the AR row gates' carried basis and the results rows'
@@ -7044,8 +7705,11 @@ def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2:
         apply_transcript_number_gate(rows)       # Shivam 24 Nov: call numbers need a filing to verify
     elif doc_type == "annual_report":
         apply_ar_statement_gate(rows)
+        note_fallback, other_entity_hint = _ar_note_context(
+            store_db, doc_key, page, page_text, previous_text, company) if (store_db and doc_key and page) else (None, "")
         apply_ar_row_gates(rows, page_text, company, previous_text, report_fy=report_fy,
-                           has_consolidated=has_consolidated)
+                           has_consolidated=has_consolidated,
+                           note_fallback=note_fallback, other_entity_hint=other_entity_hint)
     elif doc_type == "deck":
         apply_deck_row_gates(rows, page_text, company=company, deck_asof=deck_asof)
     elif doc_type == "results":
@@ -8914,7 +9578,8 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                        if meta.get("doc_type") == "annual_report" else False,
                        previous_page_text=page_text_of(store_db, doc_key, page - 1)
                        if doc_type == "results" else "",
-                       store_db=str(store_db) if doc_type == "results" else "", doc_key=str(doc_key),
+                       store_db=str(store_db) if doc_type in ("results", "annual_report") else "",
+                       doc_key=str(doc_key), page=int(page),
                        deck_asof=deck_period(store_db, doc_key, check_text) if doc_type == "deck" else "")
     if text_source:                     # T-242: a jumbled deck layer read as such, not as a clean text layer
         for row in result["rows"]:
@@ -9696,11 +10361,16 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             stats["ar_statement_rows"] += before_gate - sum(1 for row in updated if row["status"] == "verified")
             before_ar = list(updated)
             prev_txt = page_text_of(store_db, doc_key, int(page) - 1)
+            ar_company = company_names.get(store_symbol.get(store_db, ""), "")
+            note_fallback, other_entity_hint = _ar_note_context(
+                store_db, doc_key, int(page), raw_text, prev_txt, ar_company)
             apply_ar_row_gates(updated, raw_text,   # T-242: unit / qualifier / narrative / basis row gates
-                               company_names.get(store_symbol.get(store_db, ""), ""),
+                               ar_company,
                                prev_txt,
                                report_fy=ar_report_fy(store_db, doc_key, raw_text, prev_txt),
-                               has_consolidated=_ar_doc_has_consolidated(store_db, doc_key))
+                               has_consolidated=_ar_doc_has_consolidated(store_db, doc_key),
+                               note_fallback=note_fallback,
+                               other_entity_hint=other_entity_hint)
             for row in before_ar:
                 if all(row is not kept_row for kept_row in updated):
                     con.execute("DELETE FROM observation WHERE observation_id=?", (int(row["observation_id"]),))
