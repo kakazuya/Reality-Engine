@@ -97,6 +97,17 @@
    "evidence": "C:/RealityEngine/t242/ar_grade_r3/pack.jsonl; D:/RealityEngine/t242/grades/ar_r3_regrade_7a8618e3.md",
    "note": "ar_r3 (AR gates + gate_not_company) 45/8/5/2 (R 75%, W+J 11.7%). W: unnamed JV/associate tagged subsidiary verified (2); own figure tagged subsidiary/parent verified (3). J: director-term '5 years', '34th Annual Report'. Fix owner Wolf, dsh 9de63d5f; fix note C:/RealityEngine/t242/ar_grade_r3/fix.md. obs_ar_fy27 not swapped.",
    "at": "2026-11-26 02:34"
+  },
+  {
+   "doc_type": "annual_report",
+   "fingerprint": "48d75aa69de7",
+   "verdict": "pass",
+   "reviewer": "Eagle (non-author recorder; grader agy Hydrogen high 20261126T003140Z-9aaab2a1)",
+   "author": "Wolf (AR prompt + AR gates r4)",
+   "rows": 60,
+   "evidence": "C:/RealityEngine/t242/ar_grade_r4/pack.jsonl; D:/RealityEngine/t242/grades/ar_r4_regrade_9aaab2a1.md",
+   "note": "ar_r4 copy (AR gates r4 98ae61ac + gate_not_company 2c88957a) 48/9/1/2 (R 80%, W+J 5.0% at bar); r3 JV/subsidiary scope W gone. W: OCR-scrambled note pairing; J: bare FY term, newspaper count echo.",
+   "at": "2026-11-26 10:50"
   }
  ]
 }
