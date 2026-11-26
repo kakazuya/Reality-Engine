@@ -24,4 +24,4 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 
 ## Recipes
 Store copy: checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE`. Merge: grader row first; merge_worker; drop root PROGRESS_NOTES.md; tests per file; docs; remove worktree; log in worker_reviews.jsonl. Store diff: `reality_engine.scripts.store_diff`.
-26 Nov 01:40 NEXT (Wolf): fix 5 merged (15R/16); audit 6; review dsh 69650793 (OCR AIMD+Zen rotation), 437c0e4f (PDF cache); AR ar_r3 grade; deck swap; pack-up EOD.
+26 Nov 12:30 HANDOFF Wolf->Eagle (Wolf CLI restart): see tasks/handoff/T-242_wolf_handoff_2026-11-26.md.
