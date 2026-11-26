@@ -2680,6 +2680,7 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   written beside a live store. Test: `python -m pytest -q reality_engine/tests/test_ocr_fill.py
   reality_engine/tests/test_v2_page_words.py` (**20 passed**: 15 + 5; the brief's `test_page_words.py` is
   `test_v2_page_words.py`). The bulk run waits for the 60-row grade.
+- **T-242: OCR slide-type filter (`scripts/ocr_fill.py`, 26 Nov 2026).** Two image grades of hy4 deck rows from OCR'd image-only slides failed on junk from covers/dividers, ads, product photos/packaging/price tags, news clippings and mock-UI screenshots, so OCR rows stay quarantined until filtered. `classify_slide(png, ocr_text)` calls one free vision model at temperature 0 (`FREE_ROUTES`/`model_entry`/`Reader`, paid-id refusal) with the slide image and OCR text for a single JSON kind (`data_table|data_chart|kpi_highlights` -> `data=True`; `text_only|cover_divider|advert_product_photo|news_clipping|mock_ui|other` -> `data=False`); `--classify` classifies pages already in `<out-dir>/<stem>_ocr.db` into `ocr_slide_kind(symbol, doc_key, page, kind, data, model, seconds)` without touching `ocr_page`, and `data_slide_pages(ocr_db)` returns `set[(doc_key, page)]` for `data=1` rows. A free-model bake-off (skill `free-model-bakeoff`) must pick the classifier model before any bulk run.
 
 ## Modular store repair (T-218, 16 Nov 2026)
 

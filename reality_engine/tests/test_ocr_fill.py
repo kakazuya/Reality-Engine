@@ -359,3 +359,138 @@ def test_free_only_guard_and_paid_cost_stop(monkeypatch):
     stats = of.run(of.select(root / "u"), ["zen"], out_dir=root / "out", enabled={"zen": True},
                    start_workers=1, max_workers=1)
     assert stats["paid"] and stats["errors"] == 1 and stats["written"] == 0
+
+
+def test_classify_slide_parses_json_and_malformed_replies(monkeypatch):
+    seen: list[tuple[str, str, str]] = []
+
+    def fake_ask(route, png, timeout=420, model=None, prompt=of.PROMPT):
+        seen.append((route, model["id"], prompt))
+        ocr_part = prompt.split("OCR text:\n", 1)[-1]
+        if "table" in ocr_part:
+            return '{"kind": "data_table"}'
+        if "chart" in ocr_part:
+            return '```json\n{"kind": "data_chart"}\n```'
+        if "kpi" in ocr_part:
+            return 'Here: {"kind": "kpi_highlights"}'
+        if "cover" in ocr_part:
+            return '{"kind": "cover_divider", "data": true}'
+        if "unknown" in ocr_part:
+            return '{"kind": "not_a_real_kind"}'
+        return "not json at all {broken"
+
+    monkeypatch.setattr(of, "ask", fake_ask)
+
+    res_table = of.classify_slide(b"png", "Revenue table 100", route="kilo")
+    assert res_table["kind"] == "data_table" and res_table["data"] is True
+    assert res_table["model"] == "nvidia/nemotron-3.5-super-vl:free"
+    assert isinstance(res_table["seconds"], float)
+    assert "Revenue table 100" in seen[0][2] and "JSON" in seen[0][2]
+
+    assert of.classify_slide(b"png", "Revenue chart", route="kilo")["data"] is True
+    assert of.classify_slide(b"png", "Headline kpi", route="kilo")["kind"] == "kpi_highlights"
+    cover = of.classify_slide(b"png", "Welcome cover", route="kilo")
+    assert cover["kind"] == "cover_divider" and cover["data"] is False
+    unk = of.classify_slide(b"png", "unknown", route="kilo")
+    assert unk["kind"] == "other" and unk["data"] is False
+    bad = of.classify_slide(b"png", "garbage", route="kilo")
+    assert bad["kind"] == "other" and bad["data"] is False
+
+    # ask_http enforces temperature 0 in the request body
+    import requests
+    from reality_engine.scripts import resource_watchdog
+    sent: list[dict] = []
+
+    class _Resp:
+        status_code = 200
+        def json(self):
+            return {"choices": [{"message": {"content": '{"kind": "data_table"}'}}]}
+
+    monkeypatch.setattr(resource_watchdog, "user_env", lambda: {"KILO_API_KEY": "k"})
+    monkeypatch.setattr(requests, "post", lambda url, json, headers, timeout: sent.append(json) or _Resp())
+    of.ask_http("kilo", b"png", prompt="classify")
+    assert sent[0]["temperature"] == 0 and sent[0]["messages"][0]["content"][1]["text"] == "classify"
+
+
+def test_classify_slide_paid_model_refused_and_throttled(monkeypatch):
+    for paid_id in ("hy4-flash-free", "mimo-v2.6-flash-free", "unlisted-model"):
+        with pytest.raises(SystemExit):
+            of.classify_slide(b"png", "Revenue 10", route="zen", model=paid_id)
+    with pytest.raises(SystemExit):
+        of.classify_slide(b"png", "Revenue 10", route="stepfun")
+
+    reader = of.Reader(["kilo"], 6, 24)
+    monkeypatch.setattr(of, "ask", lambda *a, **kw: (_ for _ in ()).throw(of.Throttled("429")))
+    with pytest.raises(of.Throttled):
+        of.classify_slide(b"png", "Revenue 10", route="kilo", reader=reader)
+    assert reader.routes["kilo"]["throttled"] == 1 and reader.routes["kilo"]["limit"] == 4
+
+
+def test_cli_classify_idempotent_upsert_and_data_slide_pages(monkeypatch):
+    root = _fresh("classify")
+    pdf = _pdf(root)
+    _store(root / "u", "c01", [ROUTES[0]], [("a.pdf", "AAA", "deck", "2026-01-01", str(pdf))])
+    out_dir = root / "out"
+    out_dir.mkdir()
+    ocr_db = out_dir / "c01_ocr.db"
+    con = sqlite3.connect(ocr_db)
+    con.executescript(of.SCHEMA)
+    rows_in = [
+        ("AAA", "a.pdf", 1, "deck", "2026-01-01", "Revenue 100", json.dumps(of.pseudo_words("Revenue 100")),
+         None, 1, 150, 1.0, NEMOTRON),
+        ("AAA", "a.pdf", 2, "deck", "2026-01-01", "Investor Presentation",
+         json.dumps(of.pseudo_words("Investor Presentation")), None, 1, 150, 1.0, NEMOTRON),
+        ("AAA", "a.pdf", 3, "deck", "2026-01-01", "Shop Now 50% off",
+         json.dumps(of.pseudo_words("Shop Now 50% off")), None, 1, 150, 1.0, DEEPSEEK),
+    ]
+    con.executemany("INSERT INTO ocr_page VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", rows_in)
+    con.commit()
+    con.close()
+
+    assert of.data_slide_pages(out_dir / "missing_ocr.db") == set()
+    assert of.data_slide_pages(ocr_db) == set()                   # table missing -> empty (quarantined)
+
+    from reality_engine.scripts import resource_watchdog
+    monkeypatch.setattr(resource_watchdog, "user_env", lambda: {"KILO_API_KEY": "k"})
+    monkeypatch.setattr(of, "render_page", lambda pdf_path, page: b"png")
+    replies = {"Revenue": '{"kind": "data_table"}', "Investor": '{"kind": "cover_divider"}',
+               "Shop": '{"kind": "advert_product_photo"}'}
+    calls: list[str] = []
+
+    def fake_ask(route, png, timeout=420, model=None, prompt=of.PROMPT):
+        calls.append(route)
+        for needle, reply in replies.items():
+            if needle in prompt:
+                return reply
+        return '{"kind": "other"}'
+
+    monkeypatch.setattr(of, "ask", fake_ask)
+    rc = of.main(["--classify", "--out-dir", str(out_dir), "--universe", str(root / "u"),
+                  "--routes", "kilo", "--start-workers", "1", "--max-workers", "1"])
+    assert rc == 0 and len(calls) == 3
+
+    con = sqlite3.connect(f"file:{ocr_db.as_posix()}?mode=ro", uri=True)
+    assert con.execute("SELECT * FROM ocr_page ORDER BY page").fetchall() == rows_in
+    kinds = con.execute("SELECT symbol, doc_key, page, kind, data, model FROM ocr_slide_kind ORDER BY page").fetchall()
+    con.close()
+    assert kinds == [
+        ("AAA", "a.pdf", 1, "data_table", 1, "nvidia/nemotron-3.5-super-vl:free"),
+        ("AAA", "a.pdf", 2, "cover_divider", 0, "nvidia/nemotron-3.5-super-vl:free"),
+        ("AAA", "a.pdf", 3, "advert_product_photo", 0, "nvidia/nemotron-3.5-super-vl:free"),
+    ]
+    assert of.data_slide_pages(ocr_db) == {("a.pdf", 1)}
+
+    # --resume skips already-classified pages
+    rc = of.main(["--classify", "--resume", "--out-dir", str(out_dir), "--universe", str(root / "u"),
+                  "--routes", "kilo", "--start-workers", "1", "--max-workers", "1"])
+    assert rc == 0 and len(calls) == 3
+
+    # Re-running without --resume upserts idempotently (no duplicate rows)
+    replies["Investor"] = '{"kind": "kpi_highlights"}'
+    rc = of.main(["--classify", "--out-dir", str(out_dir), "--universe", str(root / "u"),
+                  "--routes", "kilo", "--start-workers", "1", "--max-workers", "1"])
+    assert rc == 0 and len(calls) == 6
+    con = sqlite3.connect(f"file:{ocr_db.as_posix()}?mode=ro", uri=True)
+    assert con.execute("SELECT COUNT(*) FROM ocr_slide_kind").fetchone()[0] == 3
+    con.close()
+    assert of.data_slide_pages(ocr_db) == {("a.pdf", 1), ("a.pdf", 2)}
