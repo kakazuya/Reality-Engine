@@ -3464,6 +3464,11 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   (and mixed-duration keep cases) stay untouched. Added synthetic tests in `reality_engine/tests/test_results_gates.py`
   and read-only measurement helper `reality_engine/scripts/results_r3d_residue.py` (`--db` copy check + `--recheck`
   pending reviewer run).
+  **r3d2 (27 Nov 2026, T-242):** the residue group key also carries `measure`, so the rule fires only when ONE measure
+  prints two or more distinct values for one date under one label; another measure sharing the label (`Total` on a
+  balance sheet, `b. Services` in a segment table) is a different line and keeps its own period and status. The eight
+  graded-R rows -- ASARFI 48901, AAVAS 8962, BBTCL 3906, AKSHOPTFBR 11178/11185, AMITSEC 37761, AEONXDIGI 26019,
+  AVONMORE 94458 -- keep their base period and `verified`; `results_r3d_residue.py` groups by measure too.
   **r3e (26 Nov 2026, T-242):** results ckpt_0002 graded 50 R / 4 P / 5 W / 1 J; Eagle's fix note names five
   structural causes, each now a rule in `apply_results_row_gates` (never per company; rows end unverified, never
   deleted): (a) a component line printed under a `<subject> comprise(s) / consist(s) of / include(s)` heading keeps

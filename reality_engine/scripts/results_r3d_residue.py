@@ -1,8 +1,9 @@
 """Count and inspect T-242 r3d residue groups on a results observation database (read-only).
 
-Residue definition (T-242 r3d): rows on one ``(doc_key, page)`` sharing normalized
-``(printed_label, basis, segment, date_key)`` with >= 2 distinct numeric values AND the same
-duration word on all of them (including no duration word on any of them).
+Residue definition (T-242 r3d, narrowed in r3d2): rows on one ``(doc_key, page)`` sharing one
+``(printed_label, measure, basis, segment, date_key)`` with >= 2 distinct numeric values AND the same
+duration word on all of them (including no duration word on any of them). A second measure printing the
+same label for the same date is a different line, not residue (r3d2 abstain).
 
 Not run during the r3d implementation handoff; meant to be executed by the reviewer on a DB copy.
 """
@@ -21,22 +22,22 @@ def collect_r3d_residue(db_path: Path, limit: int = 20) -> dict[str, Any]:
     con = connect_ro(db_path, timeout_s=60)
     try:
         rows = con.execute(
-            "SELECT doc_key, page, symbol, printed_label, basis, segment, period, value, value_text, "
+            "SELECT doc_key, page, symbol, printed_label, measure, basis, segment, period, value, value_text, "
             "period_source, status FROM observation "
             "WHERE record_type='number' AND status != 'quarantined'"
         ).fetchall()
     finally:
         con.close()
     groups: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
-    for doc_key, page, symbol, label, basis, segment, period, val, vt, p_src, status in rows:
+    for doc_key, page, symbol, label, measure, basis, segment, period, val, vt, p_src, status in rows:
         lbl = norm_space(label)
         if not lbl:
             continue
         date_key, dur, bare_date = _results_period_date_and_dur(str(period or ""))
         if date_key is None:
             continue
-        gkey = (str(doc_key), int(page), lbl.lower(), norm_space(basis).lower(),
-                norm_space(segment).lower(), date_key)
+        gkey = (str(doc_key), int(page), lbl.lower(), norm_space(measure).lower(),
+                norm_space(basis).lower(), norm_space(segment).lower(), date_key)
         groups[gkey].append({
             "symbol": str(symbol or ""), "doc_key": str(doc_key), "page": int(page),
             "printed_label": lbl, "basis": norm_space(basis), "segment": norm_space(segment),

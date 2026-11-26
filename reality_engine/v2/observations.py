@@ -6293,20 +6293,25 @@ def _results_row_token_slices(label: str, page_text: str) -> list[list[float | N
 
 def _results_resolve_residue_periods(rows: list[dict[str, Any]], page_text: str,
                                      stats: dict[str, Any] | None = None) -> set[int]:
-    """Resolve same-label same-date multi-value residue groups by column position, or strip to bare date (T-242 r3d)."""
+    """Resolve same-measure same-label same-date multi-value residue groups by column position, or strip to bare date.
+
+    T-242 r3d: a group is one measure on one label -- a second measure printing the same label ("Total", "b. Services")
+    is a different line, not two values for one label, and its rows keep their own period and status (r3d2 abstain).
+    """
     handled: set[int] = set()
-    groups: dict[tuple[str, str, str, tuple[int, int, int]], list[tuple[dict[str, Any], str, str]]] = {}
+    groups: dict[tuple[str, str, str, str, tuple[int, int, int]], list[tuple[dict[str, Any], str, str]]] = {}
     for row in rows:
         if norm_space(row.get("record_type") or "number") != "number" or row.get("status") == "quarantined":
             continue
         lbl = norm_space(row.get("printed_label")).lower()
         key, dur, bare_date = _results_period_date_and_dur(str(row.get("period") or ""))
         if lbl and key is not None:
-            gkey = (lbl, norm_space(row.get("basis")).lower(), norm_space(row.get("segment")).lower(), key)
+            gkey = (lbl, norm_space(row.get("measure")).lower(), norm_space(row.get("basis")).lower(),
+                    norm_space(row.get("segment")).lower(), key)
             groups.setdefault(gkey, []).append((row, dur, bare_date))
     ordered_cols: list[tuple[tuple[int, int, int], str]] | None = None
     parsed_cols = False
-    for (_lbl, _basis, _seg, date_key), items in groups.items():
+    for (_lbl, _measure, _basis, _seg, date_key), items in groups.items():
         if len(items) < 2 or len({dur for _, dur, _ in items}) != 1:
             continue
         targets = [parse_number(_results_norm_ocr_num(vt)) if (vt := norm_space(r.get("value_text"))) else (

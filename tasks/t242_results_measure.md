@@ -443,9 +443,10 @@ obs 11486 `33rd` -> `quarantined`.
 ### Graded-R rows (results_ckpt1 / results_grade_r2 / results_grade_r3c / results_ckpt2)
 
 0 r3e-attributable status changes. All eight R-row downgrades in this pass come from the already-merged r3d residue rule
-(`results_period_duration_ambiguous`), which the r3d base copy predates (r3d's `--recheck` is the pending reviewer run):
-ckpt1 ASARFI (48901), AAVAS (8962); r2 BBTCL (3906); r3c AKSHOPTFBR (11178), AMITSEC (37761); ckpt2 AEONXDIGI (26019),
-AVONMORE (94458), AKSHOPTFBR (11185). Reviewer decision belongs to r3d, not r3e. The ckpt_0002 W/J rows change as
+(`results_period_duration_ambiguous`), which the r3d base copy predates: ckpt1 ASARFI (48901), AAVAS (8962); r2 BBTCL
+(3906); r3c AKSHOPTFBR (11178), AMITSEC (37761); ckpt2 AEONXDIGI (26019), AVONMORE (94458), AKSHOPTFBR (11185). That
+was r3d's own defect, fixed in r3d2 (`## results gates r3d2` below): each now keeps its base period and `verified`,
+and r3e keeps 0 of its own graded-R changes. The ckpt_0002 W/J rows change as
 intended: 43952 unverified, 44943 unverified, 32092 unverified, 11486 quarantined, 4987 and 37433 attributes only.
 
 ### Seeded 20-row samples per new rule (seed 7, page text read for each)
@@ -469,3 +470,26 @@ intended: 43952 unverified, 44943 unverified, 32092 unverified, 11486 quarantine
   entity's own figure.
 - ordinal (`results_not_a_figure`, 20 of 29): 20/20 right - board-meeting dates (`28th`), AGM numbers (`11th`), filing
   quarters (`01st`, `04th`), `1st to market`, a `5th Floor` address line and BLUECOAST's `33rd Board's Report`.
+
+## results gates r3d2 (27 Nov 2026, T-242, r3d/r3e baseline)
+
+r3d's `results_period_duration_ambiguous` residue rule grouped rows on one page by
+`(printed_label, basis, segment, date_key)` only. Distinct measures that print the same label for the same date -- `Total`
+on a balance sheet, `b. Services` in a segment table, `(a) Investments activities` twice -- therefore looked like one
+label holding two values, and every row of that label was stripped to the bare date and `unverified`. r3d2 adds
+`measure` to the group key in `_results_resolve_residue_periods`: the rule abstains (the row keeps its own period,
+`period_source` and status) unless one measure carries >= 2 distinct values for one date key under one label; inside
+such a group the r3d behaviour is unchanged (duration by column position, else the bare printed date). `measure` also
+joins the group key of `reality_engine/scripts/results_r3d_residue.py`, so its residue count means the same thing.
+
+The eight graded-R rows keep their base period and `verified` against the r3d copy `C:/RealityEngine/t242/results_r3d/base.db`
+page text (stores `C:/RealityEngine/tg_build/universe_fy27`, read-only): ASARFI 48901 (`30-Jun-26`), AAVAS 8962
+(`September 2026`), BBTCL 3906 (`For the year ended March 31, 2025`), AKSHOPTFBR 11178/11185 (`Mar-26`/`Mar-25`),
+AMITSEC 37761 (`Corresponding 3 months ended in the previous year 30.06.2025`), AEONXDIGI 26019 (`Half Year Ended
+September 30, 2026`), AVONMORE 94458 (`Sept 30, 2026`). Each is a parametrised case of
+`test_r3d2_graded_r_row_keeps_its_period_and_status` in `reality_engine/tests/test_results_gates.py`, built from the real
+page text and every row that printed that label for that date. r3d's AGARWALEYE, AANCHALISP and residue-counter evidence
+tests still pass unchanged.
+
+Accept (`pytest -q <file>` each separately): test_results_gates.py 64 passed, test_observations.py 177 passed,
+test_ar_sections.py 42 passed, test_deck_guards.py 37 passed.

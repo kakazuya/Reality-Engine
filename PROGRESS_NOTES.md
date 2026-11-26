@@ -1,0 +1,1 @@
+2026-11-27 ~03:10 IST — T-242 r3d2: added `measure` to the residue group key in `_results_resolve_residue_periods` (plus residue helper), 8 graded-R rows keep base period+verified, 8 parametrised tests from real page text, docs updated. Next: commit + report. No blockers.
