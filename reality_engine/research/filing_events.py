@@ -5632,6 +5632,9 @@ def main(argv: list[str] | None = None) -> int:
         from reality_engine.research.driver_claims import STORE_ROOT
         src = "T228_STORE_ROOT" if os.environ.get("T228_STORE_ROOT") else "default; set T228_STORE_ROOT"
         print(f"store root: {STORE_ROOT} ({src})", flush=True)
+        if args.stores and not os.environ.get("T228_STORE_ROOT"):
+            print("error: --stores needs T228_STORE_ROOT set (the default root reuses cNN names)", file=sys.stderr)
+            return 2
         missing = [s for s in (args.stores or []) if not store_path(s).is_file()]
         if missing:
             print(f"error: {len(missing)} store(s) not under {STORE_ROOT}: {' '.join(missing[:10])}", file=sys.stderr)

@@ -1143,6 +1143,10 @@ def test_main_names_store_root_and_refuses_missing_store(tmp_path, monkeypatch, 
     """T-242 (26 Nov): a --stores name missing under the resolved root stops the run (rc 2), root printed first."""
     from reality_engine.research import driver_claims, filing_events
     monkeypatch.setattr(driver_claims, "STORE_ROOT", tmp_path)
+    monkeypatch.delenv("T228_STORE_ROOT", raising=False)
+    assert filing_events.main(["--stores", "c999", "--no-model", "--out", str(tmp_path / "x.db")]) == 2
+    assert "T228_STORE_ROOT set" in capsys.readouterr().err
+    monkeypatch.setenv("T228_STORE_ROOT", str(tmp_path))
     rc = filing_events.main(["--stores", "c999", "--no-model", "--out", str(tmp_path / "x.db"),
                              "--report-file", str(tmp_path / "r.md")])
     out = capsys.readouterr()
