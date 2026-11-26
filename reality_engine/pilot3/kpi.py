@@ -1028,6 +1028,60 @@ class Row:
     raw_label: str
     raw_value: str
     rule: str
+    unverified_reason: str | None = None
+
+
+_QUOTE_SCALE_RX = re.compile(
+    r"(?<![\w.])(?P<cur>₹|`|Rs\.?|INR|US\$|USD|\$)?\s*(?P<num>\d{1,3}(?:,\d{2,3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*"
+    r"(?:\+\s*)?(?P<suf>crores?|crs?\b\.?|lakhs?|lacs?\b|millions?|mns?\b|billions?|bns?\b)(?![A-Za-z])", re.I)
+_QUOTE_SCALE_MULT = {"crore": ("cr", 1e7), "crores": ("cr", 1e7), "cr": ("cr", 1e7), "crs": ("cr", 1e7),
+                     "lakh": ("lakh", 1e5), "lakhs": ("lakh", 1e5), "lac": ("lakh", 1e5), "lacs": ("lakh", 1e5),
+                     "million": ("mn", 1e6), "millions": ("mn", 1e6), "mn": ("mn", 1e6), "mns": ("mn", 1e6),
+                     "billion": ("bn", 1e9), "billions": ("bn", 1e9), "bn": ("bn", 1e9), "bns": ("bn", 1e9)}
+_SCALE_UNIT_FACTOR = {"inr_cr": 1e7, "inr_lakh": 1e5, "inr_mn": 1e6, "inr_bn": 1e9, "inr_tn": 1e12, "inr": 1.0,
+                      "usd_mn": 1e6, "usd_bn": 1e9, "count_cr": 1e7, "count_lakh": 1e5, "count_mn": 1e6, "count": 1.0}
+_QUOTE_TARGET_UNIT = {"inr": {"cr": "inr_cr", "lakh": "inr_lakh", "mn": "inr_mn", "bn": "inr_bn"},
+                      "usd": {"mn": "usd_mn", "bn": "usd_bn"}, "count": {"cr": "count_cr", "lakh": "count_lakh", "mn": "count_mn"}}
+
+
+def reconcile_quote_scale(value: float, unit: str, scale: float, quote: str) -> tuple[float, str, float, str | None]:
+    """Ensure a scale-unit row reproduces the digits+unit printed in its quote (T-242)."""
+    uf = _SCALE_UNIT_FACTOR.get(unit)
+    if uf is None or not value or not quote:
+        return value, unit, scale, None
+    family = "usd" if unit.startswith("usd") else "count" if unit.startswith("count") else "inr"
+    hits = []
+    for m in _QUOTE_SCALE_RX.finditer(quote):
+        suf = m.group("suf").rstrip(".")
+        tag, qf = _QUOTE_SCALE_MULT[suf.lower()]
+        cur = _norm_cur(m.group("cur"))
+        if (tag == "lakh" and re.match(r"\s*(?:crores?|crs?\b)", quote[m.end():], re.I)) \
+                or (family == "usd" and (cur not in (None, "usd") or tag not in ("mn", "bn"))) \
+                or (family == "inr" and cur not in (None, "inr")) or (family == "count" and cur is not None):
+            continue
+        if (n := to_float(m.group("num"))):
+            hits.append((m.group("num"), suf, n, tag, abs(n) * qf))
+    stored = abs(value) * uf
+    close1 = lambda a, b: abs(a - b) <= 0.01 * max(abs(a), abs(b))
+    if not hits or any(close1(stored, h[4]) for h in hits):
+        return value, unit, scale, None
+    mismatches = [h for h in hits if any(close1(stored * 10**k, h[4]) or close1(stored, h[4] * 10**k) for k in (1, 2, 3))]
+    if not mismatches:
+        return value, unit, scale, None
+    bare = any(close1(abs(n), abs(value)) and not re.match(r"\s*(?:%|per\s*cent|percent|bps|basis\s*points|x\b|times)", quote[mm.end():], re.I)
+               for mm in VAL_RX.finditer(quote) if not (mm.group("suf") or "").strip() and (n := to_float(mm.group("num"))))
+    if len({round(h[4], 4) for h in mismatches}) == 1 and not bare:
+        if (q_unit := _QUOTE_TARGET_UNIT.get(family, {}).get(mismatches[0][3])):
+            return (*finalize_unit(q_unit, -mismatches[0][2] if value < 0 else mismatches[0][2], unit), None)
+    return value, unit, scale, f"scale_mismatch: quote prints {mismatches[0][0]} {mismatches[0][1]}"
+
+
+def _apply_quote_scale(row: Row) -> Row:
+    v, u, s, reason = reconcile_quote_scale(row.value, row.unit, row.scale, row.quote)
+    if reason or (v, u, s) != (row.value, row.unit, row.scale):
+        return Row(row.metric, row.dimension, v, u, s, row.period_type, row.fiscal_period,
+                   row.as_of, row.basis, row.page, row.quote, row.raw_label, row.raw_value, row.rule, reason)
+    return row
 
 
 _PAGE_UNIT_RX = re.compile(r"(?:₹|`|rs\.?|inr)\s*(?:in\s+|\()?\s*(billion|bn|million|mn|mm|lakhs?|lacs?|crores?)\b"
@@ -2080,7 +2134,7 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                     if twin:
                         rows.append(Row(e.metric, dim, val, unit, scale, twin.ptype, twin.canon, twin.as_of, basis,
                                         page, q, text[m.start():m.end()], v.raw, rule))
-    return rows
+    return [_apply_quote_scale(r) for r in rows]
 
 
 # ---------------------------------------------------------------- word-position rules
@@ -2526,7 +2580,7 @@ def segment_revenue_rows(text: str, page: int, company: str, entries, dims, basi
             continue
         out.append(Row("revenue", dim, num, "inr_cr", 1e7, per.ptype, per.canon, per.as_of, basis, page, q,
                        ln.strip(), m.group("num"), "sentence_default_v1"))
-    return out
+    return [_apply_quote_scale(r) for r in out]
 
 
 _GROUP_RX = [("half", re.compile(r"half[- ]year(?:ly)?\s+ended|(?:six|6)\s+months?\s+ended", re.I)),
@@ -3017,7 +3071,7 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
                         unit = _unit_from_label(label, e)
                         if unit == "inr_cr" and e.kind == "money" and not re.search(r"crore|\bcr\b", label, re.I):
                             unit = page_money_unit(text) or unit     # "(₹ in billion)" over the table
-                    unit = _page_unit_canon(unit, m.group("num"), e, text)
+                    unit = _page_unit_canon(unit, m.group(0), e, text)
                     num = to_float(m.group("num"))
                     if unit is None or num is None:
                         continue
@@ -3068,7 +3122,7 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
                 out.append(Row(e.metric, dim, val, u, scale, per.ptype, per.canon, per.as_of, basis, page, q, tlabel,
                                m.group("num"), "chart_v1"))
     out.extend(mix_rows(rows, info, headers, text, page, company, entries, dims, basis, default_pers))
-    return out
+    return [_apply_quote_scale(r) for r in out]
 
 
 _PART_A = re.compile(r"^(?:Q[1-4]|H[12]|[369]M|12M)$", re.I)
@@ -3611,6 +3665,7 @@ def _extract_company_body(con: sqlite3.Connection | None, sym: str, sandbox: Pat
                     if sub_where is None:
                         # kpi_series has no entity_unsure flag, so a no-name sentence on a parent call takes the parent.
                         row_entity = parent
+                r = _apply_quote_scale(r)
                 yield dict(symbol=sym, metric=r.metric, dimension=row_dim, value=r.value, unit=r.unit, scale=r.scale,
                            period_type=r.period_type, fiscal_period=r.fiscal_period, as_of_date=r.as_of, basis=row_basis,
                            doc_key=doc_key, page=page, quote=r.quote, known_at=known_at, known_at_source=src,
@@ -3618,7 +3673,7 @@ def _extract_company_body(con: sqlite3.Connection | None, sym: str, sandbox: Pat
                            confidence=conf, conf_rank=rank,
                            method=ocr_method if id(r) in ocr_ids else method,
                            ocr_conf=ocr_page_conf if id(r) in ocr_ids else ocr_conf, source_type=doc_type,
-                           entity=row_entity)
+                           entity=row_entity, unverified_reason=r.unverified_reason)
     if con is not None:
         con.close()
 
@@ -3776,6 +3831,18 @@ def derive_quarters(con: sqlite3.Connection, symbol: str) -> int:
     return wrote
 
 
+def _mark_unverified(con: sqlite3.Connection, row_id: int, row: dict, reason: str) -> None:
+    """Record a scale-ambiguous kpi_series row as unverified in row_check / row_check_fail (T-242)."""
+    schema._script(con, schema.ROW_CHECK_SCHEMA)
+    con.execute(
+        "INSERT OR REPLACE INTO row_check(tbl,row_id,symbol,metric,canon,sector,doc_type,rule,status,"
+        "corroborated,checker,definition) VALUES ('kpi_series',?,?,?,?,?,?,?,'unverified',0,'kpi_scale_check','')",
+        (row_id, row["symbol"], row["metric"], row["metric"], "", row["source_type"], row["extractor_rule"]),
+    )
+    con.execute("INSERT INTO row_check_fail(tbl,row_id,check_name,hard,why) VALUES ('kpi_series',?,'scale_mismatch',0,?)",
+                (row_id, reason))
+
+
 def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | None = None, raw_root: Path | None = None,
         ocr_db: str | Path | list | tuple | None = None, only_docs: list[str] | None = None,
         pages_db: Path | str | None = None) -> dict:
@@ -3793,6 +3860,10 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
         if fy_end is None:
             fy_end = fiscal.fy_end_month(con, sym)
         with fiscal.use(fy_end):
+            if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='row_check'").fetchone():
+                sub = "SELECT id FROM kpi_series WHERE symbol=? AND source_type<>'xbrl_segment'"
+                con.execute(f"DELETE FROM row_check_fail WHERE tbl='kpi_series' AND row_id IN ({sub})", (sym,))
+                con.execute(f"DELETE FROM row_check WHERE tbl='kpi_series' AND row_id IN ({sub})", (sym,))
             con.execute("DELETE FROM kpi_series WHERE symbol=? AND source_type<>'xbrl_segment'", (sym,))
             batch = []
             ocr = None
@@ -3812,10 +3883,19 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
                         if doc_key in ocr and alias_key not in ocr:   # an OCR page under the pilot3 key serves its sandbox key
                             ocr[alias_key] = ocr[doc_key]
             for row in extract_company(sym, sandbox, stats, limit_docs, raw_root, ocr, only_docs, pages_db):
-                batch.append([row[c] for c in COLS])
-                if len(batch) >= 2000:
-                    con.executemany(sql, batch)
-                    batch = []
+                reason = row.get("unverified_reason")
+                if not reason:
+                    batch.append([row[c] for c in COLS])
+                    if len(batch) >= 2000:
+                        con.executemany(sql, batch)
+                        batch = []
+                else:
+                    if batch:
+                        con.executemany(sql, batch)
+                        batch = []
+                    cur = con.execute(sql, [row[c] for c in COLS])
+                    if cur.rowcount:
+                        _mark_unverified(con, cur.lastrowid, row, reason)
             if batch:
                 con.executemany(sql, batch)
             con.commit()

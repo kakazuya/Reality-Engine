@@ -2100,3 +2100,81 @@ def test_parent_call_kpi_drops_ambiguous_lookback_and_counts_stat(tmp_path):
     con.close()
     assert ("revenue", 1314.0, "NAVKARCORP") in got_n
     assert stats_n["NAVKARCORP"].get("parent_call_ambiguous", 0) == 0
+
+
+def test_quote_scale_check_fixes_aye_style_mismatch_and_leaves_matching_or_pct_unchanged(tmp_path, monkeypatch):
+    """T-242: AYE-style 75.97 inr_cr against 'INR 7,597 crore' is repaired; matching rows and pct KPIs stay untouched;
+    ambiguous scale-mismatched quotes stay in kpi_series marked unverified with scale_mismatch reason."""
+    # 1. AYE-style table row on a page that elsewhere says "(Rs. in Lakhs)": m.group(0) keeps "crore" and
+    # reconcile_quote_scale also repairs any 10^k mismatch before writing.
+    from reality_engine.pilot3 import profile
+
+    profile.activate(_profile_for({"AYE": "nbfc"}))
+    try:
+        words = _words([
+            (10, [(100, "(Rs."), (130, "in"), (150, "Lakhs)")]),
+            (30, [(100, "Particulars"), (350, "Sep-25"), (450, "Sep-26")]),
+            (60, [(100, "AUM"), (340, "6,100"), (380, "crore"), (440, "7,597"), (480, "crore")]),
+        ])
+        text = "(Rs. in Lakhs)\nParticulars\nSep-25\nSep-26\nAUM\n6,100 crore\n7,597 crore\n"
+        trows = kpi.table_and_chart_rows(words, text, 17, "AYE", ENTRIES, DIMS, [])
+        aum_rows = [r for r in trows if r.metric == "aum" and r.fiscal_period == "Q2FY27"]
+        assert aum_rows and (aum_rows[0].value, aum_rows[0].unit, aum_rows[0].scale) == (7597.0, "inr_cr", 1e7)
+    finally:
+        profile.activate(None)
+
+    # Direct reconcile_quote_scale check on AYE-style parsed 75.97 with quote "INR 7,597 crore"
+    assert kpi.reconcile_quote_scale(75.97, "inr_cr", 1e7, "AUM Sep-26 INR 7,597 crore") == (
+        7597.0, "inr_cr", 1e7, None
+    )
+    # Matching row unchanged (both crore and lakh->crore conversion)
+    assert kpi.reconcile_quote_scale(7597.0, "inr_cr", 1e7, "AUM Sep-26 INR 7,597 crore") == (
+        7597.0, "inr_cr", 1e7, None
+    )
+    assert kpi.reconcile_quote_scale(7.597, "inr_cr", 1e7, "AUM Sep-26 INR 759.7 lakh") == (
+        7.597, "inr_cr", 1e7, None
+    )
+    # Percentage KPI untouched even when the quote mentions a 10^k crore figure
+    assert kpi.reconcile_quote_scale(18.7, "pct", 1.0, "EBITDA margin 18.7% on revenue of INR 1,870 crore") == (
+        18.7, "pct", 1.0, None
+    )
+
+    # Ambiguous quote (two 10^k matches) keeps the row and marks it unverified in kpi.run -> row_check / row_check_fail
+    amb_quote = "AUM stood at INR 1,000 crore vs INR 10,000 crore in Q2FY27"
+    assert kpi.reconcile_quote_scale(100.0, "inr_cr", 1e7, amb_quote) == (
+        100.0, "inr_cr", 1e7, "scale_mismatch: quote prints 1,000 crore"
+    )
+    out = tmp_path / "t242_scale.db"
+    fake_rows = [
+        dict(symbol="AYE", metric="aum", dimension="total", value=75.97, unit="inr_cr", scale=1e7,
+             period_type="Q", fiscal_period="Q2FY27", as_of_date="2026-09-30", basis="standalone",
+             doc_key="d1.pdf", page=17, quote="AUM Sep-26 INR 7,597 crore", known_at="2026-10-29",
+             known_at_source="pages.db", is_reported=1, raw_label="AUM", raw_value="75.97",
+             extractor_rule="sentence_v1", confidence="sentence", conf_rank=2, method="text_layer",
+             ocr_conf=None, source_type="deck", entity="AYE"),
+        dict(symbol="AYE", metric="aum", dimension="total", value=100.0, unit="inr_cr", scale=1e7,
+             period_type="Q", fiscal_period="Q1FY27", as_of_date="2026-06-30", basis="standalone",
+             doc_key="d2.pdf", page=5, quote=amb_quote, known_at="2026-07-30",
+             known_at_source="pages.db", is_reported=1, raw_label="AUM", raw_value="100",
+             extractor_rule="sentence_v1", confidence="sentence", conf_rank=2, method="text_layer",
+             ocr_conf=None, source_type="deck", entity="AYE"),
+    ]
+
+    def fake_extract(sym, _sb, st, *_args, **_kwargs):
+        st.setdefault(sym, {})
+        for r in fake_rows:
+            v, u, s, reason = kpi.reconcile_quote_scale(r["value"], r["unit"], r["scale"], r["quote"])
+            yield {**r, "value": v, "unit": u, "scale": s, "unverified_reason": reason}
+
+    monkeypatch.setattr(kpi, "extract_company", fake_extract)
+    kpi.run(str(out), ["AYE"], None, raw_root=None)
+    con = sqlite3.connect(out)
+    got = con.execute("SELECT fiscal_period, value, unit FROM kpi_series ORDER BY fiscal_period").fetchall()
+    assert got == [("Q1FY27", 100.0, "inr_cr"), ("Q2FY27", 7597.0, "inr_cr")]
+    amb_id = con.execute("SELECT id FROM kpi_series WHERE fiscal_period='Q1FY27'").fetchone()[0]
+    rc = con.execute("SELECT status FROM row_check WHERE tbl='kpi_series' AND row_id=?", (amb_id,)).fetchone()
+    rcf = con.execute("SELECT check_name, hard, why FROM row_check_fail WHERE tbl='kpi_series' AND row_id=?",
+                      (amb_id,)).fetchone()
+    con.close()
+    assert rc == ("unverified",)
+    assert rcf == ("scale_mismatch", 0, "scale_mismatch: quote prints 1,000 crore")
