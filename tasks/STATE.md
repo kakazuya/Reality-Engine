@@ -9,7 +9,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - 26 Nov tx statement window (Eagle, 0e8b95f3): sentence snap + referent widen, page-local; recheck dedupes exact repeats. Filter: logistics/filler dropped, 'this quarter' anchored.
 - 26 Nov results gates r2: cash-flow, basis, duration, scale, JV rules (0/40 R hit).
 - 26 Nov AR gates r4: jv/associate scopes, scope needs a printed name, junk dropped; deck untied values unverified.
-- 26 Nov deck junk gate r5: decorative slide numbers dropped (0/118 graded R hit; 27/30 OCR J).
+- 26 Nov junk gates r5/r6: decorative slide numbers; bare FY tokens, 'N (word)' echoes.
 - 26 Nov `gate_not_company`: industry/country/peer/customer rows never verified (read + recheck); recheck keeps not_company/subsidiary_unnamed.
 - hy4 bulk: one Drive fetch per doc.
 - 26 Nov run ledger ingest-hook incremental (`ingest_offset`).
