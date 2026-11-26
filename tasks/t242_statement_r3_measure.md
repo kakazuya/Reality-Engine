@@ -321,3 +321,7 @@ production start, not the later `Q1 FY27` expansion sentence). `test_obs_speaker
 
 
 
+
+### Open for r8 (27 Nov, Eagle review of Wolf r7 fixes)
+- "Revenue for the year a year ago was 900" on a Q4 FY26 call reads FY26; a base cue ("a year ago", "last year") beside "for the year" must block the guidance-year rule (FY25 or empty).
+- `FY25-'26` through a bound-FY cue reads FY25 (worker open problem).
