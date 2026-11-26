@@ -715,3 +715,83 @@ def test_deck_quarter_cue_beats_bare_fy_and_keeps_full_year_fy27():
     assert q1_explicit["period"] == "Q1 FY27" and q1_explicit["status"] == "verified"
     assert full_year["period"] == "FY27" and full_year["status"] == "verified"
 
+
+# ------------------------------------------- T-242 r8: segment/subset qualifier vs slide total
+
+
+def test_deck_segment_subset_fills_split_domestic_excl_and_heading_qualifiers():
+    # BANKBARODA p13 (id 6): Retail* QoQ advances growth 4.6% alongside Global Gross Advances 6.7%
+    bob_p13 = (
+        "Particulars (INR crore)\nSep'25 Sep'26 YOY (%) Jun'26 Sep'26 QOQ (%)\n"
+        "Retail* 2,73,116 3,24,040 18.6 3,09,674 3,24,040 4.6\n"
+        "Global Gross Advances 12,78,847 15,12,448 18.3 14,16,898 15,12,448 6.7"
+    )
+    bob_retail = _deck_row(measure="NEW:advances_growth_qoq", printed_label="Retail*", value=4.6,
+                           value_text="4.6", unit="%", period="Q2 FY27", segment="")
+    bob_global = _deck_row(measure="NEW:advances_growth_qoq", printed_label="Global Gross Advances", value=6.7,
+                           value_text="6.7", unit="%", period="Q2 FY27", segment="")
+    obs.apply_number_gates([bob_retail, bob_global], "deck", page_text=bob_p13)
+    assert (bob_retail["segment"], bob_retail["status"]) == ("Retail", "verified")
+    assert (bob_global["segment"], bob_global["status"]) == ("", "verified")
+
+    # BANKBARODA p23 (id 36): Total Domestic GNPA 23,882 alongside Global 27,572
+    bob_p23 = (
+        "Sector-wise NPA\nParticulars (INR crore)\nQ1 FY26 Q4 FY26 Q1 FY27\n"
+        "Total Domestic\n23,882\n23,958\n25,147\nInternational\n3,690\n3,101\n3,003\nGlobal\n27,572\n27,059\n28,150"
+    )
+    dom_gnpa = _deck_row(measure="gnpa.value", printed_label="Total Domestic", value=23882.0,
+                         value_text="23,882", unit="INR crore", period="Q1 FY26", segment="")
+    glob_gnpa = _deck_row(measure="gnpa.value", printed_label="Global", value=27572.0,
+                          value_text="27,572", unit="INR crore", period="Q1 FY26", segment="")
+    obs.apply_number_gates([dom_gnpa, glob_gnpa], "deck", page_text=bob_p23)
+    assert (dom_gnpa["segment"], dom_gnpa["status"]) == ("Domestic", "verified")
+    assert (glob_gnpa["segment"], glob_gnpa["status"]) == ("", "verified")
+
+    # ICICIGI p36 (id 39): -3.6% under "Reserving Triangle Disclosure: Total (excl. Motor-TP)"
+    icici_p36 = (
+        "Incurred Losses and Allocated Expenses (Ultimate Movement)\n"
+        "Deficiency/ (Redundancy) (%)\n-3.2% -2.4% -7.6% -3.6%\n"
+        "Reserving Triangle Disclosure: Total (excl. Motor-TP)"
+    )
+    icici = _deck_row(measure="NEW:deficiency_redundancy_percent", printed_label="Deficiency/ (Redundancy) (%)",
+                      value=-3.6, value_text="-3.6%", unit="%", period="AY 19", segment="")
+    obs.apply_number_gates([icici], "deck", page_text=icici_p36)
+    assert (icici["segment"], icici["status"]) == ("excl. Motor-TP", "verified")
+
+    # APOLLOTYRE p6 (id 59): Operating Highlights – India heading sets segment="India"
+    apollo_p6 = "Operating Highlights \u2013 India\nQ1 FY27\nEBITDA Margin (%)\n13.6%\n12.0%"
+    apollo = _deck_row(measure="ebitda_margin", printed_label="", value=12.0, value_text="12.0%",
+                       unit="%", period="Q1 FY27", segment="", series_title="EBITDA Margin (%)")
+    obs.apply_number_gates([apollo], "deck", page_text=apollo_p6)
+    assert (apollo["segment"], apollo["status"]) == ("India", "verified")
+
+    # Product split row alongside Total + unreadable qualifier -> segment_unstated
+    prod_page = "Revenue by Product (Rs Cr)\nPipes 400\nFittings 200\nTotal 600"
+    pipes = _deck_row(measure="revenue.value", printed_label="Pipes", value=400.0, value_text="400", segment="")
+    tot = _deck_row(measure="revenue.value", printed_label="Total", value=600.0, value_text="600", segment="")
+    obs.apply_number_gates([pipes, tot], "deck", page_text=prod_page)
+    assert (pipes["segment"], pipes["status"]) == ("Pipes", "verified")
+    assert (tot["segment"], tot["status"]) == ("", "verified")
+
+    unstated = _deck_row(measure="revenue.value", printed_label="", value=400.0, value_text="400",
+                         segment="", series_title="Revenue")
+    obs.apply_number_gates([unstated], "deck", page_text="Total Revenue 1,000\n400")
+    assert unstated["status"] == "unverified" and "segment_unstated" in unstated["status_reason"]
+
+
+def test_deck_segment_subset_keeps_single_total_and_total_rows():
+    single_total = _deck_row(measure="revenue.value", printed_label="Total Revenue", value=1234.0,
+                             value_text="1,234", segment="")
+    only_dom = _deck_row(measure="gnpa.value", printed_label="Total Domestic", value=23882.0,
+                         value_text="23,882", unit="INR crore", segment="")
+    split_total = _deck_row(measure="revenue.value", printed_label="Total", value=1000.0,
+                            value_text="1,000", segment="")
+    obs.apply_number_gates([single_total], "deck", page_text="Financial Summary\nTotal Revenue 1,234")
+    obs.apply_number_gates([only_dom], "deck", page_text="Asset Quality\nTotal Domestic GNPA 23,882")
+    obs.apply_number_gates([split_total], "deck",
+                           page_text="Segment Revenue\nRetail 400\nCorporate 600\nTotal 1,000")
+    assert (single_total["segment"], single_total["status"]) == ("", "verified")
+    assert (only_dom["segment"], only_dom["status"]) == ("", "verified")
+    assert (split_total["segment"], split_total["status"]) == ("", "verified")
+
+

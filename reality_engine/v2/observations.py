@@ -6490,6 +6490,32 @@ _DECK_FORWARD_Q_RE = re.compile(
     r"\b(?:expected|commence|commissioning|launch|target|by|outlook|pipeline|upcoming|next\s+quarter)[^.\n]{0,40}\b(?:Q[1-4]|[1-4]Q)\b", re.I)
 _DECK_GUIDANCE_RE = re.compile(
     r"\b(?:guidance|target|aspir\w+|expected|annualised|annualized|full[\s-]*year|for\s+the\s+year|year\s+ended)\b", re.I)
+_DECK_SPLIT_QUAL_MAP = {
+    "retail": "Retail", "corporate": "Corporate", "wholesale": "Wholesale", "msme": "MSME", "sme": "SME",
+    "agri": "Agriculture", "agriculture": "Agriculture", "domestic": "Domestic", "international": "International",
+    "overseas": "Overseas", "export": "Exports", "exports": "Exports", "india": "India", "europe": "Europe",
+    "americas": "Americas", "apac": "APAC", "emea": "EMEA", "africa": "Africa", "usa": "USA",
+}
+_DECK_SPLIT_QUAL_RE = re.compile(rf"\b({'|'.join(_DECK_SPLIT_QUAL_MAP)})\b", re.I)
+_DECK_EXCL_RE = re.compile(r"\b((?:excl\.?|excluding)\s+[^()\n,;:|]+|ex-[A-Za-z0-9][A-Za-z0-9\-/&]*)", re.I)
+_DECK_EXCL_CUE_RE = re.compile(r"\b(?:excl\.?|excluding|ex-)", re.I)
+_DECK_EXCL_NOISE_RE = re.compile(
+    r"\bex-(?:dividend|works|factory|gratia|officio|post|ante|date|tax|showroom|employees?)\b", re.I)
+_DECK_BROADER_TOTAL_RE = re.compile(r"(?<!sub[\s-])\b(?:global|overall|consolidated|grand\s+total|total)\b", re.I)
+_DECK_BARE_TOTAL_RE = re.compile(r"^(?:(?:grand\s+)?total|global|overall|consolidated)$", re.I)
+_DECK_FOOTNOTE_RE = re.compile(r"^\s*(?:[*#\u2020]|\d+\.\s+[A-Z]|note\s*:)", re.I)
+_DECK_STMT_NOUNS = frozenset({"assets", "asset", "liabilities", "liability", "equity", "expenses", "expense",
+                              "costs", "cost", "comprehensive", "expenditure", "cash", "flow"})
+_DECK_STMT_BLOCK_RE = re.compile(
+    r"\b(?:balance\s+sheet|equity\s*(?:and|&)\s*liabilities|non[\s\u2010-]*current\s+(?:assets|liabilities))\b", re.I)
+_DECK_SEG_HEADING_RE = re.compile(
+    r"\b(?:operating\s+highlights|financial\s+(?:highlights|summary|performance|overview)|"
+    r"segment|business\s+(?:highlights|update)|performance|reserving\s+triangle)\b", re.I)
+_DECK_HEADING_SEP_RE = re.compile(r"\s*(?:\u2013|\u2014|\||:|\s-\s)\s*")
+_DECK_BASIS_WORD_RE = re.compile(r"^(?:standalone|consolidated|global|overall|total)$", re.I)
+_DECK_DATE_PERIOD_STRIP_RE = re.compile(
+    r"\b(?:\d{1,2}(?:st|nd|rd|th)?\s+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?,?\s+\d{2,4}\b"
+    r"|\b(?:FY|CY|Q[1-4]|H[12]|9M)\s*['\u2019-]?\s*\d{2,4}(?:\s*-\s*\d{2,4})?\b", re.I)
 
 
 def _deck_entity_in_heading(line: str, company: str, segment_hint: str = "") -> str:
@@ -6614,6 +6640,112 @@ def _deck_period_quarter_update(row: dict[str, Any], page_text: str, deck_asof: 
                                                         f"deck_quarter_not_fy: figure describes a quarter, not full-year {period!r}") if p)
 
 
+def _deck_excl_in(text: str) -> str:
+    return next((c for m in _DECK_EXCL_RE.finditer(text or "")
+                 if (c := norm_space(m.group(1)).strip(" .,:;)|]")) and not _DECK_EXCL_NOISE_RE.match(c)), "")
+
+
+def _deck_split_in(text: str, company: str = "") -> str:
+    s = norm_space(text)
+    if not s or (company and _is_own_entity(s, company)):
+        return ""
+    cleaned = re.sub(
+        r"\b(?:bank|government|reserve\s+bank|stock\s+exchange|securities\s+and\s+exchange\s+board)\s+of\s+india\b"
+        r"|\bacross\s+india\b", " ", s, flags=re.I)
+    if company:
+        cleaned = re.sub(re.escape(norm_space(company)), " ", cleaned, flags=re.I)
+    m = _DECK_SPLIT_QUAL_RE.search(cleaned)
+    return _DECK_SPLIT_QUAL_MAP[m.group(1).lower()] if m else ""
+
+
+def _deck_measure_kws(measure: str) -> set[str]:
+    kws = measure_keywords(measure)
+    return (kws | {"npa"}) if any(k.endswith("npa") for k in kws) else kws
+
+
+def _deck_broader_total(row: dict[str, Any], rows: list[dict[str, Any]], lines: list[str], company: str = "") -> bool:
+    lbl = norm_space(row.get("printed_label"))
+    if lbl and _DECK_BROADER_TOTAL_RE.search(lbl) and not _deck_split_in(lbl, company) and not _deck_excl_in(lbl):
+        return False
+    row_val = parse_number(norm_space(row.get("value_text"))) if row.get("value") is None else float(row["value"])
+    m_root, m_kws = measure_root(row.get("measure") or ""), _deck_measure_kws(row.get("measure") or "")
+    for other in rows:
+        if other is row or measure_root(other.get("measure") or "") != m_root:
+            continue
+        olbl = norm_space(other.get("printed_label"))
+        if not (derive_is_total(other) or _DECK_BROADER_TOTAL_RE.search(olbl)) \
+                or _deck_split_in(olbl, company) or _deck_excl_in(olbl):
+            continue
+        oval = parse_number(norm_space(other.get("value_text"))) if other.get("value") is None else float(other["value"])
+        if row_val is None or oval is None or abs(oval - row_val) > max(1e-6, abs(row_val) * 1e-6):
+            return True
+    for i, ln in enumerate(lines):
+        if _DECK_FOOTNOTE_RE.match(ln) or not _DECK_BROADER_TOTAL_RE.search(ln) \
+                or _deck_split_in(ln, company) or _deck_excl_in(ln):
+            continue
+        lwords = _word_set(ln)
+        if _DECK_BARE_TOTAL_RE.match(ln):
+            win = lines[max(0, i - 45):i]
+            if any(_DECK_STMT_BLOCK_RE.search(h) for h in win) or (m_kws and not any(_word_set(h) & m_kws for h in win)):
+                continue
+        elif (lwords & _DECK_STMT_NOUNS) - m_kws \
+                or not (m_kws and (lwords - {"total", "grand", "overall", "global", "consolidated"}) & m_kws) \
+                or ("other" in m_kws and "other" not in lwords):
+            continue
+        nums = _numbers_in(_DECK_DATE_PERIOD_STRIP_RE.sub(" ", ln))
+        if not nums:
+            for cand in lines[i + 1 : i + 9]:
+                if not re.fullmatch(r"[\d,.\-%()\s]+", cand):
+                    break
+                nums.extend(_numbers_in(cand))
+        if nums and (row_val is None or all(abs(n - row_val) > max(1e-6, abs(row_val) * 1e-6) for n in nums)):
+            return True
+    return False
+
+
+def _deck_segment_update(row: dict[str, Any], rows: list[dict[str, Any]], lines: list[str], company: str = "") -> None:
+    """T-242 r8: a segment/subset figure (split column, excl., product/region heading) must carry its segment."""
+    measure = norm_space(row.get("measure"))
+    if norm_space(row.get("segment")) or MIX_MEASURE_RE.search(measure):
+        return
+    ctx = [norm_space(row.get(k)) for k in ("printed_label", "series_title", "group_path", "printed_axis")]
+    qual = next((q for t in ctx if (q := _deck_excl_in(t))), "")
+    if not qual:
+        for ln in lines:
+            if _DECK_FOOTNOTE_RE.match(ln) or re.match(r"^\(?[ivx\d]+\)", ln, re.I) \
+                    or not (_DECK_SEG_HEADING_RE.search(ln) or ln in lines[:5]):
+                continue
+            if q := _deck_excl_in(ln):
+                qual = q
+                break
+            if _DECK_SEG_HEADING_RE.search(ln) and _DECK_HEADING_SEP_RE.search(ln):
+                parts = [p.strip(" .,:;|") for p in _DECK_HEADING_SEP_RE.split(ln) if p.strip(" .,:;|")]
+                if q := next((sq for p in reversed(parts) if len(p.split()) <= 3 and not re.search(r"\d", p)
+                              and (sq := _deck_split_in(p, company))), ""):
+                    qual = q
+                    break
+    if qual:
+        row["segment"] = qual
+        return
+    has_total = _deck_broader_total(row, rows, lines, company)
+    if (split_q := next((q for t in ctx if (q := _deck_split_in(t, company))), "")) and has_total:
+        row["segment"] = split_q
+        return
+    if has_total:
+        clean_lbl = ctx[0].strip(" *#\u2020.,;:-")
+        lwords = _word_set(clean_lbl) - {"the", "of", "and", "in", "for", "from", "to", "a", "an"}
+        if clean_lbl and 1 <= len(clean_lbl.split()) <= 5 and not TOTAL_LABEL_RE.search(clean_lbl) \
+                and not _DECK_BASIS_WORD_RE.match(clean_lbl) and not DECK_PERIOD_ONLY_LABEL_RE.match(clean_lbl) \
+                and not (lwords and lwords <= _deck_measure_kws(measure)) and not _DECK_EXCL_CUE_RE.search(clean_lbl):
+            row["segment"] = clean_lbl
+            return
+    if (has_total or any(_DECK_EXCL_CUE_RE.search(_DECK_EXCL_NOISE_RE.sub("", t)) for t in ctx)) \
+            and str(row.get("status") or "") == "verified":
+        row["status"] = "unverified"
+        row["status_reason"] = "; ".join(p for p in (
+            row.get("status_reason") or "", "segment_unstated: subset figure lacks a readable qualifier") if p)
+
+
 def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "", company: str = "",
                          deck_asof: str = "") -> None:
     """T-242: script gates for deck number rows (bounds, combined labels, empty basis, untied values).
@@ -6627,8 +6759,11 @@ def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "", compan
     T-242 r7: scope backing (subsidiary/parent kept only for a different named entity heading; a named subsidiary
     heading updates company->subsidiary with segment), growth basis words (H-o-H/Q-o-Q/Y-o-Y), and quarter cues
     over bare FY titles.
+    T-242 r8: segment/subset figures (split column, excl., product/region heading) carry ``segment`` or go
+    unverified (``segment_unstated``) when a broader total is printed on the slide/table.
     """
     basis = heading_basis(page_text, SECTION_BASIS_RE) if page_text else ""
+    lines = [norm_space(ln) for ln in str(page_text or "").splitlines() if norm_space(ln)]
     kept: list[dict[str, Any]] = []
     for row in rows:
         if norm_space(row.get("record_type") or "number") != "number":
@@ -6643,6 +6778,7 @@ def apply_deck_row_gates(rows: list[dict[str, Any]], page_text: str = "", compan
         _deck_scope_update(row, page_text, company)
         _deck_growth_basis_update(row, page_text)
         _deck_period_quarter_update(row, page_text, deck_asof)
+        _deck_segment_update(row, rows, lines, company)
         if str(row.get("status") or "") != "verified":
             continue
         reason = deck_bound_reason(row)
