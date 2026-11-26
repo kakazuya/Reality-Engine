@@ -623,3 +623,153 @@ def test_year_only_fills_on_year_end_unless_exact_single_column_header():
     assert ytd_row["period"] == "30.09.2026"
     assert ytd_row["status"] == "unverified" and "results_period_duration_missing" in ytd_row["status_reason"]
     assert exact_col["period"] == "Year ended 31 Dec 2025" and exact_col["status"] == "verified"
+
+
+# T-242 r3d -- one label, two values, one date: resolve duration by column position or strip to bare date.
+def test_r3d_agarwaleye_p9_q_plus_h1_resolves_by_column_position():
+    page = ("Dr. Agarwal's Eye Hospital Limited\n"
+            "Statement of Unaudited Financial Results for the Quarter and Half Year ended 30 September 2026\n"
+            "(Rs. in Crores, except per share data)\n"
+            "Quarter Ended Half Year Ended Year Ended\n"
+            "Particulars\n"
+            "30-Sep-26 30-Jun-26 30-Sep-25 30-Sep-26 30-Sep-25 31-Mar-26\n"
+            "(Unaudited) (Unaudited) (Unaudited) (Unaudited) (Unaudited) (Audited)\n"
+            "Earnings per equity share (of Rs. 10/- each)\n"
+            "(a) Basic 1.65 1.10 1.07 3.2 2.11 5.40\n"
+            "(b) Diluted 1.62 1.08 1.05 3.15 2.08 5.31")
+    q2_26 = row(measure="eps_basic", printed_label="(a) Basic", value_text="1.65", value=1.65,
+                unit="Rs.", scale=1.0, period="Quarter ended 30-Sep-26")
+    h1_26 = row(measure="eps_basic", printed_label="(a) Basic", value_text="3.2", value=3.2,
+                unit="Rs.", scale=1.0, period="Quarter ended 30-Sep-26")
+    q2_25 = row(measure="eps_basic", printed_label="(a) Basic", value_text="1.07", value=1.07,
+                unit="Rs.", scale=1.0, period="Quarter ended 30-Sep-25")
+    h1_25 = row(measure="eps_basic", printed_label="(a) Basic", value_text="2.11", value=2.11,
+                unit="Rs.", scale=1.0, period="Quarter ended 30-Sep-25")
+    obs.apply_results_row_gates([q2_26, h1_26, q2_25, h1_25], page)
+    assert q2_26["period"] == "Quarter ended 30-Sep-26" and q2_26["period_source"] == "column_position"
+    assert h1_26["period"] == "Half year ended 30-Sep-26" and h1_26["period_source"] == "column_position"
+    assert q2_25["period"] == "Quarter ended 30-Sep-25" and q2_25["period_source"] == "column_position"
+    assert h1_25["period"] == "Half year ended 30-Sep-25" and h1_25["period_source"] == "column_position"
+    assert all(r["status"] == "verified" for r in (q2_26, h1_26, q2_25, h1_25))
+
+
+def test_r3d_q_plus_year_corrects_reader_quarter_on_year_with_dashes_and_wraps():
+    page_agarwal_p11 = (
+        "Dr. Agarwal's Eye Hospital Limited\n"
+        "Quarter ended Year ended\n"
+        "Particulars\n"
+        "31-Mar-26 31-Dec-25 31-Mar-25 31-Mar-26 31-Mar-25\n"
+        "(a) Basic\n1.25\n1.02\n0.98\n4.21\n3.76\n"
+        "(b) Diluted 1.24 1.01 0.97 4.18 3.74"
+    )
+    q_eps = row(measure="eps_basic", printed_label="(a) Basic", value_text="1.25", value=1.25,
+                unit="Rs.", scale=1.0, period="Quarter ended 31-Mar-26")
+    y_eps = row(measure="eps_basic", printed_label="(a) Basic", value_text="4.21", value=4.21,
+                unit="Rs.", scale=1.0, period="Quarter ended 31-Mar-26")
+    page_aanchalisp_p9 = (
+        "Aanchal Ispat Limited\n"
+        "Quarter ended Year ended\n"
+        "Particulars\n"
+        "31.03.2026 31.12.2025 31.03.2025 31.03.2026 31.03.2025\n"
+        "f) Depreciation and amortization 15.22 - 12.00 61.54 -\n"
+        "g) Other expenses 100.00 90.00 80.00 350.00 300.00"
+    )
+    q_dep = row(measure="depreciation_and_amortization", printed_label="f) Depreciation and amortization",
+                value_text="15.22", value=15.22, unit="Lakhs", scale=100000.0, period="Quarter ended 31.03.2026")
+    y_dep = row(measure="depreciation_and_amortization", printed_label="f) Depreciation and amortization",
+                value_text="61.54", value=61.54, unit="Lakhs", scale=100000.0, period="Quarter ended 31.03.2026")
+    obs.apply_results_row_gates([q_eps, y_eps], page_agarwal_p11)
+    obs.apply_results_row_gates([q_dep, y_dep], page_aanchalisp_p9)
+    assert q_eps["period"] == "Quarter ended 31-Mar-26" and y_eps["period"] == "Year ended 31-Mar-26"
+    assert y_eps["period_source"] == "column_position" and y_eps["status"] == "verified"
+    assert q_dep["period"] == "Quarter ended 31.03.2026" and y_dep["period"] == "Year ended 31.03.2026"
+    assert y_dep["period_source"] == "column_position" and y_dep["status"] == "verified"
+
+
+def test_r3d_ambiguous_or_unpaired_strips_duration_to_bare_date_unverified():
+    # Equal values printed in two columns or unpaired / mismatched OCR tokens cannot resolve column position.
+    page_mismatch = (
+        "Statement of Results\n"
+        "Quarter ended Year ended\n"
+        "31.03.2026 31.12.2025 31.03.2025 31.03.2026 31.03.2025\n"
+        "f) Depreciation and amortization 15.22 2 69 12.00 61.54 -"
+    )
+    m1 = row(measure="depreciation_and_amortization", printed_label="f) Depreciation and amortization",
+             value_text="15.22", value=15.22, period="Quarter ended 31.03.2026")
+    m2 = row(measure="depreciation_and_amortization", printed_label="f) Depreciation and amortization",
+             value_text="61.54", value=61.54, period="Quarter ended 31.03.2026")
+    page_dup = (
+        "Statement of Results\n"
+        "Quarter ended Half year ended\n"
+        "30-Sep-26 30-Sep-25 30-Sep-26 30-Sep-25\n"
+        "(a) Basic 10.00 8.00 10.00 12.00"
+    )
+    d1 = row(measure="eps_basic", printed_label="(a) Basic", value_text="10.00", value=10.0,
+             period="Quarter ended 30-Sep-26", period_source="reader")
+    d2 = row(measure="eps_basic", printed_label="(a) Basic", value_text="11.00", value=11.0,
+             period="Quarter ended 30-Sep-26", period_source="reader")
+    obs.apply_results_row_gates([m1, m2], page_mismatch)
+    obs.apply_results_row_gates([d1, d2], page_dup)
+    for r, bare in ((m1, "31.03.2026"), (m2, "31.03.2026"), (d1, "30-Sep-26"), (d2, "30-Sep-26")):
+        assert r["period"] == bare
+        assert r["period_source"] == ""
+        assert r["status"] == "unverified"
+        assert "results_period_duration_ambiguous" in r["status_reason"]
+
+
+def test_r3d_single_value_per_date_page_is_untouched():
+    page = (
+        "Quarter ended Year ended\n"
+        "31.03.2026 31.12.2025 31.03.2025 31.03.2026 31.03.2025\n"
+        "a. Revenue from operations 1,473.43 1,358.34 2,953.33 6,123.00 7,264.08"
+    )
+    q = row(measure="revenue_from_operations", printed_label="a. Revenue from operations",
+            value_text="1,473.43", value=1473.43, period="Quarter ended 31.03.2026")
+    y = row(measure="revenue_from_operations", printed_label="a. Revenue from operations",
+            value_text="6,123.00", value=6123.0, period="Year ended 31.03.2026")
+    q3 = row(measure="revenue_from_operations", printed_label="a. Revenue from operations",
+             value_text="1,358.34", value=1358.34, period="31.12.2025")
+    obs.apply_results_row_gates([q, y, q3], page)
+    assert q["period"] == "Quarter ended 31.03.2026" and q["status"] == "verified"
+    assert y["period"] == "Year ended 31.03.2026" and y["status"] == "verified"
+    assert q3["period"] == "Quarter ended 31.12.2025" and q3["status"] == "verified"
+
+
+def test_r3d_bare_date_ocr_bracket_and_residue_counter(tmp_path):
+    from reality_engine.scripts.results_r3d_residue import collect_r3d_residue
+    import sqlite3
+
+    page = (
+        "Statement of Unaudited Financial Results\n"
+        "Quarter ended Nine months ended Year ended\n"
+        "31-Dec-25 30-Sep-25 31-Dec-24 31-Dec-25 31-Dec-24 31-Mar-25\n"
+        "b) Other expenses {57.62) 40.00 - (175.40) - 210.00"
+    )
+    q_exp = row(measure="other_expenses", printed_label="b) Other expenses", value_text="{57.62)", value=-57.62,
+                period="31-Dec-25")
+    m9_exp = row(measure="other_expenses", printed_label="b) Other expenses", value_text="(175.40)", value=-175.40,
+                 period="31-Dec-25")
+    obs.apply_results_row_gates([q_exp, m9_exp], page)
+    assert q_exp["period"] == "Quarter ended 31-Dec-25" and q_exp["period_source"] == "column_position"
+    assert m9_exp["period"] == "Nine months ended 31-Dec-25" and m9_exp["period_source"] == "column_position"
+    assert q_exp["status"] == "verified" and m9_exp["status"] == "verified"
+
+    db_path = tmp_path / "sample.db"
+    con = sqlite3.connect(db_path)
+    con.execute("CREATE TABLE observation (doc_key TEXT, page INTEGER, symbol TEXT, printed_label TEXT, "
+                "basis TEXT, segment TEXT, period TEXT, value REAL, value_text TEXT, period_source TEXT, "
+                "status TEXT, record_type TEXT)")
+    con.executemany(
+        "INSERT INTO observation VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        [
+            ("d1", 9, "AGARWALEYE", "(a) Basic", "standalone", "", "Quarter ended 30-Sep-26", 1.65, "1.65", "", "unverified", "number"),
+            ("d1", 9, "AGARWALEYE", "(a) Basic", "standalone", "", "Quarter ended 30-Sep-26", 3.2, "3.2", "", "unverified", "number"),
+            ("d2", 3, "AGL", "Equity", "standalone", "", "Quarter ended 31 Mar 2026", 442.0, "442", "", "verified", "number"),
+            ("d2", 3, "AGL", "Equity", "standalone", "", "31 Mar 2026", 2034.0, "2,034", "", "unverified", "number"),
+        ],
+    )
+    con.commit()
+    con.close()
+    res = collect_r3d_residue(db_path)
+    assert res["group_count"] == 1 and res["row_count"] == 2
+    assert res["sample"][0][1][0]["symbol"] == "AGARWALEYE"

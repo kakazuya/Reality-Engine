@@ -8,7 +8,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - 24-26 Nov T-242 retrieval audits 4-9 (`grade_pack.py`, `docs/grading/`); fixes F3-F9 in DEVELOPER_GUIDE; audit9 23->32R.
 - OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD (`--start/--max-workers`), Zen rotates Nemotron VL / DeepSeek Flash by speed.
 - 26 Nov tx statements r3 merged (e8a03846): sentence snap/widen, labels stripped, period only on an explicit own-period cue (call_period 27,022->9,531); r4 (own-period cues) under Eagle review. `tasks/t242_statement_r3_measure.md`.
-- 26 Nov results gates r2/r3/r3b/r3c merged: cash-flow, basis, duration fill (r3c: a date printed in 2+ columns never filled by key, 'Year' only on 31 March), current/non-current, scope, statute junk. r3c copy C:/RealityEngine/t242/results_r3c/after.db: 0 graded-R status change, verified 14,171->11,069 (`tasks/t242_results_measure.md`).
+- 26 Nov results gates r2/r3/r3b/r3c/r3d merged/implemented: cash-flow, basis, duration fill (r3c: a date printed in 2+ columns never filled by key, 'Year' only on 31 March; r3d: same-label same-date multi-value residue resolved by column position or stripped to bare date `unverified`, plus `results_r3d_residue.py` -- reviewer `--recheck` pending), current/non-current, scope, statute junk. r3c copy C:/RealityEngine/t242/results_r3c/after.db: 0 graded-R status change, verified 14,171->11,069 (`tasks/t242_results_measure.md`).
 - 26 Nov AR gates r4: jv/associate scopes, printed-name scope, junk; deck untied values.
 - 26 Nov deck r7/r8: scope, HoH/QoQ, quarter cue, segment not total
 - 26 Nov junk gates r5/r6: decorative slide numbers; bare FY tokens, 'N (word)' echoes.

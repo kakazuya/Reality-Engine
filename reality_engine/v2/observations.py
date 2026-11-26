@@ -5890,19 +5890,13 @@ def _results_mark_ambiguous(ambiguous: set[Any], raw_d: str, k: tuple[int, int, 
         ambiguous.add((k[1], k[2]))
 
 
-def _results_duration_dates_scan(page_text: str) -> tuple[dict[Any, set[str]], set[Any]]:
-    """Return ``(durations_by_key, ambiguous_keys)`` for one page (T-242 r3c).
-
-    A date printed in more than one column of the header block (or top header lines) is marked ambiguous and
-    never assigned a single duration; ``year`` is only filled on a 31 March year-end unless the header block
-    binds it 1-to-1 to an exact single column.
-    """
-    page_text = _results_ocr_text(page_text)
-    out: dict[Any, set[str]] = {}
-    ambiguous: set[Any] = set()
-    cleaned = norm_space(page_text)
+def _results_header_block_assignments(
+    page_text: str,
+) -> tuple[str, list[tuple[str, tuple[int, int, int]]], list[str],
+           list[tuple[tuple[str, tuple[int, int, int]], str]], bool, set[Any]]:
+    """Parse a multi-column header block into ordered ``((raw_date, key), duration)`` pairs (T-242 r3c/r3d)."""
     lines = [norm_space(ln) for ln in str(page_text or "").splitlines() if norm_space(ln)]
-    header_block = ""
+    ambiguous: set[Any] = set()
     for i, ln in enumerate(lines[:30]):
         if not re.search(r"\bend(?:ed|ing)\b", ln.lower()) or not RESULTS_COL_GROUP_RE.search(ln) \
                 or RESULTS_DURATION_DATE_RE.search(ln):
@@ -5966,16 +5960,78 @@ def _results_duration_dates_scan(page_text: str) -> tuple[dict[Any, set[str]], s
                     split_idx.append(next((j for j in range(prev_start + 2, len(parsed_dates))
                                            if parsed_dates[j][1] == cur_date),
                                           min(prev_start + 3, len(parsed_dates) - 1)))
-            for g_idx, g_dur in enumerate(groups):
-                end = split_idx[g_idx + 1] if g_idx + 1 < len(split_idx) else len(parsed_dates)
-                assignments.extend((parsed_dates[j], g_dur) for j in range(split_idx[g_idx], end))
+            if all(split_idx[idx] < split_idx[idx + 1] for idx in range(len(split_idx) - 1)):
+                for g_idx, g_dur in enumerate(groups):
+                    end = split_idx[g_idx + 1] if g_idx + 1 < len(split_idx) else len(parsed_dates)
+                    assignments.extend((parsed_dates[j], g_dur) for j in range(split_idx[g_idx], end))
         elif len(groups) == 1 and prefix_complete:
             cur_dm = (parsed_dates[0][1][0], parsed_dates[0][1][1])
             all_same_dm = all((k[0], k[1]) == cur_dm or (k[0] == 0 and k[1] == cur_dm[1])
                               for _, k in parsed_dates)
             if all_same_dm and not ambiguous:
                 assignments = [((raw_d, k), groups[0]) for raw_d, k in parsed_dates]
-        header_block = block
+        return block, parsed_dates, groups, assignments, exact_col, ambiguous
+    return "", [], [], [], False, ambiguous
+
+
+def _results_ordered_header_columns(page_text: str) -> list[tuple[tuple[int, int, int], str]] | None:
+    """Return ordered ``[(date_key, duration), ...]`` columns when header dates and groups pair cleanly (T-242 r3d)."""
+    text = _results_ocr_text(page_text)
+    block, parsed_dates, _groups, assignments, exact_col, _ambig = _results_header_block_assignments(text)
+    if block:
+        if not assignments or len(assignments) != len(parsed_dates):
+            return None
+        cols = [(k, dur) for (_, k), dur in assignments]
+        if any(not _results_duration_label(dur) or (dur == "year" and not exact_col
+                                                    and not _results_is_fiscal_year_end(k))
+               for k, dur in cols):
+            return None
+        return cols
+    lines = [norm_space(ln) for ln in str(text or "").splitlines() if norm_space(ln)]
+    span_lines: list[str] = []
+    for ln in lines[:25]:
+        if RESULTS_RELEASE_LINE_RE.search(ln):
+            continue
+        if RESULTS_DURATION_DATE_RE.search(ln):
+            span_lines.append(ln)
+        elif span_lines:
+            if len(ln) > 35 and not re.search(r"^(?:unaudited|audited|particulars|notes?)\b", ln, re.I):
+                break
+            if re.search(RESULTS_DATE_TOKEN_PAT, ln, re.I):
+                span_lines.append(ln)
+        if len(span_lines) >= 6:
+            break
+    span = " ".join(span_lines)
+    matches = list(RESULTS_DURATION_DATE_RE.finditer(span)) if span else []
+    if len(matches) < 2 or re.search(RESULTS_DATE_TOKEN_PAT, RESULTS_DURATION_DATE_RE.sub(" ", span), re.I):
+        return None
+    inline_cols: list[tuple[tuple[int, int, int], str]] = []
+    for m in matches:
+        prefix = span[max(0, m.start() - 40):m.start()]
+        if re.match(r"^(?:(?:accounting|financial)\s+)?year\s+to\s+date\b", m.group(0), re.I) \
+                or re.search(rf"\b(?:{RESULTS_DUR_WORD_PAT})\b\s*(?:and|&|,|/)\s*$", prefix, re.I):
+            return None
+        k = _results_date_key(m.group(2))
+        dur = _results_norm_duration(m.group(1))
+        if k is None or not _results_duration_label(dur):
+            return None
+        inline_cols.append((k, dur))
+    return inline_cols if len(inline_cols) >= 2 else None
+
+
+def _results_duration_dates_scan(page_text: str) -> tuple[dict[Any, set[str]], set[Any]]:
+    """Return ``(durations_by_key, ambiguous_keys)`` for one page (T-242 r3c).
+
+    A date printed in more than one column of the header block (or top header lines) is marked ambiguous and
+    never assigned a single duration; ``year`` is only filled on a 31 March year-end unless the header block
+    binds it 1-to-1 to an exact single column.
+    """
+    page_text = _results_ocr_text(page_text)
+    out: dict[Any, set[str]] = {}
+    cleaned = norm_space(page_text)
+    lines = [norm_space(ln) for ln in str(page_text or "").splitlines() if norm_space(ln)]
+    header_block, _parsed_dates, _groups, assignments, exact_col, ambiguous = _results_header_block_assignments(page_text)
+    if header_block:
         for (raw_d, k), dur in assignments:
             is_as_at = bool(re.match(r"^as\s+(?:at|on)\b", raw_d, re.I))
             tag = ("as_at", k) if is_as_at else k
@@ -5988,7 +6044,6 @@ def _results_duration_dates_scan(page_text: str) -> tuple[dict[Any, set[str]], s
             else:
                 out.setdefault(k, set()).add(dur)
                 out.setdefault((k[1], k[2]), set()).add(dur)
-        break
     if not header_block:
         top_lines: list[str] = []
         seen_top_date = False
@@ -6099,6 +6154,151 @@ def _results_is_flow_measure(row: dict[str, Any], page_text: str) -> bool:
         return bool(RESULTS_FLOW_STATEMENT_RE.search(ctx)) and not bool(RESULTS_BS_HEAD_RE.search(
             f"{norm_space(row.get('series_title'))} {norm_space(page_text)[:400]}"))
     return False
+
+
+def _results_period_date_and_dur(period: str) -> tuple[tuple[int, int, int] | None, str, str]:
+    """Return ``(date_key, norm_dur, bare_date)`` for a printed period, or ``(None, '', '')``."""
+    p = norm_space(period)
+    if not p or RESULTS_BARE_YEAR_RE.match(p) or re.match(r"^as\s+(?:at|on)\b", p, re.I):
+        return None, "", ""
+    bare_date, key = "", None
+    for m in reversed(list(re.finditer(RESULTS_DATE_TOKEN_PAT, p, re.I))):
+        cand = norm_space(m.group(0))
+        k = None if re.match(r"^as\s+(?:at|on)\b", cand, re.I) else _results_date_key(cand)
+        if k is not None:
+            bare_date, key = cand, k
+            break
+    if key is None:
+        return None, "", ""
+    if re.search(r"\b(?:(?:accounting|financial)\s+)?year\s+to\s+date\b|\bytd\b", p, re.I):
+        dur = "ytd"
+    elif dm := re.search(rf"\b({RESULTS_DUR_WORD_PAT})\b", p, re.I):
+        dur = _results_norm_duration(dm.group(1))
+    else:
+        dur = "quarter" if re.search(r"\bq[1-4]\b", p, re.I) else (
+            "half_year" if re.search(r"\bh[12]\b", p, re.I) else ("nine_months" if re.search(r"\b9m\b", p, re.I) else ""))
+    return key, dur, bare_date
+
+
+_RESULTS_COL_TOKEN_RE = re.compile(
+    r"[({\[][-+]?\s*\d[\d,]*\.?\d*[)}\]]|[-+]?\d[\d,]*\.?\d*%?|(?<!\S)(?:-{1,3}|–+|—+|nil|n\.?a\.?|n/a)(?!\S)",
+    re.I,
+)
+
+
+def _results_norm_ocr_num(tok: str) -> str:
+    s = norm_space(tok)
+    if s and s[0] in "({[":
+        s = "(" + s[1:]
+    if s and s[-1] in ")}]":
+        s = s[:-1] + ")"
+    return re.sub(r"\(\s*([^)]+?)\s*\)", r"(\1)", s)
+
+
+def _results_row_token_slices(label: str, page_text: str) -> list[list[float | None]]:
+    """Collect candidate column numeric/blank (``None``) slices printed after ``label`` up to the next label."""
+    lbl = norm_space(label)
+    if not lbl or not page_text:
+        return []
+    lines = [norm_space(ln) for ln in _results_ocr_text(page_text).splitlines() if norm_space(ln)]
+    core = re.sub(r"^(?:[({[]?(?:[ivxlc]+|[a-z]|\d+)[)}\].]?\s+)", "", lbl, flags=re.I)
+    pats = [re.compile(r"(?<![A-Za-z0-9])" + r"\s+".join(re.escape(w) for w in c.split()) + r"(?![A-Za-z0-9])", re.I)
+            for c in ([lbl] + ([core] if core and core != lbl and len(core) >= 4 else []))]
+    slices: list[list[float | None]] = []
+    for pat in pats:
+        for i, ln in enumerate(lines):
+            m, next_idx, combined = pat.search(ln), i + 1, ln
+            if m is None and i + 1 < len(lines) and not re.search(r"\d", ln):
+                combined, next_idx = f"{ln} {lines[i + 1]}", i + 2
+                m = pat.search(combined)
+                if m is not None and (m.start() >= len(ln) or m.end() <= len(ln)):
+                    m = None
+            if m is None:
+                continue
+            tail = combined[m.end():].replace("|", " ")
+            for _ in range(2):
+                tail = re.sub(r"^\s*[:;—–]*\s*(?:\((?:[^0-9()]*[A-Za-z][^()]*|\d+\s*[-+]\s*\d+)\)\s*)?", "", tail)
+            if re.search(r"[A-Za-z]", re.sub(r"\b(?:nil|n\.?a\.?|n/a)\b", " ", tail, flags=re.I)):
+                continue
+            chunks = [tail] if tail.strip() else []
+            for cand in lines[next_idx:min(len(lines), next_idx + 15)]:
+                cleaned = cand.replace("|", " ").strip()
+                if not cleaned or re.fullmatch(r"[-_=]{4,}", cleaned) \
+                        or re.search(r"[A-Za-z]", re.sub(r"\b(?:nil|n\.?a\.?|n/a)\b", " ", cleaned, flags=re.I)):
+                    break
+                chunks.append(cleaned)
+            toks = [None if re.fullmatch(r"-{1,3}|–+|—+|nil|n\.?a\.?|n/a", tm.group(0), re.I)
+                    else parse_number(_results_norm_ocr_num(tm.group(0)))
+                    for ch in chunks for tm in _RESULTS_COL_TOKEN_RE.finditer(ch)]
+            if toks:
+                slices.append(toks)
+        if slices:
+            break
+    return slices
+
+
+def _results_resolve_residue_periods(rows: list[dict[str, Any]], page_text: str,
+                                     stats: dict[str, Any] | None = None) -> set[int]:
+    """Resolve same-label same-date multi-value residue groups by column position, or strip to bare date (T-242 r3d)."""
+    handled: set[int] = set()
+    groups: dict[tuple[str, str, str, tuple[int, int, int]], list[tuple[dict[str, Any], str, str]]] = {}
+    for row in rows:
+        if norm_space(row.get("record_type") or "number") != "number" or row.get("status") == "quarantined":
+            continue
+        lbl = norm_space(row.get("printed_label")).lower()
+        key, dur, bare_date = _results_period_date_and_dur(str(row.get("period") or ""))
+        if lbl and key is not None:
+            gkey = (lbl, norm_space(row.get("basis")).lower(), norm_space(row.get("segment")).lower(), key)
+            groups.setdefault(gkey, []).append((row, dur, bare_date))
+    ordered_cols: list[tuple[tuple[int, int, int], str]] | None = None
+    parsed_cols = False
+    for (_lbl, _basis, _seg, date_key), items in groups.items():
+        if len(items) < 2 or len({dur for _, dur, _ in items}) != 1:
+            continue
+        targets = [parse_number(_results_norm_ocr_num(vt)) if (vt := norm_space(r.get("value_text"))) else (
+            float(r["value"]) if r.get("value") is not None else None) for r, _, _ in items]
+        distinct = {round(tv, 6) if tv is not None else norm_space(r.get("value_text"))
+                    for (r, _, _), tv in zip(items, targets)}
+        if len(distinct) < 2:
+            continue
+        if not parsed_cols:
+            ordered_cols, parsed_cols = _results_ordered_header_columns(page_text), True
+        slices: list[list[float | None]] = []
+        if ordered_cols:
+            all_slices = [s for s in _results_row_token_slices(norm_space(items[0][0].get("printed_label")), page_text)
+                          if len(s) == len(ordered_cols)]
+            matched = [s for s in all_slices if all(t is not None and any(v is not None and abs(v - t) <= 1e-6 for v in s)
+                                                   for t in targets)]
+            slices = matched or (all_slices if len(all_slices) == 1 else [])
+        for (row, dur, bare_date), target in zip(items, targets):
+            handled.add(id(row))
+            resolved_durs: set[str] = set()
+            if ordered_cols and slices and target is not None:
+                for s in slices:
+                    idxs = [j for j, v in enumerate(s) if v is not None and abs(v - target) <= 1e-6]
+                    ck, cdur = ordered_cols[idxs[0]] if len(idxs) == 1 else (None, "")
+                    if len(idxs) != 1 or (ck != date_key and not (ck and ck[0] == 0 and ck[1:] == date_key[1:])):
+                        resolved_durs.clear()
+                        break
+                    resolved_durs.add(cdur)
+            dur_label = _results_duration_label(next(iter(resolved_durs))) if len(resolved_durs) == 1 else ""
+            if dur_label:
+                row["period"], row["period_source"] = f"{dur_label} {bare_date}", "column_position"
+                if stats is not None:
+                    stats["results_duration_filled"] = int(stats.get("results_duration_filled", 0)) + 1
+            else:
+                row["period"] = bare_date
+                if dur or row.get("period_source"):
+                    row["period_source"] = ""
+                if str(row.get("status") or "") != "quarantined":
+                    row["status"] = "unverified"
+                reason = (f"results_period_duration_ambiguous: {norm_space(row.get('printed_label'))} "
+                          f"prints {len(distinct)} values for {bare_date}")
+                if reason not in (row.get("status_reason") or ""):
+                    row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", reason) if p)
+                if stats is not None:
+                    stats["results_period"] = int(stats.get("results_period", 0)) + 1
+    return handled
 
 
 def _results_period_reason(row: dict[str, Any], page_text: str,
@@ -6340,7 +6540,11 @@ def apply_results_row_gates(rows: list[dict[str, Any]], page_text: str = "", com
         elif row.get("basis_source") == "previous_page_heading":
             if stats is not None:
                 stats["results_basis_prev"] = int(stats.get("results_basis_prev", 0)) + 1
-        period_reason = _results_period_reason(row, page_text, durations, stats=stats)
+    residue_done = _results_resolve_residue_periods(kept, page_text, stats=stats)
+    for row in kept:
+        if norm_space(row.get("record_type") or "number") != "number" or row.get("status") == "quarantined":
+            continue
+        period_reason = "" if id(row) in residue_done else _results_period_reason(row, page_text, durations, stats=stats)
         if period_reason:
             if str(row.get("status") or "") == "verified":
                 row["status"] = "unverified"
