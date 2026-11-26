@@ -2186,7 +2186,9 @@ recorded in one SQLite file, `D:/RealityEngine/ledger/ledger.db`, by `reality_en
   row from `tasks/efficiency/worker_reviews.jsonl`. `tool_call`: every call with its category and argument (300
   characters). `answer`: per question: tools, raw SQL used, seconds, grade, `workaround_reason`, `gap_class`,
   `gap_note`. `reader_page`: per page of a transcription run. `gap`: each gap found, its evidence, fix and ticket.
-  `note`: disclosures and decisions (a test set seen by a fix, a score fitted to its own questions).
+  `note`: disclosures and decisions (a test set seen by a fix, a score fitted to its own questions). `ingest_offset`:
+  the byte offset, size and mtime each transcript/events file was ingested to, plus the carried-forward pending state
+  (T-242).
 - **When.** The project Stop hook (`session_hooks.py stop`) runs `run_ledger ingest-hook [transcript]` (every worker job,
   then the current Claude transcript) as one hidden child with `CREATE_NO_WINDOW` and no shell at each stop. The first
   version used `DETACHED_PROCESS` + a shell, which opened a console window on the MSI at every stop (fixed 11 Nov) (log `D:/RealityEngine/ledger/ingest.log`). Answer and reader runs are ingested
@@ -2200,13 +2202,27 @@ recorded in one SQLite file, `D:/RealityEngine/ledger/ledger.db`, by `reality_en
   by class, reader pages, notes).
 - **Backfill on 11 Nov.** 521 worker jobs (455 workers, 66 graders), 76 Claude sessions, 7 reader runs, 4 answer runs
   (T-179). Worker tool calls 57,596: MCP 5,704, raw SQL 4,534, data read outside the MCP tools 2,659.
-- **Control-char regex fix (T-241, 24 Nov 2026).** `ingest_dsh` in `reality_engine/scripts/run_ledger.py` (line 156) had
+- **Control-char regex fix (T-241, 24 Nov 2026).** `ingest_dsh` in `reality_engine/scripts/run_ledger.py` had
   literal `0x08` backspace bytes in `r"\x08grad(e|er|ing)\x08|review"` after a shell heredoc ate a backslash from `\b`,
   causing grader runs whose goal lacked `"review"` to be logged as `kind='dsh_worker'`. Replaced the `0x08` bytes with
   `\b` word boundaries, added a `dsh_grader` classification test in `reality_engine/tests/test_run_ledger.py`, and
   added `reality_engine/tests/test_no_control_chars.py` to scan every `*.py` file under `reality_engine/` and
   `plugins/` (skipping `.git`, `worktrees`, `__pycache__`, and venvs) and fail with `file:line` on any control byte in
   `0x00-0x08`, `0x0B`, `0x0C`, or `0x0E-0x1F`.
+- **Incremental ingest (T-242, 26 Nov 2026).** `ingest_claude` and `ingest_dsh` in `reality_engine/scripts/run_ledger.py`
+  stopped re-reading whole files at every stop (a session transcript is tens of MB; the ingest-hook process used ~13% CPU
+  on 25 Nov). The `ingest_offset` table
+  holds the byte offset each transcript/events file was read to, so only the appended tail is read with a binary seek
+  and only complete lines are taken -- a half-written last line waits for the next stop. The run's calls, tokens,
+  thinking steps, first/last timestamps and pending tool-call ids are carried forward in `state` (JSON) and merged with
+  the new lines, so the rows equal a full re-read, including a `tool_result` written after an earlier stop closing its
+  call. A file that shrank, or whose mtime went backwards, is taken as replaced: it is read from 0 and the run's rows
+  are rewritten under the same keys, so ingests stay idempotent. Ceiling: a producer that rewrites a file in place to
+  something larger is indistinguishable from an append (the session transcript and the dsh events file are both
+  append-only today); add a leading-bytes fingerprint if that ever changes. Tests in
+  `reality_engine/tests/test_run_ledger.py`: `test_ingest_claude_reads_only_appended_lines`,
+  `test_ingest_claude_incremental_matches_a_full_ingest`,
+  `test_ingest_claude_resets_when_the_transcript_is_replaced`, `test_ingest_dsh_reads_appended_events` (8 pass).
 
 
 ## Telegram priority build queue (T-214, 15 Nov 2026)

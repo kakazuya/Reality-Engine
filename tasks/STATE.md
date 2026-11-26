@@ -13,6 +13,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - 26 Nov deck junk gate r5: decorative slide numbers dropped (0/118 graded R hit; 27/30 OCR J).
 - 26 Nov `gate_not_company`: industry/country/peer/customer rows never verified (read + recheck); recheck keeps not_company/subsidiary_unnamed.
 - Bulk hy4 reads: one Drive fetch per doc (`raw_store.shared_cache`).
+- 26 Nov run ledger: `ingest-hook` reads only appended transcript/job lines from `ingest_offset` (no whole-file re-read); `test_run_ledger.py` 8 pass, `DEVELOPER_GUIDE` s7.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 26 Nov 03:20 (Eagle) events: Shivam switched order_win/fund_raise to hy4 model + script check; merged (agy c858aea0, fp 546696b94a21): fresh5-7 graded W/J 69/70 fixed or unverified, R kept 92%. VERIFIED_KINDS empty until a fresh8 60-row grade per kind (Eagle).
