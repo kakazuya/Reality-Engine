@@ -91,3 +91,12 @@ def test_read_provenance_on_rows_and_backfill(tmp_path, monkeypatch):
     con = sqlite3.connect(tmp_path / "o.db")
     assert con.execute("SELECT read_model, read_gateway, prompt_fp FROM observation").fetchone() == (
         "opencode-go/hy4-flash-free", "opencode-go", "fp1")
+
+
+def test_loader_arith_flags_never_downgrade_a_total_and_xbrl_match_wins():
+    cols = ["observation_id", "status", "is_total"]
+    rows = [(1, "verified", 1), (2, "verified", 0), (3, "verified", 0), (4, "unverified", 0)]
+    checks = {1: ("arith_sum_mismatch", None, "", "arith_checks"), 2: ("arith_sum_mismatch", None, "", "arith_checks"),
+              3: ("arith_subset_as_total", None, "", "arith_checks"), 4: ("xbrl_match", None, "", "xbrl_crosscheck")}
+    out, _ = lo._apply_check_status(rows, cols, checks)
+    assert [r[1] for r in out] == ["verified", "unverified", "unverified", "verified"]

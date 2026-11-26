@@ -8768,3 +8768,12 @@
 - 00000. 26 Nov events: order_win gated again (fresh9 55/3/1/1); fund_raise failed fresh9 (49/5/4/2), r3 on agy 16860eb4. fresh10/11 built, unseen. filing_events needs T228_STORE_ROOT.
 ++00000. 26 Nov events: order_win gated (fresh9 55/3/1/1); fund_raise r3 merged (fresh9 W/P/J 11/11 fixed, 0 R changed), fresh10 grade next. filing_events needs T228_STORE_ROOT.
 ```
+
+## 2026-11-26T16:28:44 | kakazuya (Wolf) | branch main
+```diff
+-- 26 Nov Shivam: never block reading (all doc types read + load; >10% W+J sample loads unverified); XBRL cross-check (`v2/xbrl_crosscheck.py`) promotes/demotes results rows; `docs/CONTINUOUS_STORE_ARCHITECTURE.md`.
++- 26 Nov Shivam: never block reading; XBRL (`v2/xbrl_crosscheck.py`) + arithmetic (`v2/arith_checks.py`) check layers move status at load; provenance columns; ledgers `docs/ledgers/`. `docs/CONTINUOUS_STORE_ARCHITECTURE.md`.
+-- 26 Nov extractors (next build): guidance superseded/entity/split; KPI quote-scale check.
+-- hy4 bulk: one Drive fetch per doc.
+-- Run ledger hook incremental.
+```

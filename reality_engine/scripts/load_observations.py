@@ -74,8 +74,10 @@ CHECKS: dict[str, list[str]] = {
 }
 # T-242 26 Nov (Shivam: review and improve, never block): every hy4 output DB also takes the filed-XBRL verdicts.
 XBRL_CHECKS_DIR = Path("D:/RealityEngine/checks/xbrl")
+ARITH_CHECKS_DIR = Path("D:/RealityEngine/checks/arith")
 for _key, _db, _src in OBS_SOURCES:
-    if "/hy4_out/" in _db:
+    if "/hy4_out/" in _db:              # xbrl last: load_checks keeps an xbrl_match over any other verdict
+        CHECKS.setdefault(_db, []).append(str(ARITH_CHECKS_DIR / f"{Path(_db).stem}.jsonl"))
         CHECKS.setdefault(_db, []).append(str(XBRL_CHECKS_DIR / f"{Path(_db).stem}.jsonl"))
 CHECK_COLS = ("check_status", "check_fields", "check_evidence", "checker")
 FIX_FIELDS = ("period", "unit", "scale", "basis", "segment")
@@ -96,6 +98,13 @@ def load_checks(db_path: str) -> dict[int, tuple]:
             except (ValueError, KeyError, TypeError):
                 continue
             verdict = str(v.get("verdict") or "")
+            if rid in out and out[rid][0] == "xbrl_match":
+                continue                        # a filed-XBRL match outranks every other verdict on that row
+            if verdict.startswith("arith_"):    # T-242 26 Nov: reality_engine/v2/arith_checks.py
+                fx = {k: v.get(k) for k in ("rule", "fixed_value", "fix_value", "fix_scale") if v.get(k) is not None}
+                out[rid] = (verdict, json.dumps(fx, ensure_ascii=False) if fx else None,
+                            str(v.get("evidence") or "")[:500], "arith_checks")
+                continue
             if verdict.startswith("xbrl_"):     # T-242 26 Nov: filed-XBRL cross-check (reality_engine/v2/xbrl_crosscheck.py)
                 fx = {"filed_value": v.get("filed"), "filed_basis": v.get("basis")}
                 if verdict == "xbrl_unit_fix":
@@ -196,13 +205,18 @@ def _apply_check_status(rows: list, cols: list[str], checks: dict[int, tuple]) -
     if "status" not in cols or "observation_id" not in cols or not checks:
         return rows, {}
     si, ii = cols.index("status"), cols.index("observation_id")
+    ti = cols.index("is_total") if "is_total" in cols else None
     moved: Counter = Counter()
     out = []
     for r in rows:
         ck = checks.get(int(r[ii])) if r[ii] is not None else None
         verdict = ck[0] if ck else ""
         new = "verified" if verdict == "xbrl_match" else "unverified" if verdict in (
-            "xbrl_contradicts", "xbrl_unit_fix") else None
+            "xbrl_contradicts", "xbrl_unit_fix") or verdict.startswith("arith_") else None
+        # Eagle 26 Nov: a printed TOTAL that its stored children do not add up to is usually right and the children
+        # partial (AGIIL total assets, ACCELERATE other expenses): a sum mismatch never downgrades the total row.
+        if verdict == "arith_sum_mismatch" and ti is not None and r[ti]:
+            new = None
         if new and r[si] != new:
             r = list(r)
             moved[f"{r[si]}->{new}"] += 1
