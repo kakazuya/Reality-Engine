@@ -695,3 +695,9 @@
 -New rulings via `ruling add`; `[check]` = enforced by code. Full wording `docs/rulings/RULINGS_full_2026-11-08.md`; `project_rules(topic)`.
 +New rulings via `ruling add`; `[check]` = enforced by code. Full wording `docs/rulings/RULINGS_FULL.md`; `project_rules(topic)`.
 ```
+
+## 2026-11-27T01:57:08 | kakazuya (Wolf) | branch main
+```diff
+-- Raw files only on Drive (7 Nov): download, write the database, delete the copy after a Drive hash check; tests local till `raw_to_drive`. Kept local: `raw\user_research`. Tools/trackers (16 Nov): local, Drive or GitHub only; no cloud until deployed.
++- Raw files only on Drive (7 Nov): download, write the database, delete the copy after a Drive hash check; tests local till `raw_to_drive`. `raw\user_research` goes to Drive too (27 Nov). Tools/trackers (16 Nov): local, Drive or GitHub only; no cloud until deployed.
+```

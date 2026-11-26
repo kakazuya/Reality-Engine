@@ -30,7 +30,7 @@ New rulings via `ruling add`; `[check]` = enforced by code. Full wording `docs/r
 - Journal (13 Nov): add a tasks/JOURNAL.md entry (work, worked, failed and why, fixes) at 400k context and at wrap-up; read the latest at start.
 
 ## Data and machines
-- Raw files only on Drive (7 Nov): download, write the database, delete the copy after a Drive hash check; tests local till `raw_to_drive`. Kept local: `raw\user_research`. Tools/trackers (16 Nov): local, Drive or GitHub only; no cloud until deployed.
+- Raw files only on Drive (7 Nov): download, write the database, delete the copy after a Drive hash check; tests local till `raw_to_drive`. `raw\user_research` goes to Drive too (27 Nov). Tools/trackers (16 Nov): local, Drive or GitHub only; no cloud until deployed.
 - HP gone (17 Nov): OCR (bad text layer only) by Kilo Dots on the page image, Haiku where Dots fails. No PostgreSQL. Stores on C: SSD (18 Nov). Never touch `Downloads\Telegram Desktop` (his brother's) or his personal Downloads folders.
 
 ## Never
