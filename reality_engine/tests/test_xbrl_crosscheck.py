@@ -1,4 +1,5 @@
-"""T-242 (26 Nov 2026): filed-XBRL cross-check of hy4 results rows, and the loader's status moves."""
+"""T-242 (26 Nov 2026): filed-XBRL cross-check of hy4 rows (quarter P&L + annual/half-year BS/CF/P&L), and the
+loader's status moves."""
 from __future__ import annotations
 
 import datetime as dt
@@ -6,6 +7,24 @@ import sqlite3
 
 from reality_engine.scripts import load_observations as lo
 from reality_engine.v2 import xbrl_crosscheck as xc
+
+
+def test_as_at_and_half_year_periods():
+    assert xc.as_at_date("As at 30.09.2026") == dt.date(2026, 9, 30)
+    assert xc.as_at_date("31st March 2026") == dt.date(2026, 3, 31)
+    assert xc.as_at_date("31.03.2026") == dt.date(2026, 3, 31)
+    assert xc.as_at_date("2025-26") == dt.date(2026, 3, 31)
+    for not_as_at in ("Half year ended 30.09.2026", "Year ended March 31, 2026", "Q2 FY27", "2025", ""):
+        assert xc.as_at_date(not_as_at) is None, not_as_at
+    assert xc.half_year_end("Half year ended 30.09.2026") == dt.date(2026, 9, 30)
+    assert xc.half_year_end("Six months ended September 30, 2026") == dt.date(2026, 9, 30)
+    assert xc.half_year_end("01.04.2026-30.09.2026") == dt.date(2026, 9, 30)
+    assert xc.half_year_end("Quarter ended 30.09.2026") is None
+    assert xc.duration_end("Year ended 31.03.2026") == ("FY", dt.date(2026, 3, 31))
+    assert xc.duration_end("Quarter ended 30.06.2026") == ("Q", dt.date(2026, 6, 30))
+    assert xc.duration_end("Half year ended 31.03.2026") == ("H1", dt.date(2026, 3, 31))
+    assert xc.duration_end("Nine months ended 31.12.2025") is None
+    assert xc.duration_end("Year ended 01.04.2026-30.09.2026") is None   # span contradicts "year"
 
 
 def test_quarter_end_reads_quarter_periods_only():
@@ -54,6 +73,58 @@ def test_check_db_match_unit_fix_contradiction_and_skips(tmp_path):
     by = {v["id"]: v["verdict"] for v in verdicts}
     assert by == {1: "xbrl_match", 2: "xbrl_unit_fix", 3: "xbrl_contradicts", 5: "xbrl_match"}
     assert stats["skip_scope"] == 1 and stats["skip_period"] == 1
+
+
+def test_check_db_annual_lines_bs_cf_and_sign_convention(tmp_path):
+    h1, fy = dt.date(2026, 9, 30), dt.date(2026, 3, 31)
+    annual = {"ACME": {
+        ("cash_and_equivalents", h1, "consolidated", "stock"): [(1_234_500_000.0, True)],
+        ("total_assets", fy, "standalone", "stock"): [(50_000_000.0, True)],
+        ("equity_share_capital", h1, "consolidated", "stock"): [(1_000_000.0, True)],
+        ("cash_flow_from_operations", h1, "consolidated", "H1"): [(500_000_000.0, True)],
+        ("dividends_paid", fy, "consolidated", "FY"): [(-25_000_000.0, True)],
+    }}
+    db = _db(tmp_path, [
+        (11, "ACME", "cash_and_cash_equivalents", 123.45, "123.45", 1e7, "As at 30.09.2026", "consolidated",
+         "company", "unverified"),
+        (12, "ACME", "total_assets", 45.6, "45.6", 1e6, "31st March 2026", "standalone", "company", "verified"),
+        (13, "ACME", "equity_share_capital", 1.0, "1.0", 1e3, "30 September 2026", "consolidated", "company",
+         "verified"),
+        (14, "ACME", "cash_flow.operating", 50.0, "50", 1e7, "Half year ended September 30, 2026", "consolidated",
+         "company", "unverified"),
+        (15, "ACME", "dividends_paid", 2.5, "2.5", 1e7, "Year ended March 31, 2026", "consolidated", "company",
+         "verified"),
+    ])
+    verdicts, _ = xc.check_db(db, {}, annual)
+    by = {v["id"]: v for v in verdicts}
+    assert by[11]["verdict"] == "xbrl_match" and by[11]["kind"] == "stock"
+    assert by[12]["verdict"] == "xbrl_contradicts"
+    assert by[13]["verdict"] == "xbrl_unit_fix" and by[13]["fix_scale"] == 1e6
+    assert by[14]["verdict"] == "xbrl_match" and by[14]["kind"] == "H1"
+    assert by[15]["verdict"] == "xbrl_match" and "sign_convention" in by[15]["evidence"]
+
+
+def test_half_year_row_never_uses_a_quarter_line(tmp_path):
+    h1 = dt.date(2026, 9, 30)
+    xbrl = {"ACME": {("pat", h1, "consolidated"): 1.0}}
+    annual = {"ACME": {("pat", h1, "consolidated", "Q"): [(2.0, True)]}}
+    db = _db(tmp_path, [
+        (21, "ACME", "pat", 9.0, "9", 1e7, "Half year ended 30.09.2026", "consolidated", "company", "verified"),
+    ])
+    verdicts, stats = xc.check_db(db, xbrl, annual)
+    assert verdicts == [] and stats["no_xbrl_period"] == 1
+
+
+def test_match_in_either_source_wins_over_the_other_source(tmp_path):
+    q = dt.date(2026, 9, 30)
+    xbrl = {"ACME": {("pat", q, "consolidated"): 1.0}}
+    annual = {"ACME": {("pat", q, "consolidated", "Q"): [(9e7, True)]}}
+    db = _db(tmp_path, [
+        (31, "ACME", "pat", 9.0, "9", 1e7, "Quarter ended 30.09.2026", "consolidated", "company", "verified"),
+    ])
+    verdicts, _ = xc.check_db(db, xbrl, annual)
+    assert len(verdicts) == 1 and verdicts[0]["verdict"] == "xbrl_match"
+    assert verdicts[0]["source"] == "annual" and verdicts[0]["also"][0]["source"] == "quarter"
 
 
 def test_loader_moves_status_on_xbrl_verdicts_only():

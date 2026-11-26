@@ -20,7 +20,7 @@ not a stop.
 ## Check layers (verdict files keyed by source DB + observation_id; never edit the read)
 | Check | Code | Verdicts -> status at load |
 |---|---|---|
-| Filed XBRL (results P&L quarters) | `reality_engine/v2/xbrl_crosscheck.py --db <hy4 db>` -> `D:/RealityEngine/checks/xbrl/` | match -> verified (even in a capped type); unit_fix / contradicts -> unverified |
+| Filed XBRL (quarter P&L in `fin_quarter_xbrl`; BS as-at / H1 / FY / Q in `fin_annual_line`) | `reality_engine/v2/xbrl_crosscheck.py --db <hy4 db>` -> `D:/RealityEngine/checks/xbrl/` | match -> verified (even in a capped type); unit_fix / contradicts -> unverified |
 | Arithmetic (sums, subset-as-total, sign, 100x jump) | `reality_engine/v2/arith_checks.py` (T-242, DeepSeek de0ee829) -> `D:/RealityEngine/checks/arith/` | flagged -> unverified |
 | Model settles | Sonnet/Gemma verdicts (`load_observations.CHECKS`) | advisory `check_status` |
 Add a new check the same way: a module + CLI writing `{id, verdict, evidence, checker}` JSONL, register its dir in
@@ -41,4 +41,4 @@ Add a new check the same way: a module + CLI writing `{id, verdict, evidence, ch
 - Loader reading a DB a hy4 loop is writing: `_ro` waits 300 s; never kill the loop.
 - `filing_events` needs `T228_STORE_ROOT=C:/RealityEngine/tg_build/full394` with `--stores`.
 - Grader "R" hides wrong rows: re-read a random 10 of its R plus suspicious ones before recording.
-- XBRL covers P&L quarters only; empty basis is never called wrong; segment rows never compared to totals.
+- XBRL covers quarter P&L (`fin_quarter_xbrl`) and the store's BS/CF/H1-FY-Q lines (`fin_annual_line`); a BS row matches its as-at date and a P&L/CF row only the duration its period names (a half year is never compared with a quarter). Empty basis is never called wrong; segment rows never compared to totals. The 26 Nov seed-7 annual sample was 70% real (store-side `other_expenses` aggregation, `total_equity` vs owners' equity, a stale share-capital line), so install the annual **matches** only after review and normalise those store lines before trusting annual contradictions. `obs_ar_fy27` has no 31 March FY/BS line for its symbols, so it yields 0 verdicts.

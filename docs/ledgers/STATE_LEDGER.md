@@ -8784,3 +8784,23 @@
 +# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 17:00 IST (Wolf, dsh T-242)
 +- 26 Nov events: read-provenance columns on `event` rows (T-242, dsh); script rows `read_model='script'`.
 ```
+
+## 2026-11-26T18:39:37 | kakazuya (Wolf) | branch main
+```diff
+-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 17:00 IST (Wolf, dsh T-242)
++# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 18:05 IST (dsh T-242 xbrl annual; earlier Wolf 17:00)
+-- 26 Nov deck r7/r8: scope, HoH/QoQ, quarter cue, segment not total
+-- 26 Nov junk gates r5/r6: decorative slide numbers; bare FY tokens, 'N (word)' echoes.
+-- 26 Nov Go reader bake-off: no free Go model replaces hy4 (`C:/RealityEngine/t242/go_bakeoff/results.md`).
++- 26 Nov xbrl check now also covers `fin_annual_line` (BS/H1/FY/CF): 2,448 match / 132 unit fix / 232 contradict; annual contradictions 70% real in the seed-7 sample, not installed; matches safe. `tasks/t242_xbrl_annual_measure.md`.
+```
+
+## 2026-11-26T18:39:48 | kakazuya (Wolf) | branch main
+```diff
+-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 17:00 IST (Wolf, dsh T-242)
++# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 18:05 IST (dsh T-242 xbrl annual; earlier Wolf 17:00)
+-- 26 Nov deck r7/r8: scope, HoH/QoQ, quarter cue, segment not total
+-- 26 Nov junk gates r5/r6: decorative slide numbers; bare FY tokens, 'N (word)' echoes.
+-- 26 Nov Go reader bake-off: no free Go model replaces hy4 (`C:/RealityEngine/t242/go_bakeoff/results.md`).
++- 26 Nov xbrl check now also covers `fin_annual_line` (BS/H1/FY/CF): 2,448 match / 132 unit fix / 232 contradict; annual contradictions 70% real in the seed-7 sample, not installed; matches safe. `tasks/t242_xbrl_annual_measure.md`.
+```
