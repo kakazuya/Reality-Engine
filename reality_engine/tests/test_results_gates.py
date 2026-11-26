@@ -983,3 +983,235 @@ def test_r3d2_graded_r_row_keeps_its_period_and_status(symbol, page, specs, expe
     assert target["period"] == expected_period
     assert target["status"] == "verified"
     assert "results_period_duration_ambiguous" not in target["status_reason"]
+
+
+# T-242 r3f -- results ckpt_0003/0004 fix notes.  Each case is a graded row's own printed value and the pack page
+# (C:/RealityEngine/t242/results_ckpt3|4) that printed it.
+def test_r3f_ocr_bracket_pair_is_negative_and_split_digits_rejoin():
+    alokinds = row(measure="NEW:net_loss_for_the_period", printed_label="Net Loss for the period {7-8)",
+                   value_text="{171.56)", value=171.56, unit="Rs. in Crore", scale=10000000.0,
+                   period="Quarter ended 30.06.2025")
+    atgl = row(measure="NEW:effective_portion_of_loss_gain_on_cash_flow_hedge",
+               printed_label="-Effective portion of (loss)/gain on cash flow hedge", value_text="(2 69)",
+               value=-2.0, unit="Rs. crore", scale=10000000.0, period="Quarter ended June 30, 2025")
+    split = row(measure="revenue.mix", printed_label="Aerospace", value_text="3, 221 59", value=3221.59,
+                unit="Rs. in Millions", scale=1000000.0)
+    plain = row(value_text="171.56", value=171.56)
+    bracketed = row(value_text="(171.56)", value=-171.56)
+    rows = [alokinds, atgl, split, plain, bracketed]
+    obs.apply_results_row_gates(rows, "")
+    assert alokinds["value"] == -171.56 and "results_ocr_value" in alokinds["status_reason"]
+    assert atgl["value"] == -2.69 and "results_ocr_value" in atgl["status_reason"]
+    assert split["value"] == 3221.59
+    assert plain["value"] == 171.56 and bracketed["value"] == -171.56
+    assert "results_ocr_value" not in plain["status_reason"]
+    assert "results_ocr_value" not in bracketed["status_reason"]
+
+
+def test_r3f_garbled_ocr_value_is_quarantined():
+    garbled = row(measure="changes_in_payables", printed_label="Adjustments for trade payables",
+                  value_text="-2,1::!.J.:?.9", value=-2.1, unit="Lakhs", scale=100000.0)
+    clean = row(measure="changes_in_payables", printed_label="Adjustments for trade payables",
+                value_text="2,100.90", value=2100.9, unit="Lakhs", scale=100000.0)
+    money = row(measure="revenue_from_operations", printed_label="Revenue", value_text="Rs. 1,234.56",
+                value=1234.56, unit="Lakhs", scale=100000.0)
+    rows = [garbled, clean, money]
+    obs.apply_results_row_gates(rows, "")
+    assert garbled["status"] == "quarantined" and "results_garbled_value" in garbled["status_reason"]
+    assert clean["status"] == "verified" and money["status"] == "verified"
+
+
+AZADIND_CF_PAGE = (
+    "AZAD INDUSTRIES LIMITED\nStatement of Cash Flow for the year ended March 31, 2026\n"
+    "B. Cash flow from investing activities\n"
+    "Interest received 123.48 89.13\nExtraordinary items (0.09)\nLong term investments (1,279.00)"
+)
+APTUS_CF_PAGE = (
+    "APTUS VALUE HOUSING FINANCE LIMITED\nStatement of Cash Flows for the year ended March 31, 2025\n"
+    "(INR in lakhs)\nCash flows from financing activities\n"
+    "Issue of equity shares (including securities premium) 1,735.82 1,532.16\n"
+    "Dividend paid (22,508.10) (22,467.96)"
+)
+AAYUSH_BS_PAGE = (
+    "AAYUSH WELLNESS LIMITED\nSTATEMENT OF ASSETS AND LIABILITIES FOR THE HALF YEAR ENDED 30TH SEPTEMBER, 2026\n"
+    "(Rs. in lakhs}\nCONSOLIDATED\nParticulars\nAs at 30-Sep-2026\nAs at 31-Mar-2026\n"
+    "Non-current Liabilities\n(a) Financial liabilities\n(i) Borrowings\n460.53\n473.53\n"
+    "(b) Provisions\n0.00\n0.00\n( c) Deferred tax liabilities (Net)\n0.00\n0.00\n"
+    "Total Non-current Liabilities\n460.53\n473.53"
+)
+
+
+def test_r3f_measure_from_the_section_cash_flow_generic_twin_and_pnl_charge():
+    extraordinary = row(measure="exceptional_items", printed_label="Extraordinary items", value_text="(0.09)",
+                        value=-0.09, unit="Lakhs", scale=100000.0, period="For the Year ended 31 March, 2025")
+    equity_issue = row(measure="equity_share_capital",
+                       printed_label="Issue of equity shares (including securities premium)",
+                       value_text="1,532.16", value=1532.16, unit="INR in lakhs", scale=100000.0,
+                       period="31.03.2025")
+    provisions = row(measure="provisions", printed_label="(b) Provisions", value_text="0.00", value=0.0,
+                     unit="Rs. in lakhs", scale=100000.0, period="As at 30-Sep-2026")
+    charge = row(measure="provisions", printed_label="The provisions (other than tax) & contingencies charged to "
+                                                      "the Profit and Loss for FY26 were at",
+                 value_text="Rs.4,131 crore", value=4131.0, unit="Rs crore", scale=10000000.0, period="FY26")
+    pnl_provisions = row(measure="provisions", printed_label="Provisions", value_text="12.00", value=12.0,
+                         unit="Lakhs", scale=100000.0)
+    obs.apply_results_row_gates([extraordinary], AZADIND_CF_PAGE)
+    obs.apply_results_row_gates([equity_issue], APTUS_CF_PAGE)
+    obs.apply_results_row_gates([provisions], AAYUSH_BS_PAGE)
+    obs.apply_results_row_gates([charge], "Bandhan Bank Limited\nMedia Release Q4 FY26\n"
+                                          "The provisions (other than tax) & contingencies charged to the Profit "
+                                          "and Loss for FY26 were at\nRs.4,131 crore")
+    obs.apply_results_row_gates([pnl_provisions], "Statement of Profit and Loss\nProvisions 12.00")
+    assert extraordinary["measure"] == "NEW:extraordinary_items_cash_flow" and extraordinary["status"] == "unverified"
+    assert equity_issue["measure"].startswith("NEW:issue_of_equity_shares")
+    assert equity_issue["status"] == "unverified"
+    assert provisions["measure"] == "long_term_provisions" and provisions["status"] == "verified"
+    assert charge["status"] == "unverified" and "results_measure_section" in charge["status_reason"]
+    assert pnl_provisions["measure"] == "provisions" and pnl_provisions["status"] == "verified"
+
+
+def test_r3f_printed_movement_is_never_the_balance():
+    movement = row(measure="deferred_tax_liabilities_net",
+                   printed_label="the Deferred Tax Liability recognised by the Company on fair value gains on its "
+                                 "investments as on June 30, 2024 had increased by",
+                   value_text="\u20b9 69.75 Crore", value=69.75, unit="Crore", scale=10000000.0,
+                   period="June 30, 2024")
+    balance = row(measure="deferred_tax_liabilities_net", printed_label="Deferred tax liabilities (net)",
+                  value_text="69.75", value=69.75, unit="Crore", scale=10000000.0, period="As at March 31, 2026")
+    obs.apply_results_row_gates([movement], "")
+    obs.apply_results_row_gates([balance], "")
+    assert movement["status"] == "unverified" and movement["value_kind"] == "change"
+    assert "results_change_not_balance" in movement["status_reason"]
+    assert balance["status"] == "verified" and not balance.get("value_kind")
+
+
+ATMAIND_SHARE_PAGE = (
+    "ATMA INDUSTRIES LIMITED\nAmount in Lacs(\u201800000)\nNote : 11 Share Capital\n"
+    "Particulars\nNumber\nAmount (Rs.)\nNumber\nAmount (Rs.)}\n1\n|AUTHORIZED CAPITAL\n"
+    "Equity Shares of Rs. 10/- each with voting Rights\n25.50\n255.00\n25.50\n255.00\n"
+    "Preference Shares of Rs. 10/- each\n2.50\n25.00\n2.50\n25.00\n"
+    "11.1 Reconciliation of Number of Shares:-\nParticulars\nAs on March 31, 2026\nAs on March 31, 2025\n"
+    "Number\nAmount (Rs.)\nNumber\nAmount (Rs.)\nAuthorised\n"
+    "Equity Shares of 10/- each with voting Rights\nShare Outstanding at the beginning of the year\n"
+    "25.50\n255.00\n25.50\n255.00\nShare Outstanding at the end of the year\n25.50\n255.00\n25.50\n255.00\n"
+    "Preference Shares of 10/- each\nShare Outstanding at the beginning of the year\n2.50\n25.00\n2.50\n25.00\n"
+    "Add: Increase during the year\n0.00\n0.00\n60.00\n0.00\nLess: Decrease during the year\n0.00\n0.00\n"
+    "0.00\n0.00\nShare Outstanding at the end of the year\n2.50\n25.00\n2.50\n25.00\n"
+    "Issued, Subscribed & Paid up\nEquity Shares of 10/- each with voting Rights\n"
+    "Share Outstanding at the end of the year\n23.00\n230.00\n23.00\n230.00"
+)
+
+
+def test_r3f_share_count_table_keeps_a_count_measure_in_the_page_scale():
+    count = row(measure="NEW:authorized_preference_share_capital",
+                printed_label="Share Outstanding at the end of the year", value_text="2.50", value=2.5,
+                unit="Number", unit_family="", scale=1.0, period="As on March 31, 2025")
+    amount = row(measure="NEW:authorized_preference_share_capital",
+                 printed_label="Share Outstanding at the end of the year", value_text="25.00", value=25.0,
+                 unit="Number", unit_family="", scale=1.0, period="As on March 31, 2025")
+    obs.apply_results_row_gates([count], ATMAIND_SHARE_PAGE)
+    obs.apply_results_row_gates([amount], ATMAIND_SHARE_PAGE)
+    assert count["measure"] == "NEW:preference_shares_outstanding"
+    assert (count["unit"], count["unit_family"], count["scale"]) == ("Number", "count", 100000.0)
+    assert "results_share_count" in count["status_reason"]
+    assert amount["measure"] == "NEW:authorized_preference_share_capital" and amount["scale"] == 1.0
+
+
+AEQUS_SEGMENT_PAGE = (
+    "Aequs Limited\nUnaudited consolidated segment information for the quarter ended June 30, 2026\n"
+    "(\u20b9 in Millions, except per share data)\nQuarter ended\nParticulars\n"
+    "June 30, 2026\nMarch 31, 2026\nJune 30, 2025\nUnaudited\nUnaudited\nUnaudited\n"
+    "Segment revenue\nAerospace\n3, 221 59\n3,039.54\n2,302 9B\n"
+    "Consumer\n733.86\n631.49\n252.72\n"
+    "Total external revenue\n3,955.45\n3,671.03\n2,555.70"
+)
+BHARATROHAN_HALF_PAGE = (
+    "BHARATROHAN AIRBORNE INNOVATIONS LIMITED\n"
+    "Unaudited Standalone Financial Results for the half year ended September 30, 2026\n"
+    "(INR in lakhs, unless otherwise stated)\n"
+    "Half Year ended\nYear ended\nSt No.\nParticulars\n"
+    "30th September, 2026\n31t March, 2026\n_30th September, 2025\n315t March, 2026\n"
+    "Un-Audited\nUn-Audited\nUn-Audited\nAudited\nI\nRevenue From Operations\n"
+    "Net Sales or Revenue from Operations\n4,234.49\n5,248.62\n3,292.44\n8,541.07"
+)
+MINDIA_INTERLEAVED_PAGE = (
+    "3M INDIA LIMITED\nSEGMENT-WISE REVENUE, RESULTS, ASSETS AND LIABILITIES FOR THE QUARTER AND YEAR ENDED "
+    "31 MARCH 2026\n(Rs. in lakhs)\nParticulars\n3 months ended\n31 March 2026\n(Unaudited)\n"
+    "3 months ended\n31 December 2025\n(Unaudited)\n3 months ended\n31 March 2025\n(Unaudited)\n"
+    "12 months ended\n31 March 2026\n(Audited)\n12 months ended\n31 March 2025\n(Audited)\n"
+    "(e) Others\n5.94\n20.56\n5.67\n50.36\n25.06"
+)
+
+
+def test_r3f_segment_table_value_takes_its_own_printed_column():
+    aeqlike = row(measure="revenue.mix", printed_label="Aerospace", value_text="3,039.54", value=3039.54,
+                  unit="\u20b9 in Millions", scale=1000000.0, period="Year ended March 31, 2026", segment="Aerospace")
+    half = row(measure="revenue_from_operations", printed_label="Net Sales or Revenue from Operations",
+               value_text="3,292.44", value=3292.44, unit="INR in lakhs", scale=100000.0,
+               period="Year ended 30th September, 2025")
+    interleaved = row(measure="revenue.mix", printed_label="(e) Others", value_text="25.06", value=25.06,
+                      unit="Rs. in lakhs", scale=100000.0, period="12 months ended 31 March 2025")
+    obs.apply_results_row_gates([aeqlike], AEQUS_SEGMENT_PAGE)
+    obs.apply_results_row_gates([half], BHARATROHAN_HALF_PAGE)
+    obs.apply_results_row_gates([interleaved], MINDIA_INTERLEAVED_PAGE)
+    assert aeqlike["period"] == "Quarter ended March 31, 2026"
+    assert aeqlike["period_source"] == "column_position" and aeqlike["status"] == "verified"
+    assert half["period"] == "Half year ended 30th September, 2025"
+    assert half["period_source"] == "column_position"
+    assert interleaved["period"] == "12 months ended 31 March 2025"
+    assert not interleaved.get("period_source")
+
+
+ARTEMISMED_GEO_PAGE = (
+    "ARTEMIS MEDICARE SERVICES LIMITED\nNotes:-\n1. The above unaudited standalone financial results for the "
+    "quarter ended June 30, 2026\n4. Segment Reporting:\nGeographical information\n"
+    "Geographical information analyses the Company's revenue by the country of domicile (i.e. India) and other "
+    "countries.\nRegion\nCarrying amount of Non-Current Assets\nQuarter ended\nYear ended\n"
+    "30-Jun-26\n31-Mar-26\n30-Jun-25\n31-Mar-26\nIndia\n1,02,038.47\n98,241.62\n79,690.69\n98,241.62\n"
+    "Outside India\nTotal\n1,02,038.47\n98,241.62\n79,690.69\n98,241.62"
+)
+
+
+def test_r3f_geography_row_is_a_subset_and_carries_its_segment():
+    india = row(measure="NEW:carrying_amount_of_non_current_assets", printed_label="India",
+                value_text="1,02,038.47", value=102038.47, unit="Lakhs", scale=100000.0, period="30-Jun-26")
+    no_head = row(measure="NEW:carrying_amount_of_non_current_assets", printed_label="India",
+                  value_text="1,02,038.47", value=102038.47, unit="Lakhs", scale=100000.0, period="30-Jun-26")
+    obs.apply_results_row_gates([india], ARTEMISMED_GEO_PAGE)
+    obs.apply_results_row_gates([no_head], "Statement of Assets and Liabilities\nIndia 1,02,038.47")
+    assert india["segment"] == "India" and india["status"] == "unverified"
+    assert "results_geography_subset" in india["status_reason"]
+    assert no_head["segment"] == "" and no_head["status"] == "verified"
+
+
+ASTRONMULT_PAGE = (
+    "ASTRON MULTIGRAIN LIMITED\n(FORMERLY KNOWN AS ASTRON MULTIGRAIN PRIVATE LIMITED)\n"
+    "CIN: U15549GJ2018PLC103488\nSTATEMENT OF FINANCIAL RESULTS FOR THE HALF YEAR ENDED 30th SEPTEMBER, 2026\n"
+    "(Rs in Lakhs)\n6 Months Ended\nYear Ended\n30th September\n2026\n(Unaudited)\n31st March\n2026\n(Audited)\n"
+    "30th September\n2025\n(Unaudited)\n31st March\n2026\n(Audited)\n"
+    "Other expenses\n89.04\n266.03\n35.59\n301.62"
+)
+ASTRONMULT_PREVIOUS = (
+    "Subject: Outcome of the Board Meeting held on Wednesday, 4th November, 2026 and submission of\n"
+    "Un-Audited Standalone Financial Results along with Limited Review Report for the Half Year Ended\n"
+    "on 30th September, 2026."
+)
+
+
+def test_r3f_own_statement_heading_wins_over_a_previous_page_mention():
+    own = row(measure="other_expenses", printed_label="Other expenses", value_text="35.59", value=35.59,
+              unit="Rs in Lakhs", scale=100000.0, period="Half year ended 30th September 2025",
+              entity_scope="subsidiary")
+    note = row(measure="total_comprehensive_income", printed_label="total comprehensive income",
+               value_text="621", value=621.0, unit="Crores", scale=10000000.0,
+               period="quarter ended June 30, 2026", entity_scope="subsidiary")
+    audit_note = ("S JR lB C & CO LLP\nChartered Accountants\nThe accompanying statement includes unaudited interim "
+                  "financial results in respect of 39 subsidiaries, whose unaudited interim financial results "
+                  "reflect total comprehensive income of Rs 621 Crores for the quarter ended June 30, 2026.")
+    obs.apply_results_row_gates([own], ASTRONMULT_PAGE, company="Astron Multigrain Limited",
+                                previous_page_text=ASTRONMULT_PREVIOUS)
+    obs.apply_results_row_gates([note], audit_note, company="Adani Green Energy Limited")
+    assert own["entity_scope"] == "company" and own["status"] == "verified"
+    assert obs._results_own_statement_heading(ASTRONMULT_PAGE, "Astron Multigrain Limited")
+    assert not obs._results_own_statement_heading(audit_note, "Adani Green Energy Limited")
+    assert note["entity_scope"] == "subsidiary"
