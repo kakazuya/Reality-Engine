@@ -3,6 +3,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
 - 26 Nov Shivam: never block reading (all doc types read + load; >10% W+J sample loads unverified); XBRL cross-check (`v2/xbrl_crosscheck.py`) promotes/demotes results rows; `docs/CONTINUOUS_STORE_ARCHITECTURE.md`.
+- 26 Nov T-242 arithmetic checks: `v2/arith_checks.py` writes sum/unit/subset/sign/jump verdicts to `D:/RealityEngine/checks/arith/`; run on results/AR/decks = 798 sum, 10 unit, 549 subset, 133 sign, 5 jump; seed-7 samples >=80% per rule; loader wiring pending Wolf review. Tests `reality_engine/tests/test_arith_checks.py`.
 - Stores `D:/RealityEngine/{p20/p20new.db,u8/u8.db,q12/q12.db,n10/n10.db,pilot10/pilot10.db}`; backups `*_before_rebuild_2026-11-11.db`.
 - Extraction: `v2/page_words.py`->`page_layout.py`->`page_route.py` (T-189; `table_or_chart` on IMAGE, `needs_ocr` on OCR since T-238 + T-242 deck options)->`reference_geom.py` (T-185)->`page_reader.py` -> `page_cell` verified/unverified/quarantined, served by `pilot3_cells`. T-199 atoms (`page_atom` v10): `PILOT3_BLUEPRINT.md`.
 - 24-26 Nov T-242 retrieval audits 4-9 (`grade_pack.py`, `docs/grading/`); fixes F3-F9 in DEVELOPER_GUIDE; audit9 23->32R.
