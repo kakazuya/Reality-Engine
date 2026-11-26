@@ -20,7 +20,7 @@ not a stop.
 ## Check layers (verdict files keyed by source DB + observation_id; never edit the read)
 | Check | Code | Verdicts -> status at load |
 |---|---|---|
-| Filed XBRL (quarter P&L in `fin_quarter_xbrl`; BS as-at / H1 / FY / Q in `fin_annual_line`) | `reality_engine/v2/xbrl_crosscheck.py --db <hy4 db>` -> `D:/RealityEngine/checks/xbrl/` | match -> verified (even in a capped type); unit_fix / contradicts -> unverified |
+| Filed XBRL (quarter P&L in `fin_quarter_xbrl`; BS as-at / H1 / FY / Q in `fin_annual_line`) | `reality_engine/v2/xbrl_crosscheck.py --db <hy4 db>` -> `D:/RealityEngine/checks/xbrl/` | match (to the printed digit) -> verified (even in a capped type); near (within 1%, off the printed digit) / unit_fix / contradicts -> unverified |
 | Arithmetic (sums, subset-as-total, sign, 100x jump) | `reality_engine/v2/arith_checks.py` (T-242, DeepSeek de0ee829) -> `D:/RealityEngine/checks/arith/` | flagged -> unverified |
 | Model settles | Sonnet/Gemma verdicts (`load_observations.CHECKS`) | advisory `check_status` |
 Add a new check the same way: a module + CLI writing `{id, verdict, evidence, checker}` JSONL, register its dir in

@@ -212,7 +212,7 @@ def _apply_check_status(rows: list, cols: list[str], checks: dict[int, tuple]) -
         ck = checks.get(int(r[ii])) if r[ii] is not None else None
         verdict = ck[0] if ck else ""
         new = "verified" if verdict == "xbrl_match" else "unverified" if verdict in (
-            "xbrl_contradicts", "xbrl_unit_fix") or verdict.startswith("arith_") else None
+            "xbrl_contradicts", "xbrl_unit_fix", "xbrl_near") or verdict.startswith("arith_") else None
         # Eagle 26 Nov: a printed TOTAL that its stored children do not add up to is usually right and the children
         # partial (AGIIL total assets, ACCELERATE other expenses): a sum mismatch never downgrades the total row.
         if verdict == "arith_sum_mismatch" and ti is not None and r[ti]:

@@ -171,3 +171,16 @@ def test_loader_arith_flags_never_downgrade_a_total_and_xbrl_match_wins():
               3: ("arith_subset_as_total", None, "", "arith_checks"), 4: ("xbrl_match", None, "", "xbrl_crosscheck")}
     out, _ = lo._apply_check_status(rows, cols, checks)
     assert [r[1] for r in out] == ["verified", "unverified", "unverified", "verified"]
+
+
+def test_match_needs_the_printed_digit_else_near():
+    """Eagle 26 Nov: AHLEAST CF (578.22) lakh stored vs 576.22 filed is within 1% but a misread digit."""
+    assert xc._printed_tol("(578.22)", 1e5) < 600
+    q = dt.date(2026, 6, 30)
+    xbrl = {"ACME": {("pat", q, "consolidated"): 3_305_300_000.0}}
+    import tempfile, pathlib
+    d = pathlib.Path(tempfile.mkdtemp())
+    db = _db(d, [(1, "ACME", "pat", 330.0, "330", 1e7, "quarter ended June 30, 2026", "consolidated", "company", "unverified"),
+                 (2, "ACME", "pat", 331.53, "331.53", 1e7, "quarter ended June 30, 2026", "consolidated", "company", "unverified")])
+    verdicts, _ = xc.check_db(db, xbrl)
+    assert {v["id"]: v["verdict"] for v in verdicts} == {1: "xbrl_match", 2: "xbrl_near"}

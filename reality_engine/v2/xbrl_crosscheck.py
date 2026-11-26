@@ -277,6 +277,24 @@ def half_year_end(period: str) -> dt.date | None:
     return d[1] if d and d[0] == "H1" else None
 
 
+def _printed_tol(value_text: str, scale: float) -> float:
+    """Half a unit of the last printed digit (Eagle 26 Nov: only this proves a read; 1% hides a misread digit)."""
+    t = (value_text or "").replace(",", "")
+    dec = re.search(r"\.(\d+)", t)
+    unit = 10 ** -(len(dec.group(1))) if dec else 1.0
+    return 0.5 * unit * (scale or 1.0) * 1.000001 + 1e-6
+
+
+def _printed_agrees(val: float, filed: float, value_text: str, scale: float) -> bool:
+    """The stored figure is the filed one at the printed precision: rounded (half a unit) or cut short
+    (a press release's "Rs 330 crore" for 330.53) - never a different digit."""
+    half = _printed_tol(value_text, scale)
+    if abs(val - filed) <= half:
+        return True
+    same_sign = (val >= 0) == (filed >= 0)
+    return same_sign and abs(val) < abs(filed) < abs(val) + 2 * half
+
+
 def _tolerance(value_text: str, scale: float, filed: float) -> float:
     """1% of the filed value, or half a unit of the last printed digit, whichever is larger."""
     t = (value_text or "").replace(",", "")
@@ -366,7 +384,11 @@ def _compare(val: float, value_text: str, scale: float, li: str, stmt: str, file
     hit_bases = sorted(hits)
     if len(hit_bases) == 1 or (basis and hit_bases):
         b = hit_bases[0]
-        f = hits[b][0]
+        f = min(hits[b], key=lambda v: abs(val - v))
+        if not _printed_agrees(val, f, value_text, scale):    # within 1% but not the printed figure: a misread?
+            return (base | {"verdict": "xbrl_near", "basis": b, "filed": f, "_stat": "near",
+                            "evidence": f"XBRL {li} {end} {b} {kind} = {f:,.0f}; stored {val:,.0f} (within 1%, "
+                                        f"not to the printed digit)"}), "near"
         return (base | {"verdict": "xbrl_match", "basis": b, "filed": f, "_stat": "match",
                         "evidence": f"XBRL {li} {end} {b} {kind} = {f:,.0f}"}), "match"
     if hit_bases:
@@ -377,7 +399,11 @@ def _compare(val: float, value_text: str, scale: float, li: str, stmt: str, file
         flip_bases = sorted(b for b, vs in flips.items() if vs)
         if len(flip_bases) == 1 or (basis and flip_bases):
             b = flip_bases[0]
-            f = flips[b][0]
+            f = min(flips[b], key=lambda v: abs(val + v))
+            if not _printed_agrees(val, -f, value_text, scale):
+                return (base | {"verdict": "xbrl_near", "basis": b, "filed": f, "_stat": "near",
+                                "evidence": f"XBRL {li} {end} {b} {kind} = {f:,.0f}; stored {val:,.0f} "
+                                            f"(sign convention, within 1%, not to the printed digit)"}), "near"
             return (base | {"verdict": "xbrl_match", "basis": b, "filed": f, "_stat": "match_sign_convention",
                             "evidence": f"XBRL {li} {end} {b} {kind} = {f:,.0f} (sign_convention)"}), "match_sign_convention"
     if not basis:
@@ -400,7 +426,7 @@ def _compare(val: float, value_text: str, scale: float, li: str, stmt: str, file
                     "evidence": f"XBRL {li} {end} {b} {kind} = {f:,.0f}; stored {val:,.0f}"}), "contradicts"
 
 
-_VERDICT_RANK = {"xbrl_match": 0, "xbrl_unit_fix": 1, "xbrl_contradicts": 2}
+_VERDICT_RANK = {"xbrl_match": 0, "xbrl_near": 1, "xbrl_unit_fix": 2, "xbrl_contradicts": 3}
 
 
 def check_db(db: str | Path, xbrl: dict[str, dict[tuple, float]] | None = None,
