@@ -60,3 +60,7 @@ cleanup - data-heavy files to Drive, keep essentials on the MSI - so it runs as 
 > heavy files are moved on Gdrive so the SSD and HDD remains lean on the laptop by 10 am friday IST
 > ok, stop the operations by 8 am IST tomorrow and focus the energy afterwards, on cleaning the operations and only
 > keeping the essentials on this machine
+
+## 2026-11-27 01:50 | raw\user_research to Drive too (replaces "kept local", 7 Nov)
+Rule: `raw\user_research` (member videos, screen recordings; 814 files, 32.8 GB) is uploaded and hash-checked like all raw.
+> Krde upload isko bhi
