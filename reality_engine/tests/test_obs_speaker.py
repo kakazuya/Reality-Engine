@@ -1523,3 +1523,125 @@ def test_r4_metric_heading_label_not_stripped_while_roster_and_role_strip():
     assert rows[4]["statement"] == "Trading window stays closed."
     assert stats["labels_stripped"] == 4
 
+
+# ------------------------------------------------ T-242 r7: explicit own-period cues bound to a figure
+
+# Each fixture is the statement as the closed r3 copy prints it (doc: page), with the printed call
+# period read from the transcript header; the r6 output is in the docstring.
+
+
+def test_r7_yasho_planned_outlay_for_fy27_anchors():
+    """YASHO p4, printed call Q2 FY27: r6 emptied r3's FY27; a plan word + "for FY27" names the year."""
+    assert ospeaker.anchored_period(
+        "On capital expenditure, the planned outlay for FY27 stands at INR250 crores.", "Q2 FY27") == "FY27"
+    # the call's own year without a plan/guidance word stays empty (CUB, r5 keep-case)
+    assert ospeaker.anchored_period("Our NIM for FY26 is 3.5%.", "Q1 FY26") == ""
+    # a target year is anchored even when it is not the call's own FY
+    assert ospeaker.anchored_period("We have planned a capex of INR250 crores for FY28.", "Q2 FY27") == "FY28"
+    # an annual reporting phrase names the year even when it is the call's own FY
+    assert ospeaker.anchored_period(
+        "For the full year FY'25 revenue from operations reached Rs. 231.34 crore, a 70.84% increase over FY'24.",
+        "Q4 FY25") == "FY25"
+
+
+def test_r7_psb_this_time_and_for_the_quarter_beat_the_trailing_forward():
+    """PSB p4, printed call Q1 FY27: "this time ... Rs.207 crores ... for the quarter ... will be annualised"."""
+    assert ospeaker.anchored_period(
+        "Slippages are broadly in line with the previous quarters, this time these slippages are at Rs.207 crores "
+        "and the slippage ratio is at 0.18% for the quarter, so overall it will be annualised around 0.70%.",
+        "Q1 FY27") == "Q1 FY27"
+
+
+def test_r7_triveni_this_quarter_after_you_will_note_anchors():
+    """TRIVENI p6, printed call Q4 FY26: the forward "will note" opens the sentence, the pricing is this quarter's."""
+    assert ospeaker.anchored_period(
+        "And you will note that with an average sugar pricing of refined at \u20b942.20 and sulphitation at about "
+        "\u20b941.50 today, it has broadly been the same in this quarter, it is a stark increase to the overall "
+        "average refine that we had at Triveni of \u20b941.32 for all of our sugars for the previous fiscal year.",
+        "Q4 FY26") == "Q4 FY26"
+
+
+def test_r7_hindzinc_guidance_for_the_year_takes_the_guidance_year():
+    """HINDZINC p6, printed call Q2 FY26: a guidance "for the year" is the current FY; on a Q4 call, the coming FY."""
+    stmt = ("In line with Board approved growth projects, our growth capex guidance for the year would be in the "
+            "range of $350 million to $400 million.")
+    assert ospeaker.anchored_period(stmt, "Q2 FY26") == "FY26"
+    assert ospeaker.anchored_period(stmt, "Q4 FY26") == "FY27"
+    # a reported "for the year ended <date>" is not a guidance target
+    assert ospeaker.anchored_period(
+        "Our growth capex guidance was reviewed and capex for the year ended March 2026 was INR 300 crores.",
+        "Q2 FY26") == ""
+
+
+def test_r7_welent_stood_at_with_only_a_yoy_comparative_is_the_call_period():
+    """WELENT p7, printed call Q1 FY26: "stood at INR845 crores, marking a 9% year-on-year decline"."""
+    assert ospeaker.anchored_period(
+        "Revenue from operations stood at INR845 crores, marking a 9% year-on-year decline.", "Q1 FY26") == "Q1 FY26"
+    # a named period in the sentence keeps its own meaning
+    assert ospeaker.anchored_period(
+        "Revenue stood at INR845 crores in Q4 FY26, marking a 9% year-on-year decline.", "Q1 FY26") == ""
+    # only "stood/stands/reached" counts; a generic "was ... Y-o-Y" is not the call period
+    assert ospeaker.anchored_period(
+        "On YTD basis, revenue was INR8,495 crores, up 12% Y-o-Y.", "Q3 FY26") == ""
+
+
+def test_r7_tarachand_recap_keeps_its_quarter_and_never_moves_to_fy27():
+    """TARACHAND, printed call Q3 FY26: r6 moved a past-tense recap's Q4 FY26 target to the later FY27 sentence."""
+    assert ospeaker.anchored_period(
+        "I want to address one specific point upfront. On our last earnings call in January, I had shared that the "
+        "company was targeting to close Q4 with revenue of INR100 crores plus, which would have been a first ever "
+        "for us. We finished the quarter at INR89.5 crores as reported today. The shortfall is largely attributable "
+        "to project execution time lines that deferred a portion of our Q4 revenue about INR10 crores into Q1 FY '27. "
+        "Also, the revenue from our newly started Dankuni Stockyard did not take off in Q4 as per our earlier "
+        "estimates. We expect to realize these revenues in early FY '27 and remain confident in our medium-term "
+        "growth trajectory.", "Q3 FY26") == "Q4 FY26"
+
+
+def test_r7_unominda_completed_action_keeps_the_call_period():
+    """UNOMINDA p8, printed call Q2 FY25: r6 moved a production start to the later Q1 FY27 expansion sentence."""
+    assert ospeaker.anchored_period(
+        "Our another associate company TG Uno Minda has started commercial production from expansion project at "
+        "its Neemrana plant, taking its airbag capacity from 1.8 million units to 3 million units. During the "
+        "quarter, TG Uno Minda approved further expansion through its subsidiary, TGSIN. It will be setting up a "
+        "new plant in Harohalli, Karnataka to manufacture safety systems and interior and exterior products. The "
+        "total capital expenditure for this new plant in Harohalli is estimated at INR 283 crores, with operations "
+        "expected to commence in Q1 FY '27.", "Q2 FY25") == "Q2 FY25"
+    # a "this year" cue in a completed-action sentence keeps the year, never the call quarter
+    assert ospeaker.anchored_period(
+        "Whatever growth we have achieved in this year, 46% growth in EBITDA was there.", "Q4 FY25") == "FY25"
+
+
+def test_r7_keep_cases_hold_the_r3_to_r6_periods():
+    """The 13 keep-cases from the r3-r6 reviews keep their periods after the r7 rules."""
+    cases = [
+        ("We expect to complete the acquisition during the current quarter.", "Q2 FY27", ""),      # HFCL
+        ("EBITDA for the quarter rose by 19.5% year-on-year to Rs. 69.5 crores, up from Rs. 58.2 crores in the "
+         "same quarter last year.", "Q1 FY26", "Q1 FY26"),                                           # IOLCP
+        ("Our NIM for FY26 is 3.5%.", "Q1 FY26", ""),                                               # CUB
+        ("On a Y-o-Y basis, NII for Q4 FY '26 stood at INR781 crores, recording an 8% Y-o-Y growth.",
+         "Q4 FY26", ""),                                                                             # KTKBANK #36
+        ("As we have already uploaded the results of the last quarter, I am sure you are aware for which our "
+         "operating income stood at Rs. 125.72 crores on stand-alone basis, which was a net increase of about 50% "
+         "over the last quarter.", "Q1 FY27", ""),                                                   # EMSLIMITED #43
+        ("EBITDA in Q1 FY25 at Rs. 103 crore against Rs. 65 crore in the same quarter last year",
+         "Q1 FY25", "Q1 FY25"),                                                                      # ASKAUTOLTD
+        ("During the quarter, revenue grew 12.9% to INR10,513 million compared to INR8,830 million in the same "
+         "quarter last year", "Q4 FY25", "Q4 FY25"),                                                 # MEDANTA
+        ("Consolidated Performance The consolidated revenue for the quarter was INR 891 crores, up 25% from "
+         "INR 711 crores in the same quarter last year.", "Q1 FY27", "Q1 FY27"),                     # BLS
+        ("The domestic explosives volume for the quarter grew by 16% year-on-year basis, which is in line with "
+         "our annual guidance for the year '25.", "Q1 FY25", "Q1 FY25"),                              # SOLARINDS
+        ("So Q1 of FY27 has been an encouraging start to the year and more importantly, the improvement that we "
+         "started seeing during the second half of FY26 has continued into this quarter.", "Q1 FY27", "Q1 FY27"),  # ARMANFIN
+        ("We reaffirm our guidance of 25-30% for FY'25", "Q4 FY25", "FY25"),                          # AZAD
+        ("During the first half of the year, our focus has been on profitability, cost optimization, and cash "
+         "generation. These actions should start delivering somewhere in Quarter 3 and then in Quarter 4.",
+         "Q2 FY26", "H1 FY26"),                                                                      # PDSL
+        ("During the year, the company successfully completed multiple product validations and also developed "
+         "the FRP rod manufacturing line in-house, which is expected to strengthen quality control and long-term "
+         "product reliability.", "Q4 FY26", "FY26"),                                                 # MMP
+    ]
+    for stmt, call, want in cases:
+        assert ospeaker.anchored_period(stmt, call) == want, (call, stmt)
+
+
