@@ -105,7 +105,7 @@ now takes `--db` as optional (pinned) and otherwise routes through the same regi
 
 | Key | File | What it is |
 |---|---|---|
-| `truth_duckdb` | `reality_engine/data/snapshots/truth_2026-10-19.duckdb` | PIT snapshot: identity, NSE/BSE prices + delivery, events, AR/deck/concall/results facts, policy/PIB. |
+| `truth_duckdb` | newest `reality_engine/data/snapshots/truth_*.duckdb` (core.py picks the last by name; `truth_2026-11-09.duckdb` on 26 Nov) | PIT snapshot: identity, NSE/BSE prices + delivery, events, AR/deck/concall/results facts, policy/PIB. |
 | `equity_intelligence` | `.../data/equity_intelligence.db` | 44 GB search layer: raw documents, chunks + embeddings, `intelligence_fts`, corporate docs, price/flow/peer tables. |
 | `ar_facts` | `.../data/ar_facts.db` | Annual-report facts (32.4 M rows, indexed `(isin, fiscal_year)`); model-read by AI, unverified, withheld from default `facts()`/`search_docs`. |
 | `results_xbrl` | `.../data/results_xbrl.db` | NSE XBRL filings/facts + trading-ISIN map. |
