@@ -1521,3 +1521,131 @@ def test_parent_call_guidance_unsure_when_no_company_and_sure_when_parent_named(
     by_low = {r["low"]: (r["entity"], r["entity_unsure"]) for r in got}
     assert by_low[380.0] == ("JSW Infrastructure Limited", 1)
     assert by_low[4000.0] == ("JSW Infrastructure Limited", 0)
+
+
+# --- T-242, 26 Nov 2026: audit-9 store-data fixes (superseded, entity cues, percentage split guard) ----------
+def test_t242_superseded_same_document_links_revision_and_drops_from_current():
+    from reality_engine.pilot3 import queries
+
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t242_superseded.db"
+    docs = [
+        ("t242/d1.pdf", "ACME", "transcript", "2026-10-28", "2026-10-28T17:00:00"),
+        ("t242/d2.pdf", "BETA", "transcript", "2026-10-28", "2026-10-28T17:00:00"),
+        ("t242/d3.pdf", "GAMA", "transcript", "2026-10-28", "2026-10-28T17:00:00"),
+    ]
+    pages = [
+        ("t242/d1.pdf", "ACME", 3,
+         "We are confident of exceeding our previously communicated FY27 consolidated revenue growth guidance of "
+         "12% to 14% by 300 basis points."),
+        ("t242/d1.pdf", "ACME", 6,
+         "We remain confident of delivering on our upgraded guidance of 15% to 17% revenue growth for FY27."),
+        # upgraded before earlier-guidance in same document, plus single-sentence revised up from X to Y
+        ("t242/d2.pdf", "BETA", 2,
+         "We now expect revenue growth of 18% to 20% for FY27."),
+        ("t242/d2.pdf", "BETA", 5,
+         "Our earlier guidance for FY27 revenue growth was 13% to 15%."),
+        ("t242/d2.pdf", "BETA", 6,
+         "We revised up our FY27 EBITDA margin guidance from 18% to 20% to 21% to 23%."),
+        # keep-case: normal guidance target unchanged
+        ("t242/d3.pdf", "GAMA", 1,
+         "We expect revenue growth of 15% to 17% for FY27."),
+    ]
+    write_db(path, docs, pages)
+    guidance.run(str(path), ["ACME", "BETA", "GAMA"])
+
+    acme = rows(path, "symbol='ACME'")
+    sup = next(r for r in acme if r["low"] == 12.0)
+    upg = next(r for r in acme if r["low"] == 15.0)
+    assert "superseded" in sup["extractor_rule"], sup["extractor_rule"]
+    assert "superseded" not in upg["extractor_rule"], upg["extractor_rule"]
+    assert upg["revision_of"] == sup["id"]
+
+    beta = rows(path, "symbol='BETA'")
+    rev_sup = next(r for r in beta if r["metric"] == "revenue_growth" and r["low"] == 13.0)
+    rev_upg = next(r for r in beta if r["metric"] == "revenue_growth" and r["low"] == 18.0)
+    assert "superseded" in rev_sup["extractor_rule"] and rev_upg["revision_of"] == rev_sup["id"]
+    eb_sup = next(r for r in beta if r["metric"] == "ebitda_margin" and r["low"] == 18.0)
+    eb_upg = next(r for r in beta if r["metric"] == "ebitda_margin" and r["low"] == 21.0)
+    assert "superseded" in eb_sup["extractor_rule"] and eb_upg["revision_of"] == eb_sup["id"]
+
+    gama = rows(path, "symbol='GAMA'")
+    assert len(gama) == 1 and gama[0]["extractor_rule"] == "guidance_cue_v1" and gama[0]["revision_of"] is None
+
+    con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    try:
+        cur_acme = queries.guidance_rows(con, "ACME", metric="revenue_growth", period="FY27")
+        assert [(r["low"], r["high"], r["superseded_rows"]) for r in cur_acme] == [(15.0, 17.0, 1)]
+        cur_beta_eb = queries.guidance_rows(con, "BETA", metric="ebitda_margin", period="FY27")
+        assert [(r["low"], r["high"], r["superseded_rows"]) for r in cur_beta_eb] == [(21.0, 23.0, 1)]
+    finally:
+        con.close()
+
+
+def test_t242_entity_possessive_and_at_cue_plus_keep_cases():
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t242_entity.db"
+    for suffix in ("", "-wal", "-shm"):
+        Path(str(path) + suffix).unlink(missing_ok=True)
+    con = sqlite3.connect(path)
+    con.execute(schema.TABLES["company"])
+    con.execute(schema.TABLES["doc"])
+    con.execute(schema.TABLES["doc_page"])
+    con.executescript(TRANSCRIPT_SCHEMA)
+    con.execute("INSERT INTO company VALUES ('ACME','INE000A01001',NULL,NULL,'1','1','Acme Holdings Limited')")
+    con.execute(
+        "INSERT INTO doc(doc_key,symbol,isin,doc_type,doc_family,title,filing_date,known_at,pages) "
+        "VALUES ('t242/ent.pdf','ACME','INE000A01001','transcript','transcript','Q2FY27 Call',"
+        "'2026-11-04','2026-11-04T12:00:00',5)"
+    )
+    pages = [
+        (1, "SubCorp's EBITDA margin guidance is 25% for FY27."),
+        (2, "Operating EBITDA margin at 26% for FY27 was in line with SubCorp's revised full year guidance."),
+        (3, "At SubCorp, we expect EBITDA margin of 28% for FY27."),
+        (4, "At ACME, we expect EBITDA margin of 22% for FY27."),
+        # keep-case: subsidiary mentioned in sentence but does not own the target
+        (5, "With SubCorp doing well, we expect revenue growth of 15% to 17% for FY27."),
+    ]
+    con.executemany(
+        "INSERT INTO doc_page(doc_key,symbol,page,text,method,chars,known_at) "
+        "VALUES ('t242/ent.pdf','ACME',?,?,'script_text',?,NULL)",
+        [(pg, txt, len(txt)) for pg, txt in pages],
+    )
+    con.commit()
+    con.close()
+
+    guidance.run(str(path), ["ACME"])
+    got = {r["page"]: (r["low"], r["entity"], r["entity_unsure"]) for r in rows(path, "symbol='ACME'")}
+    assert got[1] == (25.0, "SubCorp", 1)
+    assert got[2] == (26.0, "SubCorp", 1)
+    assert got[3] == (28.0, "SubCorp", 0)
+    assert got[4] == (22.0, "", 0)
+    assert got[5] == (15.0, "", 0)
+
+
+def test_t242_split_guard_drops_mix_and_keeps_growth():
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t242_split.db"
+    docs = [("t242/split.pdf", "SPLITCO", "transcript", "2026-11-09", "2026-11-09T12:00:00")]
+    pages = [
+        ("t242/split.pdf", "SPLITCO", 1, "The sales split for FY27 will be roughly 60%, 25% and 15%."),
+        ("t242/split.pdf", "SPLITCO", 2,
+         "What is the revenue split across products for FY27? So roughly, it will be 60%, 25% and 15%."),
+        ("t242/split.pdf", "SPLITCO", 3,
+         "Contribution to sales in FY27 will be 50%, 30% and 20%."),
+        ("t242/split.pdf", "SPLITCO", 4,
+         "60%, 25% and 15% of revenue in FY27 will come from divisions A, B and C."),
+        # keep-case: normal growth target
+        ("t242/split.pdf", "SPLITCO", 5,
+         "We expect revenue growth of 15% to 17% for FY27."),
+    ]
+    write_db(path, docs, pages)
+    guidance.run(str(path), ["SPLITCO"])
+    got = rows(path, "symbol='SPLITCO'")
+    assert [(r["metric"], r["target_period"], r["low"], r["high"]) for r in got] == [
+        ("revenue_growth", "FY27", 15.0, 17.0)
+    ], got
+    # multi-year growth ranges adding to 100 across endpoints are not a split
+    assert not guidance.is_pct_split(
+        "We expect revenue mix growth of 10% to 12% in FY27, 14% to 16% in FY28, and 18% to 30% in FY29."
+    )

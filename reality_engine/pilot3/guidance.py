@@ -787,6 +787,44 @@ NON_REVENUE_CAGR = re.compile(r"\b(?:ebitda|margin|margins|profit|pat|eps|volume
                               r"order|orders|dividend|headcount)\s*[-/ ]?\s*cagr\b", re.I)
 METRIC_RX = {name: rx for name, rx, _lo, _hi in METRICS}
 
+# T-242: a sales/revenue split ("60%, 25% and 15%") is shares of a whole, never a growth target
+SPLIT_CUE = re.compile(
+    r"\b(?:splits?|shares?|mix(?:es)?|contributions?|breakup|break-?down|composition)\b|"
+    r"\bof\s+(?:the\s+|our\s+|its\s+|total\s+|overall\s+)?(?:[\w-]+\s+){0,2}(?:revenues?|sales|turnover|top ?line)\b",
+    re.I,
+)
+# T-242: a range the same document explicitly calls its superseded prior target
+SUPERSEDED_CUE = re.compile(
+    r"(?:previously\s+(?:communicated|guided|stated|given|indicated|shared)|"
+    r"earlier\s+(?:guidance|guided|communicated|stated|target|outlook)|"
+    r"(?:exceed(?:ing|s|ed)?|ahead\s+of|surpass(?:ing|es|ed)?|beat(?:ing|s)?)\s+"
+    r"(?:our\s+)?[^.;]{0,100}?\bguidance\b|"
+    r"\brevised\s+(?:up(?:ward|wards)?|down(?:ward|wards)?)\b[^.;]{0,60}?\bfrom\b)",
+    re.I,
+)
+_REVISED_FROM = re.compile(r"\brevised\s+(?:up(?:ward|wards)?|down(?:ward|wards)?)\b", re.I)
+
+
+def is_pct_split(sentence: str, before: str = "") -> bool:
+    """True when >=3 single percentages in one sentence sum to 95-105 with a split/share/mix/of-revenue cue."""
+    cleaned = R_PCT_RANGE2.sub(" ", R_PCT_RANGE.sub(" ", sentence))
+    pcts = [v for m in R_PCT_SINGLE.finditer(cleaned) if (v := _num(m.group(1))) is not None]
+    if len(pcts) < 3 or not (95.0 <= sum(pcts) <= 105.0):
+        return False
+    return bool(SPLIT_CUE.search(sentence) or (before and SPLIT_CUE.search(before[-300:])))
+
+
+def is_superseded_number(sentence: str, chosen: dict, all_nums: list[dict] | None = None) -> bool:
+    """True when ``chosen`` sits under a previously-communicated / earlier-guidance / revised-from cue."""
+    prev_end = max((n["end"] for n in (all_nums or []) if n["end"] <= chosen["start"]), default=0)
+    clause_lo = max([0] + [m.end() for m in CLAUSE_BREAK.finditer(sentence, 0, chosen["start"])]
+                    + [m.start() for m in CLAUSE_START.finditer(sentence, 0, chosen["start"])])
+    seg = sentence[max(clause_lo, prev_end, chosen["start"] - 140):chosen["start"]]
+    if SUPERSEDED_CUE.search(seg):
+        return True
+    return bool(re.search(r"\bfrom\s*$", seg, re.I)
+                and _REVISED_FROM.search(sentence[clause_lo:chosen["start"]]))
+
 
 def subject_ok(metric: str, sentence: str, chosen: dict, before: str, symbol: str = "",
                prev: str = "") -> bool:
@@ -811,6 +849,8 @@ def subject_ok(metric: str, sentence: str, chosen: dict, before: str, symbol: st
     if metric != "other" and PLACE_IN.search(sentence[chosen["end"]:chosen["end"] + 45]) \
             and re.search(MONEY + r"\s*\d", sentence[:chosen["start"]], re.I):
         return False                    # a place's share of a total split across places (T-056 review)
+    if metric in GROWTH_METRICS and is_pct_split(sentence, before):
+        return False                    # a sales/revenue split summing to ~100 is a mix, not growth (T-242)
     if metric in GROWTH_METRICS and MARKET_OWNS.search(sentence[max(0, chosen["start"] - 70):chosen["start"]]):
         return False                    # the market's growth, not the company's (T-056 review)
     if metric == "revenue_growth" and NON_REVENUE_CAGR.search(sentence):
@@ -865,6 +905,9 @@ def pick_number(sentence: str, nums: list[dict]) -> dict | None:
             and not re.match(r"\s*(?:last|previous|prior|year[- ]ago)", sentence[n["end"]:n["end"] + 22], re.I)]
     if not nums:
         return None
+    active = [n for n in nums if not is_superseded_number(sentence, n, nums)]
+    if active:
+        nums = active
     cues = [m.start() for m in CUE.finditer(sentence)]
     if not cues:
         return nums[0] if nums else None
@@ -1247,42 +1290,89 @@ def _scope_mentions(sentence: str, own_names: list[str], known_names: set[str],
     return [(start, kind, raw) for start, (_rank, kind, raw) in sorted(best.items())]
 
 
-def _proven_entity(raw: str, own_names: list[str], known_names: set[str], context: str) -> tuple[str, bool]:
-    """``(entity, unsure)`` for one named token: the entity when the store proves it, else the group's + unsure."""
+def _proven_entity(raw: str, own_names: list[str], known_names: set[str], context: str,
+                   cue_kind: str = "") -> tuple[str, bool]:
+    """``(entity, unsure)`` for one named token: proven -> sure; ``at <Name>`` -> sure; possessive only -> unsure."""
     word = _norm_entity(raw)
     if any(len(n) >= 3 and _bare_name(word) == _bare_name(n) for n in own_names):
         return "", False
     if any(len(k) >= 4 and _bare_name(word) == _bare_name(k) for k in known_names):
         return raw, False
-    return (raw, False) if _relation_cue(context, raw) else ("", True)
+    if _relation_cue(context, raw) or cue_kind == "at":
+        return raw, False
+    return (raw, True) if cue_kind == "poss" else ("", True)
+
+
+_CUE_ENTITY_STOP = {
+    "company", "group", "management", "board", "standalone", "consolidated", "domestic", "global", "overall",
+    "quarter", "year", "month", "week", "day", "fiscal", "financial", "period", "present", "current", "previous",
+    "prior", "next", "last", "first", "end", "start", "beginning", "level", "levels", "least", "most", "best",
+    "worst", "par", "scale", "risk", "all", "both", "each", "every", "some", "any", "one", "two", "three", "four",
+    "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november",
+    "december", "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec", "today",
+    "yesterday", "tomorrow", "government", "govt", "rbi", "sebi", "market", "industry", "sector", "economy",
+}
+_LEADING_STOP = re.compile(r"^(?:(?:the|a|an|in|at|on|for|with|from|to|of|by|as|and|or|but|so|if|yet|under|per|while|when|where)\s+)+", re.I)
+_PERIOD_TOKEN = re.compile(r"^(?:FY|Q[1-4]|H[12]|9M|CY)\s*'?\d{2,4}$", re.I)
+_CAP_SPAN = r"([A-Z][A-Za-z0-9&.\-]*(?:\s+[A-Z][A-Za-z0-9&.\-]*){0,3})"
+_POSS_ENTITY = re.compile(r"\b" + _CAP_SPAN + r"['’]s\b")
+_POSS_GUIDANCE_ENTITY = re.compile(r"\b" + _CAP_SPAN + r"['’]s\s+(?:[A-Za-z0-9\-]+\s+){0,3}(?:guidance|target|outlook)\b")
+_AT_ENTITY = re.compile(r"\b(?i:at)\s+" + _CAP_SPAN + r"(?=\s*[,.;:)]|\s+[a-z]|\s*$)")
+
+
+def _clean_cue_entity(raw: str, own_names: list[str], people: tuple[str, ...]) -> str:
+    name = _LEADING_STOP.sub("", raw).strip(" .,;:")
+    word = _norm_entity(name)
+    if (not name or not _entity_candidate(name) or _PERIOD_TOKEN.match(name) or word in _CUE_ENTITY_STOP
+            or _GROUP_SCOPE_WORD.fullmatch(name) or _OWN_SCOPE_WORD.fullmatch(name) or _OWN_SCOPE_CAPS.fullmatch(name)
+            or any(len(n) >= 3 and _bare_name(word) == _bare_name(n) for n in own_names)
+            or (people and any(_same_person(name, p) for p in people))):
+        return ""
+    return name
+
+
+def _cue_entities(sentence: str, pos: int, own_names: list[str], people: tuple[str, ...]) -> list[tuple[int, str, str]]:
+    cues: list[tuple[int, str, str]] = []
+    for rx, kind, allow_after in ((_AT_ENTITY, "at", True), (_POSS_ENTITY, "poss", False), (_POSS_GUIDANCE_ENTITY, "poss", True)):
+        for m in rx.finditer(sentence):
+            if m.start() <= pos or allow_after:
+                name = _clean_cue_entity(m.group(1), own_names, people)
+                if name:
+                    start = sentence.find(name, m.start())
+                    if not re.search(r"\b(?:excluding|ex-?|other than|apart from|besides)\s+$", sentence[max(0, start - 20):start], re.I):
+                        cues.append((start, kind, name))
+    return cues
 
 
 def sentence_entity(own_names: list[str], known_names: set[str], sentence: str, pos: int,
                     statement_entities: str = "", question_entities: str = "",
                     question_text: str = "", people: tuple[str, ...] = ()) -> tuple[str, bool]:
-    """The entity a figure at ``pos`` belongs to, and whether it was unsure (T-192 round 5).
-
-    The sentence's own scope wins over the entity the question names: the figure belongs to the nearest entity named
-    before it, or, when the sentence names no entity at all, to the place it belongs to (the company itself, a
-    standalone/domestic/consolidated basis, a geography, its own plant or mine).  A sentence that names only one
-    entity after the figure belongs to it; a sentence that names no scope inherits the question's entity, and only
-    when the question names no group/geography scope of its own and the entity is proven.  A candidate the store
-    cannot prove is never hidden: the row stays the group's, marked ``entity_unsure``.
-    """
+    """The entity a figure at ``pos`` belongs to, and whether it was unsure (T-192 round 5, T-242)."""
     scopes = _scope_mentions(sentence, own_names, known_names, statement_entities, people)
+    cues = _cue_entities(sentence, pos, own_names, people)
+    cue_kinds: dict[str, str] = {}
+    for start, kind, name in cues:
+        norm = _norm_entity(name)
+        if kind == "at" or norm not in cue_kinds:
+            cue_kinds[norm] = kind
+        if not any(s[0] == start and s[1] == "entity" for s in scopes):
+            scopes.append((start, "entity", name))
+    scopes.sort(key=lambda s: s[0])
     context = sentence + " \n" + (question_text or "")
     before = [s for s in scopes if s[0] <= pos]
     if before:
         entities = [s for s in before if s[1] == "entity"]
         group = [s for s in before if s[1] == "group"]
         if entities and not (group and group[-1][0] > entities[-1][0]):
-            return _proven_entity(entities[-1][2], own_names, known_names, context)
+            raw = entities[-1][2]
+            return _proven_entity(raw, own_names, known_names, context, cue_kinds.get(_norm_entity(raw), ""))
         return "", False
     if scopes:
         # no scope before the figure: only a sentence that names exactly one entity (after it) owns the figure
         named = {(s[1], _norm_entity(s[2])) for s in scopes}
         if len(named) == 1 and scopes[0][1] == "entity":
-            return _proven_entity(scopes[0][2], own_names, known_names, context)
+            raw = scopes[0][2]
+            return _proven_entity(raw, own_names, known_names, context, cue_kinds.get(_norm_entity(raw), ""))
         return "", False
     # the sentence names no scope at all: the question it answers may, but a question that also names the group or a
     # geography is ambiguous and the row stays the group's (never hide on a guess)
@@ -1689,6 +1779,9 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         if EXAMPLE_LIST.search(sentence):     # "some 25 basis points, some 100": examples, not a target (T-058)
             stats["examples"] += 1
             continue
+        if is_pct_split(sentence, before):
+            stats["pct_split"] += 1
+            continue
         strong = bool(CUE.search(sentence))
         if not strong:
             # a range answer to a guidance question asked in the 300 characters before it
@@ -1711,6 +1804,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             stats["macro"] += 1
             continue
         chosen = metric = None
+        chosen_options: list[dict] = []
         rx_by_name = {name: rx for name, rx, _lo, _hi in METRICS}
         for name in metric_candidates(symbol, sentence, before, after, prev):
             if name == "other" and (not strong or FACT_SHAPE.search(sentence)):
@@ -1733,7 +1827,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                     continue
                 options = near
             if options:
-                metric, chosen = name, pick_number(sentence, options)
+                metric, chosen, chosen_options = name, pick_number(sentence, options), options
                 break
         if not chosen:
             stats["no_metric" if not metric_candidates(symbol, sentence, before, after, prev) else "implausible"] += 1
@@ -1798,14 +1892,33 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         # a subsidiary's or investee's target is never the group's (T-192): the entity the statement or the question
         # it answers names is kept on the row, and the guidance lookup serves only rows whose entity is empty.  The
         # sentence's own scope (India, the company, its own mine/project) beats the question's entity (round 5).
-        entity, entity_unsure = sentence_entity(own_names, known_ents, sentence, chosen["start"],
-                                                own_ents, q_ents, q_text, people)
-        entity, entity_unsure = _reporting_entity(entity, entity_unsure, parent, sentence, symbol, company_names, raw)
-        rows.append((symbol, doc["isin"], metric, period, chosen["low"], chosen["high"], chosen["unit"],
-                     direction_of(sentence, metric or "other"), (doc["filing_date"] or (doc["known_at"] or "")[:10]),
-                     doc["doc_key"], page, quote, speaker, doc["known_at"], "doc.known_at",
-                     None, _row_rule(sentence, metric or "other", chosen["unit"], symbol, v1_found), entity,
-                     1 if entity_unsure else 0))
+        # emit chosen target, plus any superseded range in the same sentence so revisions() can link them
+        emit = [chosen]
+        if not is_superseded_number(sentence, chosen, nums):
+            emit.extend(
+                s for s in chosen_options
+                if s is not chosen and s["high"] > s["low"]
+                and (s["low"], s["high"]) != (chosen["low"], chosen["high"])
+                and is_superseded_number(sentence, s, nums)
+                and subject_ok(metric or "other", sentence, s, before, symbol, prev)
+                and not (metric != "other" and segment_subject(sentence, s, symbol))
+            )
+        for num in emit:
+            per = period if num is chosen else target_period(sentence, before, after, call_period, docper, num["start"])
+            if not per:
+                continue
+            ent, uns = sentence_entity(own_names, known_ents, sentence, num["start"],
+                                       own_ents, q_ents, q_text, people)
+            ent, uns = _reporting_entity(ent, uns, parent, sentence, symbol, company_names, raw)
+            rule = _row_rule(sentence, metric or "other", num["unit"], symbol, v1_found)
+            if is_superseded_number(sentence, num, nums):
+                rule = f"{rule}_superseded"
+            rows.append((symbol, doc["isin"], metric, per, num["low"], num["high"], num["unit"],
+                         direction_of(sentence, metric or "other"), (doc["filing_date"] or (doc["known_at"] or "")[:10]),
+                         doc["doc_key"], page, quote, speaker, doc["known_at"], "doc.known_at",
+                         None, rule, ent, 1 if uns else 0))
+            if len(rows) >= MAX_ROWS_PER_PAGE:
+                break
         if len(rows) >= MAX_ROWS_PER_PAGE:
             break
     return rows
@@ -1878,45 +1991,49 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
 
 
 def revisions(con: sqlite3.Connection, symbol: str) -> int:
-    """Link every row to the previous row of the same metric+period from an earlier document (group rows only: a
-    subsidiary's target never supersedes the group's, T-192)."""
-    rows = con.execute("SELECT id, metric, target_period, doc_key FROM guidance WHERE symbol=? "
-                       "AND COALESCE(entity,'')='' ORDER BY COALESCE(known_at, said_on), said_on, id", (symbol,)).fetchall()
-    prev: dict[tuple, tuple[int, str]] = {}
+    """Link every row to the previous row of the same metric+period from an earlier doc, or same-doc superseded row."""
+    rows = con.execute("SELECT id, metric, target_period, doc_key, COALESCE(extractor_rule,'') FROM guidance "
+                       "WHERE symbol=? AND COALESCE(entity,'')='' ORDER BY COALESCE(known_at, said_on), said_on, id", (symbol,)).fetchall()
+    by_key: dict[tuple, dict[str, list[tuple[int, str]]]] = {}
+    for rid, metric, period, doc_key, rule in rows:
+        by_key.setdefault((metric, period), {}).setdefault(doc_key, []).append((rid, rule))
     linked = 0
-    for row in rows:
-        key = (row[1], row[2])
-        old = prev.get(key)
-        if old and old[1] != row[3]:
-            con.execute("UPDATE guidance SET revision_of=? WHERE id=?", (old[0], row[0]))
-            linked += 1
-        prev[key] = (row[0], row[3])
+    for docs in by_key.values():
+        prev_id: int | None = None
+        for doc_items in docs.values():
+            sup = [rid for rid, rule in doc_items if "superseded" in rule]
+            cur = [rid for rid, rule in doc_items if "superseded" not in rule]
+            pairs = (([(prev_id, sup[0])] if prev_id is not None else []) + [(sup[-1], rid) for rid in cur]
+                     if sup and cur else ([(prev_id, doc_items[0][0])] if prev_id is not None else []))
+            for old_id, new_id in pairs:
+                con.execute("UPDATE guidance SET revision_of=? WHERE id=?", (old_id, new_id))
+                linked += 1
+            prev_id = cur[-1] if (sup and cur) else doc_items[-1][0]
     con.commit()
     return linked
 
 
 def current_rows(rows: list[dict]) -> list[dict]:
-    """The rows still current per (metric, target_period) (T-105).
-
-    A row is superseded when another row of the same metric and target period comes from a different document
-    whose ``known_at`` (or filing day) is later; the caller passes rows already cut at ``as_of`` and ordered
-    newest first, so a row the decision day could not know never supersedes anything.  Every row of the newest
-    document is kept (a call can give two targets for the same metric and period), and each kept row carries
-    ``superseded_rows`` = how many older rows this view drops."""
+    """The rows still current per (metric, target_period) (T-105, T-242)."""
     def when(r: dict) -> str:
         return r.get("known_at") or r.get("said_on") or ""
 
     groups: dict[tuple, list[dict]] = {}
     for r in rows:
         groups.setdefault((r["metric"], r["target_period"]), []).append(r)
-    newest = {key: max(when(r) for r in group) for key, group in groups.items()}
-    dropped = {key: sum(1 for r in group if when(r) != newest[key]) for key, group in groups.items()}
-    out: list[dict] = []
-    for r in rows:
-        key = (r["metric"], r["target_period"])
-        if when(r) == newest[key]:
-            r["superseded_rows"] = dropped[key]
-            out.append(r)
+    kept_ids: set[int] = set()
+    dropped: dict[tuple, int] = {}
+    for key, group in groups.items():
+        newest = max(when(r) for r in group)
+        sup_ids = {r.get("revision_of") for r in group if r.get("revision_of") is not None}
+        active_whens = {when(r) for r in group if "superseded" not in (r.get("extractor_rule") or "") and not (r.get("id") is not None and r.get("id") in sup_ids)}
+        kept = [r for r in group if when(r) == newest and not (r.get("id") is not None and r.get("id") in sup_ids)
+                and not ("superseded" in (r.get("extractor_rule") or "") and when(r) in active_whens)]
+        kept_ids.update(id(r) for r in kept)
+        dropped[key] = len(group) - len(kept)
+    out = [r for r in rows if id(r) in kept_ids]
+    for r in out:
+        r["superseded_rows"] = dropped[(r["metric"], r["target_period"])]
     return out
 
 
