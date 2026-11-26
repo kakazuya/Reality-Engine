@@ -1,7 +1,25 @@
 """T-242: deck guards from the 60-row deck pilot grade (D:/RealityEngine/t242/deck_grade/deck_grade.md)."""
 from __future__ import annotations
 
+import shutil
+import uuid
+from pathlib import Path
+
+import pytest
+
 from reality_engine.v2 import observations as obs
+
+
+@pytest.fixture()
+def tmp_path():
+    """A writable scratch folder: the sandbox's pytest basetemp root can be ACL-locked (test_observations)."""
+    base = Path(".tmp") / f"t242_deck_guards_{uuid.uuid4().hex}"
+    base.mkdir(parents=True, exist_ok=True)
+    try:
+        yield base
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
+
 
 DOC = "D:/x/investor_presentation/abc.pdf"
 

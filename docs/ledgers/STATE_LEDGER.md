@@ -8847,3 +8847,9 @@
 -- 26 Nov tx statements r3 -> r4 (failed) -> r5 merged: own-period token bound to its figure wins; period_anchored 9,959 (r3 9,579); r6 for 4 remaining cases (`tasks/t242_statement_r3_measure.md`).
 +- 26 Nov tx statements r3 -> r5 -> r6 merged: own-period token bound to its figure wins; period_anchored 10,241 (r3 9,575); r7 list in `D:/RealityEngine/t242/grades/tx_r6_review_eagle.md`.
 ```
+
+## 2026-11-27T01:16:15 | kakazuya (Wolf) | branch main
+```diff
+-- 26 Nov results gates r2-r3c merged (r3d recheck running); verified 14,171->11,069 on r3c copy (`tasks/t242_results_measure.md`).
++- 26 Nov results gates r2-r3c + r3d/r3e/r3d2 merged (two-values-one-date, component/total, CF on prior page, BS no duration, note scope, ordinals); full --recheck owed after cleanup; r3f for ckpt_0003/0004 kinds (`tasks/t242_results_measure.md`).
+```

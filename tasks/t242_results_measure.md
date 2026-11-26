@@ -407,3 +407,89 @@ The six r3 downgrades (verified -> verified):
 - `24764` ADROITINFO p11: `verified` -> `unverified`, current_tax_assets_net, period '31-Mar-26', value_text '65.86'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
 - `49671` ASHIMASYN p18: `verified` -> `unverified`, current_tax_assets_net, period 'As at 31/03/2026', value_text '372'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
 - `40445` ANDREWYU p12: `verified` -> `unverified`, current_tax_assets_net, period 'As at March 31, 2025', value_text '1,199.05'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
+
+## results gates r3e (27 Nov 2026, T-242, r3d baseline copy)
+
+Five structural fixes from results ckpt_0002 (Eagle's fix note `D:/RealityEngine/hy4_out/obs_results_fy27.db.audit/ckpt_0002.fix.md`),
+each a rule in `apply_results_row_gates` (`reality_engine/v2/observations.py`): a comprise/consist-of/include component keeps
+the heading's measure and a component repeating the block's printed total is unverified; a P&L flow measure under a
+cash-flow statement title (on the page or carried from the page before) is the statement's line; a balance-sheet stock
+takes the printed `As at` date, never a filled flow duration; a note line naming another entity as a subsidiary/associate
+scopes the row and unverifies it; an ordinal `value_text` is quarantined.
+
+Measurement: a scratch pass over the r3d baseline copy `.tmp/r3e_base.db` (copy of `C:/RealityEngine/t242/results_r3d/base.db`)
+re-applying `apply_results_row_gates` + `gate_not_company` to every page with rows, no model and no fetch: 5,176 pages,
+141,936 rows, 31,749 verified before. The 46 pilot60 stores (`c04`..`c60`) another process held write-locked were read
+through an immutable connection, and the doc-level scale/basis scan (`_results_doc_context`, ~1,700 docs) was left out of
+this pass because no r3e rule reads it.
+
+| rule | rows hit | of which verified -> not verified |
+|---|---:|---:|
+| `results_component_family` (component keeps the heading's measure) | 14 | 0 |
+| `results_component_is_total` (component repeats the block total) | 2 | 1 |
+| `results_cash_flow_measure` (P&L flow line under a cash-flow title) | 1,103 | 267 |
+| `results_stock_duration` (stock row takes `As at`, no duration fill) | 36 | 3 (33 period rewrites, status kept) |
+| `results_note_entity` (note names a subsidiary/associate) | 53 | 14 |
+| `results_not_a_figure` ordinal (`33rd` is not 33) | 29 | 4 -> quarantined |
+
+r3e-attributable verified downgrades: 289 of 31,749 (0.91%); no single rule over the 3% stop bar (largest: cash-flow 0.84%).
+
+The six ckpt_0002 cases now: APMIN p5 obs 43952 `verified` -> `unverified` (`results_component_is_total`);
+ASTRONMULT p4 obs 4987 `other_bank_balances` -> `cash_and_cash_equivalents` (status kept); ARCHIDPLY p7 obs 44943
+`finance_income` -> `NEW:interest_received_cash_flow` unverified; AMIC p14 obs 37433 period `Half year ended 31.03.2026`
+-> `As at 31.03.2026` (status kept); ALANKIT p7 obs 32092 `subsidiary` + unverified (`results_note_entity`); BLUECOAST p1
+obs 11486 `33rd` -> `quarantined`.
+
+### Graded-R rows (results_ckpt1 / results_grade_r2 / results_grade_r3c / results_ckpt2)
+
+0 r3e-attributable status changes. All eight R-row downgrades in this pass come from the already-merged r3d residue rule
+(`results_period_duration_ambiguous`), which the r3d base copy predates: ckpt1 ASARFI (48901), AAVAS (8962); r2 BBTCL
+(3906); r3c AKSHOPTFBR (11178), AMITSEC (37761); ckpt2 AEONXDIGI (26019), AVONMORE (94458), AKSHOPTFBR (11185). That
+was r3d's own defect, fixed in r3d2 (`## results gates r3d2` below): each now keeps its base period and `verified`,
+and r3e keeps 0 of its own graded-R changes. The ckpt_0002 W/J rows change as
+intended: 43952 unverified, 44943 unverified, 32092 unverified, 11486 quarantined, 4987 and 37433 attributes only.
+
+### Seeded 20-row samples per new rule (seed 7, page text read for each)
+
+- `results_component_family` (14 rows, all sampled): 14/14 right - every row is a cash component printed under a
+  "Cash and Cash Equivalents Comprise(s)/include(s)" heading (ASTRONMULT `Current Account`, APMIN `Balances with Banks`,
+  AROGRANITE `In Other Fixed Deposit Accounts`, BHAGCHEM `In current accounts`).
+- `results_component_is_total` (2 rows): 2/2 right - APMIN's component line carries the end-of-period total (10) and the
+  current-period total (5), never the 8 it prints as the component.
+- `results_cash_flow_measure` (20 of 1,103): 17/20 = 85% right - `Interest received`, `Finance costs`, `Depreciation` on
+  a printed cash-flow statement (ARTSON, ACC, APOLLOTYRE, ATGL, ACCURACY) become `NEW:*_cash_flow`. 3 wrong: ACLD p5
+  (P&L "EXPENSES" page whose previous page ends with a cash-flow title) remapped its P&L cost lines; all three were
+  already unverified.
+- `results_stock_duration` (20 of 36): 20/20 are stock rows (`non_controlling_interest` on a balance sheet); 17 take the
+  printed `As at` date (AMIC, ABFRL, ANURAS, BIKAJI, BERGEPAINT), 3 strip a duration the page's OCR garbles ("Aaat")
+  and stay unverified.
+- `results_note_entity` (20 of 53): 18/20 = 90% right - the note line names the entity and calls it a subsidiary/associate
+  (ALANKIT `Share premium`, AGARWALEYE 12.25% of `Aditya Jyot Eye Hospital`, ADANIGREEN exceptional items of
+  `Adani Solar Energy Jaisalmer Two`, AGRIBIO associate's total assets). 2 wrong: an investment *in* a subsidiary
+  (ANSALBU `Invested Rs. 34.01 Crores ... to Ansal Crown Infrabuild`) and a step-down holding percentage read as the
+  entity's own figure.
+- ordinal (`results_not_a_figure`, 20 of 29): 20/20 right - board-meeting dates (`28th`), AGM numbers (`11th`), filing
+  quarters (`01st`, `04th`), `1st to market`, a `5th Floor` address line and BLUECOAST's `33rd Board's Report`.
+
+## results gates r3d2 (27 Nov 2026, T-242, r3d/r3e baseline)
+
+r3d's `results_period_duration_ambiguous` residue rule grouped rows on one page by
+`(printed_label, basis, segment, date_key)` only. Distinct measures that print the same label for the same date -- `Total`
+on a balance sheet, `b. Services` in a segment table, `(a) Investments activities` twice -- therefore looked like one
+label holding two values, and every row of that label was stripped to the bare date and `unverified`. r3d2 adds
+`measure` to the group key in `_results_resolve_residue_periods`: the rule abstains (the row keeps its own period,
+`period_source` and status) unless one measure carries >= 2 distinct values for one date key under one label; inside
+such a group the r3d behaviour is unchanged (duration by column position, else the bare printed date). `measure` also
+joins the group key of `reality_engine/scripts/results_r3d_residue.py`, so its residue count means the same thing.
+
+The eight graded-R rows keep their base period and `verified` against the r3d copy `C:/RealityEngine/t242/results_r3d/base.db`
+page text (stores `C:/RealityEngine/tg_build/universe_fy27`, read-only): ASARFI 48901 (`30-Jun-26`), AAVAS 8962
+(`September 2026`), BBTCL 3906 (`For the year ended March 31, 2025`), AKSHOPTFBR 11178/11185 (`Mar-26`/`Mar-25`),
+AMITSEC 37761 (`Corresponding 3 months ended in the previous year 30.06.2025`), AEONXDIGI 26019 (`Half Year Ended
+September 30, 2026`), AVONMORE 94458 (`Sept 30, 2026`). Each is a parametrised case of
+`test_r3d2_graded_r_row_keeps_its_period_and_status` in `reality_engine/tests/test_results_gates.py`, built from the real
+page text and every row that printed that label for that date. r3d's AGARWALEYE, AANCHALISP and residue-counter evidence
+tests still pass unchanged.
+
+Accept (`pytest -q <file>` each separately): test_results_gates.py 64 passed, test_observations.py 177 passed,
+test_ar_sections.py 42 passed, test_deck_guards.py 37 passed.

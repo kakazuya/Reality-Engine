@@ -5925,6 +5925,8 @@ def results_junk_reason(row: dict[str, Any]) -> str:
         return f"results_not_a_figure: {value_text!r} is a date, not a figure"
     if re.search(r"\d{1,2}\s*:\s*\d{2}", value_text):
         return f"results_not_a_figure: {value_text!r} is a time, not a figure"
+    if re.fullmatch(r"[-+]?\(?\d[\d,]*\s*(?:st|nd|rd|th)\)?", value_text, re.I):
+        return f"results_not_a_figure: {value_text!r} is an ordinal, not a figure"
     unit = norm_space(row.get("unit"))
     unit_family = infer_unit_family(unit)
     numeric = value_text.replace(",", "").strip()
@@ -6205,6 +6207,47 @@ RESULTS_EQUITY_SUBJECT_STOP = frozenset({
     "and", "the", "for", "are", "was", "were", "not", "consolidated", "included", "under", "equity", "accounting",
     "ind", "as", "purpose", "statutory", "reporting", "of", "in", "on", "a", "an", "is", "be", "which", "that",
 })
+# T-242 r3e (results ckpt_0002 fix note): five structural cues a results page prints but a row can lose.
+# (a) A sub-list opened by "Cash and Cash Equivalents Comprise :" / "include:" -- a component there is a part of
+# the heading's family, never another family's measure, and a component that repeats the block's total is misread.
+RESULTS_COMPRISE_HEAD_RE = re.compile(
+    r"^\s*(?P<subject>[A-Za-z][A-Za-z&'’.,()/ -]{2,70}?)\s+"
+    r"(?:comprise[sd]?|consist[s]?\s+of|include[s]?)\s*:?\s*$", re.I)
+RESULTS_TOTAL_CUE_RE = re.compile(r"\b(?:grand\s+)?total\b|\bat\s+the\s+end\s+of\b|\bclosing\b", re.I)
+# (b) A cash-flow statement's title line (a SENTENCE about cash flows is no title: the line must start with it).
+RESULTS_CF_TITLE_LINE_RE = re.compile(
+    r"^\s*(?:part\s+\w+\s*[-–:]\s*)?(?:statement\s+of\s+)?"
+    r"(?:(?:audited|unaudited|reviewed|standalone|consolidated|interim|annual)\s+)*"
+    r"cash\s*-?\s*flows?\b", re.I)
+# (c) A balance-sheet line is a stock at a date, never a duration: the flow duration a script filled from a
+# P&L column header on the page before is not its period ('Minority Interest' on a balance-sheet page, AMIC p14).
+RESULTS_STOCK_NODES = frozenset({
+    "none: balance-sheet line", "none: balance-sheet total", "debt.level",
+    "none: tax liability", "none: working-capital stock",
+})
+RESULTS_STOCK_MEASURES = frozenset(
+    {m[0] for m in MEASURES if m[2] in ("money", "money_per_unit") and m[3] in RESULTS_STOCK_NODES}
+    | {"non_controlling_interest"})
+RESULTS_AS_AT_DATE_RE = re.compile(rf"\bas\s+(?:at|on)\s+({RESULTS_DATE_TOKEN_PAT})", re.I)
+# (d) A note paragraph that names another entity and calls it a subsidiary/associate is that entity's figure.
+RESULTS_NOTE_ENTITY_RE = re.compile(
+    r"\b([A-Z][A-Za-z&.'()\-]*(?:\s+[A-Z][A-Za-z&.'()\-]*){0,5})\s+"
+    r"(?:Private\s+Limited|Limited|Ltd\.?)\b")
+RESULTS_NOTE_SUBSIDIARY_RE = re.compile(r"\bsubsidiar(?:y|ies)\b|\bwholly[\s-]*owned\b", re.I)
+RESULTS_NOTE_ASSOCIATE_RE = re.compile(r"\bassociates?\b|\bjoint\s+ventures?\b", re.I)
+RESULTS_NOTE_ENTITY_STOP = frozenset({
+    "the company", "the holding company", "the parent company", "holding company", "parent company",
+    "the group", "group company",
+})
+# A row that is a serial/ordinal in an entity list, a count of subsidiaries or an effective date is not a figure
+# the named entity holds; a bare generic word ("Private", "Services") is a name capture, never an entity.
+RESULTS_NOTE_SKIP_MEASURE_RE = re.compile(
+    r"serial|item_number|list_item|entity_list|entity_number|listed_entity|count|number_of_|paragraph|"
+    r"effective_date|board_meeting|_date$|_time$", re.I)
+RESULTS_NOTE_GENERIC_WORDS = frozenset({
+    "private", "limited", "ltd", "services", "india", "holding", "capital", "group", "company",
+    "technologies", "solutions", "enterprises", "industries",
+})
 _RESULTS_DOC_CONTEXT_CACHE: dict[tuple[str, str], tuple[tuple[str, str, float] | None, bool, bool]] = {}
 _RESULTS_MONTHS = {
     "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
@@ -6320,12 +6363,14 @@ def _results_cf_is_statement_line(measure: str) -> bool:
 
 def _results_cash_flow_reason(row: dict[str, Any], page_text: str, previous_page_text: str) -> str:
     """A cash-flow statement line (incl. operating 'Adjustments for') never keeps a P&L/BS measure."""
-    head_ctx = " ".join((norm_space(page_text)[:1500], norm_space(previous_page_text)[:600],
-                         norm_space(row.get("series_title")), norm_space(row.get("group_path"))))
-    if not RESULTS_CASH_FLOW_HEADING_RE.search(head_ctx):
-        return ""
     label = norm_space(row.get("printed_label"))
     if not label:
+        return ""
+    head_ctx = " ".join((norm_space(page_text)[:1500], norm_space(previous_page_text)[:600],
+                         norm_space(previous_page_text)[-800:],
+                         norm_space(row.get("series_title")), norm_space(row.get("group_path"))))
+    continuation = _results_cf_title_before(page_text, label) or _results_cf_title_in_tail(previous_page_text)
+    if not RESULTS_CASH_FLOW_HEADING_RE.search(head_ctx) and not continuation:
         return ""
     measure = norm_space(row.get("measure"))
     if measure in RESULTS_CASH_FLOW_MEASURES or measure.startswith("changes_in_") \
@@ -6333,9 +6378,18 @@ def _results_cash_flow_reason(row: dict[str, Any], page_text: str, previous_page
             or RESULTS_CF_LABEL_DONE_RE.search(label):
         return ""
     in_adj = _results_in_operating_adjustments(row, page_text)
-    if not (RESULTS_CASH_FLOW_PAID_RE.search(label) or RESULTS_CASH_FLOW_LINE_RE.search(label) or in_adj):
+    statement_line = bool(RESULTS_CASH_FLOW_PAID_RE.search(label) or RESULTS_CASH_FLOW_LINE_RE.search(label)
+                          or in_adj)
+    if not statement_line and continuation and _MEASURE_NODE.get(measure, "") in RESULTS_FLOW_NODES \
+            and measure in RESULTS_FLOW_MEASURES:
+        # T-242 r3e: a P&L flow measure under a cash-flow statement's own title is the statement's line
+        # ('Interest Received' in the investing section, ARCHIDPLY p7), not the P&L measure it was read as.
+        # A capex / EPS / lending flow measure is not a P&L line and keeps its measure (the CF purchase line is
+        # where capex is printed).
+        statement_line = True
+    if not statement_line:
         return ""
-    if in_adj and measure in RESULTS_CF_SUBTOTAL_MEASURES:
+    if measure in RESULTS_CF_SUBTOTAL_MEASURES:
         return ""
     if not _results_cf_is_statement_line(measure):
         return ""
@@ -6548,19 +6602,13 @@ def _results_mark_ambiguous(ambiguous: set[Any], raw_d: str, k: tuple[int, int, 
         ambiguous.add((k[1], k[2]))
 
 
-def _results_duration_dates_scan(page_text: str) -> tuple[dict[Any, set[str]], set[Any]]:
-    """Return ``(durations_by_key, ambiguous_keys)`` for one page (T-242 r3c).
-
-    A date printed in more than one column of the header block (or top header lines) is marked ambiguous and
-    never assigned a single duration; ``year`` is only filled on a 31 March year-end unless the header block
-    binds it 1-to-1 to an exact single column.
-    """
-    page_text = _results_ocr_text(page_text)
-    out: dict[Any, set[str]] = {}
-    ambiguous: set[Any] = set()
-    cleaned = norm_space(page_text)
+def _results_header_block_assignments(
+    page_text: str,
+) -> tuple[str, list[tuple[str, tuple[int, int, int]]], list[str],
+           list[tuple[tuple[str, tuple[int, int, int]], str]], bool, set[Any]]:
+    """Parse a multi-column header block into ordered ``((raw_date, key), duration)`` pairs (T-242 r3c/r3d)."""
     lines = [norm_space(ln) for ln in str(page_text or "").splitlines() if norm_space(ln)]
-    header_block = ""
+    ambiguous: set[Any] = set()
     for i, ln in enumerate(lines[:30]):
         if not re.search(r"\bend(?:ed|ing)\b", ln.lower()) or not RESULTS_COL_GROUP_RE.search(ln) \
                 or RESULTS_DURATION_DATE_RE.search(ln):
@@ -6624,16 +6672,78 @@ def _results_duration_dates_scan(page_text: str) -> tuple[dict[Any, set[str]], s
                     split_idx.append(next((j for j in range(prev_start + 2, len(parsed_dates))
                                            if parsed_dates[j][1] == cur_date),
                                           min(prev_start + 3, len(parsed_dates) - 1)))
-            for g_idx, g_dur in enumerate(groups):
-                end = split_idx[g_idx + 1] if g_idx + 1 < len(split_idx) else len(parsed_dates)
-                assignments.extend((parsed_dates[j], g_dur) for j in range(split_idx[g_idx], end))
+            if all(split_idx[idx] < split_idx[idx + 1] for idx in range(len(split_idx) - 1)):
+                for g_idx, g_dur in enumerate(groups):
+                    end = split_idx[g_idx + 1] if g_idx + 1 < len(split_idx) else len(parsed_dates)
+                    assignments.extend((parsed_dates[j], g_dur) for j in range(split_idx[g_idx], end))
         elif len(groups) == 1 and prefix_complete:
             cur_dm = (parsed_dates[0][1][0], parsed_dates[0][1][1])
             all_same_dm = all((k[0], k[1]) == cur_dm or (k[0] == 0 and k[1] == cur_dm[1])
                               for _, k in parsed_dates)
             if all_same_dm and not ambiguous:
                 assignments = [((raw_d, k), groups[0]) for raw_d, k in parsed_dates]
-        header_block = block
+        return block, parsed_dates, groups, assignments, exact_col, ambiguous
+    return "", [], [], [], False, ambiguous
+
+
+def _results_ordered_header_columns(page_text: str) -> list[tuple[tuple[int, int, int], str]] | None:
+    """Return ordered ``[(date_key, duration), ...]`` columns when header dates and groups pair cleanly (T-242 r3d)."""
+    text = _results_ocr_text(page_text)
+    block, parsed_dates, _groups, assignments, exact_col, _ambig = _results_header_block_assignments(text)
+    if block:
+        if not assignments or len(assignments) != len(parsed_dates):
+            return None
+        cols = [(k, dur) for (_, k), dur in assignments]
+        if any(not _results_duration_label(dur) or (dur == "year" and not exact_col
+                                                    and not _results_is_fiscal_year_end(k))
+               for k, dur in cols):
+            return None
+        return cols
+    lines = [norm_space(ln) for ln in str(text or "").splitlines() if norm_space(ln)]
+    span_lines: list[str] = []
+    for ln in lines[:25]:
+        if RESULTS_RELEASE_LINE_RE.search(ln):
+            continue
+        if RESULTS_DURATION_DATE_RE.search(ln):
+            span_lines.append(ln)
+        elif span_lines:
+            if len(ln) > 35 and not re.search(r"^(?:unaudited|audited|particulars|notes?)\b", ln, re.I):
+                break
+            if re.search(RESULTS_DATE_TOKEN_PAT, ln, re.I):
+                span_lines.append(ln)
+        if len(span_lines) >= 6:
+            break
+    span = " ".join(span_lines)
+    matches = list(RESULTS_DURATION_DATE_RE.finditer(span)) if span else []
+    if len(matches) < 2 or re.search(RESULTS_DATE_TOKEN_PAT, RESULTS_DURATION_DATE_RE.sub(" ", span), re.I):
+        return None
+    inline_cols: list[tuple[tuple[int, int, int], str]] = []
+    for m in matches:
+        prefix = span[max(0, m.start() - 40):m.start()]
+        if re.match(r"^(?:(?:accounting|financial)\s+)?year\s+to\s+date\b", m.group(0), re.I) \
+                or re.search(rf"\b(?:{RESULTS_DUR_WORD_PAT})\b\s*(?:and|&|,|/)\s*$", prefix, re.I):
+            return None
+        k = _results_date_key(m.group(2))
+        dur = _results_norm_duration(m.group(1))
+        if k is None or not _results_duration_label(dur):
+            return None
+        inline_cols.append((k, dur))
+    return inline_cols if len(inline_cols) >= 2 else None
+
+
+def _results_duration_dates_scan(page_text: str) -> tuple[dict[Any, set[str]], set[Any]]:
+    """Return ``(durations_by_key, ambiguous_keys)`` for one page (T-242 r3c).
+
+    A date printed in more than one column of the header block (or top header lines) is marked ambiguous and
+    never assigned a single duration; ``year`` is only filled on a 31 March year-end unless the header block
+    binds it 1-to-1 to an exact single column.
+    """
+    page_text = _results_ocr_text(page_text)
+    out: dict[Any, set[str]] = {}
+    cleaned = norm_space(page_text)
+    lines = [norm_space(ln) for ln in str(page_text or "").splitlines() if norm_space(ln)]
+    header_block, _parsed_dates, _groups, assignments, exact_col, ambiguous = _results_header_block_assignments(page_text)
+    if header_block:
         for (raw_d, k), dur in assignments:
             is_as_at = bool(re.match(r"^as\s+(?:at|on)\b", raw_d, re.I))
             tag = ("as_at", k) if is_as_at else k
@@ -6646,7 +6756,6 @@ def _results_duration_dates_scan(page_text: str) -> tuple[dict[Any, set[str]], s
             else:
                 out.setdefault(k, set()).add(dur)
                 out.setdefault((k[1], k[2]), set()).add(dur)
-        break
     if not header_block:
         top_lines: list[str] = []
         seen_top_date = False
@@ -6757,6 +6866,156 @@ def _results_is_flow_measure(row: dict[str, Any], page_text: str) -> bool:
         return bool(RESULTS_FLOW_STATEMENT_RE.search(ctx)) and not bool(RESULTS_BS_HEAD_RE.search(
             f"{norm_space(row.get('series_title'))} {norm_space(page_text)[:400]}"))
     return False
+
+
+def _results_period_date_and_dur(period: str) -> tuple[tuple[int, int, int] | None, str, str]:
+    """Return ``(date_key, norm_dur, bare_date)`` for a printed period, or ``(None, '', '')``."""
+    p = norm_space(period)
+    if not p or RESULTS_BARE_YEAR_RE.match(p) or re.match(r"^as\s+(?:at|on)\b", p, re.I):
+        return None, "", ""
+    bare_date, key = "", None
+    for m in reversed(list(re.finditer(RESULTS_DATE_TOKEN_PAT, p, re.I))):
+        cand = norm_space(m.group(0))
+        k = None if re.match(r"^as\s+(?:at|on)\b", cand, re.I) else _results_date_key(cand)
+        if k is not None:
+            bare_date, key = cand, k
+            break
+    if key is None:
+        return None, "", ""
+    if re.search(r"\b(?:(?:accounting|financial)\s+)?year\s+to\s+date\b|\bytd\b", p, re.I):
+        dur = "ytd"
+    elif dm := re.search(rf"\b({RESULTS_DUR_WORD_PAT})\b", p, re.I):
+        dur = _results_norm_duration(dm.group(1))
+    else:
+        dur = "quarter" if re.search(r"\bq[1-4]\b", p, re.I) else (
+            "half_year" if re.search(r"\bh[12]\b", p, re.I) else ("nine_months" if re.search(r"\b9m\b", p, re.I) else ""))
+    return key, dur, bare_date
+
+
+_RESULTS_COL_TOKEN_RE = re.compile(
+    r"[({\[][-+]?\s*\d[\d,]*\.?\d*[)}\]]|[-+]?\d[\d,]*\.?\d*%?|(?<!\S)(?:-{1,3}|–+|—+|nil|n\.?a\.?|n/a)(?!\S)",
+    re.I,
+)
+
+
+def _results_norm_ocr_num(tok: str) -> str:
+    s = norm_space(tok)
+    if s and s[0] in "({[":
+        s = "(" + s[1:]
+    if s and s[-1] in ")}]":
+        s = s[:-1] + ")"
+    return re.sub(r"\(\s*([^)]+?)\s*\)", r"(\1)", s)
+
+
+def _results_row_token_slices(label: str, page_text: str) -> list[list[float | None]]:
+    """Collect candidate column numeric/blank (``None``) slices printed after ``label`` up to the next label."""
+    lbl = norm_space(label)
+    if not lbl or not page_text:
+        return []
+    lines = [norm_space(ln) for ln in _results_ocr_text(page_text).splitlines() if norm_space(ln)]
+    core = re.sub(r"^(?:[({[]?(?:[ivxlc]+|[a-z]|\d+)[)}\].]?\s+)", "", lbl, flags=re.I)
+    pats = [re.compile(r"(?<![A-Za-z0-9])" + r"\s+".join(re.escape(w) for w in c.split()) + r"(?![A-Za-z0-9])", re.I)
+            for c in ([lbl] + ([core] if core and core != lbl and len(core) >= 4 else []))]
+    slices: list[list[float | None]] = []
+    for pat in pats:
+        for i, ln in enumerate(lines):
+            m, next_idx, combined = pat.search(ln), i + 1, ln
+            if m is None and i + 1 < len(lines) and not re.search(r"\d", ln):
+                combined, next_idx = f"{ln} {lines[i + 1]}", i + 2
+                m = pat.search(combined)
+                if m is not None and (m.start() >= len(ln) or m.end() <= len(ln)):
+                    m = None
+            if m is None:
+                continue
+            tail = combined[m.end():].replace("|", " ")
+            for _ in range(2):
+                tail = re.sub(r"^\s*[:;—–]*\s*(?:\((?:[^0-9()]*[A-Za-z][^()]*|\d+\s*[-+]\s*\d+)\)\s*)?", "", tail)
+            if re.search(r"[A-Za-z]", re.sub(r"\b(?:nil|n\.?a\.?|n/a)\b", " ", tail, flags=re.I)):
+                continue
+            chunks = [tail] if tail.strip() else []
+            for cand in lines[next_idx:min(len(lines), next_idx + 15)]:
+                cleaned = cand.replace("|", " ").strip()
+                if not cleaned or re.fullmatch(r"[-_=]{4,}", cleaned) \
+                        or re.search(r"[A-Za-z]", re.sub(r"\b(?:nil|n\.?a\.?|n/a)\b", " ", cleaned, flags=re.I)):
+                    break
+                chunks.append(cleaned)
+            toks = [None if re.fullmatch(r"-{1,3}|–+|—+|nil|n\.?a\.?|n/a", tm.group(0), re.I)
+                    else parse_number(_results_norm_ocr_num(tm.group(0)))
+                    for ch in chunks for tm in _RESULTS_COL_TOKEN_RE.finditer(ch)]
+            if toks:
+                slices.append(toks)
+        if slices:
+            break
+    return slices
+
+
+def _results_resolve_residue_periods(rows: list[dict[str, Any]], page_text: str,
+                                     stats: dict[str, Any] | None = None) -> set[int]:
+    """Resolve same-measure same-label same-date multi-value residue groups by column position, or strip to bare date.
+
+    T-242 r3d: a group is one measure on one label -- a second measure printing the same label ("Total", "b. Services")
+    is a different line, not two values for one label, and its rows keep their own period and status (r3d2 abstain).
+    """
+    handled: set[int] = set()
+    groups: dict[tuple[str, str, str, str, tuple[int, int, int]], list[tuple[dict[str, Any], str, str]]] = {}
+    for row in rows:
+        if norm_space(row.get("record_type") or "number") != "number" or row.get("status") == "quarantined":
+            continue
+        lbl = norm_space(row.get("printed_label")).lower()
+        key, dur, bare_date = _results_period_date_and_dur(str(row.get("period") or ""))
+        if lbl and key is not None:
+            gkey = (lbl, norm_space(row.get("measure")).lower(), norm_space(row.get("basis")).lower(),
+                    norm_space(row.get("segment")).lower(), key)
+            groups.setdefault(gkey, []).append((row, dur, bare_date))
+    ordered_cols: list[tuple[tuple[int, int, int], str]] | None = None
+    parsed_cols = False
+    for (_lbl, _measure, _basis, _seg, date_key), items in groups.items():
+        if len(items) < 2 or len({dur for _, dur, _ in items}) != 1:
+            continue
+        targets = [parse_number(_results_norm_ocr_num(vt)) if (vt := norm_space(r.get("value_text"))) else (
+            float(r["value"]) if r.get("value") is not None else None) for r, _, _ in items]
+        distinct = {round(tv, 6) if tv is not None else norm_space(r.get("value_text"))
+                    for (r, _, _), tv in zip(items, targets)}
+        if len(distinct) < 2:
+            continue
+        if not parsed_cols:
+            ordered_cols, parsed_cols = _results_ordered_header_columns(page_text), True
+        slices: list[list[float | None]] = []
+        if ordered_cols:
+            all_slices = [s for s in _results_row_token_slices(norm_space(items[0][0].get("printed_label")), page_text)
+                          if len(s) == len(ordered_cols)]
+            matched = [s for s in all_slices if all(t is not None and any(v is not None and abs(v - t) <= 1e-6 for v in s)
+                                                   for t in targets)]
+            slices = matched or (all_slices if len(all_slices) == 1 else [])
+        for (row, dur, bare_date), target in zip(items, targets):
+            handled.add(id(row))
+            resolved_durs: set[str] = set()
+            if ordered_cols and slices and target is not None:
+                for s in slices:
+                    idxs = [j for j, v in enumerate(s) if v is not None and abs(v - target) <= 1e-6]
+                    ck, cdur = ordered_cols[idxs[0]] if len(idxs) == 1 else (None, "")
+                    if len(idxs) != 1 or (ck != date_key and not (ck and ck[0] == 0 and ck[1:] == date_key[1:])):
+                        resolved_durs.clear()
+                        break
+                    resolved_durs.add(cdur)
+            dur_label = _results_duration_label(next(iter(resolved_durs))) if len(resolved_durs) == 1 else ""
+            if dur_label:
+                row["period"], row["period_source"] = f"{dur_label} {bare_date}", "column_position"
+                if stats is not None:
+                    stats["results_duration_filled"] = int(stats.get("results_duration_filled", 0)) + 1
+            else:
+                row["period"] = bare_date
+                if dur or row.get("period_source"):
+                    row["period_source"] = ""
+                if str(row.get("status") or "") != "quarantined":
+                    row["status"] = "unverified"
+                reason = (f"results_period_duration_ambiguous: {norm_space(row.get('printed_label'))} "
+                          f"prints {len(distinct)} values for {bare_date}")
+                if reason not in (row.get("status_reason") or ""):
+                    row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", reason) if p)
+                if stats is not None:
+                    stats["results_period"] = int(stats.get("results_period", 0)) + 1
+    return handled
 
 
 def _results_period_reason(row: dict[str, Any], page_text: str,
@@ -6905,6 +7164,215 @@ def _results_stem(word: str) -> str:
     return word[:-1] if len(word) > 3 and word.endswith("s") and not word.endswith("ss") else word
 
 
+def _results_line_index(page_text: str, needle: str) -> tuple[int, int]:
+    """(line index, character offset) of the first printed ``needle`` on a page; ``(-1, -1)`` when absent."""
+    text = str(page_text or "")
+    if not needle:
+        return -1, -1
+    offset = text.lower().find(needle.lower())
+    if offset < 0:
+        return -1, -1
+    return text.count("\n", 0, offset), offset
+
+
+def _results_comprise_heading(page_text: str, line_index: int) -> tuple[int, str]:
+    """(line, measure) of the printed '<subject> comprise(s) / consist(s) of / include(s)' heading above a line."""
+    lines = str(page_text or "").splitlines()
+    for idx in range(min(line_index, len(lines)) - 1, max(-1, line_index - 26), -1):
+        line = norm_space(lines[idx])
+        if not line:
+            continue
+        if RESULTS_STATEMENT_TITLE_RE.search(line):
+            return -1, ""
+        match = RESULTS_COMPRISE_HEAD_RE.match(line)
+        if match:
+            measure = script_measure(match.group("subject"))
+            return (idx, measure) if measure else (-1, "")
+    return -1, ""
+
+
+def _results_comprise_block(row: dict[str, Any], page_text: str) -> tuple[int, str]:
+    """(heading line, heading measure) when the row is printed inside a comprise / consist-of / include block."""
+    line_index, _ = _results_line_index(page_text, norm_space(row.get("printed_label")))
+    if line_index < 0:
+        return -1, ""
+    heading, measure = _results_comprise_heading(page_text, line_index)
+    if heading < 0 or line_index - heading > 25:
+        return -1, ""
+    return heading, measure
+
+
+def _results_numbers_after(lines: list[str], index: int, limit: int = 6) -> list[float]:
+    """The numbers printed on a line and on the numeric-only lines right after it (a table's value column)."""
+    values: list[float] = []
+    for step, raw in enumerate(lines[index: index + limit]):
+        line = re.sub(r"\b(?:nil|n\.?a\.?|n/a)\b", " ", raw.replace("|", " "), flags=re.I)
+        if step and re.search(r"[A-Za-z]", line):
+            break
+        for token in _RESULTS_COL_TOKEN_RE.finditer(line):
+            text = token.group(0)
+            if re.fullmatch(r"-{1,3}|–+|—+|nil|n\.?a\.?|n/a", text, re.I):
+                continue
+            number = parse_number(_results_norm_ocr_num(text))
+            if number is not None:
+                values.append(number)
+    return values
+
+
+def _results_component_family_reason(row: dict[str, Any], page_text: str) -> str:
+    """T-242 r3e: a component line under a printed comprise/include heading keeps the heading's measure family."""
+    heading, measure = _results_comprise_block(row, page_text)
+    if heading < 0:
+        return ""
+    stored = norm_space(row.get("measure"))
+    if not stored or stored == measure or stored.startswith(NEW_PREFIX) or stored not in _MEASURE_FAMILY:
+        return ""
+    if _MEASURE_FAMILY.get(stored) != _MEASURE_FAMILY.get(measure):
+        return ""
+    row["measure"] = measure
+    return (f"results_component_family: {norm_space(row.get('printed_label'))!r} is a component line under the "
+            f"printed {measure!r} heading, not {stored!r}")
+
+
+def _results_component_total_reason(row: dict[str, Any], page_text: str) -> str:
+    """T-242 r3e: a component line whose value repeats the block's printed total is a misaligned read."""
+    heading, measure = _results_comprise_block(row, page_text)
+    if heading < 0:
+        return ""
+    label = norm_space(row.get("printed_label"))
+    if re.match(r"^(?:grand\s+)?total\b", label, re.I) or RESULTS_TOTAL_CUE_RE.search(label):
+        return ""
+    try:
+        number = float(row["value"]) if row.get("value") is not None else None
+    except (TypeError, ValueError):
+        return ""
+    if number is None:
+        return ""
+    lines = [norm_space(line) for line in str(page_text or "").splitlines()]
+    words = [word for word in measure.split("_") if len(word) > 2 and word not in ("and", "the")]
+    totals: set[float] = set()
+    for idx, line in enumerate(lines):
+        if not line:
+            continue
+        own_total = bool(re.match(r"^(?:grand\s+)?total\b", line, re.I))
+        names_measure = bool(words) and all(re.search(rf"\b{re.escape(word)}", line, re.I) for word in words)
+        if not (own_total and heading < idx <= heading + 25) and not (
+                names_measure and RESULTS_TOTAL_CUE_RE.search(line)):
+            continue
+        totals.update(_results_numbers_after(lines, idx))
+    if not any(abs(total - number) <= 1e-6 * max(1.0, abs(number)) for total in totals):
+        return ""
+    if str(row.get("status") or "") == "verified":
+        row["status"] = "unverified"
+    return (f"results_component_is_total: {norm_space(row.get('value_text'))!r} under {measure!r} is the "
+            f"block's printed total, not a component")
+
+
+def _results_printed_as_at(page_text: str, key: tuple[int, int, int]) -> str:
+    """The date a column header prints under 'As at' for ``key``, preferring a header line over a statement title."""
+    text = str(page_text or "")
+    fallback = ""
+    for match in RESULTS_AS_AT_DATE_RE.finditer(text):
+        if _results_date_key(match.group(1)) != key:
+            continue
+        date_text = re.sub(r"^\s*as\s+(?:at|on)\s+", "", norm_space(match.group(1)), flags=re.I)
+        line_start = text.rfind("\n", 0, match.start()) + 1
+        line_end = text.find("\n", match.end())
+        line = norm_space(text[line_start: line_end if line_end >= 0 else len(text)])
+        rest = norm_space(line.replace(norm_space(match.group(0)), ""))
+        if not re.search(r"[A-Za-z]{3,}", rest):
+            return date_text
+        fallback = fallback or date_text
+    return fallback
+
+
+def _results_stock_duration_reason(row: dict[str, Any], page_text: str) -> str:
+    """T-242 r3e: a balance-sheet stock never takes the flow duration a script filled from another statement."""
+    if norm_space(row.get("measure")) not in RESULTS_STOCK_MEASURES:
+        return ""
+    period = norm_space(row.get("period"))
+    if not period or re.match(r"^as\s+(?:at|on)\b", period, re.I) or not RESULTS_HAS_DURATION_RE.search(period):
+        return ""
+    if norm_space(row.get("period_source")) not in ("column_header", "column_position"):
+        return ""
+    if not RESULTS_BS_HEAD_RE.search(norm_space(page_text)[:600]):
+        return ""
+    key, _duration, bare = _results_period_date_and_dur(period)
+    if key is None:
+        return ""
+    printed = _results_printed_as_at(page_text, key)
+    if not printed:
+        row["period"], row["period_source"] = bare, ""
+        if str(row.get("status") or "") == "verified":
+            row["status"] = "unverified"
+        return (f"results_stock_duration: {period!r} gives a stock measure a flow duration; the page prints "
+                f"no 'As at {bare}'")
+    row["period"], row["period_source"] = f"As at {printed}", "as_at"
+    return f"results_stock_duration: {period!r} -> {row['period']!r} (a stock measure takes no duration fill)"
+
+
+def _results_note_entity_reason(row: dict[str, Any], page_text: str, company: str) -> str:
+    """T-242 r3e: a note line naming another entity as a subsidiary/associate is that entity's figure.
+
+    The name must sit in the note's own wrapped paragraph (the label's line and the line either side of it) and
+    carry the appositive cue right after it ("<Name> Limited, Wholly owned subsidiary has issued ...", ALANKIT p7,
+    where the OCR wraps "Face value" onto the next line); a name that is part of the label itself (a security sold,
+    a promoter) or a cue in another clause of the sentence does not scope the row.
+    """
+    label = norm_space(row.get("printed_label"))
+    text = str(page_text or "")
+    if len(label) < 3 or not text:
+        return ""
+    if len(label.split()) < 2 or RESULTS_NOTE_SKIP_MEASURE_RE.search(norm_space(row.get("measure"))):
+        return ""
+    low, needle, start = text.lower(), label.lower(), 0
+    while True:
+        index = low.find(needle, start)
+        if index < 0:
+            return ""
+        start = index + len(needle)
+        line_start = low.rfind("\n", 0, index) + 1
+        line_end = low.find("\n", index)
+        line_end = len(text) if line_end < 0 else line_end
+        para_start = low.rfind("\n", 0, max(0, line_start - 1)) + 1
+        para_end = low.find("\n", line_end + 1)
+        para = text[para_start: para_end if para_end >= 0 else len(text)]
+        for match in RESULTS_NOTE_ENTITY_RE.finditer(para):
+            name = norm_space(match.group(1)).strip(" .,;:()")
+            if not name or name.lower() in RESULTS_NOTE_ENTITY_STOP or _results_same_company(name, company):
+                continue
+            words = [word for word in re.split(r"[^A-Za-z0-9]+", name) if word]
+            if len(words) < 2 or all(word.lower() in RESULTS_NOTE_GENERIC_WORDS for word in words):
+                continue
+            if name.lower() in label.lower():
+                continue
+            after = para[match.end(): match.end() + 40]
+            if not RESULTS_NOTE_SUBSIDIARY_RE.search(after) and not RESULTS_NOTE_ASSOCIATE_RE.search(after):
+                continue
+            scope = "associate" if RESULTS_NOTE_ASSOCIATE_RE.search(after) else "subsidiary"
+            row["entity_scope"], row["scope_source"] = scope, "note_paragraph"
+            if str(row.get("status") or "") == "verified":
+                row["status"] = "unverified"
+            return (f"results_note_entity: {label!r} is a note figure of {name!r} ({scope}), not the "
+                    f"company's")
+    return ""
+
+
+def _results_cf_title_before(page_text: str, label: str) -> bool:
+    """True when a cash-flow statement's title line is printed above ``label`` on the same page."""
+    text = str(page_text or "")
+    line_index, _ = _results_line_index(text, label)
+    if line_index < 0:
+        return False
+    return any(RESULTS_CF_TITLE_LINE_RE.match(norm_space(line)) for line in text.splitlines()[:line_index])
+
+
+def _results_cf_title_in_tail(previous_page_text: str) -> bool:
+    """True when the page before ends with a cash-flow statement's title (the statement continues on this page)."""
+    lines = [norm_space(line) for line in str(previous_page_text or "").splitlines() if norm_space(line)]
+    return any(RESULTS_CF_TITLE_LINE_RE.match(line) for line in lines[-12:])
+
+
 def apply_results_row_gates(rows: list[dict[str, Any]], page_text: str = "", company: str = "",
                             previous_text: str = "", stats: dict[str, Any] | None = None,
                             previous_page_text: str = "",
@@ -6936,6 +7404,16 @@ def apply_results_row_gates(rows: list[dict[str, Any]], page_text: str = "", com
     8. current vs non-current section heading selects the twin measure or marks ``unverified``;
     9. flow rows fill missing duration from the column header or go ``unverified`` (stock rows keep "As at");
     10. share of JV/associate loss is scoped and negative; equity-accounted businesses are associate/unverified.
+
+    T-242 r3e (results ckpt_0002 fix note):
+    11. a component line under a printed ``comprise(s) / consist(s) of / include(s)`` heading keeps the heading's
+        measure family, and a component whose value repeats the block's printed total is ``unverified``;
+    12. a row under a cash-flow statement's own title -- on the page or carried from the page before -- whose measure
+        is a P&L flow measure is that statement's line, not the P&L measure;
+    13. a balance-sheet stock never takes the flow duration a script filled from another statement: the printed
+        ``As at <date>`` replaces it, else the bare date is unverified;
+    14. a note sentence naming another entity as a subsidiary/associate scopes the row to it and unverifies it;
+    15. an ordinal (``33rd``) is never a value (``results_not_a_figure``).
     """
     note = results_scale_note(page_text)
     note_source = "page"
@@ -6979,6 +7457,21 @@ def apply_results_row_gates(rows: list[dict[str, Any]], page_text: str = "", com
         if _results_scope_reset(row, page_text, company, previous_page_text):
             if stats is not None:
                 stats["results_scope_reset"] = int(stats.get("results_scope_reset", 0)) + 1
+        component = _results_component_family_reason(row, page_text)
+        if component:
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", component) if p)
+            if stats is not None:
+                stats["results_component_family"] = int(stats.get("results_component_family", 0)) + 1
+        component_total = _results_component_total_reason(row, page_text)
+        if component_total:
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", component_total) if p)
+            if stats is not None:
+                stats["results_component_total"] = int(stats.get("results_component_total", 0)) + 1
+        note_entity = _results_note_entity_reason(row, page_text, company)
+        if note_entity:
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", note_entity) if p)
+            if stats is not None:
+                stats["results_note_entity"] = int(stats.get("results_note_entity", 0)) + 1
         cash_flow = _results_cash_flow_reason(row, page_text, previous_page_text)
         if cash_flow:
             row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", cash_flow) if p)
@@ -6998,13 +7491,22 @@ def apply_results_row_gates(rows: list[dict[str, Any]], page_text: str = "", com
         elif row.get("basis_source") == "previous_page_heading":
             if stats is not None:
                 stats["results_basis_prev"] = int(stats.get("results_basis_prev", 0)) + 1
-        period_reason = _results_period_reason(row, page_text, durations, stats=stats)
+    residue_done = _results_resolve_residue_periods(kept, page_text, stats=stats)
+    for row in kept:
+        if norm_space(row.get("record_type") or "number") != "number" or row.get("status") == "quarantined":
+            continue
+        period_reason = "" if id(row) in residue_done else _results_period_reason(row, page_text, durations, stats=stats)
         if period_reason:
             if str(row.get("status") or "") == "verified":
                 row["status"] = "unverified"
             row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", period_reason) if p)
             if stats is not None:
                 stats["results_period"] = int(stats.get("results_period", 0)) + 1
+        stock_reason = _results_stock_duration_reason(row, page_text)
+        if stock_reason:
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", stock_reason) if p)
+            if stats is not None:
+                stats["results_stock_duration"] = int(stats.get("results_stock_duration", 0)) + 1
         jv_reason = _results_jv_reason(row)
         if jv_reason:
             row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", jv_reason) if p)
