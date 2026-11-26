@@ -3429,12 +3429,13 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   relative word took the call's reporting period - is removed, because it stored a comparative (`KTKBANK` #36
   781 crore Y-o-Y, `EMSLIMITED` #43 last quarter) or a full-year figure (`CAPACITE` #47 FY25 EBITDA) under the call
   quarter. `strip_leading_speaker_label` drops a speaker label the model copied into the passage's own start
-  (`Shri <Name>, MD & CEO` followed by a line break, `<Name> - CFO:`), leaving a verbatim substring. On the fresh 394
-  r3 reparse (`tasks/t242_statement_r3_measure.md`) the three W rows now read empty / empty / `FY25`; no R row
+  (`Shri <Name>, MD & CEO` followed by a line break, `<Name> - CFO:`), leaving a verbatim substring; it runs
+  before the window, after a snap (which can pull the label line into the passage) and after speaker attribution.
+  On the fresh 394 r3 reparse (`tasks/t242_statement_r3_measure.md`) the three W rows now read empty / empty / `FY25`; no R row
   changes beyond `period` (5 R rows whose period had come from the removed default now store empty: `HFCL` #2,
   `ASTERDM` #17, `POONAWALLA` #18, `AEROFLEX` #22, `SAMBHV` #48; `TRIVENI` #11, `UNIMECH` #30 and `HITECH` #59 keep
   theirs). Across the copy `period_source='call_period'` falls 27,022 -> 9,531 and 18,868 statement periods change
-  (17,742 emptied, 285 newly set by an explicit cue, 841 relabelled); 113 statements lose a copied label start.
+  (17,742 emptied, 285 newly set by an explicit cue, 841 relabelled); 363 statements lose a copied label start.
   Tests `test_obs_speaker.py` (`test_tx394_ckpt_0014_non_content_turns_are_dropped`,
   `test_a_product_demo_statement_with_substance_stays`, `test_prepared_remark_period_is_anchored_to_the_call`,
   `test_r3_period_anchoring_explicit_cues_only_and_comparatives_never_anchor`,

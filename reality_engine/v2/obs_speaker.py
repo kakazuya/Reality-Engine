@@ -2014,31 +2014,37 @@ def widen_statement(statement: str, page_text: str, page_num: int = 0, question_
     return widened, snapped, True, ""
 
 
+_LABEL_DESIGNATION = (
+    r"(?:MD|CEO|CFO|COO|CMD|CTO|CMO|ED|Director|Managing\s+Director|Joint\s+Managing\s+Director"
+    r"|Executive\s+Director|Chief\s+\w+(?:\s+\w+)?|Company\s+Secretary|Chairman|President"
+    r"|Vice\s+President|Head|CGM|AGM|GM)")
 _EMBEDDED_LABEL_RE = re.compile(
     r"^\s*(?:(?:Shri|Shree|Mr|Mrs|Ms|Dr)\.?\s+)?[A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,3}"
-    r"\s*[-,–—]\s*[^:\n]{0,60}:\s+")
+    r"\s*[-,–—]\s*(?=[^:\n]{0,60}\b" + _LABEL_DESIGNATION + r"\b)[^:\n]{0,60}(?::|\n)\s*", re.I)
 
 
 def strip_leading_speaker_label(statement: str, speaker: str = "") -> tuple[str, bool]:
     """T-242 r3: drop a speaker label the model copied into the passage's own start; returns ``(text, changed)``.
 
-    Only a leading label is removed: the row's own speaker (``Shri <Name>, MD & CEO`` followed by a line break or
-    a colon) or a printed person label carrying a designation and a colon (``<Name> - CFO:``).  What remains is
-    still a verbatim substring of its page.
+    Only a leading label is removed: a printed person label carrying a designation and ending at a colon or a
+    line break (``Shri <Name>, MD & CEO`` + newline, ``<Name> - CFO:``), or the row's own speaker followed by a
+    colon or a line break.  What remains is still a verbatim substring of its page.
     """
     st = str(statement or "")
     if not st.strip():
         return st, False
+    changed = False
     label = " ".join(str(speaker or "").split())
-    if label:
-        words = [re.escape(word) for word in label.split()]
-        m = re.match(r"\s*" + r"\s+".join(words) + r"(?:\s*[:\-–—]\s*|\s*\n\s*)", st)
-        if m and st[m.end():].strip():
-            return st[m.end():].lstrip(), True
-    m = _EMBEDDED_LABEL_RE.match(st)
-    if m and st[m.end():].strip():
-        return st[m.end():].lstrip(), True
-    return st, False
+    for _ in range(3):                     # a roster block can print more than one label line
+        m = _EMBEDDED_LABEL_RE.match(st)
+        if m is None and label:
+            words = [re.escape(word) for word in label.split()]
+            m = re.match(r"\s*" + r"\s+".join(words) + r"(?:\s*[:\-–—]\s*|\s*\n\s*)", st)
+        if m is None or not st[m.end():].strip():
+            break
+        st = st[m.end():].lstrip()
+        changed = True
+    return st, changed
 
 
 def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int, str]],
@@ -2085,14 +2091,14 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
         page_text = texts.get(page, "")
         speaker = " ".join(str(row.get("speaker") or "").split())
         statement, label_stripped = strip_leading_speaker_label(str(row.get("statement") or ""), speaker)
-        if label_stripped:                  # T-242 r3: a label copied into the passage is not its first words
-            row["statement"] = statement
-            stats["labels_stripped"] += 1
         if page_text:                       # T-242 (26 Nov): sentence snap + referent widen, page-local
             statement, snapped, widened, note = widen_statement(
                 statement, page_text, page, str(row.get("question_context") or ""),
                 analysts=analysts, known_names=known_names)
             if snapped or widened:
+                # T-242 r3: a snap can pull a printed label line into the passage; drop it again
+                statement, label_after = strip_leading_speaker_label(statement, speaker)
+                label_stripped = label_stripped or label_after
                 row["statement"] = statement
                 if snapped:
                     stats["snapped"] += 1
@@ -2101,6 +2107,9 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
             if note:
                 notes[i] = note
                 stats["noted"] += 1
+        if label_stripped:                  # T-242 r3: a label copied into the passage is not its first words
+            row["statement"] = statement
+            stats["labels_stripped"] += 1
         speaker = " ".join(str(row.get("speaker") or "").split())
         if not speaker:
             retry.add(i)
@@ -2208,7 +2217,11 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
         effective_period = f"Q{int(cq_match.group(1))} FY{int(cq_match.group(2)) % 100:02d}"
     for i in indexes:                              # 394_v3 ckpt_0001 J (NLCINDIA p1): a filing letter's closing line
         row = rows[i]
-        statement = str(row.get("statement") or "")
+        statement, label_after = strip_leading_speaker_label(str(row.get("statement") or ""),
+                                                             str(row.get("speaker") or ""))
+        if label_after:                # T-242 r3: the row's speaker is resolved by now; strip its label too
+            row["statement"] = statement
+            stats["labels_stripped"] += 1
         # only the letter's own wording, whoever signs it: a company secretary's real opening remarks stay (Wolf);
         # T-242 (26 Nov): a statement made only of call logistics, a deferral or filler carries no statement
         letter = int(row.get("page") or 0) <= 2 and bool(_FILING_LINE_RE.search(statement))

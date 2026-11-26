@@ -51,11 +51,15 @@ period rows this brief names.
 |---|---|
 | statement widened by the new connector/demonstrative fragment rule | 3,985 |
 | statement widened by the r2 anaphor rule | 0 (already in the r2 copy) |
-| copied speaker label stripped from the statement start | 113 |
+| copied speaker label stripped from the statement start | 363 (0 statements still start with a label) |
 | statement `period` changed | 18,868: 17,742 emptied, 285 newly set, 841 changed to another label |
 | `period_source='call_period'` rows | 27,022 -> 9,531 |
-| statement rows with an empty period | 98,429 -> 115,913 |
-| old statements with no exact/suffix match in r3 (re-cut or dropped) | 114 (0.09%) |
+| statement rows with an empty period | 98,429 -> 115,911 |
+| old statements with no exact/suffix match in r3 (re-cut or dropped) | 128 (0.10%) |
+
+The label pass runs three times: before the window, after a snap (a snap can pull the printed label line into
+the passage) and after speaker attribution (the model's speaker may differ from the resolved row speaker). A
+scoped re-reparse of the 29 label-carrying documents with the final pass was applied on top of the full copy.
 
 The fragment rows of the graded pack all widen: ADANIPOWER #9, HINDZINC #21, NITINSPIN #39, KRN #44, JDCABLES #53.
 The label row BANKINDIA #60 loses its copied "Shri <Name>, MD & CEO" prefix.

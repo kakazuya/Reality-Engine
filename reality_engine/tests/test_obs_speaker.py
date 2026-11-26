@@ -1258,7 +1258,21 @@ def test_a_copied_speaker_label_is_stripped_from_the_statement_start():
     assert stats["labels_stripped"] == 1
     assert ospeaker.strip_leading_speaker_label("Ramesh Iyer - CFO: Revenue grew 12%.", "")[0] \
         == "Revenue grew 12%."
+    assert ospeaker.strip_leading_speaker_label("MR. SATISH PARAKH – MANAGING DIRECTOR.\nThe quarter was strong.",
+                                                "")[0] == "The quarter was strong."
+    assert ospeaker.strip_leading_speaker_label(
+        "Muralidharan, Group Chief Financial Officer\nMr. Manish Bhatia, Chief Financial Officer\n"
+        "The quarter was strong.", "")[0] == "The quarter was strong."
     # a passage that merely starts with a name-then-comma phrase is not a label
     kept = "Ramesh Iyer said the capex plan is unchanged."
     assert ospeaker.strip_leading_speaker_label(kept, "Ramesh Iyer")[0] == kept
+    kept2 = "Yes, we grew 12% in the quarter ended March 2026\nand margins held."
+    assert ospeaker.strip_leading_speaker_label(kept2, "")[0] == kept2
+    # a snap can pull the printed label line into the passage; it is stripped again after the widen
+    pages2 = [(1, _CALL_HEAD + _CALL_TAIL),
+              (2, "Anurag Soni: Some intro. " + label + " \n \n " + speech + "\n")]
+    rows2 = [dict(_statement(2, speech, speaker=label))]
+    stats2 = ospeaker.attach_statement_speakers(rows2, pages2, "SYNTH", ["Synth Corp Limited"])
+    assert rows2[0]["statement"] == speech
+    assert stats2["labels_stripped"] == 1
 
