@@ -2853,3 +2853,130 @@ def test_t242_r8_an_unvalued_twin_filing_folds_into_the_valued_one() -> None:
     amends: list[dict[str, Any]] = []
     kept = [r for r in fe._fold_same_order(rows, amends) if r["kind"] == "order_win"]
     assert len(kept) == 1 and len(amends) == 1
+
+
+# ---- T-242 fund_raise model-first r3: script helpers, multi-tranche, 65% balance, pages >4, same-day folds ----
+def test_t242_r3_fund_raise_script_helpers_and_distinct_same_day_counter() -> None:
+    # W1: two distinct numbered allotment items with different share counts sum cleanly without absorption
+    two_legs = (
+        "1. Allotment of 7,00,42,458 Equity Shares at an Issue Price of INR 71.25 per Equity Share aggregating to "
+        "INR 499,05,25,132.50 for consideration other than cash. "
+        "2. Allotment of 7,00,000 Equity Shares at an Issue Price of INR 71.25 per Equity Share aggregating to "
+        "INR 4,98,75,000/- for cash consideration."
+    )
+    assert fe.raise_step_amount(two_legs)[0] == pytest.approx(504.04, rel=1e-4)
+
+    # W2: two labelled NCD series of equal size sum to 1,000 cr; an explicit combined total prevents double-counting
+    two_series = (
+        "(A) Allotment of 50,000 Non-Convertible Debentures of face value Rs. 1,00,000 each aggregating to "
+        "Rs. 500,00,00,000/- (\"Series 1 Debentures\") and "
+        "(B) Allotment of 50,000 Non-Convertible Debentures of face value Rs. 1,00,000 each aggregating to "
+        "Rs. 500,00,00,000/- (\"Series 2 Debentures\") issued on private placement basis."
+    )
+    assert fe.raise_step_amount(two_series)[0] == pytest.approx(1000.0, rel=1e-4)
+
+    # W3: 65% warrant conversion balance (printed receipt AND shares x balance per warrant), never 100% full price
+    conv_bal_only = (
+        "The Board approved the allotment of 1,76,20,550 equity shares of face value Rs. 1 each pursuant to "
+        "conversion of 1,76,20,550 convertible warrants against receipt of the balance subscription amount of "
+        "Rs. 481 (Rupees Four Hundred and Eighty-One) per warrant (i.e. 65% of the issue price of Rs. 740)."
+    )
+    assert fe.raise_step_amount(conv_bal_only)[0] == pytest.approx(847.5485, rel=1e-4)
+    conv_with_receipt = conv_bal_only + (
+        " Annexure A: 1,76,20,550 Equity Shares pursuant to conversion of 1,76,20,550 warrants, against receipt "
+        "of the balance subscription amount of Rs. 481 (Rupees Four Hundred and Eighty-One Only) per warrant "
+        "(i.e. 65% of the issue price), aggregating to Rs. 847,54,84,550."
+    )
+    assert fe.raise_step_amount(conv_with_receipt)[0] == pytest.approx(847.5485, rel=1e-4)
+
+    # P: Postal Ballot / QIP resolutions with 'not exceeding', '(Rupees ...)', 'raise funds upto', OCR yen->rupee
+    pb_rs_full = fe.raise_fields(
+        "Postal Ballot Notice is attached.",
+        "Sub: Postal Ballot Notice. 1. To consider and approve for raising funds through equity shares.",
+        "RESOLVED THAT consent of members be and is hereby accorded to raise funds upto Rs. 100,00,00,000/- "
+        "(Rupees One Hundred Crores Only) through issuance of equity shares or borrowing.",
+    )
+    assert pb_rs_full is not None and pb_rs_full["amount_inr_cr"] == pytest.approx(100.0)
+
+    pb_long_sr = fe.raise_fields(
+        "Postal Ballot Notice.",
+        "Sub: Notice of Postal Ballot. 1. Raising capital through issuance of Equity Shares.",
+        "RESOLVED THAT pursuant to Sections 42 and 62 of the Act, consent of the Company be and is hereby accorded "
+        "to issue Securities for an aggregate amount not exceeding Rs.600 Crores (Rupees Six Hundred Crores only), "
+        "by way of QIP " + ("x " * 1200) + " to be subscribed to by investors; upon conversion/ redemption of debt.",
+    )
+    assert pb_long_sr is not None and pb_long_sr["amount_inr_cr"] == pytest.approx(600.0)
+
+    pb_no_rs_gloss = fe.raise_fields(
+        "Notice of Postal Ballot",
+        "Sub: Notice of Postal Ballot to consider and approve raising of funds through QIP.",
+        "RESOLVED THAT consent of members be and is hereby accorded by way of QIP through issuance of Equity Shares for an aggregate amount "
+        "not exceeding 100 Crore (Rupees One Hundred Crore only) in one or more tranches.",
+    )
+    assert pb_no_rs_gloss is not None and pb_no_rs_gloss["amount_inr_cr"] == pytest.approx(100.0)
+
+    pb_ocr_yen = fe.raise_fields(
+        "Outcome of Fund Raising Committee - Allotment",
+        "",
+        "Allotment of 86,80,555 equity shares of face value Rs. 2 each at Rs. 1,440 per share, "
+        "aggregating to ¥1,25,000 lakhs to QIBs.",
+    )
+    assert pb_ocr_yen is not None and pb_ocr_yen["amount_inr_cr"] == pytest.approx(1250.0)
+
+    # J: same-day pointer letter and voting-results / scrutinizer report fold; distinct same-day raises stay two
+    board_r = {
+        "symbol": "ACME", "kind": "fund_raise", "doc_key": "d-39", "filing_date": "2026-06-18",
+        "known_at": "2026-06-18T14:48:00", "raise_stage": "approved_board", "instrument": "preferential",
+        "shares": 700000.0, "amount_inr_cr": 4.9875, "amount_usd_mn": None, "title": "Outcome of Board Meeting",
+        "_text_full": "ACME/BSEL/2026/39 June 18, 2026 Preferential issue of 7,00,000 shares aggregating Rs 4,98,75,000.",
+    }
+    pointer_r = {
+        "symbol": "ACME", "kind": "fund_raise", "doc_key": "d-40", "filing_date": "2026-06-18",
+        "known_at": "2026-06-18T14:52:00", "raise_stage": "in_principle", "instrument": "preferential",
+        "shares": None, "amount_inr_cr": None, "amount_usd_mn": None, "title": "Attached",
+        "_text_full": "ACME/BSEL/2026/40 details of the aforementioned announcement has been disclosed vide letter ACME/BSEL/2026/39 dated June 18, 2026.",
+    }
+    am_ptr: list[dict[str, Any]] = []
+    kept_ptr = fe._fold_same_raise([board_r, pointer_r], am_ptr)
+    assert [r["doc_key"] for r in kept_ptr] == ["d-39"]
+    assert [(a["doc_key"], a["amends"]) for a in am_ptr] == [("d-40", "d-39")]
+
+    vr_early = {
+        "symbol": "BETA", "kind": "fund_raise", "doc_key": "d-vr", "filing_date": "2026-03-28",
+        "known_at": "2026-03-28T17:03:00", "raise_stage": "approved_shareholders", "instrument": "qip",
+        "shares": None, "amount_inr_cr": None, "amount_usd_mn": None,
+        "title": "Intimation regarding postal ballot result and Scrutinizer''s report", "_text_full": "voting results",
+    }
+    reg30_late = {
+        "symbol": "BETA", "kind": "fund_raise", "doc_key": "d-reg30", "filing_date": "2026-03-28",
+        "known_at": "2026-03-28T17:11:00", "raise_stage": "approved_shareholders", "instrument": "qip",
+        "shares": None, "amount_inr_cr": None, "amount_usd_mn": None,
+        "title": "Intimation under Regulation 30 of the SEBI(LODR) Regulations,2015", "_text_full": "shareholders approved",
+    }
+    am_vr: list[dict[str, Any]] = []
+    kept_vr = fe._fold_same_raise([vr_early, reg30_late], am_vr)
+    assert [r["doc_key"] for r in kept_vr] == ["d-reg30"]
+    assert [(a["doc_key"], a["amends"]) for a in am_vr] == [("d-vr", "d-reg30")]
+
+    # Counter-test: two genuinely distinct same-day raises stay two rows
+    distinct_a = {
+        "symbol": "GAMA", "kind": "fund_raise", "doc_key": "d-qip", "filing_date": "2026-07-19",
+        "known_at": "2026-07-19T16:00:00", "raise_stage": "approved_board", "instrument": "qip",
+        "shares": 8680555.0, "amount_inr_cr": 1249.9999, "amount_usd_mn": None,
+        "title": "Outcome of Fund Raising Committee", "_text_full": "QIP price determination",
+    }
+    distinct_b = {
+        "symbol": "GAMA", "kind": "fund_raise", "doc_key": "d-allot", "filing_date": "2026-07-19",
+        "known_at": "2026-07-19T21:30:00", "raise_stage": "allotted", "instrument": "qip",
+        "shares": 8680555.0, "amount_inr_cr": 1250.0, "amount_usd_mn": None,
+        "title": "Outcome of Fund Raising Committee - Allotment", "_text_full": "QIP allotment",
+    }
+    distinct_ncd = {
+        "symbol": "GAMA", "kind": "fund_raise", "doc_key": "d-ncd", "filing_date": "2026-07-19",
+        "known_at": "2026-07-19T18:00:00", "raise_stage": "allotted", "instrument": "ncd",
+        "shares": 20000.0, "amount_inr_cr": 200.0, "amount_usd_mn": None,
+        "title": "Allotment of NCDs", "_text_full": "NCD allotment Rs 200 cr",
+    }
+    am_dist: list[dict[str, Any]] = []
+    kept_dist = fe._fold_same_raise([distinct_a, distinct_b, distinct_ncd], am_dist)
+    assert len(kept_dist) == 3 and am_dist == []
