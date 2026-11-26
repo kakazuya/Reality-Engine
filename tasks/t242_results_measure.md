@@ -493,3 +493,69 @@ tests still pass unchanged.
 
 Accept (`pytest -q <file>` each separately): test_results_gates.py 64 passed, test_observations.py 177 passed,
 test_ar_sections.py 42 passed, test_deck_guards.py 37 passed.
+
+## results gates r3f (27 Nov 2026, T-242, r3d baseline copy)
+
+Two fix notes name the kinds r3d/r3e do not cover (`D:/RealityEngine/hy4_out/obs_results_fy27.db.audit/ckpt_0003.fix.md`,
+`ckpt_0004.fix.md`) and the pack pages are `C:/RealityEngine/t242/results_ckpt3|4/pack.jsonl`. Seven script-only rules in
+`apply_results_row_gates` (`reality_engine/v2/observations.py`), no model and no fetch:
+
+| kind | rule | ckpt3/4 case |
+|---|---|---|
+| OCR bracket / split digits | `_results_ocr_value_reason` + `_results_join_digits` | ALOKINDS `{171.56)` -> -171.56; ATGL `(2 69)` -> -2.69; AEQUS `3, 221 59` -> 3221.59 |
+| garbled OCR value | `_results_garbled_value_reason` -> quarantined | ARSSINFRA `-2,1::!.J.:?.9` |
+| measure from the section | `_results_in_cf_section` (BS measure/exceptional only), `RESULTS_GENERIC_TWINS`, `_results_pnl_charge_reason` | APTUS `Issue of equity shares`; AZADIND `Extraordinary items`; AAYUSH `(b) Provisions` -> `long_term_provisions`; BANDHANBNK P&L provisions charge |
+| change, not balance | `_results_change_not_balance_reason` (`value_kind='change'`) | HDFCAMC DTL `had increased by` 69.75 crore |
+| share-count table | `_results_share_count_reason` (Number column, page scale 1e5) | ATMAIND preference shares 2.50 lakh |
+| segment column / geography | `_results_column_period_reason` (+ `_results_ordered_columns`, `_results_ocr_dates`), `_results_geography_row_reason` | AEQUS `Aerospace` -> `Quarter ended March 31, 2026`; BHARATROHAN -> `Half year ended 30th September, 2025`; ARTEMISMED `India` segment + unverified |
+| own statement scope | `_results_own_statement_heading` | ASTRONMULT p2 `subsidiary` -> `company` |
+
+Guards that keep the rules safe: a comma group that is not 3 digits (`22, 2025`) or a 4-digit tail (`31, 2026`) never
+joins; opening/closing cash balances and `capex` keep their measure; a printed `Components of Cash & Cash Equivalents`
+note stops the cash-flow section; a partial header (`March 2026`, `September 30`), a date printed under two columns and a
+mixed-duration table all make the column rule abstain.
+
+**Measurement (per-row gate pass; the full `--recheck` did not finish inside the sandbox's 10-minute call cap).** A copy of
+`C:/RealityEngine/t242/results_r3d/base.db` was taken with the sqlite backup API into `.tmp/t242_r3f/base.db`; the gates
+were re-applied to each row of the six graded packs with that pack's own `page_text` and `previous_page_text`, exactly the
+function the recheck calls.
+
+| pack | changed rows | graded-R changes |
+|---|---:|---:|
+| results_ckpt1 | 2 | 0 |
+| results_grade_r2 | 0 | 0 |
+| results_grade_r3c | 0 | 0 |
+| results_ckpt2 | 4 | 0 |
+| results_ckpt3 | 6 | 0 |
+| results_ckpt4 | 6 | 0 |
+| **all** | **18** | **0** |
+
+All 18 changed rows are named in their fix note (16 ckpt3/ckpt4 W rows + the ckpt1/ckpt2 rows their own note names). The
+14 named ckpt3/ckpt4 W rows: AEQUS 124746 period, ATGL 88210 value, ARSSINFRA 3944 quarantined, ALOKINDS 35145 value,
+APTUS 44528 measure+period, ADHBHUTIN 23312 measure (r3e), AZADIND 160543 measure, AAYUSH 192254 measure, HDFCAMC
+187965 unverified+`change`, BANDHANBNK 10787 unverified, BHARATROHAN 109749 period, ATMAIND 89866 measure+scale,
+ARTEMISMED 47404 segment+unverified, ASTRONMULT 86910 scope.
+
+**Seed-7 sample (200 pages, all with store page text).** 5,176 observation pages sampled; for each page the gates ran over
+its rows with the store's `doc_page` text and the page before it:
+
+| rule | triggers on 200 pages | judged |
+|---|---:|---|
+| OCR bracket / split | 13 | 13/13 right (BLUESTONE, ABFRL, ANIRIT, BALLARPUR x5, AMBUJACEM x2, ARKADE x2, AEIM) |
+| garbled OCR | 0 | pack row + counter test right |
+| measure from the section | 112 | 20/20 judged right (AIAENG, ACCURACY, ALPINEHOU, ACI, ANSALAPI) |
+| change, not balance | 1 | 1/1 right (AHLEAST hypothetical reduction) |
+| share-count table | 0 | pack row + counter test right |
+| segment column / geography | 0 after the guards | pack rows AEQUS/BHARATROHAN/ARTEMISMED + 3MINDIA/ABLBL/AURUS abstain |
+| own statement scope | 0 | pack row + counter test right |
+
+The AURUS `Total Tax Expense` case (a value printed under two date-ambiguous columns) was the reason for the duplicate-date
+abstain; the ABLBL page (`September 30` split from its year) for the partial-header abstain.
+
+The full recheck of the baseline copy did start (`--recheck --baseline .tmp/t242_r3f/base.db --out .tmp/t242_r3f/out.db
+--stores-root C:/RealityEngine/tg_build/universe_fy27 --doc-types results`) but was still on its first pass when the
+10-minute call cap ended it; a scoped `--only` selector over the six packs' 264 documents / 35 page numbers also exceeded
+20 minutes. The full recheck remains owed.
+
+Accept (`pytest -q <file>` each separately): test_results_gates.py 72 passed (7 new r3f tests), test_observations.py 177
+passed, test_ar_sections.py 42 passed, test_deck_guards.py 37 passed.
