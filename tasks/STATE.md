@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 18:05 IST (dsh T-242 xbrl annual; earlier Wolf 17:00)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 22:40 IST (dsh T-242 tx statements r6)
 History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -6,7 +6,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Stores `D:/RealityEngine/{p20/p20new.db,u8/u8.db,q12/q12.db,n10/n10.db,pilot10/pilot10.db}`; backups `*_before_rebuild_2026-11-11.db`.
 - Extraction: `v2/page_words.py`->`page_layout.py`->`page_route.py` (T-189; `table_or_chart` on IMAGE, `needs_ocr` on OCR since T-238 + T-242 deck options)->`reference_geom.py` (T-185)->`page_reader.py` -> `page_cell` verified/unverified/quarantined, served by `pilot3_cells`. T-199 atoms (`page_atom` v10): `PILOT3_BLUEPRINT.md`.
 - Retrieval audits 4-10 (`docs/grading/`); audit10 (26 Nov, first after results/AR loads, 48 q): 34R/2P/4W/7M, statements 16/16; next: asked-duration match, AR NEW-code reach, auditor-note scope (`C:/RealityEngine/t242/retrieval_audit10/report.md`).
-- 26 Nov tx statements r3 -> r4 (failed) -> r5 merged: own-period token bound to its figure wins; period_anchored 9,959 (r3 9,579); r6 for 4 remaining cases (`tasks/t242_statement_r3_measure.md`).
+- 26 Nov tx statements r3 -> r5 -> r6 merged: own-period token bound to its figure wins; period_anchored 10,241 (r3 9,575); r7 list in `D:/RealityEngine/t242/grades/tx_r6_review_eagle.md`.
 - 26 Nov results gates r2-r3c merged (r3d recheck running); verified 14,171->11,069 on r3c copy (`tasks/t242_results_measure.md`).
 - 26 Nov AR gates r4 swapped; r5+r6 code merged (subset-as-total, related-party scope, other-entity blocks, column periods); live AR DB not rechecked (6 h) - swap after a fresh recheck; r7 for ckpt_0004 kinds.
 - 26 Nov events: read-provenance columns on `event` rows (T-242, dsh); script rows `read_model='script'`.

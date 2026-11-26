@@ -115,9 +115,11 @@ own-period cue bound to the figure, regaining 591 but dropping 1,585 (period_anc
 - **Every r4 cue still runs after the new pass** (as-on period end, `quarterly <metric>`, over-base), so no r4
   regain is lost. IOLCP's "same quarter last year" figure (no own cue), KTKBANK #36, EMSLIMITED #43 "last
   quarter", BPLPHARMA's 2027/2028 milestone dates and BOROLTD's H1 figure stay empty; CAPACITE #47 stays `FY25`.
+  (r6 supersedes the IOLCP case: its bound "for the quarter" figure anchors Q1 FY26.)
 - **Tests**: `test_r5_own_period_cue_beats_sentence_wide_blocks` (ASKAUTOLTD, TVSSCS, MEDANTA, AZAD, INFOBEAN,
-  ACUTAAS, AWFIS) and `test_r5_five_stay_empty_cases_remain_empty` in `reality_engine/tests/test_obs_speaker.py`
-  (70 passed), `python -m pytest -q reality_engine/tests/test_observations.py` (177 passed). The r4 stay-empty
+  ACUTAAS, AWFIS) and `test_r5_stay_empty_cases_remain_empty` in `reality_engine/tests/test_obs_speaker.py`
+  (70 passed at r5; r6 renamed the test and moved IOLCP to the anchored set), `python -m pytest -q
+  reality_engine/tests/test_observations.py` (177 passed). The r4 stay-empty
   test now asserts `BPLPHARMA` "by FY28" -> `FY28` (r5's guidance target) and is named
   `test_r4_stay_empty_cases_and_w47_remain_unchanged`.
 
@@ -206,5 +208,77 @@ right), #5 `during the year` -> FY24, #10 `for the quarter` on a Q1 call, #11 `F
 review listed it as a right period lost), #13 `This Q4 revenue`. They are the remaining trade-off of "empty beats
 wrong": the rule anchors a named target period only in a forward sentence or the call's own named period, and
 `aiming`/`during the year`/`This Q4` are not read as formal cues. The net is still +380 against r3.
+
+## r6 follow-up (26 Nov 2026, DeepSeek): four narrow fixes on r5
+
+Eagle's non-author review of r5 (`D:/RealityEngine/t242/grades/tx_r5_review_eagle.md`) kept the removal of the
+default call-period anchor (net better than r3) but found four structural misses. r6 changes only
+`reality_engine/v2/obs_speaker.py` (`anchored_period`, `_explicit_own_period`, the new `_bound_quarter_before`,
+and the named-period / FY / quarter cue patterns):
+
+- **A bound `for the quarter` beats a same-quarter-last-year comparative.** The sentence-wide `same quarter last
+  year` block is gone from the `for the quarter` loop; the cue must still label a figure in its own clause and
+  must not follow a comparative connector, so the comparative names the base (IOLCP 58.2 crore -> `Q1 FY26`;
+  BLS 711 crore -> `Q1 FY27`). `_OWN_QUARTER_CUE_RE` rejects `in Quarter 3` / `in Quarter 4` (a named other
+  quarter; the r5 misread that took PDSL to `Q2 FY26`), and `_bound_quarter_before` keeps a bound cue that
+  precedes a forward aside (SOLARINDS "volume for the quarter grew by 16% ... in line with our annual guidance
+  for the year '25" -> `Q1 FY25`), while a cue only after the forward word stays empty (HFCL).
+- **`Q1 of FY27` / `first quarter of FY27`.** `_NAMED_QUARTER_FY_RE` reads the `of` form and the ordinal-quarter
+  form (quarter group 1 or 2, FY group 3, through `_ORDINAL_QUARTER`): ARMANFIN "Q1 of FY27 has been an
+  encouraging start" -> `Q1 FY27`.
+- **Named FY with a space, apostrophe or hyphen.** The FY patterns accept `FY '25`, `FY 27`, `FY'27`, `FY-27`
+  and the left single quote; a guidance sentence names its own FY on a Q1-Q3 call (AZAD "guidance of 25%-30% for
+  FY '25" -> `FY25`) while a guidance-less figure stays empty (CUB "NIM for FY26" -> `''`).
+- **`during the year` / `first half of the year`.** They resolve to the call's fiscal year / `H1 FY<call fy>`
+  (empty on a Q1 call), never to the call quarter: TARACHAND -> `FY26` (was `Q4 FY26`), PDSL -> `H1 FY26` (was
+  `Q2 FY26`), MMP -> `FY26` (its printed call period is `Q4 FY26`, so FY26 is the call's FY; r5's `Q2 FY27` was
+  the forward approval target). The cue runs at the end of `_explicit_own_period`, and before a
+  forward cue through `_bound_quarter_before`, so a named own quarter still wins in the same sentence.
+
+Tests: `reality_engine/tests/test_obs_speaker.py` adds
+`test_r6_quarter_bound_figure_beats_same_quarter_last_year`, `test_r6_q1_of_fy27_form`,
+`test_r6_named_fy_space_apostrophe_hyphen`,
+`test_r6_year_and_first_half_never_anchor_the_call_quarter`; r5's
+`test_r5_five_stay_empty_cases_remain_empty` is renamed `test_r5_stay_empty_cases_remain_empty` (IOLCP anchors
+now), and `test_r4_stay_empty_cases_and_w47_remain_unchanged` asserts IOLCP `Q1 FY26`.
+`python -m pytest -q reality_engine/tests/test_obs_speaker.py` 74 passed;
+`python -m pytest -q reality_engine/tests/test_observations.py` 177 passed.
+
+### r6 measurement on the 394 reparse
+
+The live `D:/RealityEngine/hy4_out/obs_transcripts_394_v3.db` is no longer the r3-r5 baseline: on 26 Nov ~21:00
+it held 38,369 `page_reply` rows over 2,697 docs and 406,717 observation rows (a newer build has rewritten it).
+The closed `C:/RealityEngine/t242/tx394_reparse/tx394_r3.db` is the baseline, so r6 reparsed copies of it with
+the same `--reparse` command in five store shards (each with `--stores` = its 70 stores under
+`C:/RealityEngine/tg_build/full394`; the `--baseline` r3 copy, one `--out` copy per shard), as r5 did. The
+shards rebuilt 4,238 + 4,863 + 5,253 + 5,007 + 5,798 = 25,159 pages and 262,980 rows before / after; 0 of the
+1,797 reply docs fell outside the shards.
+
+| stat | r3 | r4 | r5 | r6 |
+|---|---|---|---|---|
+| pages | 25,159 | 25,159 | 25,159 | 25,159 |
+| rows before / after | 263,418 / 262,982 | 263,418 / 262,980 | 262,980 / 262,980 | 262,980 / 262,980 |
+| period anchored | 9,575 (brief: 9,579) | 8,575 | 9,959 | **10,241** |
+| speaker unverified | 3,685 | 3,687 | 3,687 | 3,687 |
+| short remarks dropped | 331 | 332 | 332 | 332 |
+| content-free dropped | 294 | 295 | 295 | 295 |
+
+The non-period counts equal r5 exactly (speaker carried 1,153, resolved 589, empty 232, moderator 366,
+not-a-call 9, not-a-person 2, 1,797 transcript docs, 82 not-call docs), so the shards reproduced the pipeline;
+only the anchor count moved: **+282 over r5 and +666 over r3**. The shards hold 10,190 rows with
+`period_source='call_period'` (the r3 copy 9,528; the r5 copies 9,903).
+
+Matched on `(doc_key, page, statement)` over `record_type='statement'`: 125,385 of 125,440 (the same match the
+r5 section records; the 6 unmatched rows are the P fragment rows whose pack text predates widening).
+1,769 statements regain an r3-empty period (r5 1,651), 1,115 lose one (r5 1,276), 301 are relabelled (r5 230).
+**`tx394_grade_r2`: 0 of the 36 graded-R rows change period or any other field** (54 of the 60 pack rows match
+by statement text; 0 change period, 0 change beyond period). 11 statement rows differ beyond period in
+`speaker` (9) and `status` (2) only — the same 11 rows the r5 section records from r4's speaker work.
+
+The nine evidence statements as the reparse stores them: IOLCP `Q1 FY26` (p4), BLS `Q1 FY27` (p5), SOLARINDS
+`Q1 FY25` (p3), ARMANFIN `Q1 FY27` (p3), AZAD `FY25` (p5, both the `for FY25` and `for FY '25` forms),
+TARACHAND `FY26` (p4), PDSL `H1 FY26` (p3), MMP `FY26` (p9; call `Q4 FY26`, so the call's FY).
+
+
 
 

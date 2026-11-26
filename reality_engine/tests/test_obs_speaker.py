@@ -1337,10 +1337,10 @@ def test_r4_stay_empty_cases_and_w47_remain_unchanged():
         "We expect to complete the acquisition during the current quarter.", "Q2 FY27") == ""
     assert ospeaker.anchored_period(
         "Quarterly revenue will cross INR 500 crore next quarter.", "Q2 FY27") == ""
-    # 2. IOLCP "same quarter last year"
+    # 2. IOLCP "same quarter last year" (r6: the bound "for the quarter" figure anchors the call quarter)
     assert ospeaker.anchored_period(
         "EBITDA for the quarter rose by 19.5% year-on-year to Rs. 69.5 crores, up from Rs. 58.2 crores in the "
-        "same quarter last year.", "Q1 FY26") == ""
+        "same quarter last year.", "Q1 FY26") == "Q1 FY26"
     # 3. CUB "NIM for FY26" on a Q1 call
     assert ospeaker.anchored_period("Our NIM for FY26 is 3.5%.", "Q1 FY26") == ""
     assert ospeaker.anchored_period("Expecting NIM in the range of 3.5% for FY26.", "Q1 FY26") == ""
@@ -1398,29 +1398,95 @@ def test_r5_own_period_cue_beats_sentence_wide_blocks():
         "Q4 FY25") == "FY25"
 
 
-def test_r5_five_stay_empty_cases_remain_empty():
-    """T-242 r5: the five r3/r4 stay-empty cases never take the call quarter."""
+def test_r5_stay_empty_cases_remain_empty():
+    """T-242 r5: the four r3/r4 stay-empty cases never take the call quarter (IOLCP left the set in r6)."""
     # 1. HFCL future quarter
     assert ospeaker.anchored_period(
         "We expect to complete the acquisition during the current quarter.", "Q2 FY27") == ""
     assert ospeaker.anchored_period(
         "Quarterly revenue will cross INR 500 crore next quarter.", "Q2 FY27") == ""
-    # 2. IOLCP "same quarter last year" figure
-    assert ospeaker.anchored_period(
-        "EBITDA for the quarter rose by 19.5% year-on-year to Rs. 69.5 crores, up from Rs. 58.2 crores in the "
-        "same quarter last year.", "Q1 FY26") == ""
-    # 3. CUB "NIM for FY26" on a Q1 call (another period's figure, not the call's)
+    # 2. CUB "NIM for FY26" on a Q1 call (another period's figure, not the call's)
     assert ospeaker.anchored_period("Our NIM for FY26 is 3.5%.", "Q1 FY26") == ""
     assert ospeaker.anchored_period("Expecting NIM in the range of 3.5% for FY26.", "Q1 FY26") == ""
-    # 4. KTKBANK #36 Y-o-Y comparative figure
+    # 3. KTKBANK #36 Y-o-Y comparative figure
     assert ospeaker.anchored_period(
         "On a Y-o-Y basis, NII for Q4 FY '26 stood at INR781 crores, recording an 8% Y-o-Y growth.",
         "Q4 FY26") == ""
-    # 5. EMSLIMITED #43 "results of the last quarter"
+    # 4. EMSLIMITED #43 "results of the last quarter"
     assert ospeaker.anchored_period(
         "As we have already uploaded the results of the last quarter, I am sure you are aware for which our "
         "operating income stood at Rs. 125.72 crores on stand-alone basis, which was a net increase of about 50% "
         "over the last quarter.", "Q1 FY27") == ""
+
+
+# ------------------------------------------------ T-242 r6: four narrow period fixes
+
+
+def test_r6_quarter_bound_figure_beats_same_quarter_last_year():
+    """T-242 r6(1): 'for the quarter' bound to its figure beats a same-quarter-last-year comparative."""
+    # IOLCP: 69.5 crore grew 19.5% this quarter; 58.2 crore is the base
+    assert ospeaker.anchored_period(
+        "EBITDA for the quarter rose by 19.5% year-on-year to Rs. 69.5 crores, up from Rs. 58.2 crores in the "
+        "same quarter last year.", "Q1 FY26") == "Q1 FY26"
+    # BLS: 891 crore is this quarter's revenue; 711 crore is the base
+    assert ospeaker.anchored_period(
+        "Consolidated Performance The consolidated revenue for the quarter was INR 891 crores, up 25% from "
+        "INR 711 crores in the same quarter last year.", "Q1 FY27") == "Q1 FY27"
+    # SOLARINDS: the bound figure precedes the guidance aside, which names no other period
+    assert ospeaker.anchored_period(
+        "The domestic explosives volume for the quarter grew by 16% year-on-year basis, which is in line with "
+        "our annual guidance for the year '25.", "Q1 FY25") == "Q1 FY25"
+    # a cue only after the forward word still never anchors (HFCL shape)
+    assert ospeaker.anchored_period(
+        "We expect to complete the acquisition during the current quarter.", "Q2 FY27") == ""
+
+
+def test_r6_q1_of_fy27_form():
+    """T-242 r6(2): 'Q1 of FY27' and 'first quarter of FY27' are named quarters."""
+    assert ospeaker.anchored_period(
+        "So Q1 of FY27 has been an encouraging start to the year and more importantly, the improvement that we "
+        "started seeing during the second half of FY26 has continued into this quarter.", "Q1 FY27") == "Q1 FY27"
+    assert ospeaker.anchored_period("Q2 of FY 27 was a strong quarter for us.", "Q2 FY27") == "Q2 FY27"
+    assert ospeaker.anchored_period(
+        "The first quarter of FY27 marks an encouraging start to the financial year.", "Q1 FY27") == "Q1 FY27"
+    # another quarter's form is not the call quarter
+    assert ospeaker.anchored_period("Q1 of FY27 was strong.", "Q3 FY27") == ""
+
+
+def test_r6_named_fy_space_apostrophe_hyphen():
+    """T-242 r6(3): an FY written with a space, apostrophe or hyphen is that FY, guidance included."""
+    for stmt in (
+        "Further, we continue to provide a guidance of 25%-30% for FY25 with improvement in our margins.",
+        "Finally, we are pleased to reaffirm our guidance of 25%, 30% revenue growth for FY '25 alongside an "
+        "anticipated improvement in our margin profiles.",
+    ):
+        assert ospeaker.anchored_period(stmt, "Q3 FY25") == "FY25"
+    for form in ("FY 27", "FY'27", "FY-27"):
+        assert ospeaker.anchored_period(
+            f"We reiterate our guidance of 20% growth for {form}.", "Q2 FY27") == "FY27"
+    # CUB's guidance-less figure on a Q1 call stays empty (r5 stay-empty kept)
+    assert ospeaker.anchored_period("Expecting NIM in the range of 3.5% for FY26.", "Q1 FY26") == ""
+    assert ospeaker.anchored_period("Our NIM for FY26 is 3.5%.", "Q1 FY26") == ""
+
+
+def test_r6_year_and_first_half_never_anchor_the_call_quarter():
+    """T-242 r6(4): 'during the year' -> call FY; 'first half of the year' -> H1 of it (empty on a Q1 call)."""
+    assert ospeaker.anchored_period(
+        "FY '26 was the second consecutive year of meaningful capex for the company. We deployed INR1,434 "
+        "million during the year broadly in line with our INR1,450 million that we had spent in FY '25. "
+        "Cumulatively, over the last two financial years, we have added approximately INR290 crores of capex, "
+        "taking our gross block from INR298 crores as of March '24 to INR558 crores as of 31st March 2026, "
+        "which is an 87% increase in 2 years.", "Q4 FY26") == "FY26"
+    assert ospeaker.anchored_period(
+        "During the first half of the year, our focus has been on profitability, cost optimization, and cash "
+        "generation. These actions should start delivering somewhere in Quarter 3 and then in Quarter 4.",
+        "Q2 FY26") == "H1 FY26"
+    assert ospeaker.anchored_period(
+        "During the first half of the year, our focus has been on profitability.", "Q1 FY26") == ""
+    assert ospeaker.anchored_period(
+        "During the year, the company successfully completed multiple product validations and also developed "
+        "the FRP rod manufacturing line in-house, which is expected to strengthen quality control and long-term "
+        "product reliability.", "Q2 FY27") == "FY27"
 
 
 def test_r4_metric_heading_label_not_stripped_while_roster_and_role_strip():

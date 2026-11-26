@@ -8839,3 +8839,11 @@
 -- 26 Nov `gate_not_company`: industry/country/peer/customer rows never verified (read + recheck); recheck keeps not_company/subsidiary_unnamed.
 +- 26 Nov AR gates r4 swapped; r5+r6 code merged (subset-as-total, related-party scope, other-entity blocks, column periods); live AR DB not rechecked (6 h) - swap after a fresh recheck; r7 for ckpt_0004 kinds.
 ```
+
+## 2026-11-26T22:32:04 | kakazuya (Wolf) | branch main
+```diff
+-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 18:05 IST (dsh T-242 xbrl annual; earlier Wolf 17:00)
++# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 22:40 IST (dsh T-242 tx statements r6)
+-- 26 Nov tx statements r3 -> r4 (failed) -> r5 merged: own-period token bound to its figure wins; period_anchored 9,959 (r3 9,579); r6 for 4 remaining cases (`tasks/t242_statement_r3_measure.md`).
++- 26 Nov tx statements r3 -> r5 -> r6 merged: own-period token bound to its figure wins; period_anchored 10,241 (r3 9,575); r7 list in `D:/RealityEngine/t242/grades/tx_r6_review_eagle.md`.
+```
