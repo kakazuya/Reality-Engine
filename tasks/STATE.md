@@ -8,7 +8,8 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - 24-26 Nov T-242: `grade_pack.py`, `docs/grading/`. audits 4-8: 45R3P / 36R1P11M / 35R5P2W5M1N / 29R16P1W1M1N / 29R7P2W10M. F3/4: 25-row window <19 kB; named call by call or filing date ±3 d. F5: named call served by its printed call-date docs. F8/8b: paraphrase synonyms + IDF, prepared remarks ranked, capex alias, disclaimed targets not first, quarantined never served; audit8 27R->32R. F7: company figure first, group guidance election; audit7 30R->39R. F6: quarantined guidance disclosed, obs guidance fallback, aliases.
 - OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD (`--start/--max-workers`), Zen rotates Nemotron VL / DeepSeek Flash by speed.
 - 26 Nov tx statement window (Eagle, 0e8b95f3): sentence snap + referent widen, page-local; recheck dedupes exact repeats. Filter: logistics/filler dropped, 'this quarter' anchored.
-- 26 Nov AR gates r4: jv/associate scopes (unnamed never verified), subsidiary/parent need a printed name, junk ordinals/tenures dropped; deck untied chart values unverified.
+- 26 Nov results gates r2: cash-flow, basis, duration, scale, JV rules (0/40 R hit).
+- 26 Nov AR gates r4: jv/associate scopes, scope needs a printed name, junk dropped; deck untied values unverified.
 - 26 Nov deck junk gate r5: decorative slide numbers dropped (0/118 graded R hit; 27/30 OCR J).
 - 26 Nov `gate_not_company`: industry/country/peer/customer rows never verified (read + recheck); recheck keeps not_company/subsidiary_unnamed.
 - Bulk hy4 reads: one Drive fetch per doc (`raw_store.shared_cache`).

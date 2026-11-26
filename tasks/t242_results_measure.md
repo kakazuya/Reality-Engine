@@ -143,3 +143,9 @@ The 9 J rows (31, 36, 41, 42, 44, 47, 50, 53, 54) are quarantined; 33/51/60 are 
 
 - `4534` BIRLACORPN p6: `verified` -> `unverified`, unit `Crores`/1e+07 -> `Crores`/1e+07, scope `company` -> `company`; profit_before_exceptional_items_and_tax; vt='5'; label='Net Profit before tax and exceptional items'; reason="results_value_fragment: '5' is the start of the printed figure '55.43'"
 
+
+## results gates r2 (26 Nov 2026, T-242, obs_results_fy27.db copy)
+
+Measured by a scratch script calling the same `apply_results_row_gates` over the baseline rows and the stores' `doc_page` texts (1,858 pages; no model, no fetch): 49,993 rows, 14,171 verified. 1,201 verified rows become unverified across the five r2 rules (no rule over the 3% stop): `basis_unstated` 380 (2.68%), `results_period_duration_missing` 281 (1.98%), `results_period_not_a_period` 239 (1.69%), cash-flow line 277 (1.95%), `results_equity_accounted` 24. 625 cash-flow lines remapped in all (348 already unverified); 291 per-share rows lose the money scale, status unchanged. Graded-R rows of results_ckpt1 (40): 0 status changes; row 42 only gains `basis='standalone'`.
+P rows: 2/16/25 basis_unstated; 30/36/37/43 -> NEW:<line>_cash_flow + unverified; 31 bare year; 33 basis + release date; 35 associate + basis cleared; 46 EPS unit '₹'; 59 duration; 60 entity_scope jv + value -8193.50; 8/48/51/52 basis carried (52 also Lakhs); 11 Lakhs; 24 (misaligned OCR) and 26 (no duration word on its page) unchanged.
+A full `--recheck` of a copy was started but spent >25 min loading page words/PDFs and was abandoned; the gate path is the same function.
