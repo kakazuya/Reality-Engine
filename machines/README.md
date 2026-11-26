@@ -3,10 +3,12 @@
 This folder is about running the machines, not about the Reality Engine itself. Put new setup, access and operating notes here. Live work status stays in `tasks/STATE.md`.
 
 **hy4 reading loops, remote control (26 Nov 2026, Eagle; for after the move, over Tailscale/SSH):**
-`pwsh -File reality_engine/scripts/hy4_ctl.ps1 status|start|stop|adopt [transcripts|ar]`.
-- Two loops:
+`pwsh -File reality_engine/scripts/hy4_ctl.ps1 status|start|stop|adopt [transcripts|ar|results]`.
+- Three loops:
   - `transcripts`: `.tmp/hy4_always.sh`, log `D:/RealityEngine/hy4_out/hy4_lowssd.log`;
-  - `ar`: `.tmp/hy4_ar.sh`, log `hy4_ar.log`.
+  - `ar`: `.tmp/hy4_ar.sh`, log `hy4_ar.log`;
+  - `results`: `.tmp/hy4_results.sh`, log `hy4_results.log` (Wolf's, 26 Nov; readers matched as its python children).
+- The loop scripts live in the gitignored `.tmp/`: keep `.tmp/hy4_*.sh` local through any Drive move.
 - Git bash re-launches itself (`exec bash "$0"`, `$(...)` subshells) as new Windows processes, so one recorded PID
   never covers a loop. Every action therefore finds the loop's processes by their exact command line: bash running
   the loop script, and python readers whose `--out` is one of the loop's DBs. It then acts on those PIDs only, never

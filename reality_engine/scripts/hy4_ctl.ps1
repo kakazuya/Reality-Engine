@@ -1,7 +1,8 @@
 # T-242 (26 Nov 2026, Eagle): status / start / stop the always-on hy4 reading loops by PID, never by image name
 # (a kill-by-name on 25 Nov 21:14 ended every worker and MCP server on the machine).
 # Usable over SSH/Tailscale after the move:   pwsh -File reality_engine/scripts/hy4_ctl.ps1 status|start|stop [loop]
-# Loops: transcripts (.tmp/hy4_always.sh, log hy4_lowssd.log) and ar (.tmp/hy4_ar.sh, log hy4_ar.log).
+# Loops: transcripts (.tmp/hy4_always.sh, log hy4_lowssd.log), ar (.tmp/hy4_ar.sh, log hy4_ar.log) and
+# results (.tmp/hy4_results.sh, log hy4_results.log).
 #
 # 26 Nov 01:40 fix: Git bash re-launches itself (`exec bash "$0"`, `$(...)` subshells) as NEW Windows processes, so
 # one recorded PID does not cover a loop, and earlier manual starts had left three transcript loops running, two
@@ -18,6 +19,9 @@ $Loops = @{
   transcripts = @{ script = '.tmp/hy4_always.sh'; log = "$Out\hy4_lowssd.log";
                    dbs = @('obs_transcripts_fy27_v3.db', 'obs_transcripts_394_v3.db', 'obs_decks_fy27.db') }
   ar          = @{ script = '.tmp/hy4_ar.sh';     log = "$Out\hy4_ar.log"; dbs = @() }
+  # 26 Nov 16:45 (Eagle): Wolf's results loop; readers matched as the loop's own python children, like ar, so a
+  # recheck that writes a copy named obs_results_fy27.db elsewhere is never touched
+  results     = @{ script = '.tmp/hy4_results.sh'; log = "$Out\hy4_results.log"; dbs = @() }
 }
 $names = if ($Loop -eq 'all') { $Loops.Keys } else { @($Loop) }
 
@@ -27,8 +31,12 @@ function Get-LoopProcs($cfg) {
   # is one of the loop's DBs (26 Nov: matching any mention caught Wolf's recheck reader with --baseline <db>)
   $all = Get-CimInstance Win32_Process
   $script = [regex]::Escape($cfg.script)
-  $wrappers = @($all | Where-Object { $_.Name -eq 'bash.exe' -and $_.CommandLine -match $script -and $_.CommandLine -match ' -lc ' })
-  $loops = @($all | Where-Object { $_.Name -eq 'bash.exe' -and $_.CommandLine -match $script -and $_.CommandLine -notmatch ' -lc ' })
+  # 26 Nov 16:50: a loop instance is bash with the script as its FIRST argument; any other bash naming the script
+  # (the -lc start wrapper, a Claude session's `bash -c "source shell-snapshot ...; ... .tmp/hy4_x.sh"`) is a wrapper,
+  # never a loop (Wolf's Claude Bash wrapper had shown the results loop as DUPLICATE)
+  $first = 'bash\.exe"?\s+' + $script
+  $wrappers = @($all | Where-Object { $_.Name -eq 'bash.exe' -and $_.CommandLine -match $script -and $_.CommandLine -notmatch $first })
+  $loops = @($all | Where-Object { $_.Name -eq 'bash.exe' -and $_.CommandLine -match $first })
   $loopIds = @($loops.ProcessId)
   $roots = @($loops | Where-Object { $loopIds -notcontains $_.ParentProcessId })
   $readers = @()
