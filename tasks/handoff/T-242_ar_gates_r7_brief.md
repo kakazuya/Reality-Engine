@@ -66,3 +66,12 @@ Never write D:/RealityEngine or C:/RealityEngine files except your own scratch u
 never kill processes by name. Structural rules only - never a per-company list.
 Stop if: a rule would downgrade any of the 43 R rows and cannot be narrowed in 2 tries; or verified downgrades pass 5%.
 Budget: ~120 tool calls.
+
+## Added 27 Nov 00:45 (Eagle): AR ckpt_0005 FAIL 37/5/18/0 - same kinds, more evidence (fix note ckpt_0005.fix.md)
+Kind A also covers: shareholding-pattern rows (a category such as 'Alternate Investment Funds', a named promoter or top-10 shareholder) -> holder in
+customer/segment, never bare count.shares / shareholding_pct; a single debenture tranche ('137 Series 141 (Tranche 1)') and a single funding source
+('Borrowings from Banks' % of total liabilities); a coal type under 'According to type of Coal'; a region in a market-rank sentence ('South Africa ... #2').
+Kind B also covers: a subsidiary's note table carried over pages (BAJAJFINSV Note 46.4.C Bajaj Life ECL; Apollo Healthco ESOP inputs from the page before);
+an associate column in an RPT table tagged subsidiary (A2ZINFRA); a page footer 'Standalone Financial Statements' beats a default consolidated basis.
+Kind C: map 'Return on Investment' to its own code (never roa); a '% deviation' column of a named ratio keeps the ratio's name.
+Accept addition: the 18 ckpt_0005 W rows (C:/RealityEngine/t242/ar_grade_ckpt5/pack.jsonl) end unverified or corrected, and 0 of its 37 R rows change status.
