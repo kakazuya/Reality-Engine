@@ -47,11 +47,15 @@
       }
     },
     "gemini-worker": {
-      "command": "python",
+      "type": "stdio",
+      "command": "C:/Users/warri/AppData/Local/Programs/Python/Python314/python.exe",
       "args": [
-        "plugins/gemini-worker/gemini_worker.py",
+        "C:/Users/warri/Downloads/Info_Diffusion_Model/plugins/gemini-worker/gemini_worker.py",
         "--mcp"
-      ]
+      ],
+      "env": {
+        "PYTHONUTF8": "1"
+      }
     }
   }
 }
