@@ -40,6 +40,7 @@ import argparse
 import calendar
 import hashlib
 import json
+import os
 import random
 import re
 import sqlite3
@@ -5625,6 +5626,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.report:
         lines = _report_lines(Path(args.report), args.seed)
     else:
+        # T-242 (26 Nov): the store root comes from T228_STORE_ROOT and silently defaulted to measure10, where the
+        # same cNN names hold other companies; a fresh9 rerun read the wrong set.  Name the root first, refuse a
+        # --stores name missing under it.
+        from reality_engine.research.driver_claims import STORE_ROOT
+        src = "T228_STORE_ROOT" if os.environ.get("T228_STORE_ROOT") else "default; set T228_STORE_ROOT"
+        print(f"store root: {STORE_ROOT} ({src})", flush=True)
+        missing = [s for s in (args.stores or []) if not store_path(s).is_file()]
+        if missing:
+            print(f"error: {len(missing)} store(s) not under {STORE_ROOT}: {' '.join(missing[:10])}", file=sys.stderr)
+            return 2
         only = None
         if args.only:
             from reality_engine.research.selector import Selector
