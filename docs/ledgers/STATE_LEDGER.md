@@ -8813,3 +8813,9 @@
 -00000. 26 Nov deck-wide: rechecked copy swapped into obs_decks_wide.db (backup _before_r5ocr), LOADED via SUPPLEMENTS 08:10 (39,941 rows, 176 stores). OCR rows QUARANTINED (grade2 FAIL 18R/13P/5W/24J); `ocr_fill --classify` merged.
 +00000. 26 Nov deck-wide rechecked copy loaded (39,941 rows); OCR rows quarantined.
 ```
+
+## 2026-11-26T20:49:48 | kakazuya (Wolf) | branch main
+```diff
+-- 26 Nov tx statements r3 merged (e8a03846): sentence snap/widen, labels stripped, period only on an explicit own-period cue (call_period 27,022->9,531); r4 (own-period cues) under Eagle review. `tasks/t242_statement_r3_measure.md`.
++- 26 Nov tx statements r3 -> r4 (failed) -> r5 merged: own-period token bound to its figure wins; period_anchored 9,959 (r3 9,579); r6 for 4 remaining cases (`tasks/t242_statement_r3_measure.md`).
+```

@@ -7,7 +7,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - Extraction: `v2/page_words.py`->`page_layout.py`->`page_route.py` (T-189; `table_or_chart` on IMAGE, `needs_ocr` on OCR since T-238 + T-242 deck options)->`reference_geom.py` (T-185)->`page_reader.py` -> `page_cell` verified/unverified/quarantined, served by `pilot3_cells`. T-199 atoms (`page_atom` v10): `PILOT3_BLUEPRINT.md`.
 - 24-26 Nov T-242 retrieval audits 4-9 (`grade_pack.py`, `docs/grading/`); fixes F3-F9 in DEVELOPER_GUIDE; audit9 23->32R.
 - OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD (`--start/--max-workers`), Zen rotates Nemotron VL / DeepSeek Flash by speed.
-- 26 Nov tx statements r3 merged (e8a03846): sentence snap/widen, labels stripped, period only on an explicit own-period cue (call_period 27,022->9,531); r4 (own-period cues) under Eagle review. `tasks/t242_statement_r3_measure.md`.
+- 26 Nov tx statements r3 -> r4 (failed) -> r5 merged: own-period token bound to its figure wins; period_anchored 9,959 (r3 9,579); r6 for 4 remaining cases (`tasks/t242_statement_r3_measure.md`).
 - 26 Nov results gates r2-r3c merged (r3d recheck running); verified 14,171->11,069 on r3c copy (`tasks/t242_results_measure.md`).
 - 26 Nov AR gates r4: jv/associate scopes, printed-name scope, junk; deck untied values.
 - 26 Nov `gate_not_company`: industry/country/peer/customer rows never verified (read + recheck); recheck keeps not_company/subsidiary_unnamed.

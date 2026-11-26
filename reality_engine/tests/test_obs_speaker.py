@@ -1276,3 +1276,184 @@ def test_a_copied_speaker_label_is_stripped_from_the_statement_start():
     assert rows2[0]["statement"] == speech
     assert stats2["labels_stripped"] == 1
 
+
+# ------------------------------------------------ T-242 r4: own-period cues + heading strip guard
+
+
+def test_r4_regains_own_period_cues_across_the_five_evidence_cases():
+    """T-242 r4: as-on/basis period-end date, quarterly metric/this quarter's, and over-year-ago base."""
+    # 1. ASHOKA: "As on 31st December 2024 ..." on a Q3 FY25 call (any printed date form) -> Q3 FY25; other date -> ""
+    assert ospeaker.anchored_period(
+        "As on 31st December 2024, our balance order book stands at INR16,457 crores.", "Q3 FY25") == "Q3 FY25"
+    assert ospeaker.anchored_period(
+        "Total debt as at 31.12.2024 stood at INR2,722 crores.", "Q3 FY25") == "Q3 FY25"
+    assert ospeaker.anchored_period(
+        "Balance order book as of December 31, 2024 was INR16,457 crores.", "Q3 FY25") == "Q3 FY25"
+    assert ospeaker.anchored_period(
+        "As on 30th September 2024, our balance order book stood at INR15,000 crores.", "Q3 FY25") == ""
+    assert ospeaker.anchored_period(
+        "As on 15th December 2024, our balance order book stood at INR15,000 crores.", "Q3 FY25") == ""
+
+    # 2. HINDZINC: "lowest quarterly zinc cost ..." (even with "year-on-year" in the same sentence) -> call quarter
+    assert ospeaker.anchored_period(
+        "On the cost front, despite the volatile geopolitical environment, we achieved the lowest quarterly zinc cost "
+        "of production, excluding royalty, since underground transition to USD851 per ton, reflecting a decline of "
+        "16% year-on-year.", "Q1 FY27") == "Q1 FY27"
+
+    # 3. POONAWALLA #18: "... basis March 2026 balance sheet" on a Q4 FY26 call -> Q4 FY26
+    assert ospeaker.anchored_period(
+        "With successful INR2,500 crores of capital raise, the capital adequacy ratio stands at 20.74%. "
+        "This is basis the March 2026 balance sheet and the capital raise that we talked about.", "Q4 FY26") == "Q4 FY26"
+    assert ospeaker.anchored_period(
+        "Our debt equity ratio stood at 4.67x. This is before the capital raise of INR2,500 crores, which we did in "
+        "April of 2026 through the QIP route. Post capital raise and basis March 2026 balance sheet, the proforma "
+        "debt equity would stand at 3.78x.", "Q4 FY26") == "Q4 FY26"
+    assert ospeaker.anchored_period(
+        "This is basis December 2025 balance sheet.", "Q4 FY26") == ""
+
+    # 4. UJJIVANSFB: "stood at Rs. 25,274 crores ... growth over December 23" (1 year or 1 quarter before end)
+    assert ospeaker.anchored_period(
+        "Retail deposits stood at Rs. 25,274 crores accounting for 73% of total deposits and demonstrating a 24% "
+        "growth over December 23.", "Q3 FY25") == "Q3 FY25"
+    assert ospeaker.anchored_period(
+        "Retail deposits stood at Rs. 25,274 crores, up 5% over September 24.", "Q3 FY25") == "Q3 FY25"
+    assert ospeaker.anchored_period(
+        "Retail deposits stood at Rs. 25,274 crores, up 10% over June 24.", "Q3 FY25") == ""
+
+    # 5. AEROFLEX #22: "quarterly revenue crossing INR200 crores" and "this quarter's" -> call quarter
+    assert ospeaker.anchored_period(
+        "We are pleased to report that our best ever results with quarterly revenue crossing INR200 crores milestone "
+        "for the first time ever.", "Q2 FY27") == "Q2 FY27"
+    assert ospeaker.anchored_period("This quarter's revenue crossed INR200 crores.", "Q2 FY27") == "Q2 FY27"
+    # Generic or figure-free "quarterly" stays empty
+    assert ospeaker.anchored_period("Turnover grew 74% on a quarterly basis.", "Q2 FY27") == ""
+    assert ospeaker.anchored_period("These are monthly and quarterly fluctuations.", "Q2 FY27") == ""
+
+
+def test_r4_stay_empty_cases_and_w47_remain_unchanged():
+    """T-242 r4/r5: forward cues, same quarter last year, last quarter, other FY/H/Q, future dates stay empty."""
+    # 1. HFCL future quarter
+    assert ospeaker.anchored_period(
+        "We expect to complete the acquisition during the current quarter.", "Q2 FY27") == ""
+    assert ospeaker.anchored_period(
+        "Quarterly revenue will cross INR 500 crore next quarter.", "Q2 FY27") == ""
+    # 2. IOLCP "same quarter last year"
+    assert ospeaker.anchored_period(
+        "EBITDA for the quarter rose by 19.5% year-on-year to Rs. 69.5 crores, up from Rs. 58.2 crores in the "
+        "same quarter last year.", "Q1 FY26") == ""
+    # 3. CUB "NIM for FY26" on a Q1 call
+    assert ospeaker.anchored_period("Our NIM for FY26 is 3.5%.", "Q1 FY26") == ""
+    assert ospeaker.anchored_period("Expecting NIM in the range of 3.5% for FY26.", "Q1 FY26") == ""
+    # 4. BPLPHARMA future milestones
+    assert ospeaker.anchored_period(
+        "Key milestones are commissioning of the facility in September of 2027 and validation by March 2028.",
+        "Q4 FY26") == ""
+    # r5: a guidance target takes its named period ("by FY28" -> FY28), never the call quarter
+    assert ospeaker.anchored_period(
+        "We target quarterly milestone revenue of INR 70 crores by FY28.", "Q4 FY26") == "FY28"
+    # 5. BOROLTD H1 figure on a Q2 call
+    assert ospeaker.anchored_period(
+        "In H1 FY'26, the company recorded an operating EBITDA of INR 90.1 crores.", "Q2 FY26") == ""
+    assert ospeaker.anchored_period(
+        "Quarterly EBITDA in H1 FY26 was INR 45 crores.", "Q2 FY26") == ""
+    # 6. KTKBANK #36 Y-o-Y comparative figure
+    assert ospeaker.anchored_period(
+        "On a Y-o-Y basis, NII for Q4 FY '26 stood at INR781 crores, recording an 8% Y-o-Y growth.",
+        "Q4 FY26") == ""
+    # 7. EMSLIMITED #43 "results of the last quarter"
+    assert ospeaker.anchored_period(
+        "As we have already uploaded the results of the last quarter, I am sure you are aware for which our "
+        "operating income stood at Rs. 125.72 crores on stand-alone basis, which was a net increase of about 50% "
+        "over the last quarter.", "Q1 FY27") == ""
+    # W #47 CAPACITE stays FY25
+    assert ospeaker.anchored_period(
+        "EBITDA for FY '25 stood at INR437 crores, up by 20% as compared to INR363 crores in FY '24.",
+        "Q4 FY25") == "FY25"
+
+
+def test_r5_own_period_cue_beats_sentence_wide_blocks():
+    """T-242 r5: an explicit own-period token bound to its figure wins; a comparative names the base only."""
+    # ASKAUTOLTD: the comparative names the BASE of 65 crore; 103 crore is bound to "in Q1 FY25"
+    assert ospeaker.anchored_period(
+        "EBITDA in Q1 FY25 at Rs. 103 crore against Rs. 65 crore in the same quarter last year",
+        "Q1 FY25") == "Q1 FY25"
+    # TVSSCS: the own figure's Q4 FY26 wins over the sentence's other-Q base
+    assert ospeaker.anchored_period(
+        "Our revenue for the quarter increased from Rs. 632.8 crores in Q4 FY25 to Rs. 813.3 crores in Q4 FY26",
+        "Q4 FY26") == "Q4 FY26"
+    # MEDANTA: "during the quarter" is bound to the own figure; "same quarter last year" names the base
+    assert ospeaker.anchored_period(
+        "During the quarter, revenue grew 12.9% to INR10,513 million compared to INR8,830 million in the same "
+        "quarter last year", "Q4 FY25") == "Q4 FY25"
+    # AZAD: guidance takes its named target year, never empty
+    assert ospeaker.anchored_period("We reaffirm our guidance of 25-30% for FY'25", "Q4 FY25") == "FY25"
+    # an "this quarter" own figure after a "last quarter" base
+    assert ospeaker.anchored_period("last quarter it was 23, this quarter it is 24 percent", "Q1 FY26") == "Q1 FY26"
+    # ACUTAAS: the call's own Q1 FY25 wins over the sentence's other Q4 FY24
+    assert ospeaker.anchored_period(
+        "The full quarter impact was seen in Q1 FY'25 and Q4 FY'24 was a one-off", "Q1 FY25") == "Q1 FY25"
+    # AWFIS: an actual FY24 base does not stop the guidance's own FY25 target
+    assert ospeaker.anchored_period(
+        "Capex spends for FY24 stood at INR142 crores while for FY25 we expect it around INR200 crores",
+        "Q4 FY25") == "FY25"
+
+
+def test_r5_five_stay_empty_cases_remain_empty():
+    """T-242 r5: the five r3/r4 stay-empty cases never take the call quarter."""
+    # 1. HFCL future quarter
+    assert ospeaker.anchored_period(
+        "We expect to complete the acquisition during the current quarter.", "Q2 FY27") == ""
+    assert ospeaker.anchored_period(
+        "Quarterly revenue will cross INR 500 crore next quarter.", "Q2 FY27") == ""
+    # 2. IOLCP "same quarter last year" figure
+    assert ospeaker.anchored_period(
+        "EBITDA for the quarter rose by 19.5% year-on-year to Rs. 69.5 crores, up from Rs. 58.2 crores in the "
+        "same quarter last year.", "Q1 FY26") == ""
+    # 3. CUB "NIM for FY26" on a Q1 call (another period's figure, not the call's)
+    assert ospeaker.anchored_period("Our NIM for FY26 is 3.5%.", "Q1 FY26") == ""
+    assert ospeaker.anchored_period("Expecting NIM in the range of 3.5% for FY26.", "Q1 FY26") == ""
+    # 4. KTKBANK #36 Y-o-Y comparative figure
+    assert ospeaker.anchored_period(
+        "On a Y-o-Y basis, NII for Q4 FY '26 stood at INR781 crores, recording an 8% Y-o-Y growth.",
+        "Q4 FY26") == ""
+    # 5. EMSLIMITED #43 "results of the last quarter"
+    assert ospeaker.anchored_period(
+        "As we have already uploaded the results of the last quarter, I am sure you are aware for which our "
+        "operating income stood at Rs. 125.72 crores on stand-alone basis, which was a net increase of about 50% "
+        "over the last quarter.", "Q1 FY27") == ""
+
+
+def test_r4_metric_heading_label_not_stripped_while_roster_and_role_strip():
+    """T-242 r4: CUB 'Cost-to-income ratio:' is never stripped as a speaker label; roster/role labels still strip."""
+    assert ospeaker._is_heading_label("Cost-to-income ratio")
+    assert not ospeaker.is_person_speaker("Cost-to-income ratio")
+
+    cub_stmt = "Cost-to-income ratio: Our cost-to-income ratio for FY '25 is at 47.77%."
+    assert ospeaker.strip_leading_speaker_label(cub_stmt, "Cost-to-income ratio") == (cub_stmt, False)
+    assert ospeaker.strip_leading_speaker_label(cub_stmt, "R. Vijay Anandh") == (cub_stmt, False)
+    assert ospeaker.strip_leading_speaker_label(
+        cub_stmt, "Cost-to-income ratio", known_names={"r vijay anandh"}) == (cub_stmt, False)
+
+    # Roster speaker and role-word labels still strip
+    pages = [
+        (1, "City Union Bank Limited\nMANAGEMENT:\nMr. R. Vijay Anandh - Executive Director\n" + _CALL_HEAD + _CALL_TAIL),
+        (2, "R. Vijay Anandh: Our NIM was 3.63%.\nAnil Kumar, Head of Treasury: Treasury income rose.\n"
+            "Anita Rao, Moderator: Management reported 12% margin.\n"
+            "S. Krishnan, Compliance Officer: Trading window stays closed.\n"
+            + cub_stmt + "\n"),
+    ]
+    rows = [
+        _statement(2, cub_stmt, speaker="R. Vijay Anandh"),
+        _statement(2, "R. Vijay Anandh: Our NIM was 3.63%.", speaker="R. Vijay Anandh"),
+        _statement(2, "Anil Kumar, Head of Treasury: Treasury income rose.", speaker="Anil Kumar"),
+        _statement(2, "Anita Rao, Moderator: Management reported 12% margin.", speaker="Anita Rao"),
+        _statement(2, "S. Krishnan, Compliance Officer: Trading window stays closed.", speaker="S. Krishnan"),
+    ]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "CUB", ["City Union Bank Limited"])
+    assert rows[0]["statement"] == cub_stmt
+    assert rows[1]["statement"] == "Our NIM was 3.63%."
+    assert rows[2]["statement"] == "Treasury income rose."
+    assert rows[3]["statement"] == "Management reported 12% margin."
+    assert rows[4]["statement"] == "Trading window stays closed."
+    assert stats["labels_stripped"] == 4
+
