@@ -3648,6 +3648,37 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   11 non-period statement changes are the same speaker/status rows r5's review records from r4. The non-period
   counts equal r5 (1,153 carried, 589 resolved, 332 short remarks, 295 content-free, 3,687 speaker unverified);
   `test_observations.py` 177 passed.
+  **r7 (27 Nov, DeepSeek): the explicit own-period cue bound to its figure anchors.** Wolf review: a past-tense recap that names "Qn FYnn" keeps that named FY (a bare "Q4" takes the call's FY). (1) a named FY bound by
+  "for/in/during ... FYnn" anchors that FY (`YASHO` "planned outlay for FY27" -> FY27); inside the call's own year
+  only a plan/guidance/target/outlay word (or a "for the full year FYnn" reporting phrase) does, so `CUB`
+  "NIM for FY26" stays empty; a bound FY after a comparative connector (`over`, `versus`, `compared to`, W #47
+  "in FY '24") names the base and never anchors. (2) a quarter cue ("in this quarter", "for the quarter",
+  "this time", never "this time last year") is searched over the whole sentence, so it anchors the figure before it even when a forward word
+  opens the sentence (`TRIVENI` "... you will note ... broadly been the same in this quarter"; `PSB` "this time
+  these slippages are at Rs.207 crores ... for the quarter ... will be annualised"); a cue whose clause holds no
+  figure (HFCL) still stays empty. (3) a guidance "for the year" bound to a figure is the guidance year -- the
+  coming FY on a Q4 call, the current FY on a Q1-Q3 call (`HINDZINC` Q2 FY26 -> FY26); "for the year ended
+  <date>" is not a target. (4) "stood/stands/reached <figure>" with only a year-on-year comparative and no named
+  period is the call period (`WELENT` "Revenue from operations stood at INR845 crores, marking a 9% year-on-year
+  decline" -> Q1 FY26, the transcript's printed header period); a "was ... Y-o-Y" row or
+  a named period is left alone. (5) a past-tense recap ("last earnings call ... had shared ... close Q4") keeps
+  its own quarter in the call's FY (`TARACHAND` Q4 FY26, not the later FY27 sentence) and a started operation
+  ("has started/commenced/commissioned ... 1.8 to 3 million units") keeps the call period (`UNOMINDA` Q2 FY25);
+  a "this year"/"during the year" cue, a bare 19xx/20xx year, or a named period in that sentence keeps its own
+  meaning. Tests `test_r7_yasho_planned_outlay_for_fy27_anchors`,
+  `test_r7_psb_this_time_and_for_the_quarter_beat_the_trailing_forward`,
+  `test_r7_triveni_this_quarter_after_you_will_note_anchors`,
+  `test_r7_hindzinc_guidance_for_the_year_takes_the_guidance_year`,
+  `test_r7_welent_stood_at_with_only_a_yoy_comparative_is_the_call_period`,
+  `test_r7_tarachand_recap_keeps_its_quarter_and_never_moves_to_fy27`,
+  `test_r7_unominda_completed_action_keeps_the_call_period`,
+  `test_r7_keep_cases_hold_the_r3_to_r6_periods` (82 passed). On the same 25,159-page 394 reparse
+  (`tasks/t242_statement_r3_measure.md` r7 section; six store shards): 11,296 statement rows carry an anchored
+  period (r6 shards 10,190; r3 copy 9,528); 2,742 statements regain an r3-empty period (r6 1,769), 984 lose one
+  (r6 1,115) and 363 are relabelled (r6 301; seed-7 15 relabels graded 7 better / 6 neutral / 2 worse, r6
+  2-3 worse). `tx394_grade_r2`: 0 of the 54 matched pack rows change (the 36 graded-R rows included; the one
+  pack row the wider rule had anchored, ASTERDM p4, is empty again). `test_obs_speaker.py` 82 passed,
+  `test_observations.py` 177 passed.
 
 ### P. Checkpoint grading packs: one command, two rubrics (T-242, 25 Nov 2026)
 

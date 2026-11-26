@@ -279,6 +279,45 @@ The nine evidence statements as the reparse stores them: IOLCP `Q1 FY26` (p4), B
 `Q1 FY25` (p3), ARMANFIN `Q1 FY27` (p3), AZAD `FY25` (p5, both the `for FY25` and `for FY '25` forms),
 TARACHAND `FY26` (p4), PDSL `H1 FY26` (p3), MMP `FY26` (p9; call `Q4 FY26`, so the call's FY).
 
+### r7 measurement on the 394 reparse
+
+Same closed baseline, same `--reparse` path: six shards over
+`C:/RealityEngine/tg_build/full394` (`--stores-root`; each shard `--only` its 300 `page_reply` doc_keys, the
+`--baseline` a sqlite-backup copy of `C:/RealityEngine/t242/tx394_reparse/tx394_r3.db`, one `--out` copy per
+shard). The shards rebuilt 4,202 + 4,054 + 4,243 + 4,157 + 4,275 + 4,228 = 25,159 pages and 262,980 rows before
+/ after; 0 reply docs fell outside the shards. Each shard's `period_anchored`: 1,914 / 1,793 / 1,856 / 2,004 /
+1,901 / 1,929 = **11,397** (r6 10,241). The r7 core rules were measured by that reparse; the two final
+narrowings (the completed-action cue limited to started/commenced/commissioned/launched/inaugurated/
+operationalised, and "for FYnn" of the call's own year on a Q4 call) were then re-measured by re-running
+`anchored_period` over the six shard outputs for every row the anchoring pass touches (the only changed code
+path): **11,296** stored rows carry an anchored period (r6 shards 10,190; the r3 copy 9,528).
+
+| stat | r3 | r5 | r6 | r7 |
+|---|---|---|---|---|
+| pages | 25,159 | 25,159 | 25,159 | 25,159 |
+| rows before / after | 263,418 / 262,982 | 262,980 / 262,980 | 262,980 / 262,980 | 262,980 / 262,980 |
+| period anchored (stored) | 9,528 | 9,903 | 10,190 | **11,296** |
+| speaker unverified | 3,685 | 3,687 | 3,687 | 3,687 |
+| short remarks dropped | 331 | 332 | 332 | 332 |
+| content-free dropped | 294 | 295 | 295 | 295 |
+
+Matched on `(doc_key, page, statement)` (the r5/r6 match): 125,385 of 125,440, 55 rows each side unmatched.
+2,742 statements regain an r3-empty period (r6 1,769), 984 lose one (r6 1,115) and 363 are relabelled (r6 301).
+The 15 seed-7 relabels grade 7 better / 6 neutral / 2 worse (r6 2-3 worse of its 15); the two worse are the
+`FY25-'26` label read as `FY25` in a bound-FY cue (the plain `FY25-26` token reads `FY26`) and a "for the
+quarter" figure taking Q4 where the statement's first figure is the year's. `tx394_grade_r2`: 54 of the 60 pack
+rows match by statement text and **0 change period or any other field** (the 36 graded-R rows included; the
+wider rule had anchored ASTERDM p4 "Moving to the update on the merger with QCIL ... strategic share swap"
+Q1 FY26, now empty again).
+
+The seven evidence statements as the reparse stores them: YASHO `FY27` (p4, printed call `Q2 FY27`), PSB
+`Q1 FY27` (p4), TRIVENI `Q4 FY26` (p6), HINDZINC `FY26` (p6, printed call `Q2 FY26`; a Q4 call would take
+`FY27`), WELENT `Q1 FY26` (p7, its printed header period — the review's `Q4 FY26` bracket was wrong),
+TARACHAND `Q4 FY26` (p4, the recap's quarter, not the later `FY27` sentence), UNOMINDA `Q2 FY25` (p8, the
+production start, not the later `Q1 FY27` expansion sentence). `test_obs_speaker.py` 82 passed,
+`test_observations.py` 177 passed.
+
+
 
 
 

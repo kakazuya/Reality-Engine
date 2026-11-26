@@ -8877,3 +8877,19 @@
 +- XBRL check covers `fin_quarter_xbrl` + `fin_annual_line`; match only at the printed digit (`xbrl_near` otherwise).
 -00000. 26 Nov deck-wide rechecked copy loaded (39,941 rows); OCR rows quarantined.
 ```
+
+## 2026-11-27T04:56:28 | kakazuya (Wolf) | branch main
+```diff
+-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-27 02:30 IST (dsh T-242 results r3f)
++# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-27 05:12 IST (dsh T-242 tx statements r7)
+-- 26 Nov tx statements r3 -> r5 -> r6 merged: own-period token bound to its figure wins; period_anchored 10,241 (r3 9,575); r7 list in `D:/RealityEngine/t242/grades/tx_r6_review_eagle.md`.
++- 26 Nov tx statements r3 -> r5 -> r6 merged; r7 (27 Nov) merged: the explicit own-period cue bound to its figure anchors (bound FY, this-time/for-the-quarter after a forward, guidance "for the year", stood-at + YoY, recap quarter, started operation); stored anchored 11,296 (r6 10,190); regained 2,742 / lost 984 / relabelled 363 vs r3 (r6 1,769 / 1,115 / 301), pack 0 of 54 changed; `tasks/t242_statement_r3_measure.md` r7.
+```
+
+## 2026-11-27T04:56:40 | kakazuya (Wolf) | branch main
+```diff
+-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-27 02:30 IST (dsh T-242 results r3f)
++# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-27 05:12 IST (dsh T-242 tx statements r7)
+-- 26 Nov tx statements r3 -> r5 -> r6 merged: own-period token bound to its figure wins; period_anchored 10,241 (r3 9,575); r7 list in `D:/RealityEngine/t242/grades/tx_r6_review_eagle.md`.
++- 26 Nov tx statements r3 -> r5 -> r6 merged; r7 (27 Nov) merged: the explicit own-period cue bound to its figure anchors (bound FY, this-time/for-the-quarter after a forward, guidance "for the year", stood-at + YoY, recap quarter, started operation); stored anchored 11,296 (r6 10,190); regained 2,742 / lost 984 / relabelled 363 vs r3 (r6 1,769 / 1,115 / 301), pack 0 of 54 changed; `tasks/t242_statement_r3_measure.md` r7.
+```
