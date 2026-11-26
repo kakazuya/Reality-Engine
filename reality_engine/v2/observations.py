@@ -5177,9 +5177,20 @@ def results_junk_reason(row: dict[str, Any]) -> str:
 
 
 def _results_unit_fill(row: dict[str, Any], note: tuple[str, str, float]) -> bool:
-    """Give an empty (or a mis-spelled scale) unit the page's printed scale note; a known unit is never replaced."""
+    """Give an empty (or a mis-spelled scale) unit the printed scale note; a known unit is never replaced.
+
+    A currency-only unit ("Rs.", "₹") whose stored scale is 1 names no scale yet, so the note completes it; a
+    per-share measure never takes a money scale at all.
+    """
     unit = norm_space(row.get("unit"))
-    if unit and (_scale_factor(unit) or not RESULTS_SCALE_ISH_UNIT_RE.search(unit)):
+    if RESULTS_PER_SHARE_MEASURE_RE.search(norm_space(row.get("measure"))):
+        return False
+    try:
+        scale = float(row.get("scale") or 1)
+    except (TypeError, ValueError):
+        scale = 1.0
+    if unit and (_scale_factor(unit) or not RESULTS_SCALE_ISH_UNIT_RE.search(unit)) \
+            and not (scale == 1 and _results_currency_only(unit)):
         return False
     if RESULTS_DATE_MEASURE_RE.search(norm_space(row.get("measure"))) \
             or RESULTS_DATE_TEXT_RE.match(norm_space(row.get("value_text"))):
@@ -5257,8 +5268,316 @@ def _results_fragment_reason(row: dict[str, Any], page_text: str) -> str:
     return ""
 
 
+# T-242 r2 (results ckpt_0001 fix note, grade 3639e519): five attribute rules the grade marked P -- a cash-flow
+# line stored under the P&L/balance-sheet measure, a statement with no basis, a column with no duration, a page
+# whose header lost its scale line, and a JV/associate figure tagged as the company's.
+RESULTS_CASH_FLOW_HEADING_RE = re.compile(r"\bcash\s*-?\s*flows?\b", re.I)
+RESULTS_CASH_FLOW_LINE_RE = re.compile(
+    r"\bpayments?\s+of\b|\bproceeds?\s+from\b|\brepayments?\b"
+    r"|\b(?:increase|decrease)s?\)?\s*(?:/\s*\(?\s*(?:increase|decrease)\s*\)?)?\s+in\b",
+    re.I)
+RESULTS_CASH_FLOW_PAID_RE = re.compile(r"\bpaid\b\s*(?:\(\s*net\s*\))?\s*[).]*$", re.I)
+RESULTS_CASH_FLOW_NEW_RE = re.compile(r"paid|payment|proceeds?|repayment|net_cash|cash_flow|increase|decrease|"
+                                      r"changes?_", re.I)
+# The dictionary's own cash-flow measures: a row already carrying one keeps it.
+RESULTS_CASH_FLOW_MEASURES = frozenset({
+    "cash_flow.operating", "cash_flow.investing", "cash_flow.financing", "cash_flow.net_change",
+    "cash_generated_from_operations", "changes_in_working_capital", "adjustment_for_non_operating_items",
+    "direct_taxes_paid", "dividend_paid", "changes_in_receivables", "changes_in_payables",
+})
+RESULTS_CASH_FLOW_LABEL_MEASURES: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"\b(?:direct\s+)?tax(?:es)?\s+paid\b|\bincome[\s-]*tax\s+paid\b", re.I), "direct_taxes_paid"),
+    (re.compile(r"\bcash\s+generated\s+from\s+operations\b", re.I), "cash_generated_from_operations"),
+    (re.compile(r"\b(?:changes?|movements?)\s+in\s+working\s+capital\b", re.I), "changes_in_working_capital"),
+)
+RESULTS_DUAL_HEAD_RE = re.compile(
+    r"(?:statement\s+of\s+)?(?:audited\s+|unaudited\s+|reviewed\s+|interim\s+|annual\s+)?"
+    r"(standalone|consolidated)\s+(?:financial\s+results?|financial\s+statements?|balance\s+sheet|"
+    r"statement\s+of|assets|profit|loss|cash\s*-?\s*flow|segment)", re.I)
+RESULTS_BASIS_WORD_RE = re.compile(r"\b(standalone|consolidated)\b", re.I)
+RESULTS_DURATION_DATE_RE = re.compile(
+    r"\b(quarter|half[\s-]*year|nine\s+months?|six\s+months?|three\s+months?|year)\b"
+    r"(?:\s+to\s+date)?(?:\s+figures?)?(?:\s+for\s+the\s+[^.]{0,30}?\s+ended|\s+ended)\s+"
+    r"(\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,9},?\s+\d{4}|"
+    r"[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})", re.I)
+RESULTS_BARE_YEAR_RE = re.compile(r"^(?:19|20)\d{2}$")
+RESULTS_RELEASE_LINE_RE = re.compile(r"\b(?:media|press)\s+release\b|\bdated\b|\bdate\s*:", re.I)
+RESULTS_CURRENCY_WORDS_RE = re.compile(r"\b(?:amounts?|figures?|in|rs\.?|inr|rupees?|usd)\b|[\u20b9$`]", re.I)
+RESULTS_PER_SHARE_MEASURE_RE = re.compile(
+    r"(?:^|[._])(?:eps|cash_eps|dps|dividend_per_share|book_value_per_share|face_value_per_share)(?![a-z])"
+    r"|per_share", re.I)
+RESULTS_SHARE_OF_ENTITY_RE = re.compile(
+    r"\bshare\s+(?:of|in)\s+(?:the\s+)?(?:net\s+)?(?:profit|loss|total\s+comprehensive|results?)\b", re.I)
+RESULTS_JV_WORD_RE = re.compile(r"\b(?:joint\s+ventures?|jvs?|associates?)\b", re.I)
+RESULTS_SHARE_OF_LOSS_RE = re.compile(r"\bshare\s+of\s+(?:net\s+)?(?:total\s+comprehensive\s+)?loss\b", re.I)
+RESULTS_EQUITY_ACCOUNTED_RE = re.compile(
+    r"(?:is|are|was|were)\s+not\s+consolidated[^.]{0,120}?equity[\s-]*account", re.I)
+RESULTS_EQUITY_SUBJECT_STOP = frozenset({
+    "and", "the", "for", "are", "was", "were", "not", "consolidated", "included", "under", "equity", "accounting",
+    "ind", "as", "purpose", "statutory", "reporting", "of", "in", "on", "a", "an", "is", "be", "which", "that",
+})
+_RESULTS_DOC_CONTEXT_CACHE: dict[tuple[str, str], tuple[tuple[str, str, float] | None, bool]] = {}
+_RESULTS_MONTHS = {
+    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
+    "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+}
+
+
+def _results_doc_context(store_db: str | Path, doc_key: str) -> tuple[tuple[str, str, float] | None, bool]:
+    """One doc's (single printed scale note, both a standalone and a consolidated statement heading printed)."""
+    cache_key = (str(store_db), str(doc_key))
+    cached = _RESULTS_DOC_CONTEXT_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+    notes: set[tuple[str, str, float]] = set()
+    heads: set[str] = set()
+    try:
+        con = connect_ro(store_db, timeout_s=60)
+        try:
+            cur = con.execute("SELECT text FROM doc_page WHERE doc_key=?", (str(doc_key),))
+            if cur is not None:
+                for page_row in cur:
+                    text = str(page_row[0] or "") if page_row else ""
+                    if not text:
+                        continue
+                    note = results_scale_note(text)
+                    if note is not None:
+                        notes.add(note)
+                    for match in RESULTS_DUAL_HEAD_RE.finditer(norm_space(text)[:400]):
+                        heads.add(match.group(1).lower())
+        finally:
+            con.close()
+    except Exception:
+        notes, heads = set(), set()
+    context = (notes.pop() if len(notes) == 1 else None, heads == {"standalone", "consolidated"})
+    _RESULTS_DOC_CONTEXT_CACHE[cache_key] = context
+    return context
+
+
+def _results_cash_flow_slug(label: str) -> str:
+    """A printed cash-flow line's own NEW id ("Interest paid" -> ``interest_paid_cash_flow``)."""
+    slug = norm_space(label).lower()
+    slug = re.sub(r"^[\s(]*(?:[ivxlc]+|[a-z]|\d+)[).]\s*", "", slug)
+    slug = re.sub(r"[^a-z0-9]+", "_", slug).strip("_")
+    return (slug[:60].strip("_") or "line") + "_cash_flow"
+
+
+def _results_cash_flow_reason(row: dict[str, Any], page_text: str, previous_page_text: str) -> str:
+    """A cash-flow statement line never carries the P&L/balance-sheet measure of the stock it moves."""
+    if not (RESULTS_CASH_FLOW_HEADING_RE.search(norm_space(page_text)[:600])
+            or RESULTS_CASH_FLOW_HEADING_RE.search(norm_space(previous_page_text)[:600])):
+        return ""
+    label = norm_space(row.get("printed_label"))
+    if not label or not (RESULTS_CASH_FLOW_PAID_RE.search(label) or RESULTS_CASH_FLOW_LINE_RE.search(label)):
+        return ""
+    measure = norm_space(row.get("measure"))
+    if measure in RESULTS_CASH_FLOW_MEASURES or measure.startswith("changes_in_") \
+            or (measure.startswith(NEW_PREFIX) and RESULTS_CASH_FLOW_NEW_RE.search(measure)):
+        return ""
+    mapped = next((mid for rx, mid in RESULTS_CASH_FLOW_LABEL_MEASURES if rx.search(label)), "")
+    if not mapped:
+        mapped = NEW_PREFIX + _results_cash_flow_slug(label)
+    if mapped == measure:
+        return ""
+    row["measure"] = mapped
+    if mapped.startswith(NEW_PREFIX):
+        if str(row.get("status") or "") == "verified":
+            row["status"] = "unverified"
+        return (f"results_cash_flow_measure: {label!r} is a cash-flow line, not the P&L/balance-sheet "
+                f"{measure!r}; stored as {mapped!r} (unverified)")
+    return f"results_cash_flow_measure: {label!r} is a cash-flow line, stored as {mapped!r}"
+
+
+def _results_basis_word(text: str) -> str:
+    """The one standalone/consolidated word a page prints (neither one when it prints both or none)."""
+    found = {match.group(1).lower() for match in RESULTS_BASIS_WORD_RE.finditer(norm_space(text))}
+    return next(iter(found)) if len(found) == 1 else ""
+
+
+def _results_basis_update(row: dict[str, Any], page_text: str, previous_page_text: str,
+                          dual_statement: bool) -> str:
+    """Take the statement basis from the page, else the page before; a dual filing names none -> gate."""
+    stated = norm_space(row.get("basis"))
+    page_basis_word = _results_basis_word(page_text)
+    previous_basis_word = _results_basis_word(previous_page_text)
+    if page_basis_word and (stated != page_basis_word or not row.get("basis_source")):
+        row["basis"] = page_basis_word
+        row["basis_source"] = "page_heading"
+    elif not stated and previous_basis_word:
+        row["basis"] = previous_basis_word
+        row["basis_source"] = "previous_page_heading"
+    if str(row.get("status") or "") != "verified" or norm_space(row.get("basis")):
+        return ""
+    if not dual_statement or page_basis_word or previous_basis_word:
+        return ""
+    measure = norm_space(row.get("measure"))
+    if measure.startswith(NEW_PREFIX) or measure not in _MEASURE_FAMILY:
+        return ""            # a NEW/non-dictionary measure names no statement line the basis would qualify
+    row["status"] = "unverified"
+    return ("basis_unstated: the filing prints a standalone and a consolidated statement and neither this page "
+            "nor the page before names which one this row comes from")
+
+
+def _results_date_key(text: str) -> tuple[int, int, int] | None:
+    s = norm_space(text)
+    match = re.fullmatch(r"(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})", s)
+    if match:
+        return (int(match.group(1)), int(match.group(2)), _results_year4(match.group(3)))
+    match = re.fullmatch(r"(\d{1,2})(?:st|nd|rd|th)?[ -]([A-Za-z]{3,9}),?[ -](\d{2,4})", s)
+    if match:
+        return (int(match.group(1)), _results_month(match.group(2)), _results_year4(match.group(3)))
+    match = re.fullmatch(r"([A-Za-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{2,4})", s)
+    if match:
+        return (int(match.group(2)), _results_month(match.group(1)), _results_year4(match.group(3)))
+    return None
+
+
+def _results_month(word: str) -> int:
+    return _RESULTS_MONTHS.get(norm_space(word).lower()[:3], 0)
+
+
+def _results_year4(digits: str) -> int:
+    year = int(digits)
+    return year + 2000 if year < 100 else year
+
+
+def _results_duration_dates(page_text: str) -> dict[tuple[int, int, int], set[str]]:
+    """The end date of every printed column, with the duration(s) ("quarter"/"year") its header names."""
+    out: dict[tuple[int, int, int], set[str]] = {}
+    for match in RESULTS_DURATION_DATE_RE.finditer(norm_space(page_text)):
+        key = _results_date_key(match.group(2))
+        if key is not None:
+            out.setdefault(key, set()).add(norm_space(match.group(1)).lower())
+    return out
+
+
+def _results_period_reason(row: dict[str, Any], page_text: str,
+                           durations: dict[tuple[int, int, int], set[str]] | None = None) -> str:
+    """A year alone or a release date is not a period; two columns on one end date need the row's duration."""
+    period = norm_space(row.get("period"))
+    if not period:
+        return ""
+    if RESULTS_BARE_YEAR_RE.match(period):
+        return f"results_period_not_a_period: {period!r} is a year, not a period"
+    if not RESULTS_DATE_TEXT_RE.match(period):
+        return ""
+    head = norm_space(page_text)[:250]
+    if RESULTS_RELEASE_LINE_RE.search(head) and text_has(head, period):
+        return f"results_period_not_a_period: {period!r} is the release date, not the row's period"
+    key = _results_date_key(period)
+    if key is not None:
+        found = (durations if durations is not None else _results_duration_dates(page_text)).get(key, set())
+        if len(found) > 1:
+            return (f"results_period_duration_missing: {period!r} is printed under more than one duration "
+                    f"({', '.join(sorted(found))}), the row does not say which")
+    return ""
+
+
+def _results_currency_only(unit: str) -> bool:
+    """A unit that names a currency but no scale ("Rs.", "₹", "Amount in INR"): the page's scale line completes it."""
+    s = RESULTS_CURRENCY_WORDS_RE.sub(" ", norm_space(unit))
+    return bool(norm_space(unit)) and not re.search(r"[A-Za-z0-9]", s)
+
+
+def _results_per_share_reason(row: dict[str, Any]) -> str:
+    """EPS/DPS/book value per share take no money scale: keep the currency, never a lakh/crore tag."""
+    if not RESULTS_PER_SHARE_MEASURE_RE.search(norm_space(row.get("measure"))):
+        return ""
+    unit = norm_space(row.get("unit"))
+    try:
+        scale = float(row.get("scale") or 1)
+    except (TypeError, ValueError):
+        scale = 1.0
+    if scale == 1 and not (RESULTS_SCALE_ISH_UNIT_RE.search(unit) or _scale_factor(unit)):
+        return ""
+    currency = re.search(r"(rs\.?|inr|\u20b9|rupees?|`)", unit, re.I)
+    row["unit"] = currency.group(1) if currency else "Rs."
+    row["unit_family"] = "money_per_unit"
+    row["scale"] = 1.0
+    return f"results_per_share_unit: a per-share measure takes no money scale (was {unit!r})"
+
+
+def _results_jv_reason(row: dict[str, Any]) -> str:
+    """A share of a JV/associate's result is that entity's figure; a share of loss keeps its minus sign."""
+    measure = norm_space(row.get("measure"))
+    context = " ".join(norm_space(row.get(key)) for key in
+                       ("printed_label", "printed_axis", "series_title", "group_path"))
+    own = f"{context} {measure.replace('_', ' ')}"
+    if not RESULTS_JV_WORD_RE.search(own) or not RESULTS_SHARE_OF_ENTITY_RE.search(context):
+        return ""
+    scope = "jv" if re.search(r"\b(?:joint[\s_-]+ventures?|jvs?)\b", own, re.I) else "associate"
+    if str(row.get("entity_scope") or "") not in ("jv", "associate"):
+        row["entity_scope"] = scope
+    if not RESULTS_SHARE_OF_LOSS_RE.search(context):
+        return ""
+    raw_value = row.get("value")
+    if raw_value is None:
+        return ""
+    try:
+        value = float(raw_value)
+    except (TypeError, ValueError):
+        return ""
+    if value > 0:
+        row["value"] = -value
+        return (f"results_share_of_loss_sign: {norm_space(row.get('printed_label'))!r} is a share of loss, "
+                f"stored negative")
+    return ""
+
+
+def _results_equity_accounted_subjects(page_text: str) -> list[list[str]]:
+    """The businesses a page says are not consolidated but equity-accounted, as word lists (once per page)."""
+    page = norm_space(page_text)
+    subjects: list[list[str]] = []
+    for match in RESULTS_EQUITY_ACCOUNTED_RE.finditer(page):
+        clause = page[max(0, match.start() - 160):match.start()]
+        clause = re.split(r";", clause)[-1]
+        for phrase in re.split(r",|\band\b", clause):
+            words = [word for word in re.split(r"[^A-Za-z0-9]+", phrase) if len(word) > 2]
+            subjects.append([_results_stem(word) for word in words])
+    return subjects
+
+
+def _results_equity_accounted_reason(row: dict[str, Any], subjects: list[list[str]]) -> str:
+    """A business the page says is not consolidated but equity-accounted is the associate's figure, not the group's."""
+    if not subjects:
+        return ""
+    row_words = {_results_stem(word) for word in
+                 re.split(r"[^A-Za-z0-9]+", " ".join(norm_space(row.get(key)) for key in
+                                                     ("printed_label", "measure", "series_title")))}
+    if not row_words:
+        return ""
+    hit = ""
+    for words in subjects:
+        for take in (3, 2, 1):
+            key_words = [word for word in words[-take:] if word and word not in RESULTS_EQUITY_SUBJECT_STOP]
+            if len(key_words) == take and set(key_words) <= row_words:
+                hit = " ".join(key_words)
+                break
+        if hit:
+            break
+    if not hit:
+        return ""
+    if str(row.get("entity_scope") or "") not in ("jv", "associate"):
+        row["entity_scope"] = "associate"
+    row["basis"] = ""
+    row["basis_source"] = ""
+    if str(row.get("status") or "") == "verified":
+        row["status"] = "unverified"
+    label = norm_space(row.get("printed_label"))
+    return (f"results_equity_accounted: {label!r} is the equity-accounted business ({hit}), not a consolidated "
+            f"figure")
+
+
+def _results_stem(word: str) -> str:
+    word = word.lower()
+    return word[:-1] if len(word) > 3 and word.endswith("s") and not word.endswith("ss") else word
+
+
 def apply_results_row_gates(rows: list[dict[str, Any]], page_text: str = "", company: str = "",
-                            previous_text: str = "", stats: dict[str, Any] | None = None) -> None:
+                            previous_text: str = "", stats: dict[str, Any] | None = None,
+                            previous_page_text: str = "",
+                            doc_note: tuple[str, str, float] | None = None,
+                            doc_dual_statement: bool = False) -> None:
     """T-242: the results-page number errors a script can catch from the row and its page.
 
     The first strict grade of 60 results rows was 33 right / 12 partial / 6 wrong / 9 junk.  For results-page
@@ -5268,7 +5587,9 @@ def apply_results_row_gates(rows: list[dict[str, Any]], page_text: str = "", com
        board-meeting time, or a percent that only repeats the condition printed in the row's own label ->
        ``quarantined``;
     2. unit: an empty unit (or a mis-spelled scale word, "l akhs", "(Rupees in Lakll )") takes the page's one
-       printed scale line, else the same line on the pages before it ("(Rs. in lakhs, unless otherwise stated)");
+       printed scale line, else the same line on the pages before it ("(Rs. in lakhs, unless otherwise stated)"),
+       else the one scale the whole document prints; a currency-only unit ("Rs.", "₹") is completed the same way,
+       and a per-share measure never takes a money scale;
     3. scope: a page whose head names the store company and prints its own cash-flow/balance-sheet statement is
        ``company`` even when a short another-company name matched inside the company's own name;
     4. an associate/JV figure under a company statement line (its group/series names the associate) and a
@@ -5276,11 +5597,31 @@ def apply_results_row_gates(rows: list[dict[str, Any]], page_text: str = "", com
     5. a value that is the leading digits of the longer figure printed right after its own label
        ("5" for "55.43") is ``unverified``.
 
-    The row stays served; only its status/label changes.  Not the AR gates: this runs only for results pages.
+    T-242 r2 (results ckpt_0001): 6. a cash-flow statement line ("... paid", "Increase/(Decrease) in X",
+    "Proceeds from ...", "Repayment of ...") never keeps the P&L/balance-sheet measure of the stock it moves --
+    it takes the dictionary's cash-flow measure when one names the line, else a ``NEW:<line>_cash_flow`` id and
+    ``unverified``; 7. basis: the page heading's standalone/consolidated wins, else the page before carries it; a
+    filing that prints both statements with neither page naming one leaves the row ``unverified``
+    (``basis_unstated``); 8. period: a year alone or a release date is not a period, and an end date printed
+    under two durations (a quarter and a year column) needs the row's own duration
+    (``results_period_duration_missing``); 9. a share of a JV/associate's result is that entity's figure and a
+    share of loss is negative; a business the page says is equity-accounted is the associate's figure, not a
+    consolidated one.
+
+    The row stays served; only its status/label/measure changes.  Not the AR gates: this runs only for results
+    pages.  ``previous_page_text`` is the one page before (the heading to carry), ``previous_text`` the few pages
+    before (the scale line), and ``doc_note``/``doc_dual_statement`` the document-level facts.
     """
     note = results_scale_note(page_text)
+    note_source = "page"
     if note is None and previous_text:
         note = results_scale_note(previous_text)
+        note_source = "previous page"
+    if note is None and doc_note is not None:
+        note = doc_note
+        note_source = "document"
+    durations = _results_duration_dates(page_text)
+    equity_subjects = _results_equity_accounted_subjects(page_text)
     for row in rows:
         if norm_space(row.get("record_type") or "number") != "number":
             continue
@@ -5293,12 +5634,48 @@ def apply_results_row_gates(rows: list[dict[str, Any]], page_text: str = "", com
             continue
         if note is not None and _results_unit_fill(row, note):
             row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "",
-                                                         f"results_unit: page prints {note[0]}") if p)
+                                                         f"results_unit: {note_source} prints {note[0]}") if p)
             if stats is not None:
-                stats["results_units"] = int(stats.get("results_units", 0)) + 1
+                stats_key = "results_doc_units" if note_source == "document" else "results_units"
+                stats[stats_key] = int(stats.get(stats_key, 0)) + 1
+        per_share = _results_per_share_reason(row)
+        if per_share:
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", per_share) if p)
+            if stats is not None:
+                stats["results_per_share"] = int(stats.get("results_per_share", 0)) + 1
         if _results_scope_reset(row, page_text, company):
             if stats is not None:
                 stats["results_scope_reset"] = int(stats.get("results_scope_reset", 0)) + 1
+        cash_flow = _results_cash_flow_reason(row, page_text, previous_page_text)
+        if cash_flow:
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", cash_flow) if p)
+            if stats is not None:
+                stats["results_cash_flow"] = int(stats.get("results_cash_flow", 0)) + 1
+        basis_reason = _results_basis_update(row, page_text, previous_page_text, doc_dual_statement)
+        if basis_reason:
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", basis_reason) if p)
+            if stats is not None:
+                stats["results_basis_unstated"] = int(stats.get("results_basis_unstated", 0)) + 1
+        elif row.get("basis_source") == "previous_page_heading":
+            if stats is not None:
+                stats["results_basis_prev"] = int(stats.get("results_basis_prev", 0)) + 1
+        if str(row.get("status") or "") == "verified":
+            period_reason = _results_period_reason(row, page_text, durations)
+            if period_reason:
+                row["status"] = "unverified"
+                row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", period_reason) if p)
+                if stats is not None:
+                    stats["results_period"] = int(stats.get("results_period", 0)) + 1
+        jv_reason = _results_jv_reason(row)
+        if jv_reason:
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", jv_reason) if p)
+            if stats is not None:
+                stats["results_jv"] = int(stats.get("results_jv", 0)) + 1
+        equity_reason = _results_equity_accounted_reason(row, equity_subjects)
+        if equity_reason:
+            row["status_reason"] = "; ".join(p for p in (row.get("status_reason") or "", equity_reason) if p)
+            if stats is not None:
+                stats["results_equity_accounted"] = int(stats.get("results_equity_accounted", 0)) + 1
         if str(row.get("status") or "") != "verified":
             continue
         reason = _results_associate_reason(row) or _results_holding_reason(row, page_text) \
@@ -5674,11 +6051,14 @@ def gate_not_company(rows: list[dict[str, Any]], stats: dict[str, Any] | None = 
 def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2: bool = True,
                        page_text: str = "", company: str = "", previous_text: str = "",
                        report_fy: str = "", has_consolidated: bool = False,
-                       stats: dict[str, Any] | None = None) -> None:
+                       stats: dict[str, Any] | None = None, previous_page_text: str = "",
+                       store_db: str = "", doc_key: str = "") -> None:
     """T-242: the number gates that depend on the document type (a call number, an AR statement line, an AR row, a deck row, a results row).
 
     ``previous_text`` is the page before this one, for the AR row gates' carried basis and the results rows'
-    carried unit line (the results caller passes the last three pages).
+    carried unit line (the results caller passes the last three pages); ``previous_page_text`` is the one page
+    before, whose heading the results gates carry a basis from, and ``store_db``/``doc_key`` give the results
+    gates the document's single printed scale and its dual-statement fact.
     """
     if doc_type == "transcript" and transcript_v2:
         apply_transcript_number_gate(rows)       # Shivam 24 Nov: call numbers need a filing to verify
@@ -5689,7 +6069,12 @@ def apply_number_gates(rows: list[dict[str, Any]], doc_type: str, transcript_v2:
     elif doc_type == "deck":
         apply_deck_row_gates(rows, page_text)
     elif doc_type == "results":
-        apply_results_row_gates(rows, page_text, company, previous_text, stats=stats)
+        doc_note, doc_dual_statement = (None, False)
+        if store_db and doc_key:
+            doc_note, doc_dual_statement = _results_doc_context(store_db, doc_key)
+        apply_results_row_gates(rows, page_text, company, previous_text, stats=stats,
+                                previous_page_text=previous_page_text, doc_note=doc_note,
+                                doc_dual_statement=doc_dual_statement)
     gate_not_company(rows)          # T-242 final invariant: scope, not a proof, decides verification
 
 
@@ -7493,7 +7878,10 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                        report_fy=ar_report_fy(store_db, doc_key, check_text, prev_txt)
                        if meta.get("doc_type") == "annual_report" else "",
                        has_consolidated=_ar_doc_has_consolidated(store_db, doc_key)
-                       if meta.get("doc_type") == "annual_report" else False)
+                       if meta.get("doc_type") == "annual_report" else False,
+                       previous_page_text=page_text_of(store_db, doc_key, page - 1)
+                       if doc_type == "results" else "",
+                       store_db=str(store_db) if doc_type == "results" else "", doc_key=str(doc_key))
     if text_source:                     # T-242: a jumbled deck layer read as such, not as a clean text layer
         for row in result["rows"]:
             if row.get("text_source") == "text_layer":
@@ -7973,7 +8361,10 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                              "basis_page": 0, "basis_prev_page": 0, "basis_deck_heading": 0,
                              "ar_statement_rows": 0, "no_store": 0,
                              "results_junk": 0, "results_units": 0, "results_scope_reset": 0,
-                             "results_unverified": 0, "repeats_dropped": 0}
+                             "results_unverified": 0, "repeats_dropped": 0, "results_doc_units": 0,
+                             "results_cash_flow": 0, "results_basis_unstated": 0, "results_basis_prev": 0,
+                             "results_period": 0, "results_per_share": 0, "results_jv": 0,
+                             "results_equity_accounted": 0}
     pages = list(con.execute("SELECT DISTINCT doc_key, page FROM observation ORDER BY doc_key, page"))
     if only is not None:                      # T-233: a scoped recheck touches only the selected pages
         pages = [p for p in pages if only.page(doc_store.get(str(p[0])), str(p[0]), int(p[1]))]
@@ -8288,10 +8679,13 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     con.execute("DELETE FROM observation WHERE observation_id=?", (int(row["observation_id"]),))
                     stats["deck_dropped"] = int(stats.get("deck_dropped", 0)) + 1
             stats["basis_deck_heading"] += sum(1 for row in updated if row.get("basis_source") == "page_heading")
-        elif results_page:                 # T-242: junk numbers, entity scope, holding/fragment values, unit line
+        elif results_page:                 # T-242: junk numbers, entity scope, holding/fragment values, unit line,
+            doc_note, doc_dual_statement = _results_doc_context(store_db, doc_key)   # cash-flow line, basis, period
             apply_results_row_gates(updated, raw_text,
                                     company_names.get(store_symbol.get(store_db, ""), ""),
-                                    previous_pages_text(store_db, doc_key, int(page)), stats=stats)
+                                    previous_pages_text(store_db, doc_key, int(page)), stats=stats,
+                                    previous_page_text=page_text_of(store_db, doc_key, int(page) - 1),
+                                    doc_note=doc_note, doc_dual_statement=doc_dual_statement)
         for row in updated:
             old_status = str(row["_old_status"])
             old_reason = str(row["_old_reason"])
