@@ -55,6 +55,7 @@ from typing import Any, Iterable, Mapping
 
 from reality_engine.pilot3 import order_wins
 from reality_engine.research.driver_claims import (
+    BASE,
     Client,
     MODEL,
     MODEL_BODY,
@@ -637,7 +638,15 @@ COLUMNS = (
     "capacity_unit",
     "plant", "price_per_share", "shares", "instrument", "raise_stage", "raise_id", "raise_primary",
     "quote", "amends", "detail",
+    "read_model", "read_gateway", "read_harness", "prompt_fp",
 )
+# Shivam 26 Nov 2026 (skill `.claude/skills/read-provenance`): every row records which model, gateway, harness and
+# prompt produced it.  A script/computed row was not read by a model; a model row carries the call's model and the
+# event prompt fingerprint ``run_model`` already keys its reply cache by.
+READ_COLUMNS = ("read_model", "read_gateway", "read_harness", "prompt_fp")
+READ_DDL = "TEXT NOT NULL DEFAULT ''"
+READ_HARNESS_DEFAULT = "reality_engine.research.filing_events (direct HTTP)"
+SCRIPT_HARNESS = "reality_engine.research.filing_events"
 SCHEMA = """
 CREATE TABLE event (
   event_id INTEGER PRIMARY KEY,
@@ -651,6 +660,8 @@ CREATE TABLE event (
   price_per_share REAL, shares REAL, instrument TEXT,
   raise_stage TEXT, raise_id TEXT, raise_primary INTEGER,
   quote TEXT, amends TEXT, detail TEXT,
+  read_model TEXT NOT NULL DEFAULT '', read_gateway TEXT NOT NULL DEFAULT '',
+  read_harness TEXT NOT NULL DEFAULT '', prompt_fp TEXT NOT NULL DEFAULT '',
   UNIQUE (doc_key, kind, seq)
 );
 CREATE INDEX ix_event_symbol_date ON event (symbol, filing_date);
@@ -3998,6 +4009,26 @@ def prompt_fingerprint(version: str = EVENT_PROMPT_VERSION, model: str = MODEL) 
     return hashlib.sha256(f"{model}\n{version}\n{template}".encode("utf-8")).hexdigest()[:12]
 
 
+def read_provenance(method: str) -> dict[str, str]:
+    """The four read-provenance values a row of this table carries (Shivam 26 Nov 2026).
+
+    ``method='model'`` rows carry the model and gateway the call used (same rule as
+    ``observations.read_provenance()``) and the event prompt fingerprint; a script or computed row has no model.
+    """
+    if method != "model":
+        return {"read_model": "script", "read_gateway": "", "read_harness": SCRIPT_HARNESS, "prompt_fp": ""}
+    from reality_engine.v2 import reference_pages as rp          # lazy: an event build needs no page reader
+    from reality_engine.v2.observations import gateway_of
+    entry = dict(rp.MODELS.get(MODEL, {}), base=BASE)             # Client posts to driver_claims' BASE
+    gateway = gateway_of(entry)
+    model = str(entry.get("id") or MODEL)
+    if gateway in ("opencode-go", "opencode-zen") and "/" not in model:
+        model = f"{gateway}/{model}"
+    return {"read_model": model, "read_gateway": gateway,
+            "read_harness": os.environ.get("REALITY_READ_HARNESS", READ_HARNESS_DEFAULT),
+            "prompt_fp": prompt_fingerprint()}
+
+
 def _order_win_candidate(title: str, head: str) -> bool:
     """True when the existing classifier or a soft-vetoed order cue puts this filing in ``order_win``."""
     body = _flat(f"{title} {head}")
@@ -5532,6 +5563,10 @@ def run_model(pending: list[dict[str, Any]], workers: int,
 # ------------------------------------------------------------------ build + report
 def _insert(con: sqlite3.Connection, rows: list[dict[str, Any]], amends: list[dict[str, Any]],
             meta: dict[str, Any] | None = None, skips: list[dict[str, Any]] | None = None) -> None:
+    for row in rows:                                    # 26 Nov: fill the four read-provenance columns
+        for key, value in read_provenance(str(row.get("method") or "")).items():
+            if not row.get(key):
+                row[key] = value
     con.executemany(
         f"INSERT INTO event ({','.join(COLUMNS)}) VALUES ({','.join('?' * len(COLUMNS))})",
         [tuple(row.get(column) for column in COLUMNS) for row in rows])
@@ -5569,7 +5604,7 @@ def _ensure_event_columns(con: sqlite3.Connection) -> None:
     have = {row[1] for row in con.execute("PRAGMA table_info(event)")}
     for column in COLUMNS:
         if column not in have:
-            con.execute(f"ALTER TABLE event ADD COLUMN {column} TEXT")
+            con.execute(f"ALTER TABLE event ADD COLUMN {column} {READ_DDL if column in READ_COLUMNS else 'TEXT'}")
     con.execute(
         "CREATE TABLE IF NOT EXISTS skip_log ("
         "skip_id INTEGER PRIMARY KEY, store TEXT, symbol TEXT, doc_key TEXT NOT NULL, "

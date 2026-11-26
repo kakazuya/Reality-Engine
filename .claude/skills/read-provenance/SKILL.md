@@ -24,10 +24,13 @@ part can be re-read.
 - `reality_engine/scripts/backfill_read_provenance.py`: fills rows read before 26 Nov (from `reader` + `page_reply`).
 - `reality_engine/scripts/load_observations.py`: carries them into store `obs_fact` (`_select_list` gives NULL for an
   older source DB).
+- `reality_engine/research/filing_events.py`: the same four columns on every `event` row (`read_provenance()` fills
+  them in `_insert`); `_ensure_event_columns` adds them to an old events DB, and the `load_observations` column union
+  carries them into store `filing_event`.
 
 ## When you add a reader or a table
 - Add the same columns (TEXT NOT NULL DEFAULT '') and fill them at write; a migration for old DBs; a backfill.
-- Not yet done (26 Nov): `filing_events` event rows, KPI / guidance extractors, OCR fill, agy/Claude page reads.
+- Not yet done (26 Nov): KPI / guidance extractors, OCR fill, agy/Claude page reads.
 - Test: one row written -> four columns set; one old DB backfilled.
 
 ## Using it
