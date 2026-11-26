@@ -69,3 +69,26 @@ The label row BANKINDIA #60 loses its copied "Shri <Name>, MD & CEO" prefix.
 `reality_engine/v2/obs_speaker.py` (`anchored_period`, `widen_statement`, `strip_leading_speaker_label`,
 `attach_statement_speakers`), `reality_engine/tests/test_obs_speaker.py` (65 passed);
 `python -m pytest -q reality_engine/tests/test_observations.py` (176 passed).
+
+## r4 follow-up (26 Nov 2026, Hydrogen): own-period cues and heading strip guard
+
+Eagle's non-author review of r3 passed the drop of default `call_period` anchors but flagged five right periods
+lost where the statement carried an own-period cue r3 did not read, plus one stripped metric heading (`CUB`
+`'Cost-to-income ratio:'`). r4 updates `reality_engine/v2/obs_speaker.py`:
+
+- **Own-period cues added to `anchored_period`**: (a) `as on / as at / as of / basis [the|of] <date>` matching the
+  call's period end in any printed date form (`31st December 2024`, `31.12.2024`, `December 31, 2024`, `March 2026`);
+  (b) `quarterly <metric/figure>` (with a figure in the sentence, excluding `quarterly basis`/`fluctuations`) and
+  `this quarter's`; (c) `<figure> stood at / was / reached ... (growth|up|increase) over <date>` when `<date>` is
+  exactly one year or one quarter before the call's period end.
+- **Negative guards kept strict**: never anchors on forward cues (`will`, `expect`, `target`, `guidance`, `by FY..`,
+  `next quarter`), `"same quarter last year"`, `"last quarter"`, explicit other `FY`/`H`/`Q` (and `_NAMED_FY_RE`
+  requires `q == 4` so `NIM for FY26` on a Q1 call stays empty), or a future date; keeps r3's 7 stay-empty cases
+  (`HFCL`, `IOLCP`, `CUB`, `BPLPHARMA`, `BOROLTD`, `KTKBANK` #36, `EMSLIMITED` #43) empty and `CAPACITE` #47 `FY25`.
+- **Label strip guard**: `_is_heading_label` splits on hyphens/slashes and includes `ratio`/`ratios`/`yield`/`equity`/
+  `assets`/`deposits`/`advances`; `strip_leading_speaker_label` only strips a leading label when it names a roster
+  speaker (`known_names`) or carries a role word (`CEO`, `CFO`, `MD`, `Chairman`, `Director`, `Head`, `Officer`,
+  `Moderator`, etc.), never a metric heading.
+
+Tests in `reality_engine/tests/test_obs_speaker.py` (3 new tests covering the 5 regain cases, 7 stay-empty cases +
+W #47, and `CUB` heading guard) and `reality_engine/tests/test_observations.py` both pass after the final edit.

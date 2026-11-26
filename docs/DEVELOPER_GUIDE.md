@@ -3461,7 +3461,17 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   `test_statement_window_widens_a_connector_fragment_to_the_figure_before_it`,
   `test_statement_window_widens_when_that_to_the_full_year_capacity_sentence`,
   `test_a_copied_speaker_label_is_stripped_from_the_statement_start`); the per-row sample is in
-  `tasks/t242_statement_gate_measure.md`.
+  `tasks/t242_statement_gate_measure.md`. **r4 (26 Nov, Hydrogen):** `anchored_period` wins back the own-period
+  cues r3 dropped (`as on / as at / as of / basis <date>` matching the call's period end in any printed date form;
+  `quarterly <metric/figure>` and `this quarter's`; `<figure> stood at / was / reached ... (growth|up|increase)
+  over <date 1 year or 1 quarter before period end>`) while blocking forward cues (`will`, `expect`, `target`,
+  `guidance`, `by FY..`, `next quarter`), `"same quarter last year"`, `"last quarter"`, explicit other `FY`/`H`/`Q`
+  (and `_NAMED_FY_RE` when `q != 4`), and future dates; `_is_heading_label` now splits hyphens and recognises
+  `ratio`/`yield`/`equity`/`assets`/`deposits`/`advances` so `strip_leading_speaker_label` only strips roster
+  speakers or role-word labels (`CEO`/`CFO`/`MD`/`Chairman`/`Director`/`Head`/`Officer`/`Moderator`), never a
+  metric heading like `Cost-to-income ratio:`. Tests `test_r4_regains_own_period_cues_across_the_five_evidence_cases`,
+  `test_r4_seven_stay_empty_cases_and_w47_remain_unchanged`,
+  `test_r4_metric_heading_label_not_stripped_while_roster_and_role_strip`.
 
 ### P. Checkpoint grading packs: one command, two rubrics (T-242, 25 Nov 2026)
 

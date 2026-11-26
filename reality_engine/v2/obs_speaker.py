@@ -271,6 +271,7 @@ _FINANCIAL_TERMS = frozenset({
     "turnover", "sales", "growth", "order", "orders", "book", "borrowings", "receivables", "payables",
     "inventory", "npa", "gnpa", "nnpa", "aum", "nim", "roa", "roe", "roce", "net", "gross", "total",
     "operations", "operating", "expenditure", "flow", "flows", "earnings", "interest", "taxes", "cost", "costs",
+    "ratio", "ratios", "yield", "yields", "equity", "assets", "deposits", "advances",
 })
 _HEADING_STOP = frozenset({
     "after", "before", "from", "and", "or", "of", "the", "in", "on", "for", "to", "per", "at", "by",
@@ -286,8 +287,8 @@ _LABEL_FIELD_WORDS = frozenset({
 
 
 def _is_heading_label(name: str) -> bool:
-    """True when ``name`` is a slide/table heading ("Profit After Tax", "Net Revenue", "EPS") not a person."""
-    toks = [t.strip(".:;,'’\"“”()").lower() for t in (name or "").split()]
+    """True when ``name`` is a slide/table heading ("Profit After Tax", "Cost-to-income ratio", "EPS") not a person."""
+    toks = [t.strip(".:;,'’\"“”()").lower() for t in re.split(r"[\s\-–—/]+", name or "")]
     toks = [t for t in toks if t]
     return bool(toks) and any(t in _FINANCIAL_TERMS for t in toks) \
         and all(t in _FINANCIAL_TERMS or t in _HEADING_STOP for t in toks)
@@ -1078,7 +1079,8 @@ _PERIOD_LABEL_RE = re.compile(
     r"|\bversion\s+\d+(?:\.\d+)?\b",
     re.I,
 )
-_ABBREV_DOT_RE = re.compile(r"\b(?:Mr|Mrs|Ms|Dr|Shri|Sh|Prof|Sr|Smt|Er|Capt|vs|etc)\.", re.I)
+_ABBREV_DOT_RE = re.compile(
+    r"\b(?:Mr|Mrs|Ms|Dr|Shri|Sh|Prof|Sr|Smt|Er|Capt|vs|etc)\.|(?<!\d)\bRs\.(?=\s*\d)", re.I)
 
 
 _LIGATURE_MAP = str.maketrans({
@@ -1429,11 +1431,11 @@ def greeting_only(statement: str) -> bool:
         or _wrapup_summary_passage(statement)
 
 
-# T-242 (26 Nov, tx394 ckpt_0014 P / r2; r3): only an explicit own-period cue anchors a prepared remark.
+# T-242 (26 Nov, tx394 ckpt_0014 P / r2; r3; r4): only an explicit own-period cue anchors a prepared remark.
 _REL_QUARTER_RE = re.compile(
-    r"\b(?:this|the|current)\s+quarter\b(?!\s+(?:ago|earlier|before|prior|last|previous|-on-))", re.I)
+    r"\b(?:this|the|current)\s+quarter(?:'s|’s)?\b(?!\s+(?:ago|earlier|before|prior|last|previous|-on-))", re.I)
 _REL_YEAR_RE = re.compile(
-    r"\b(?:this|the|current)\s+year\b(?!\s*(?:-?on-|ago\b|earlier\b|before\b|ended\b|ending\b|to\s+date\b))",
+    r"\b(?:this|the|current)\s+year(?:'s|’s)?\b(?!\s*(?:-?on-|ago\b|earlier\b|before\b|ended\b|ending\b|to\s+date\b))",
     re.I)
 _NAMED_QUARTER_FY_RE = re.compile(
     r"\bQ([1-4])(?:\s*(?:and|&|,|/)\s*(?:9M|H[12]))?\s*FY\s*['’]?\s*(\d{2,4})\b", re.I)
@@ -1455,6 +1457,97 @@ _HEADER_Q_RE = re.compile(
     r"(?:FY\s*['’-]?\s*|(?=(?:\d{2}|\d{4})\s*-\s*\d{2,4}\b))(?:(\d{2,4})\s*-\s*)?(\d{2,4})\b",
     re.I,
 )
+_MONTH_MAP = {
+    "jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3,
+    "apr": 4, "april": 4, "may": 5, "jun": 6, "june": 6,
+    "jul": 7, "july": 7, "aug": 8, "august": 8, "sep": 9, "sept": 9, "september": 9,
+    "oct": 10, "october": 10, "nov": 11, "november": 11, "dec": 12, "december": 12,
+}
+_MONTH_NAMES = (
+    r"Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|"
+    r"Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?"
+)
+_PRINTED_DATE_RE = re.compile(
+    rf"(?P<d1>\d{{1,2}})(?:st|nd|rd|th)?[\s,.\-]+(?P<m1>{_MONTH_NAMES})\.?(?:[\s,.\-]+(?:of\s+)?['’]?(?P<y1>\d{{2,4}}))\b"
+    rf"|(?P<m2>{_MONTH_NAMES})\.?\s+(?P<d2>\d{{1,2}})(?:st|nd|rd|th)?(?:,|\s)\s*['’]?(?P<y2>\d{{2,4}})\b"
+    rf"|\b(?P<d3>\d{{1,2}})[./\-](?P<m3>\d{{1,2}})[./\-](?P<y3>\d{{2,4}})\b"
+    rf"|\b(?P<y4>20\d{{2}})-(?P<m4>\d{{1,2}})-(?P<d4>\d{{1,2}})\b"
+    rf"|(?P<m5>{_MONTH_NAMES})\.?(?:,?\s+|\s+of\s+)(?:['’](?P<y5a>\d{{2}})|(?P<y5b>20\d{{2}})|(?P<y5c>\d{{2}}))\b"
+    rf"(?!\s*,?\s*(?:20\d{{2}}|['’]\d{{2}}))",
+    re.I,
+)
+_FORWARD_CUE_RE = re.compile(
+    r"\b(?:will|expect(?:s|ed|ing|ations?)?|target(?:s|ed|ing)?|guid(?:e|ing|ance)"
+    r"|projected|projection|forecast(?:s|ed|ing)?"
+    r"|next\s+(?:quarter|year|fiscal|financial\s+year|h[12]|half)|by\s+FY\s*['’]?\s*\d{2,4})\b",
+    re.I,
+)
+_SAME_QUARTER_LAST_YEAR_RE = re.compile(r"\bsame\s+quarter\s+last\s+year\b", re.I)
+_LAST_QUARTER_RE = re.compile(r"\blast\s+quarter(?:'s|’s)?\b", re.I)
+_OTHER_HALF_9M_RE = re.compile(
+    r"\b(?:H[12]|[12]H|9M)\b|\b(?:first|second)\s+half\b|\bhalf[- ]year\b|\bnine\s+months\b", re.I)
+_EXPLICIT_Q_RE = re.compile(
+    r"\bQ([1-4])(?:\s*FY\s*['’]?\s*(\d{2,4}))?\b"
+    r"|\b([1-4])Q(?:\s*FY\s*['’]?\s*(\d{2,4}))?\b"
+    r"|\b(first|second|third|fourth|1st|2nd|3rd|4th)\s+quarter(?:\s+of\s+(?:FY\s*['’]?\s*(\d{2,4})|(\d{4})))?\b",
+    re.I,
+)
+_EXPLICIT_FY_RE = re.compile(r"\bFY\s*['’]?\s*(\d{2,4})(?:\s*[-–/]\s*['’]?(\d{2,4}))?\b", re.I)
+_ORDINAL_QUARTER = {"first": 1, "1st": 1, "second": 2, "2nd": 2, "third": 3, "3rd": 3, "fourth": 4, "4th": 4}
+_QUARTER_END = {1: (6, 30), 2: (9, 30), 3: (12, 31), 4: (3, 31)}
+_AS_ON_DATE_CUE_RE = re.compile(
+    r"\b(?:as\s+(?:on|at|of)|basis)(?:\s+(?:the|of))?\s+(?=" + _PRINTED_DATE_RE.pattern + ")", re.I)
+_QUARTERLY_METRIC_RE = re.compile(
+    r"\bquarterly\b(?!\s+(?:basis|fluctuations?|trends?|sort\b|volatility|seasonality|run[- ]?rates?"
+    r"|meetings?|calls?|updates?\b|operations\s+per\s+se\b))",
+    re.I,
+)
+_OVER_BASE_VERB_RE = re.compile(r"\b(?:stood\s+at|stands\s+at|was|were|reached)\b", re.I)
+_OVER_BASE_CMP_RE = re.compile(
+    r"\b(?:growth|up|increase|increased)\b[^.!?;]{0,40}?\bover\s+(?:the\s+)?(?=" + _PRINTED_DATE_RE.pattern + ")", re.I)
+
+
+def _parse_printed_date(match: re.Match[str]) -> tuple[int, int, int | None, bool] | None:
+    """Parse ``_PRINTED_DATE_RE`` into ``(year, month, day_or_none, explicit_year)``."""
+    if match.group("m1"):
+        y = int(match.group("y1"))
+        return (2000 + y if y < 100 else y, _MONTH_MAP[match.group("m1").lower()], int(match.group("d1")), True)
+    if match.group("m2"):
+        y = int(match.group("y2"))
+        return (2000 + y if y < 100 else y, _MONTH_MAP[match.group("m2").lower()], int(match.group("d2")), True)
+    if match.group("m3"):
+        d, mo, y = int(match.group("d3")), int(match.group("m3")), int(match.group("y3"))
+        if 1 <= d <= 31 and 1 <= mo <= 12:
+            return (2000 + y if y < 100 else y, mo, d, True)
+        return None
+    if match.group("m4"):
+        y, mo, d = int(match.group("y4")), int(match.group("m4")), int(match.group("d4"))
+        if 1 <= d <= 31 and 1 <= mo <= 12:
+            return (y, mo, d, True)
+        return None
+    if match.group("m5"):
+        mo = _MONTH_MAP[match.group("m5").lower()]
+        if match.group("y5a"):
+            return (2000 + int(match.group("y5a")), mo, None, True)
+        if match.group("y5b"):
+            return (int(match.group("y5b")), mo, None, True)
+        y2 = int(match.group("y5c"))
+        if 18 <= y2 <= 35:
+            return (2000 + y2, mo, None, False)
+    return None
+
+
+def _date_equals(parsed: tuple[int, int, int | None, bool] | None, target_y: int, target_m: int, target_d: int) -> bool:
+    if not parsed:
+        return False
+    y, m, d, _ = parsed
+    return y == target_y and m == target_m and (d is None or d == target_d)
+
+
+def _period_end_date(q: int, fy: int) -> tuple[int, int, int]:
+    end_year = 2000 + fy - (1 if q < 4 else 0)
+    end_month, end_day = _QUARTER_END[q]
+    return end_year, end_month, end_day
 
 
 def printed_call_period(pages: Iterable[tuple[int, str]]) -> str:
@@ -1475,35 +1568,126 @@ def printed_call_period(pages: Iterable[tuple[int, str]]) -> str:
     return ""
 
 
+def _sentence_has_future_date(sent: str, end_ym: int) -> bool:
+    for dm in _PRINTED_DATE_RE.finditer(sent):
+        parsed = _parse_printed_date(dm)
+        if parsed and parsed[3]:
+            ym = parsed[0] * 12 + parsed[1]
+            if ym > end_ym + 2:
+                return True
+            before = sent[max(0, dm.start() - 6):dm.start()]
+            if ym > end_ym and re.search(r"\bby\s+$", before, re.I):
+                return True
+    return False
+
+
+def _sentence_blocked_for_anchor(sent: str, q: int, fy: int, end_ym: int, *, check_other_period: bool = True) -> bool:
+    if _SAME_QUARTER_LAST_YEAR_RE.search(sent):
+        return True
+    for lm in _LAST_QUARTER_RE.finditer(sent):
+        if not _COMPARATIVE_CUE_RE.search(sent[:lm.start()]):
+            return True
+    if _FORWARD_CUE_RE.search(sent) or _sentence_has_future_date(sent, end_ym):
+        return True
+    if not check_other_period:
+        return False
+    if _OTHER_HALF_9M_RE.search(sent):
+        return True
+    for qm in _EXPLICIT_Q_RE.finditer(sent):
+        if _COMPARATIVE_CUE_RE.search(sent[:qm.start()]):
+            continue
+        if qm.group(1):
+            mq = int(qm.group(1))
+            mfy = int(qm.group(2)) % 100 if qm.group(2) else fy
+        elif qm.group(3):
+            mq = int(qm.group(3))
+            mfy = int(qm.group(4)) % 100 if qm.group(4) else fy
+        else:
+            mq = _ORDINAL_QUARTER[qm.group(5).lower()]
+            if qm.group(6):
+                mfy = int(qm.group(6)) % 100
+            elif qm.group(7):
+                cy = int(qm.group(7))
+                mfy = (cy + (1 if mq == 4 else 0)) % 100
+            else:
+                mfy = fy
+        if (mq, mfy) != (q, fy):
+            return True
+    for fm in _EXPLICIT_FY_RE.finditer(sent):
+        if _COMPARATIVE_CUE_RE.search(sent[:fm.start()]):
+            continue
+        fy_end = int(fm.group(2) or fm.group(1)) % 100
+        if fy_end != fy:
+            return True
+    return False
+
+
 def anchored_period(statement: str, call_period: str) -> str:
     """The fiscal label a prepared remark's own period resolves to on this call; '' when none or unknown.
 
     ``call_period`` is the label the reader was given for the call ("Q2 FY26").  Only an explicit own-period cue
-    anchors: "this/the quarter" and "during the quarter" resolve to the call quarter, "this/the year" and
-    "during the year" to the call's fiscal year, and a named "Qn FYnn"/"for FYnn" to itself when it is the call's
-    own period.  A comparative cue ("compared to", "Y-o-Y", "versus", "last year", ...) before a named period
-    means that period belongs to the comparative, not to the figure, so it never anchors; a bare "last/previous
-    quarter", "half year" or "full year" is left empty (empty beats wrong).
+    anchors: "this/the quarter", "this quarter's", "quarterly <metric/figure>", "as on/at/of/basis <date equal to
+    period end>", or "<figure> stood at/was/reached ... (growth|up|increase) over <date 1 year or 1 quarter before
+    period end>" resolve to the call quarter; "this/the year" and "for FYnn" (on Q4 calls) resolve to the call's
+    fiscal year; a named "Qn FYnn" resolves to itself when it is the call's own period.  Never anchors when a
+    comparative cue precedes a named period, or when a forward cue, "same quarter last year", "last quarter", an
+    explicit other FY/H/Q, or a future date sits in the cue's sentence (empty beats wrong).
     """
     m = _CALL_PERIOD_RE.match(" ".join(str(call_period or "").split()))
     if not m:
         return ""
     q, fy = int(m.group(1)), int(m.group(2)) % 100
     text = _normalise_ligatures(statement)
-    for sent in _sentences(text):
+    sentences = _sentences(text)
+    for sent in sentences:
+        if _SAME_QUARTER_LAST_YEAR_RE.search(sent):
+            continue
         named = _NAMED_QUARTER_FY_RE.search(sent)
         if named and not _COMPARATIVE_CUE_RE.search(sent[:named.start()]) \
                 and (int(named.group(1)), int(named.group(2)) % 100) == (q, fy):
             return f"Q{q} FY{fy:02d}"
-    for sent in _sentences(text):
-        named = _NAMED_FY_RE.search(sent)
-        if named and not _COMPARATIVE_CUE_RE.search(sent[:named.start()]) \
-                and int(named.group(1) or named.group(2)) % 100 == fy:
+    end_year, end_month, end_day = _period_end_date(q, fy)
+    end_ym = end_year * 12 + end_month
+    if q == 4:
+        for sent in sentences:
+            if _sentence_blocked_for_anchor(sent, q, fy, end_ym, check_other_period=False):
+                continue
+            named = _NAMED_FY_RE.search(sent)
+            if named and not _COMPARATIVE_CUE_RE.search(sent[:named.start()]) \
+                    and int(named.group(1) or named.group(2)) % 100 == fy:
+                return f"FY{fy:02d}"
+    for sent in sentences:
+        if _sentence_blocked_for_anchor(sent, q, fy, end_ym):
+            continue
+        if _REL_QUARTER_RE.search(sent):
+            return f"Q{q} FY{fy:02d}"
+        for am in _AS_ON_DATE_CUE_RE.finditer(sent):
+            if _COMPARATIVE_CUE_RE.search(sent[:am.start()]):
+                continue
+            dm = _PRINTED_DATE_RE.match(sent, am.end())
+            if dm and _date_equals(_parse_printed_date(dm), end_year, end_month, end_day):
+                return f"Q{q} FY{fy:02d}"
+        if _QUARTERLY_METRIC_RE.search(sent) and _has_figure(sent):
+            return f"Q{q} FY{fy:02d}"
+        if _has_figure(sent):
+            vm = _OVER_BASE_VERB_RE.search(sent)
+            if vm and not _COMPARATIVE_CUE_RE.search(sent[:vm.start()]):
+                cm = _OVER_BASE_CMP_RE.search(sent, vm.end())
+                if cm:
+                    dm = _PRINTED_DATE_RE.match(sent, cm.end())
+                    if dm:
+                        parsed = _parse_printed_date(dm)
+                        pq = 4 if q == 1 else q - 1
+                        pfy = fy - 1 if q == 1 else fy
+                        pq_year, pq_month, pq_day = _period_end_date(pq, pfy)
+                        if _date_equals(parsed, end_year - 1, end_month, end_day) \
+                                or _date_equals(parsed, pq_year, pq_month, pq_day):
+                            return f"Q{q} FY{fy:02d}"
+    for sent in sentences:
+        if _sentence_blocked_for_anchor(sent, q, fy, end_ym):
+            continue
+        if _REL_YEAR_RE.search(sent):
             return f"FY{fy:02d}"
-    if _REL_QUARTER_RE.search(text):
-        return f"Q{q} FY{fy:02d}"
-    if _REL_YEAR_RE.search(text):
-        return f"FY{fy:02d}"
     return ""
 
 
@@ -2014,30 +2198,48 @@ def widen_statement(statement: str, page_text: str, page_num: int = 0, question_
     return widened, snapped, True, ""
 
 
-_LABEL_DESIGNATION = (
-    r"(?:MD|CEO|CFO|COO|CMD|CTO|CMO|ED|Director|Managing\s+Director|Joint\s+Managing\s+Director"
-    r"|Executive\s+Director|Chief\s+\w+(?:\s+\w+)?|Company\s+Secretary|Chairman|President"
-    r"|Vice\s+President|Head|CGM|AGM|GM)")
+_LABEL_DESIGNATION_CORE = (
+    r"MD|CEO|CFO|COO|CMD|CTO|CMO|ED|Director|Managing\s+Director|Joint\s+Managing\s+Director"
+    r"|Executive\s+Director|Chief\s+\w+(?:\s+\w+)?|Company\s+Secretary|Chairman|Chairperson|President"
+    r"|Vice\s+President|Head|Officer|Moderator|Operator|Coordinator|Host|CGM|AGM|GM")
+_LABEL_DESIGNATION = rf"(?:{_LABEL_DESIGNATION_CORE})"
+_STRIP_ROLE_RE = re.compile(rf"\b(?:{_LABEL_DESIGNATION_CORE}|Management|Analyst)\b", re.I)
 _EMBEDDED_LABEL_RE = re.compile(
-    r"^\s*(?:(?:Shri|Shree|Mr|Mrs|Ms|Dr)\.?\s+)?[A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,3}"
+    r"^\s*(?P<name>(?:(?:Shri|Shree|Mr|Mrs|Ms|Dr)\.?\s+)?[A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,3})"
     r"\s*[-,–—]\s*(?=[^:\n]{0,60}\b" + _LABEL_DESIGNATION + r"\b)[^:\n]{0,60}(?::|\n)\s*", re.I)
 
 
-def strip_leading_speaker_label(statement: str, speaker: str = "") -> tuple[str, bool]:
-    """T-242 r3: drop a speaker label the model copied into the passage's own start; returns ``(text, changed)``.
+def strip_leading_speaker_label(
+    statement: str,
+    speaker: str = "",
+    known_names: Iterable[str] | None = None,
+) -> tuple[str, bool]:
+    """T-242 r3/r4: drop a speaker label the model copied into the passage's own start; returns ``(text, changed)``.
 
     Only a leading label is removed: a printed person label carrying a designation and ending at a colon or a
-    line break (``Shri <Name>, MD & CEO`` + newline, ``<Name> - CFO:``), or the row's own speaker followed by a
-    colon or a line break.  What remains is still a verbatim substring of its page.
+    line break (``Shri <Name>, MD & CEO`` + newline, ``<Name> - CFO:``), or a non-heading speaker label naming
+    a roster speaker or carrying a role word followed by a colon or a line break.  What remains is still a
+    verbatim substring of its page.
     """
     st = str(statement or "")
     if not st.strip():
         return st, False
     changed = False
     label = " ".join(str(speaker or "").split())
+    roster = [_norm_name(n) for n in (known_names or ()) if n]
+    label_allowed = False
+    if label and not _is_heading_label(label):
+        if _STRIP_ROLE_RE.search(label):
+            label_allowed = True
+        elif roster:
+            label_allowed = _name_matches_list(label, roster)
+        elif known_names is None:
+            label_allowed = bool(_is_valid_speaker_name(label, allow_all_caps_name=True))
     for _ in range(3):                     # a roster block can print more than one label line
         m = _EMBEDDED_LABEL_RE.match(st)
-        if m is None and label:
+        if m is not None and _is_heading_label(m.group("name")):
+            m = None
+        if m is None and label_allowed:
             words = [re.escape(word) for word in label.split()]
             m = re.match(r"\s*" + r"\s+".join(words) + r"(?:\s*[:\-–—]\s*|\s*\n\s*)", st)
         if m is None or not st[m.end():].strip():
@@ -2090,14 +2292,16 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
         page = int(row.get("page") or 0)
         page_text = texts.get(page, "")
         speaker = " ".join(str(row.get("speaker") or "").split())
-        statement, label_stripped = strip_leading_speaker_label(str(row.get("statement") or ""), speaker)
+        statement, label_stripped = strip_leading_speaker_label(
+            str(row.get("statement") or ""), speaker, known_names=known_names)
         if page_text:                       # T-242 (26 Nov): sentence snap + referent widen, page-local
             statement, snapped, widened, note = widen_statement(
                 statement, page_text, page, str(row.get("question_context") or ""),
                 analysts=analysts, known_names=known_names)
             if snapped or widened:
                 # T-242 r3: a snap can pull a printed label line into the passage; drop it again
-                statement, label_after = strip_leading_speaker_label(statement, speaker)
+                statement, label_after = strip_leading_speaker_label(
+                    statement, speaker, known_names=known_names)
                 label_stripped = label_stripped or label_after
                 row["statement"] = statement
                 if snapped:
@@ -2217,8 +2421,8 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
         effective_period = f"Q{int(cq_match.group(1))} FY{int(cq_match.group(2)) % 100:02d}"
     for i in indexes:                              # 394_v3 ckpt_0001 J (NLCINDIA p1): a filing letter's closing line
         row = rows[i]
-        statement, label_after = strip_leading_speaker_label(str(row.get("statement") or ""),
-                                                             str(row.get("speaker") or ""))
+        statement, label_after = strip_leading_speaker_label(
+            str(row.get("statement") or ""), str(row.get("speaker") or ""), known_names=known_names)
         if label_after:                # T-242 r3: the row's speaker is resolved by now; strip its label too
             row["statement"] = statement
             stats["labels_stripped"] += 1
