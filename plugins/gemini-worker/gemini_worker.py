@@ -24,7 +24,7 @@ from pathlib import Path
 ROOT = Path("C:/RealityEngine/gemini_worker")
 USAGE = ROOT / "usage.jsonl"
 API = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-DEFAULT_MODEL = "gemini-4-hydrogen"
+DEFAULT_MODEL = "gemma-4-31b-it"  # 26 Nov (Shivam): Hydrogen/Argon only 10 req/key/day; Gemma 31B 14,000
 # Free-tier pacing per key (rpm, rpd), kept just under the AI Studio limits; unknown models get the strictest pair.
 LIMITS = {
     "gemini-3.8-flash": (4, 19), "gemini-3.7-flash": (4, 19), "gemini-3.6-flash": (4, 19), "gemini-3.5-flash": (4, 19),
