@@ -129,7 +129,7 @@ OBS_COLS = None  # resolved at runtime
 
 
 def _cols(db_path, table):
-    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=300)   # hy4 loops write while loads run
     c = [r[1] for r in con.execute(f"PRAGMA table_info({table})").fetchall()]
     con.close()
     return c
