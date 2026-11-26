@@ -1429,37 +1429,21 @@ def greeting_only(statement: str) -> bool:
         or _wrapup_summary_passage(statement)
 
 
-# T-242 (26 Nov, tx394 ckpt_0014 P / r2): a prepared remark anchors to the call's printed period (or call_quarter).
-_REL_QUARTER_RE = re.compile(r"\b(?:this|the|current)\s+quarter\b(?!\s+(?:ago|earlier|before|prior|-on-))", re.I)
-_REL_FIRST_HALF_RE = re.compile(
-    r"\b(?:first\s+half(?!\s+(?:of\s+)?(?:FY|financial\s+year|fiscal\s+year|['’]?\d{2,4}))"
-    r"|H1(?!\s*(?:FY|['’]?\d{2,4})))\b",
-    re.I,
-)
-_REL_SECOND_HALF_RE = re.compile(
-    r"\b(?:second\s+half(?!\s+(?:of\s+)?(?:FY|financial\s+year|fiscal\s+year|['’]?\d{2,4}))"
-    r"|H2(?!\s*(?:FY|['’]?\d{2,4})))\b",
-    re.I,
-)
-_REL_HALF_YEAR_RE = re.compile(r"\bhalf[-\s]+year\b", re.I)
-_REL_NINE_MONTHS_RE = re.compile(
-    r"\b(?:nine|9)[-\s]+months?\b(?!\s*(?:ago|earlier|before|of\s+|ended\s+|FY|financial\s+year|fiscal\s+year|['’]?\d{2,4}))",
-    re.I,
-)
-_REL_YEAR_RE = re.compile(r"\b(?:this|the|current|full)\s+year\b(?!\s*(?:-?on-|ago\b|earlier\b|before\b))", re.I)
-_REL_PRIOR_YEAR_RE = re.compile(r"\b(?:previous|last|prior)\s+year\b", re.I)
-_REL_PRIOR_QUARTER_RE = re.compile(r"\b(?:previous|last|prior)\s+quarter\b", re.I)
-_COMPARATIVE_PERIOD_RE = re.compile(
-    r"(?:\b(?:as\s+)?compared\s+(?:to|with)|\b(?:vis[- ]a[- ]vis|versus|vs\.?)|\b(?:as\s+)?against"
-    r"|\b(?:than|over|from)\s+(?=(?:the\s+)?(?:(?:same|corresponding)\s+|(?:previous|last|prior)\s+)))"
-    r"(?:\s+(?:the|that\s+of|in|of))*"
-    r"(?:\s+(?:same|corresponding)\s+(?:quarter|period|half|month|year)\s+(?:of\s+)?(?:the\s+)?)?"
-    r"(?:\s+(?:(?:previous|last|prior)\s+(?:year|quarter)|first\s+half|second\s+half|half\s+year"
-    r"|H[12]|(?:this|the|current|full)\s+(?:year|quarter))(?:'s|’s)?)"
-    r"|\b(?:same|corresponding)\s+(?:quarter|period|half)\s+(?:of\s+)?(?:the\s+)?(?:previous|last|prior)\s+year\b"
-    r"|\b(?:previous|last|prior)\s+(?:year|quarter)\s+(?:y-o-y|yoy|q-o-q|qoq)\b",
-    re.I,
-)
+# T-242 (26 Nov, tx394 ckpt_0014 P / r2; r3): only an explicit own-period cue anchors a prepared remark.
+_REL_QUARTER_RE = re.compile(
+    r"\b(?:this|the|current)\s+quarter\b(?!\s+(?:ago|earlier|before|prior|last|previous|-on-))", re.I)
+_REL_YEAR_RE = re.compile(
+    r"\b(?:this|the|current)\s+year\b(?!\s*(?:-?on-|ago\b|earlier\b|before\b|ended\b|ending\b|to\s+date\b))",
+    re.I)
+_NAMED_QUARTER_FY_RE = re.compile(
+    r"\bQ([1-4])(?:\s*(?:and|&|,|/)\s*(?:9M|H[12]))?\s*FY\s*['’]?\s*(\d{2,4})\b", re.I)
+_NAMED_FY_RE = re.compile(
+    r"(?:\b(?:for|in|of|during)\s+(?:the\s+)?(?:full\s+|financial\s+|fiscal\s+)?year\s+FY\s*['’]?\s*(\d{2,4})"
+    r"|\bfor\s+FY\s*['’]?\s*(\d{2,4}))\b", re.I)
+_COMPARATIVE_CUE_RE = re.compile(
+    r"\b(?:y-o-y|yoy|year[- ]on[- ]year|q-o-q|qoq|quarter[- ]on[- ]quarter|versus|vs\.?"
+    r"|compared\s+(?:to|with)|last\s+year|previous\s+year|prior\s+year|corresponding\s+(?:quarter|period)"
+    r"|same\s+period\s+last\s+year|last\s+quarter|previous\s+quarter)\b", re.I)
 _CALL_PERIOD_RE = re.compile(r"^Q([1-4])\s+FY(\d{2,4})$")
 _CALL_TITLE_CUE_RE = re.compile(
     r"\b(?:(?:earn(?:ing|ings)|eamnings?|results?|investor|analyst|post[- ]?earnings?|post[- ]?results?|conference)"
@@ -1492,37 +1476,34 @@ def printed_call_period(pages: Iterable[tuple[int, str]]) -> str:
 
 
 def anchored_period(statement: str, call_period: str) -> str:
-    """The fiscal label a prepared remark's own relative period resolves to on this call; '' when none or unknown.
+    """The fiscal label a prepared remark's own period resolves to on this call; '' when none or unknown.
 
-    ``call_period`` is the label the reader was given for the call ("Q2 FY26").  Comparative references
-    ("compared to last year", "versus previous year") never set the period; on a Q3 call "half year" resolves to
-    "9M FY.." only when "nine months" is printed (else ''), and on a Q4 call "last/previous year" is left empty.
+    ``call_period`` is the label the reader was given for the call ("Q2 FY26").  Only an explicit own-period cue
+    anchors: "this/the quarter" and "during the quarter" resolve to the call quarter, "this/the year" and
+    "during the year" to the call's fiscal year, and a named "Qn FYnn"/"for FYnn" to itself when it is the call's
+    own period.  A comparative cue ("compared to", "Y-o-Y", "versus", "last year", ...) before a named period
+    means that period belongs to the comparative, not to the figure, so it never anchors; a bare "last/previous
+    quarter", "half year" or "full year" is left empty (empty beats wrong).
     """
     m = _CALL_PERIOD_RE.match(" ".join(str(call_period or "").split()))
     if not m:
         return ""
     q, fy = int(m.group(1)), int(m.group(2)) % 100
-    cleaned = _COMPARATIVE_PERIOD_RE.sub(" ", _normalise_ligatures(statement))
-    if _REL_QUARTER_RE.search(cleaned):
+    text = _normalise_ligatures(statement)
+    for sent in _sentences(text):
+        named = _NAMED_QUARTER_FY_RE.search(sent)
+        if named and not _COMPARATIVE_CUE_RE.search(sent[:named.start()]) \
+                and (int(named.group(1)), int(named.group(2)) % 100) == (q, fy):
+            return f"Q{q} FY{fy:02d}"
+    for sent in _sentences(text):
+        named = _NAMED_FY_RE.search(sent)
+        if named and not _COMPARATIVE_CUE_RE.search(sent[:named.start()]) \
+                and int(named.group(1) or named.group(2)) % 100 == fy:
+            return f"FY{fy:02d}"
+    if _REL_QUARTER_RE.search(text):
         return f"Q{q} FY{fy:02d}"
-    if _REL_HALF_YEAR_RE.search(cleaned):
-        if q == 2:
-            return f"H1 FY{fy:02d}"
-        if q == 3 and _REL_NINE_MONTHS_RE.search(cleaned):
-            return f"9M FY{fy:02d}"
-        return ""
-    if _REL_FIRST_HALF_RE.search(cleaned):
-        return f"H1 FY{fy:02d}"
-    if _REL_SECOND_HALF_RE.search(cleaned):
-        return f"H2 FY{fy:02d}"
-    if q == 3 and _REL_NINE_MONTHS_RE.search(cleaned):
-        return f"9M FY{fy:02d}"
-    if _REL_YEAR_RE.search(cleaned):
+    if _REL_YEAR_RE.search(text):
         return f"FY{fy:02d}"
-    if q != 4 and _REL_PRIOR_YEAR_RE.search(cleaned) and not re.search(r"\b(?:y-o-y|yoy|year-on-year)\b", cleaned, re.I):
-        return f"FY{fy - 1:02d}"
-    if _REL_PRIOR_QUARTER_RE.search(cleaned):
-        return f"Q{q - 1} FY{fy:02d}" if q > 1 else f"Q4 FY{fy - 1:02d}"
     return ""
 
 
@@ -1808,6 +1789,11 @@ _DEMONSTRATIVE_NOUN_RE = re.compile(
 _BOTH_OF_RE = re.compile(r"\bboth\s+of\s+(?:these|those|them)\b", re.I)
 _THE_SAME_RE = re.compile(
     r"\bthe\s+same\b(?!\s+(?:time|way|manner|extent|level|pace|rate|quarter|year|month|period|day|place)\b)", re.I)
+# T-242 r3: a passage that opens on a connector/demonstrative (or a cut "we will get" figure) is a fragment
+# when the previous sentence of the same turn holds its figure/subject.
+_FRAGMENT_OPEN_RE = re.compile(
+    r"^(?:and|but|so|also|now|then|this|that|these|those|it|almost|with|despite|however|hence|therefore)\b"
+    r"|^we\s+(?:are\s+expecting|will\s+get|will\s+do|expect\s+to|are\s+going\s+to)\b", re.I)
 # A definite sentence subject ("The brand has ...") whose noun this whitelist does not claim is an anaphor.
 _DEFINITE_OPEN_RE = re.compile(r"[Tt]he\s+([a-z][a-z-]{2,})\b")
 _SELF_CONTAINED_NOUNS = frozenset({
@@ -1969,8 +1955,9 @@ def widen_statement(statement: str, page_text: str, page_num: int = 0, question_
     Returns ``(statement, snapped, widened, note)``.  The statement stays a verbatim substring of ``page_text``:
     a start is only moved back inside the same printed speaker turn (never across a label, into an analyst's
     question, or before the page), the prepended sentence is the previous one of that turn and at most 60 words,
-    and ``note`` is ``referent_outside_window: ...`` when either move is impossible.  ``snapped``/``widened`` are
-    True only when the text changes.
+    and ``note`` is ``referent_outside_window: ...`` when either move is impossible.  A fragment opening on a
+    connector/demonstrative (r3) also takes the previous sentence when that sentence holds a figure;
+    ``snapped``/``widened`` are True only when the text changes.
     """
     st = str(statement or "")
     if not st.strip() or not page_text:
@@ -2000,16 +1987,24 @@ def widen_statement(statement: str, page_text: str, page_num: int = 0, question_
     if snapped:
         st = page_text[pos:stmt_end].strip()
     first = (_sentences(st) or [""])[0]
-    if not first or not _first_sentence_has_anaphor(first):
+    if not first:
         return st, snapped, False, ""
-    if _content_heads(first) & _content_heads(question_context):
-        return st, snapped, False, ""            # the question already holds the referent
     starts = _sentence_starts(page_text, body_start, pos)
     previous = [s for s in starts if s < pos]
     if not previous:
-        return st, snapped, False, _WINDOW_NOTE  # the turn (or the carried sentence) starts on an earlier page
+        if _first_sentence_has_anaphor(first) and not _content_heads(first) & _content_heads(question_context):
+            return st, snapped, False, _WINDOW_NOTE  # the turn (or the carried sentence) starts on an earlier page
+        return st, snapped, False, ""
     prev_start = previous[-1]
     prev_sentence = page_text[prev_start:pos].strip()
+    if _FRAGMENT_OPEN_RE.match(first) and _has_figure(prev_sentence) and prev_sentence \
+            and len(prev_sentence.split()) <= _PREV_SENTENCE_MAX_WORDS \
+            and not _front_matter(page_text[prev_start:pos]) and not _only_anaphor(prev_sentence):
+        # T-242 r3: a fragment opening on a connector/demonstrative takes the previous sentence that holds its
+        # figure/subject, even when the stored question already names the topic (row 39).
+        return " ".join(page_text[prev_start:stmt_end].split()), snapped, True, ""
+    if not _first_sentence_has_anaphor(first) or _content_heads(first) & _content_heads(question_context):
+        return st, snapped, False, ""            # no referent, or the question already holds it
     if not prev_sentence or len(prev_sentence.split()) > _PREV_SENTENCE_MAX_WORDS \
             or _front_matter(page_text[prev_start:pos]):
         return st, snapped, False, _WINDOW_NOTE
@@ -2017,6 +2012,33 @@ def widen_statement(statement: str, page_text: str, page_num: int = 0, question_
         return st, snapped, False, _WINDOW_NOTE  # the previous sentence is also only an anaphor
     widened = " ".join(page_text[prev_start:stmt_end].split())
     return widened, snapped, True, ""
+
+
+_EMBEDDED_LABEL_RE = re.compile(
+    r"^\s*(?:(?:Shri|Shree|Mr|Mrs|Ms|Dr)\.?\s+)?[A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,3}"
+    r"\s*[-,–—]\s*[^:\n]{0,60}:\s+")
+
+
+def strip_leading_speaker_label(statement: str, speaker: str = "") -> tuple[str, bool]:
+    """T-242 r3: drop a speaker label the model copied into the passage's own start; returns ``(text, changed)``.
+
+    Only a leading label is removed: the row's own speaker (``Shri <Name>, MD & CEO`` followed by a line break or
+    a colon) or a printed person label carrying a designation and a colon (``<Name> - CFO:``).  What remains is
+    still a verbatim substring of its page.
+    """
+    st = str(statement or "")
+    if not st.strip():
+        return st, False
+    label = " ".join(str(speaker or "").split())
+    if label:
+        words = [re.escape(word) for word in label.split()]
+        m = re.match(r"\s*" + r"\s+".join(words) + r"(?:\s*[:\-–—]\s*|\s*\n\s*)", st)
+        if m and st[m.end():].strip():
+            return st[m.end():].lstrip(), True
+    m = _EMBEDDED_LABEL_RE.match(st)
+    if m and st[m.end():].strip():
+        return st[m.end():].lstrip(), True
+    return st, False
 
 
 def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int, str]],
@@ -2034,7 +2056,7 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
     """
     stats = {"statements": 0, "carried": 0, "resolved": 0, "empty": 0, "unverified": 0, "question_filled": 0,
              "not_a_call": 0, "moderator": 0, "not_a_person": 0, "short_remarks": 0, "content_free": 0,
-             "period_anchored": 0, "snapped": 0, "widened": 0, "noted": 0}
+             "period_anchored": 0, "snapped": 0, "widened": 0, "noted": 0, "labels_stripped": 0}
     indexes = [i for i, row in enumerate(rows) if str(row.get("record_type") or "") == "statement"]
     if not indexes:
         return stats
@@ -2061,9 +2083,14 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
         row = rows[i]
         page = int(row.get("page") or 0)
         page_text = texts.get(page, "")
+        speaker = " ".join(str(row.get("speaker") or "").split())
+        statement, label_stripped = strip_leading_speaker_label(str(row.get("statement") or ""), speaker)
+        if label_stripped:                  # T-242 r3: a label copied into the passage is not its first words
+            row["statement"] = statement
+            stats["labels_stripped"] += 1
         if page_text:                       # T-242 (26 Nov): sentence snap + referent widen, page-local
             statement, snapped, widened, note = widen_statement(
-                str(row.get("statement") or ""), page_text, page, str(row.get("question_context") or ""),
+                statement, page_text, page, str(row.get("question_context") or ""),
                 analysts=analysts, known_names=known_names)
             if snapped or widened:
                 row["statement"] = statement
@@ -2191,13 +2218,11 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
             stats["filing_lines"] = stats.get("filing_lines", 0) + 1
             if content_free:
                 stats["content_free"] += 1
-        # T-242 (26 Nov, tx394 ckpt_0014 P / r2): anchor prepared remarks (empty qc, empty period) to their own
-        # relative period, or to the call's reporting period when they carry a figure and no relative word.
+        # T-242 (26 Nov, tx394 ckpt_0014 P / r2; r3): only an explicit own-period cue anchors a prepared remark;
+        # a figure alone never takes the call quarter (a comparative's or a full year's figure is not the call's).
         if not row.get("_drop") and effective_period and not str(row.get("question_context") or "").strip() \
                 and not str(row.get("period") or "").strip():
             anchor = anchored_period(statement, effective_period)
-            if not anchor and _has_figure(_normalise_ligatures(statement)):
-                anchor = effective_period
             if anchor:
                 row["period"] = anchor
                 row["period_kind"] = "actual"

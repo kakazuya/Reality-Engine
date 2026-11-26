@@ -71,9 +71,14 @@ All 20 are call logistics or a deferral; none carries a figure or a business sta
 
 ## Notes
 
-- The period anchor is passed in by the caller as `call_quarter(known_at)` (the label the reader was given), never
-  guessed inside `obs_speaker`; an unparsed call period or a statement with no relative word leaves the row as is.
-- "this quarter" resolves to the call quarter; "half year"/"first half"/"H1" to H1/H2 of the call's FY; "this/the/
-  current/full year" to the call's FY; "previous/last/prior year" to the prior FY.
+- The period anchor is passed in by the caller as `call_quarter(known_at, pages=...)` (the label the reader was
+  given), never guessed inside `obs_speaker`; an unparsed call period leaves the row as is.
+- **These numbers are the r2 rules (26 Nov, before the r3 reparse).** r2 resolved "this quarter"/"half year"/
+  "this year"/"previous year" against the call period and, when a figure-bearing prepared remark had no relative
+  word, filled it with the call's reporting period. r3 (T-242, 26 Nov, `tasks/t242_statement_r3_measure.md`) removes
+  that default and drops the half-year/prior-quarter/prior-year anchors: only an explicit own-period cue anchors
+  (`this/the quarter`, `during the year`, a named `Qn FYnn`/`for FYnn` equal to the call's own and with no
+  comparative cue before it). So the "9,571 statements with an empty qc and period anchored" and the four P periods
+  below are r2 history, not current behaviour.
 - The 4 P rows of ckpt_0014 (observation_id 376044, 377607, 271775, 203115) are `H1 FY26`, `FY26`, `FY26`, `Q1 FY26`;
-  the copy's statement rows had no `period` before the rule, and 9,571 statements now carry one.
+  the copy's statement rows had no `period` before the r2 rule and 9,571 statements carried one after it.
