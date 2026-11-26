@@ -17,7 +17,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 26 Nov (Eagle) events: order_win/fund_raise hy4 model + script check merged; VERIFIED_KINDS empty until fresh8 grade.
-00000. 26 Nov deck-wide read DONE (9,632 pages incl. 1,204 OCR, ckpt 1-4 pass); loads via loader SUPPLEMENTS (page-disjoint, +3,381 pages); OCR grade1 FAIL 17R/12P/1W/30J (verified 13R1P) -> junk gate r5 merged; recheck copy + regrade, then load.
+00000. 26 Nov deck-wide read DONE (9,632 pages incl. 1,204 OCR, ckpt 1-4 pass); loads via loader SUPPLEMENTS (page-disjoint, +3,381 pages); OCR grade1 FAIL 17R/12P/1W/30J (verified 13R1P) -> junk gate r5 merged; copy C:/RealityEngine/t242/deckwide_recheck/wide_r5.db rechecked (OCR 1,993 verified); OCR grade2 next, then swap + load.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
 1. T-214/T-218 Telegram build: plan `tasks/handoff/T-214_TG_BUILD_PLAN.md`, queue `D:/RealityEngine/tg_build/build_queue.csv`, stores `tg_build/measure10/c01..c91`; repair notes `tasks/store_repair/INDEX.md`, grid `reports/store_repair_grid.xlsx`.
 
