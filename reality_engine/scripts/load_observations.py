@@ -127,7 +127,8 @@ def _cols(db_path, table):
 
 
 def _ro(path):
-    return sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    # 26 Nov: hy4 loops now write these DBs while loads run (reading never stops): wait for the writer's lock
+    return sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=300)
 
 
 def _create_tables(con, obs_cols):
