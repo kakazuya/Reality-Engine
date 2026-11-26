@@ -8,12 +8,13 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD (`--start/--max-workers`), Zen rotates Nemotron VL / DeepSeek Flash by speed.
 - 26 Nov tx statement window (Eagle, 0e8b95f3): sentence snap + referent widen, page-local; recheck dedupes exact repeats. Filter r2: logistics/refusals/closings dropped; period from printed call period, comparatives never set it.
 - 26 Nov results gates r2+r3: cash-flow/adjustments, basis (standalone-only filer), duration fill, current/non-current, scope backing, statute junk.
-- 26 Nov AR gates r4: jv/associate scopes, scope needs a printed name, junk dropped; deck untied values unverified.
+- 26 Nov AR gates r4: jv/associate scopes, printed-name scope, junk; deck untied values.
 - 26 Nov extractors (next build): guidance superseded/entity/split; KPI quote-scale check.
+- 26 Nov deck r7: scope, HoH/QoQ, quarter cue
 - 26 Nov junk gates r5/r6: decorative slide numbers; bare FY tokens, 'N (word)' echoes.
 - 26 Nov `gate_not_company`: industry/country/peer/customer rows never verified (read + recheck); recheck keeps not_company/subsidiary_unnamed.
 - hy4 bulk: one Drive fetch per doc.
-- 26 Nov run ledger ingest-hook incremental (`ingest_offset`).
+- Run ledger hook incremental.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 26 Nov (Eagle) events: order_win/fund_raise hy4 model + script check merged; VERIFIED_KINDS empty until fresh8 grade.
