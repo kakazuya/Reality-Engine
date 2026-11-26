@@ -1,4 +1,4 @@
-"""Run ledger: tool categories, answer ingest with workaround reasons, reader ingest."""
+"""Run ledger: tool categories, answer ingest with workaround reasons, reader ingest, incremental transcript reads."""
 import json
 from pathlib import Path
 
@@ -15,6 +15,34 @@ def _fresh(monkeypatch, name):
             p.unlink()
     monkeypatch.setattr(rl, "LEDGER", db)
     return rl.connect()
+
+
+def _claude_lines(n, start=0):
+    """A tool_use and its result per call, the shape a session transcript has."""
+    out = []
+    for i in range(start, start + n):
+        ts = f"2026-11-24T10:00:{i:02d}+00:00"
+        out.append(json.dumps({"timestamp": ts, "message": {
+            "model": "m", "usage": {"input_tokens": 10, "output_tokens": 2},
+            "content": [{"type": "tool_use", "id": f"t{i}", "name": "read", "input": {"file": f"f{i}"}}]}}))
+        out.append(json.dumps({"timestamp": ts, "message": {
+            "content": [{"type": "tool_result", "tool_use_id": f"t{i}"}]}}))
+    return out
+
+
+def _event(kind, **kw):
+    return json.dumps({"type": kind, **kw})
+
+
+def _dump(con):
+    """Every row an ingest writes, minus the ingest timestamp (which moves between two ingests)."""
+    cur = con.execute("SELECT * FROM run")
+    cols = [d[0] for d in cur.description or []]
+    runs = [dict(zip(cols, r)) for r in cur]
+    for r in runs:
+        r.pop("ingested_at")
+    calls = con.execute("SELECT run_id, seq, tool, category, status, arg FROM tool_call ORDER BY run_id, seq").fetchall()
+    return runs, calls
 
 
 def test_categories():
@@ -70,4 +98,85 @@ def test_ingest_dsh_classifies_grader_without_review(monkeypatch, tmp_path):
     got = dict(con.execute("SELECT run_id, kind FROM run").fetchall())
     for job_id, _brief, expected in cases:
         assert got[job_id] == expected
+
+
+def test_ingest_claude_reads_only_appended_lines(monkeypatch, tmp_path):
+    con = _fresh(monkeypatch, "claude_tail")
+    transcript = tmp_path / "s1.jsonl"
+    first = _claude_lines(2)
+    transcript.write_text("\n".join(first) + "\n", encoding="utf-8")
+    assert rl.ingest_claude(con, transcript) == 2
+
+    transcript.write_text("\n".join(first + _claude_lines(1, 2)) + "\n", encoding="utf-8")
+    decoded = []
+    loads = rl.json.loads
+    monkeypatch.setattr(rl.json, "loads", lambda s, *a, **k: decoded.append(s) or loads(s, *a, **k))
+    assert rl.ingest_claude(con, transcript) == 3
+    # the appended call was decoded, the two already-ingested calls were not
+    assert sum(s.count('"type": "tool_use"') for s in decoded) == 1
+    assert con.execute("SELECT tool_calls, in_tok, out_tok, started_at FROM run").fetchone() == (
+        3, 30, 6, "2026-11-24T10:00:00+00:00")
+    assert con.execute("SELECT status FROM tool_call ORDER BY seq").fetchall() == [("completed",)] * 3
+
+
+def test_ingest_claude_incremental_matches_a_full_ingest(monkeypatch, tmp_path):
+    transcript = tmp_path / "s2.jsonl"
+    lines = _claude_lines(3)
+    transcript.write_text("\n".join(lines[:3]) + "\n", encoding="utf-8")   # stop after a tool_use, before its result
+    con = _fresh(monkeypatch, "claude_inc")
+    rl.ingest_claude(con, transcript)
+    assert con.execute("SELECT status FROM tool_call ORDER BY seq").fetchall() == [("completed",), ("",)]
+
+    transcript.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    rl.ingest_claude(con, transcript)
+
+    full = _fresh(monkeypatch, "claude_full")
+    rl.ingest_claude(full, transcript)
+    assert _dump(full) == _dump(con)
+    assert con.execute("SELECT status FROM tool_call ORDER BY seq").fetchall() == [("completed",)] * 3
+
+
+def test_ingest_claude_resets_when_the_transcript_is_replaced(monkeypatch, tmp_path):
+    con = _fresh(monkeypatch, "claude_reset")
+    transcript = tmp_path / "s3.jsonl"
+    transcript.write_text("\n".join(_claude_lines(3)) + "\n", encoding="utf-8")
+    assert rl.ingest_claude(con, transcript) == 3
+
+    transcript.write_text("\n".join(_claude_lines(1)) + "\n", encoding="utf-8")   # shorter: a replacement, not an append
+    assert rl.ingest_claude(con, transcript) == 1
+    assert con.execute("SELECT COUNT(*) FROM tool_call").fetchone()[0] == 1
+    assert con.execute("SELECT tool_calls, in_tok FROM run").fetchone() == (1, 10)
+
+
+def test_ingest_dsh_reads_appended_events(monkeypatch, tmp_path):
+    con = _fresh(monkeypatch, "dsh_tail")
+    jobs = tmp_path / "jobs"
+    jdir = jobs / "job_1"
+    jdir.mkdir(parents=True)
+    status = {"job_id": "job_1", "outcome": "running", "started_at": "2026-11-24T10:00:00+00:00"}
+    (jdir / "status.json").write_text(json.dumps(status), encoding="utf-8")
+    (jdir / "brief.md").write_text("Goal: worker job\n", encoding="utf-8")
+    events = jdir / "result.md.events.jsonl"
+    lines = [_event("tool_call", callId="c1", tool="read", input="a"),
+             _event("tool_result", callId="c1", status="completed"), _event("thinking")]
+    events.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    monkeypatch.setattr(rl, "JOBS", jobs)
+    assert rl.ingest_dsh(con) == 1
+
+    lines.append(_event("tool_call", callId="c2", tool="Edit", input="b"))   # its result arrives after this stop
+    events.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    rl.ingest_dsh(con)
+    lines += [_event("tool_result", callId="c2", status="error"), _event("thinking")]
+    events.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    status.update(outcome="completed", finished_at="2026-11-24T10:02:00+00:00")
+    (jdir / "status.json").write_text(json.dumps(status), encoding="utf-8")
+    rl.ingest_dsh(con)
+
+    assert con.execute("SELECT tool, status FROM tool_call ORDER BY seq").fetchall() == [
+        ("read", "completed"), ("Edit", "error")]
+    assert con.execute("SELECT tool_calls, model_steps, outcome FROM run").fetchone() == (2, 2, "completed")
+
+    full = _fresh(monkeypatch, "dsh_tail_full")
+    rl.ingest_dsh(full)
+    assert _dump(full) == _dump(con)
 

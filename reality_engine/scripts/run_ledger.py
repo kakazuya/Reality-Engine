@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS gap (
   evidence TEXT, fix TEXT, ticket TEXT, status TEXT DEFAULT 'open');
 CREATE TABLE IF NOT EXISTS note (
   note_id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, author TEXT, kind TEXT, text TEXT, refs TEXT);
+CREATE TABLE IF NOT EXISTS ingest_offset (
+  path TEXT PRIMARY KEY, size INTEGER, offset INTEGER, mtime REAL, state TEXT);
 """
 
 # Tool categories.  "mcp" = a reality-data tool (the intended path); "sql" = SQL typed by the model (pilot3_sql or
@@ -121,8 +123,52 @@ def _seconds(a: str | None, b: str | None) -> float | None:
         return None
 
 
+def _prior(con: sqlite3.Connection, run_id: str) -> tuple[list[tuple[str, str, str]], dict[str, Any]]:
+    """The run row and its tool calls already in the ledger, so an ingest that read only a file's new tail can merge."""
+    cur = con.execute("SELECT * FROM run WHERE run_id=?", (run_id,))
+    row = cur.fetchone()
+    if not row or cur.description is None:
+        return [], {}
+    calls = [(str(t), str(s), str(a)) for t, s, a in
+             con.execute("SELECT tool, status, arg FROM tool_call WHERE run_id=? ORDER BY seq", (run_id,))]
+    return calls, dict(zip([d[0] for d in cur.description], row))
+
+
+def _read_since(con: sqlite3.Connection, path: Path) -> tuple[list[str], bool, int, dict[str, Any]]:
+    """Complete lines appended to ``path`` since its stored offset: (lines, read from 0?, new offset, saved state).
+
+    T-242: the Stop hook ran every file through ``read_text().splitlines()`` on each stop, re-decoding mostly bytes it
+    had already parsed (a session transcript is tens of MB).  ``ingest_offset`` keeps the byte offset, size and mtime
+    per file, so only the appended tail is read; a half-written last line waits for the next ingest.  A file that
+    shrank, or whose mtime went backwards, is taken as replaced and read from 0 -- the caller then rebuilds the run's
+    rows from the whole file, so the same keys are written either way (ingests stay idempotent).
+    """
+    key = str(path.resolve())
+    st = path.stat()
+    row = con.execute("SELECT offset, mtime, state FROM ingest_offset WHERE path=?", (key,)).fetchone()
+    start = 0
+    if row and st.st_size >= row[0] and st.st_mtime >= (row[1] or 0) - 1:
+        start = int(row[0])
+    with path.open("rb") as fh:
+        fh.seek(start)
+        data = fh.read()
+    end = start + data.rfind(b"\n") + 1
+    lines = [ln.decode("utf-8", errors="replace") for ln in data[: end - start].splitlines()]
+    state: dict[str, Any] = json.loads(row[2]) if start and row and row[2] else {}
+    return lines, start == 0, end, state
+
+
+def _save_pos(con: sqlite3.Connection, path: Path, offset: int, state: dict[str, Any]) -> None:
+    st = path.stat()
+    con.execute("INSERT OR REPLACE INTO ingest_offset (path, size, offset, mtime, state) VALUES (?,?,?,?,?)",
+                (str(path.resolve()), st.st_size, offset, st.st_mtime, json.dumps(state)))
+
+
 def ingest_dsh(con: sqlite3.Connection) -> int:
-    """Every worker job folder: status.json (outcome, times) and result.md.events.jsonl (tool calls)."""
+    """Every worker job folder: status.json (outcome, times) and result.md.events.jsonl (tool calls).
+
+    T-242: the events file is append-only, so only its new lines are read; calls and thinking steps are carried forward
+    in ``ingest_offset.state`` and merged, and a result written after an earlier stop still closes its call."""
     n = 0
     for status_path in sorted(JOBS.glob("*/status.json")):
         job = status_path.parent
@@ -130,12 +176,17 @@ def ingest_dsh(con: sqlite3.Connection) -> int:
             st = json.loads(status_path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        calls: list[tuple[str, str, str]] = []
-        pending: dict[str, int] = {}
+        run_id = st.get("job_id") or job.name
+        calls, old = _prior(con, run_id)
         steps = 0
         events = job / "result.md.events.jsonl"
         if events.exists():
-            for line in events.read_text(encoding="utf-8", errors="replace").splitlines():
+            lines, reset, offset, state = _read_since(con, events)
+            if reset:   # no offset yet, or the file was replaced: rebuild the run from line 0
+                calls, state = [], {}
+            pending = {str(k): int(v) for k, v in (state.get("pending") or {}).items()}
+            steps = int(state.get("steps") or 0)
+            for line in lines:
                 try:
                     e = json.loads(line)
                 except ValueError:
@@ -148,6 +199,7 @@ def ingest_dsh(con: sqlite3.Connection) -> int:
                     calls[i] = (calls[i][0], str(e.get("status") or ""), calls[i][2])
                 elif e.get("type") == "thinking":
                     steps += 1
+            _save_pos(con, events, offset, {"pending": pending, "steps": steps})
         brief = (job / "brief.md").read_text(encoding="utf-8", errors="replace") if (job / "brief.md").exists() else ""
         ticket = re.search(r"\bT-\d{3}\b", brief)
         model = st.get("model") or (re.search(r"model[\"']?\s*[:=]\s*[\"']?([\w./:-]+)", brief) or [None, None])[1]
@@ -155,12 +207,12 @@ def ingest_dsh(con: sqlite3.Connection) -> int:
         goal = (re.search(r"^Goal:.*$", brief, re.M) or re.search(r".*", brief))
         kind = "grader" if re.search(r"\bgrad(e|er|ing)\b|review", goal.group(0) if goal else "", re.I) else "worker"
         _store_run(con, {
-            "run_id": st.get("job_id") or job.name, "kind": f"dsh_{kind}", "ticket": ticket.group(0) if ticket else None,
+            "run_id": run_id, "kind": f"dsh_{kind}", "ticket": ticket.group(0) if ticket else None,
             "title": (st.get("title") or brief[:160]).replace("\n", " ")[:300], "model": model, "host": st.get("host"),
             "started_at": st.get("started_at"), "ended_at": st.get("finished_at"),
             "seconds": st.get("elapsed_seconds") or _seconds(st.get("started_at"), st.get("finished_at")),
             "outcome": st.get("outcome") or st.get("phase"),
-            "model_steps": steps or (prog.get("events") or {}).get("model_steps"),
+            "model_steps": steps or (prog.get("events") or {}).get("model_steps") or old.get("model_steps"),
             "source": str(job)}, calls)
         n += 1
     con.commit()
@@ -168,13 +220,19 @@ def ingest_dsh(con: sqlite3.Connection) -> int:
 
 
 def ingest_claude(con: sqlite3.Connection, transcript: Path, run_id: str | None = None) -> int:
-    """A Claude Code session transcript (.jsonl): every tool_use, its result status, tokens."""
-    calls: list[tuple[str, str, str]] = []
-    idx: dict[str, int] = {}
-    tin = tout = 0
-    first = last = None
-    model = None
-    for line in transcript.read_text(encoding="utf-8", errors="replace").splitlines():
+    """A Claude Code session transcript (.jsonl): every tool_use, its result status, tokens.
+
+    T-242: the Stop hook calls this at every stop and a transcript grows to tens of MB, so only the lines appended
+    since the last ingest are decoded and the tokens, timestamps, calls and pending call ids already recorded are
+    merged with them (a tool_result written after an earlier stop still closes its call)."""
+    rid = run_id or f"claude-{transcript.stem}"
+    lines, reset, offset, state = _read_since(con, transcript)
+    calls, old = ([], {}) if reset else _prior(con, rid)
+    pending: dict[str, int] = {} if reset else {str(k): int(v) for k, v in (state.get("pending") or {}).items()}
+    tin = int(old.get("in_tok") or 0)
+    tout = int(old.get("out_tok") or 0)
+    first, last, model = old.get("started_at"), old.get("ended_at"), old.get("model")
+    for line in lines:
         try:
             e = json.loads(line)
         except ValueError:
@@ -192,15 +250,16 @@ def ingest_claude(con: sqlite3.Connection, transcript: Path, run_id: str | None 
                 if not isinstance(part, dict):
                     continue
                 if part.get("type") == "tool_use":
-                    idx[str(part.get("id"))] = len(calls)
+                    pending[str(part.get("id"))] = len(calls)
                     calls.append((str(part.get("name")), "", json.dumps(part.get("input"))[:600]))
-                elif part.get("type") == "tool_result" and str(part.get("tool_use_id")) in idx:
-                    i = idx[str(part.get("tool_use_id"))]
+                elif part.get("type") == "tool_result" and str(part.get("tool_use_id")) in pending:
+                    i = pending[str(part.get("tool_use_id"))]
                     calls[i] = (calls[i][0], "error" if part.get("is_error") else "completed", calls[i][2])
-    _store_run(con, {"run_id": run_id or f"claude-{transcript.stem}", "kind": "claude_session", "title": transcript.name,
+    _store_run(con, {"run_id": rid, "kind": "claude_session", "title": transcript.name,
                      "model": model, "host": "msi", "started_at": first, "ended_at": last,
                      "seconds": _seconds(first, last), "outcome": "session", "in_tok": tin, "out_tok": tout,
                      "source": str(transcript)}, calls)
+    _save_pos(con, transcript, offset, {"pending": pending})
     con.commit()
     return len(calls)
 

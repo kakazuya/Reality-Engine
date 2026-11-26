@@ -4,7 +4,6 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
 - Stores `D:/RealityEngine/{p20/p20new.db,u8/u8.db,q12/q12.db,n10/n10.db,pilot10/pilot10.db}`; backups `*_before_rebuild_2026-11-11.db`.
 - Extraction: `v2/page_words.py` -> `page_layout.py` -> `page_route.py` (T-189, four routes; `table_or_chart` read on the page IMAGE, `needs_ocr` on its OCR words since T-238, plus the two T-242 deck options) -> `reference_geom.py` (T-185) -> `page_reader.py` writes page_cell verified/unverified/quarantined, served by `pilot3_cells`. T-199 atoms (`page_atom` v10): `docs/PILOT3_BLUEPRINT.md` T-199 block.
-- T-225 checker open: FROZEN 464/773, target 95%.
 - 24-26 Nov T-242: `grade_pack.py`, `docs/grading/`. audits 4-8: 45R3P / 36R1P11M / 35R5P2W5M1N / 29R16P1W1M1N / 29R7P2W10M; 9 26R6P6W9M1N. F3/4: 25-row window <19 kB; named call by call or filing date ±3 d. F5: named call served by its printed call-date docs. F8/8b: paraphrase synonyms + IDF, prepared remarks ranked, capex alias, disclaimed targets not first, quarantined never served; audit8 27R->32R. F7: company figure first, group guidance election; audit7 30R->39R. F6: quarantined guidance disclosed, obs guidance fallback, aliases.
 - OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD (`--start/--max-workers`), Zen rotates Nemotron VL / DeepSeek Flash by speed.
 - 26 Nov tx statement window (Eagle, 0e8b95f3): sentence snap + referent widen, page-local; recheck dedupes exact repeats. Filter: logistics/filler dropped, 'this quarter' anchored.
@@ -12,7 +11,8 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - 26 Nov AR gates r4: jv/associate scopes, scope needs a printed name, junk dropped; deck untied values unverified.
 - 26 Nov deck junk gate r5: decorative slide numbers dropped (0/118 graded R hit; 27/30 OCR J).
 - 26 Nov `gate_not_company`: industry/country/peer/customer rows never verified (read + recheck); recheck keeps not_company/subsidiary_unnamed.
-- Bulk hy4 reads: one Drive fetch per doc (`raw_store.shared_cache`).
+- hy4 bulk: one Drive fetch per doc.
+- 26 Nov run ledger ingest-hook incremental (`ingest_offset`).
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 26 Nov 03:20 (Eagle) events: Shivam switched order_win/fund_raise to hy4 model + script check; merged (agy c858aea0, fp 546696b94a21): fresh5-7 graded W/J 69/70 fixed or unverified, R kept 92%. VERIFIED_KINDS empty until a fresh8 60-row grade per kind (Eagle).
