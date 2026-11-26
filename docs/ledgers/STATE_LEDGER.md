@@ -8777,3 +8777,10 @@
 -- hy4 bulk: one Drive fetch per doc.
 -- Run ledger hook incremental.
 ```
+
+## 2026-11-26T17:04:41 | kakazuya (Wolf) | branch main
+```diff
+-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 15:35 IST (Wolf)
++# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 17:00 IST (Wolf, dsh T-242)
++- 26 Nov events: read-provenance columns on `event` rows (T-242, dsh); script rows `read_model='script'`.
+```

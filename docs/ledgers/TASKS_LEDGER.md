@@ -1281,3 +1281,8 @@
 ```diff
 +- T-244 | OPEN | P2 | dsh launcher: heartbeat control channel fails to bind at start (exit 126) | accept: python -m pytest plugins/dsh-worker/tests -q -k control_bind | from: manual | opened 2026-11-26
 ```
+
+## 2026-11-26T17:04:41 | kakazuya (Wolf) | branch main
+```diff
++- T-245 | OPEN Wolf | P1 | Lean MSI by Fri 27 Nov 10:00 IST: data-heavy files to Drive, laptop stays a cloud box over RDP | accept: python reality_engine/scripts/drive_upload_check.py reports every moved folder present on gdrive:InfoDiffusion_archive with matching hashes and the post-move disk inventory shows no data-heavy folder left local | from: manual | opened 2026-11-26
+```

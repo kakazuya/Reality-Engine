@@ -90,3 +90,4 @@ One row per line, kept in its section.
 
 ## Machines
 
+- T-245 | OPEN Wolf | P1 | Lean MSI by Fri 27 Nov 10:00 IST: data-heavy files to Drive, laptop stays a cloud box over RDP | accept: python reality_engine/scripts/drive_upload_check.py reports every moved folder present on gdrive:InfoDiffusion_archive with matching hashes and the post-move disk inventory shows no data-heavy folder left local | from: manual | opened 2026-11-26

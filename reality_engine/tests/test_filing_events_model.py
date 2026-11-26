@@ -1332,3 +1332,68 @@ def test_r3_fund_raise_w1_w2_w3_p_j_and_same_day_counters(tmp_path: Path, monkey
     assert "d-emp-close" in ev_by_dk and "d-empty" in ev_by_dk
     assert "d-39" in ev_by_dk and "d-40" not in ev_by_dk and am_by_dk["d-40"] == "d-39"
     assert "d-reg30" in ev_by_dk and "d-vr" not in ev_by_dk and am_by_dk["d-vr"] == "d-reg30"
+
+
+# ---- Read provenance: four columns on every event row (Shivam 26 Nov 2026, T-242) ------------------------
+def test_model_row_carries_read_provenance_and_env_harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    doc = _doc(
+        "Company has received an order from Acme Ltd",
+        "The Company has received an order worth Rs. 50 Crore from Acme Ltd.",
+        doc_key="prov-win",
+    )
+
+    class FakeClient:
+        def __init__(self, *args: Any, **kwargs: Any) -> None: pass
+
+        def retry_after(self) -> float: return 0.0
+
+        def chat(self, prompt: str) -> tuple[int, str, tuple[int, int]]:
+            return 200, _reply(
+                event_type="order_win", stage="received", awardee="Acme Industries Limited", customer="Acme Ltd",
+                amounts=[{"value_text": "Rs. 50 Crore", "number": 50, "unit": "crore",
+                          "currency": "INR", "role": "order_size"}],
+            ), (5, 5)
+
+    monkeypatch.setattr(fe, "load_docs", lambda store: [dict(doc)])
+    monkeypatch.setattr(fe, "Client", FakeClient)
+    monkeypatch.setenv("REALITY_READ_HARNESS", "dsh")
+    out = tmp_path / "events_prov.db"
+    fe.build(stores=["cXX"], use_model=True, workers=1, out=out, cache=tmp_path / "cache.json")
+    con = sqlite3.connect(out)
+    row = con.execute("SELECT method, read_model, read_gateway, read_harness, prompt_fp FROM event").fetchone()
+    con.close()
+    assert row == ("model", "opencode-go/hy4-flash-free", "opencode-go", "dsh", fe.prompt_fingerprint())
+
+
+def test_script_row_carries_script_provenance(tmp_path: Path) -> None:
+    doc = _doc(
+        "Updates under Regulation 30 of SEBI (LODR) Regulations, 2015",
+        "The Board of Directors, in their meeting held today, has approved a Capital expenditure of Rs.100.0 crores.",
+    )
+    rows, _missing = fe.event_rows(doc)
+    assert [row["method"] for row in rows] == ["script"]
+    out = tmp_path / "events_script.db"
+    fe.write_db(out, rows, [], {"docs": 1})
+    con = sqlite3.connect(out)
+    row = con.execute("SELECT method, read_model, read_gateway, read_harness, prompt_fp FROM event").fetchone()
+    con.close()
+    assert row == ("script", "script", "", "reality_engine.research.filing_events", "")
+
+
+def test_old_event_db_is_migrated_with_the_four_columns(tmp_path: Path) -> None:
+    out = tmp_path / "events_old.db"
+    fe.write_db(out, [], [], {})
+    con = sqlite3.connect(out)
+    for column in fe.READ_COLUMNS:                       # an events DB built before 26 Nov
+        con.execute(f"ALTER TABLE event DROP COLUMN {column}")
+    con.commit()
+    fe._ensure_event_columns(con)
+    info = {r[1]: (r[3], r[4]) for r in con.execute("PRAGMA table_info(event)")}
+    for column in fe.READ_COLUMNS:
+        assert info[column] == (1, "''")                 # TEXT NOT NULL DEFAULT ''
+    fe._insert(con, [fe.blank_row(_doc("Receipt of Order", "The Company received an order."),
+                                  "capacity_commissioned")], [], {})
+    con.commit()
+    row = con.execute("SELECT read_model, read_gateway, read_harness, prompt_fp FROM event").fetchone()
+    con.close()
+    assert row == ("script", "", "reality_engine.research.filing_events", "")
