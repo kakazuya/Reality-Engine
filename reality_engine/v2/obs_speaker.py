@@ -1513,7 +1513,7 @@ _OVER_BASE_CMP_RE = re.compile(
 _OWN_QUARTER_CUE_RE = re.compile(
     r"\b(?:(?:in|during)\s+(?:the\s+)?(?:this\s+|current\s+)?(?:quarter(?:'s|’s)?|three\s+months)"
     r"(?!\s*(?:\d|of\b|FY\b))"
-    r"|(?:this|current)\s+quarter(?:'s|’s)?|this\s+time)\b", re.I)
+    r"|(?:this|current)\s+quarter(?:'s|’s)?|this\s+time(?!\s+(?:last|previous|a\s+year)\b))\b", re.I)
 _CLAUSE_SPLIT_RE = re.compile(
     r";|\b(?:against|vs\.?|versus|compared\s+(?:to|with)|over|while|whereas|than)\b", re.I)
 _CMP_BEFORE_PERIOD_RE = re.compile(
@@ -1758,7 +1758,10 @@ def _recap_quarter(sent: str, fy: int) -> str:
     """
     if not _RECAP_CUE_RE.search(sent) or not _has_figure(sent):
         return ""
-    qm = re.search(r"\bQ([1-4])\b", sent)
+    for _start, _end, label in _named_periods(sent):
+        if label.startswith("Q"):
+            return label                # a recap naming "Q1 FY26" keeps that FY (Wolf review)
+    qm = re.search(r"\bQ([1-4])\b(?!\s*(?:of\s+)?FY)", sent, re.I)
     return f"Q{int(qm.group(1))} FY{fy:02d}" if qm else ""
 
 

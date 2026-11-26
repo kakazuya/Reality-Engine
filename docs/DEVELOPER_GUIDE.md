@@ -3648,12 +3648,12 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   11 non-period statement changes are the same speaker/status rows r5's review records from r4. The non-period
   counts equal r5 (1,153 carried, 589 resolved, 332 short remarks, 295 content-free, 3,687 speaker unverified);
   `test_observations.py` 177 passed.
-  **r7 (27 Nov, DeepSeek): the explicit own-period cue bound to its figure anchors.** (1) a named FY bound by
+  **r7 (27 Nov, DeepSeek): the explicit own-period cue bound to its figure anchors.** Wolf review: a past-tense recap that names "Qn FYnn" keeps that named FY (a bare "Q4" takes the call's FY). (1) a named FY bound by
   "for/in/during ... FYnn" anchors that FY (`YASHO` "planned outlay for FY27" -> FY27); inside the call's own year
   only a plan/guidance/target/outlay word (or a "for the full year FYnn" reporting phrase) does, so `CUB`
   "NIM for FY26" stays empty; a bound FY after a comparative connector (`over`, `versus`, `compared to`, W #47
   "in FY '24") names the base and never anchors. (2) a quarter cue ("in this quarter", "for the quarter",
-  "this time") is searched over the whole sentence, so it anchors the figure before it even when a forward word
+  "this time", never "this time last year") is searched over the whole sentence, so it anchors the figure before it even when a forward word
   opens the sentence (`TRIVENI` "... you will note ... broadly been the same in this quarter"; `PSB` "this time
   these slippages are at Rs.207 crores ... for the quarter ... will be annualised"); a cue whose clause holds no
   figure (HFCL) still stays empty. (3) a guidance "for the year" bound to a figure is the guidance year -- the

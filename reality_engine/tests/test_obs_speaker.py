@@ -1645,3 +1645,15 @@ def test_r7_keep_cases_hold_the_r3_to_r6_periods():
         assert ospeaker.anchored_period(stmt, call) == want, (call, stmt)
 
 
+
+
+def test_r7_review_recap_keeps_named_fy_and_this_time_last_year_is_comparative():
+    """Wolf review of r7: a recap naming its FY keeps it; 'this time last year' is the base, not the call quarter."""
+    from reality_engine.v2.obs_speaker import anchored_period
+    assert anchored_period("As I mentioned, Q1 FY26 revenue was INR 500 crores, and we have grown since.",
+                           "Q2 FY27") == "Q1 FY26"
+    assert anchored_period("As I had shared on the last earnings call, Q3 FY26 EBITDA was INR 40 crores.",
+                           "Q1 FY27") == "Q3 FY26"
+    assert anchored_period("This time last year revenue was INR 500 crores.", "Q2 FY27") != "Q2 FY27"
+    assert anchored_period("On our last earnings call in January, I had shared that the company was targeting to "
+                           "close Q4 with revenue of INR100 crores plus.", "Q4 FY26") == "Q4 FY26"
