@@ -45,6 +45,13 @@
         "AGY_WORKER_REPO_ROOT": "C:/Users/warri/Downloads/Info_Diffusion_Model",
         "PYTHONUTF8": "1"
       }
+    },
+    "gemini-worker": {
+      "command": "python",
+      "args": [
+        "plugins/gemini-worker/gemini_worker.py",
+        "--mcp"
+      ]
     }
   }
 }
