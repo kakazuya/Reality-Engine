@@ -3399,28 +3399,33 @@ The model never computes: `compute()` evaluates each calc expression with an AST
 - **Statement gates after the fy27_v3 r2 re-grade (T-242, 25 Nov 2026, Wolf).** r2 failed on changes (6 wrong of 40). `no_referent` no longer fires when the row's `question_context` is non-empty (all 39 r2 no_referent demotions had the matching question there). `question_passage` now treats a final sentence that is a declarative of 8+ words followed by a ', right?/okay?/no?' tail as a statement (`_TAG_TAIL_RE`), unless it starts like a question (`_INTERROGATIVE_START_RE`: 'So is the margin going to be 20%, right?' still flags); a two-sentence passage whose last sentence is a courtesy tag after a declarative is a statement; the confirmation check ('... is that correct?') still flags first. On r2: question_end 145 -> 85 (60 spared, all managers' explanations in a 14-row read). Test `test_r2_regrade_tag_tails_and_question_context`.
 
 - **Transcript non-content turns dropped and the prepared-remark period anchored (`v2/obs_speaker.py`, T-242, 26 Nov
-  2026).** The 394 v3 ckpt_0014 grade failed 41R/15P/0W/4J on 4 non-content turns (a deferral, thanks + "open the
-  floor", the demo break, a forward-pointer filler) and 4 prepared remarks whose "this quarter"/"the year"/"half
-  year"/"previous year" had an empty `question_context`. Script-only, no prompt or fingerprint change:
+  2026, updated r2).** The 394 v3 ckpt_0014 grade failed 41R/15P/0W/4J on 4 non-content turns (a deferral, thanks + "open
+  the floor", the demo break, a forward-pointer filler) and 4 prepared remarks whose "this quarter"/"the year"/"half
+  year"/"previous year" had an empty `question_context`; the r1 reparsed grade (`tx394_grade_r1`) failed 30R/26P/1W/3J
+  on wrong relative anchors (`VINCOFE` H1 FY26 -> H2 FY26, `BANKINDIA` May Q4 FY25 -> FY24, `MACPOWER` comparative
+  `last year`), figure-bearing prepared remarks left with empty `period`, and 3 J rows (quantification refusals and a
+  figure-free `version 2.0` closing wrap-up). Script-only, no prompt or fingerprint change:
   `greeting_only` now also drops a passage made only of (a) call logistics -- `_FLOOR_LOGISTICS_RE` opens the
   floor / takes questions for a sentence of at most 24 words with no measure word (so "we keep our cost and capex
   guidance intact ... open the floor" stays), `_DEMO_LOGISTICS_RE` takes a few seconds break, walks down to the
-  products, shows the products or did an informal survey; (b) a deferral-only passage (`_DEFERRAL_MARKER_RE`
-  searches anywhere in a figure-free sentence: get back to you/on e-mail, share/send offline or separately, take it
-  offline, e-mail you; "get back on a ... growth path" is excluded); (c) a short forward-pointer filler ("You will
-  see that it does not end here"). `attach_statement_speakers(..., call_period=...)` receives
-  `call_quarter(known_at)` -- the same label the reader was given -- from all three call sites in
-  `reality_engine/v2/observations.py` (`process_page`, `--reparse`, recheck) and, for a statement with an empty
-  `question_context` and empty `period`, sets
-  `period`/`period_kind='actual'`/`period_source='call_period'`: "this quarter" -> the call quarter,
-  "half year"/"first half"/"H1" -> H1/H2 of the call FY, "this/current/full/the year" -> the call FY,
-  "previous/last/prior year" -> the prior FY; no relative word or an unparsed call period leaves the row alone.
-  Measured on a copy of `hy4_out/obs_transcripts_394_v3.db` (125,880 statements): the new rules drop 48 (0.04%; 20
-  more by the pre-existing closing-remarks rule, unchanged), 9,571 statements with an empty qc are anchored (7.60%),
-  all 4 J rows are dropped, all 4 P rows carry the call period (`Q1 FY26`, `FY26`, `H1 FY26`, `FY26`), and 0 of the
-  132 graded R rows of the ckpt 12/13/14 packs is dropped or changed. Tests `test_obs_speaker.py`
-  (`test_tx394_ckpt_0014_non_content_turns_are_dropped`, `test_a_product_demo_statement_with_substance_stays`,
-  `test_prepared_remark_period_is_anchored_to_the_call`); the per-row sample is in
+  products, shows the products or did an informal survey, and `_CONCLUDE_SENTENCE_RE` closes/concludes remarks;
+  (b) a deferral- or refusal-to-quantify-only passage (`_DEFERRAL_MARKER_RE` searches anywhere in a figure-free
+  sentence; `_REFUSAL_QUANTIFY_RE` drops figure-free refusals with no substantive clause such as "don't want to give
+  any futuristic number", "do not calculate ... that way", "not in a position to share", "don't give guidance on that");
+  (c) a short forward-pointer filler ("You will see that it does not end here"); and (d) a figure-free generic
+  corporate wrap-up summary (`_wrapup_summary_passage` with `_WRAPUP_CUE_RE`, ignoring `version N.M` and fiscal labels
+  in `_has_figure`). `obs_speaker.printed_call_period` extracts the call's printed quarter from the transcript header/first
+  pages, `observations.call_quarter(known_at, pages=...)` prefers it over `known_at` at all three
+  `attach_statement_speakers` call sites (`reparse_db`, `process_window`, `process_page`), and
+  `attach_statement_speakers` resolves it too. `anchored_period` strips comparative phrases (`compared to last year`,
+  `versus previous year`) first, treats explicit `H1 FY..` as non-relative, resolves `half year` on a Q3 call to `9M`
+  only when `nine months` is printed (else `''`), and leaves `last/previous year` empty on Q4 calls; for any kept
+  prepared remark (`question_context == ''`, `period == ''`) that carries a figure (`_has_figure`) and no relative
+  word, `attach_statement_speakers` sets `period` to the call's reporting period (`period_source='call_period'`).
+  Tests `test_obs_speaker.py` (`test_tx394_ckpt_0014_non_content_turns_are_dropped`,
+  `test_a_product_demo_statement_with_substance_stays`, `test_prepared_remark_period_is_anchored_to_the_call`,
+  `test_r2_period_anchoring_comparatives_printed_call_and_figure_prepared_remarks`,
+  `test_r2_refusals_and_closing_wrapups_are_dropped_while_figure_keeps_them`); the per-row sample is in
   `tasks/t242_statement_gate_measure.md`.
 
 ### P. Checkpoint grading packs: one command, two rubrics (T-242, 25 Nov 2026)

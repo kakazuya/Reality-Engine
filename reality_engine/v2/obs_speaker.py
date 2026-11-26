@@ -1071,7 +1071,13 @@ _GREETING_SENTENCE_RE = re.compile(
     re.I)
 _GREETING_TAIL_WORDS = 8     # what follows the greeting phrase: a name, "for your question", "for joining us"
 
-_PERIOD_LABEL_RE = re.compile(r"\b(?:[QH][1-4]\s*FY\s*\d{2,4}|FY\s*\d{2,4}|[QH][1-4])\b", re.I)
+_PERIOD_LABEL_RE = re.compile(
+    r"\b(?:(?:[QH][1-4]|[1-4]Q|9M)\s*(?:FY\s*)?['’]?\s*\d{2,4}(?:\s*-\s*\d{2,4})?"
+    r"|FY\s*['’]?\s*\d{2,4}(?:\s*-\s*\d{2,4})?"
+    r"|[QH][1-4]|[1-4]Q|9M)\b"
+    r"|\bversion\s+\d+(?:\.\d+)?\b",
+    re.I,
+)
 _ABBREV_DOT_RE = re.compile(r"\b(?:Mr|Mrs|Ms|Dr|Shri|Sh|Prof|Sr|Smt|Er|Capt|vs|etc)\.", re.I)
 
 
@@ -1316,13 +1322,46 @@ _DEFERRAL_MARKER_RE = re.compile(
 # "get back on a volume growth path" is a recovery, not a promise to answer later.
 _NOT_A_DEFERRAL_RE = re.compile(r"\bget\s+back\s+on\b[^.!?;]{0,40}\b(?:growth\s+path|on\s+track|path\s+to|trajectory)\b", re.I)
 
+# T-242 r2 (26 Nov): figure-free refusals/deferrals to quantify, concluding lines, and boilerplate wrap-up summaries.
+_REFUSAL_QUANTIFY_RE = re.compile(
+    r"\b(?:do\s+not|don't|don’t|cannot|can't|can’t|won't|won’t|would\s+not|wouldn't|wouldn’t|will\s+not"
+    r"|(?:am|are)\s+(?:not\s+(?:in\s+a\s+position|able|willing|comfortable)|unable)|not\s+in\s+a\s+position"
+    r"|(?:do\s+not|don't|don’t|would\s+not|wouldn't|wouldn’t)\s+(?:want|like))\s+(?:to\s+)?"
+    r"(?:give(?:\s+you)?|share|provide|disclose|quantify|put|throw|commit(?:\s+to)?|offer|hazard|guess)\b[^.!?;]{0,50}?"
+    r"\b(?:any\s+)?(?:(?:futuristic|forward[- ]looking|exact|specific|precise|particular|quarterly|annual"
+    r"|segment[- ]wise|customer[- ]wise|product[- ]wise|such)\s+)*(?:numbers?|figures?|guidance|outlook|targets?"
+    r"|estimates?|projections?|break[- ]?ups?|split|details?|data|comments?)\b"
+    r"|\b(?:we|i)\s+(?:do\s+not|don't|don’t|cannot|can't|can’t)\s+"
+    r"(?:calculate|track|measure|report|capture|break\s*(?:up|down)|split|disclose|give)\b[^.!?;]{0,60}?"
+    r"\b(?:that\s+way|like\s+that|separately|at\s+that\s+level|by\s+(?:customer|segment|product)|on\s+(?:this|that)\s+basis)\b"
+    r"|\b(?:(?:do\s+not|don't|don’t|won't|won’t|would\s+not|wouldn't|wouldn’t|cannot|can't|can’t)"
+    r"\s+(?:be\s+able\s+to\s+)?(?:comment|speculate|guide|(?:give|share|provide)\s+(?:any\s+)?guidance)"
+    r"|not\s+in\s+a\s+position\s+to\s+(?:comment|share|give|quantify|guide|disclose))\b"
+    r"(?:\s+(?:on|about)\s+(?:that|this|it|the\s+same|those|further))?",
+    re.I,
+)
+_CONCLUDE_SENTENCE_RE = re.compile(
+    r"^(?:(?:so|now|and|with\s+this|with\s+that|on\s+that\s+note)[,\s]+)*(?:(?:i|we)(?:'d|'ll|\s+would|\s+will)?\s+"
+    r"(?:like\s+to\s+)?)?(?:conclude|wrap\s+up|close|end)\b[^.!?;]*"
+    r"\b(?:my|our|the)\s+(?:opening\s+|closing\s+|prepared\s+)?(?:remarks|comments|presentation|address|call|session|statement)\s*[.!?]*$"
+    r"|^(?:so|now|and)?[,\s]*(?:with\s+this|with\s+that)[,\s]+(?:i|we)\s+conclude\b[^.!?;]{0,30}[.!?]*$"
+    r"|^(?:that|this)\s+concludes\b[^.!?;]{0,40}[.!?]*$",
+    re.I,
+)
+_WRAPUP_CUE_RE = re.compile(
+    r"\b(?:version\s+\d+(?:\.\d+)?|growth\s+phase|resilient\s+and\s+diversified|operational\s+excellence"
+    r"|market\s+leadership|sustainable\s+value\s+creation|new\s+growth\s+opportunities|focus\s+remains\s+on"
+    r"|(?:enhancing|creating|delivering|maximi[sz]ing)\s+(?:long[- ]term\s+)?(?:shareholder|stakeholder)\s+value)\b",
+    re.I,
+)
+
 
 def _call_logistics_sentence(sentence: str) -> bool:
     """A figure-free call-mechanics sentence: opening the floor, a demo break, a walk to the products."""
     sent = _normalise_ligatures(sentence).strip()
     if not sent or _has_figure(sent):
         return False
-    if _DEMO_LOGISTICS_RE.search(sent):
+    if _DEMO_LOGISTICS_RE.search(sent) or _CONCLUDE_SENTENCE_RE.match(sent):
         return True
     return len(sent.split()) <= _FLOOR_LOGISTICS_MAX_WORDS and not _MEASURE_WORD_RE.search(sent) \
         and bool(_FLOOR_LOGISTICS_RE.search(sent))
@@ -1345,15 +1384,29 @@ def _deferral_sentence(sentence: str) -> bool:
         and not _NOT_A_DEFERRAL_RE.search(sent)
 
 
+def _refusal_sentence(sentence: str) -> bool:
+    """A figure-free refusal or inability to quantify/guide/comment, with no substantive clause."""
+    sent = _normalise_ligatures(sentence).strip()
+    return bool(sent) and not _has_figure(sent) and not _SUBSTANTIVE_CLAUSE_RE.search(sent) \
+        and bool(_REFUSAL_QUANTIFY_RE.search(sent))
+
+
+def _wrapup_summary_passage(statement: str) -> bool:
+    """A figure-free generic corporate wrap-up summary ("version 2.0 ... enhancing shareholder value")."""
+    text = _normalise_ligatures(statement).strip()
+    if not text or _has_figure(text):
+        return False
+    return len({m.group(0).lower() for m in _WRAPUP_CUE_RE.finditer(text)}) >= 2
+
+
 def _deferral_passage(sentences: list[str]) -> bool:
-    """T-242 (26 Nov): a passage that only promises the answer later; every sentence is a greeting, housekeeping,
-    logistics or deferral, and at least one is a deferral."""
+    """T-242 (26 Nov): a passage that only promises the answer later or refuses to quantify."""
     has_deferral = False
     for sent in sentences:
         if _greeting_sentence(sent) or _boilerplate_sentence(sent) or _call_logistics_sentence(sent) \
                 or _filler_sentence(sent):
             continue
-        if _deferral_sentence(sent):
+        if _deferral_sentence(sent) or _refusal_sentence(sent):
             has_deferral = True
             continue
         return False
@@ -1364,50 +1417,111 @@ def greeting_only(statement: str) -> bool:
     """T-242 (fy27_v3 ckpt_0002/0003 J): a passage made only of greetings, thanks, housekeeping and hand-overs
     carries no statement; any one sentence with substance keeps it. T-242 (25 Nov): also a figure-free closing-remarks
     or deferral passage whose other sentences are generic platitudes (never one carrying a figure or a substantive
-    clause). T-242 (26 Nov, tx394 ckpt_0014 J): also call logistics (floor, demo break), deferral-only passages and
-    short refer-back fillers."""
+    clause). T-242 (26 Nov, tx394 ckpt_0014 J / r2): also call logistics (floor, demo break, concluding line),
+    deferral/refusal-to-quantify passages, corporate wrap-up summaries with no figure and short refer-back fillers."""
     sentences = _sentences(statement)
     if not sentences:
         return False
     return all(_greeting_sentence(x) or _boilerplate_sentence(x) or _call_logistics_sentence(x)
                or _filler_sentence(x) for x in sentences) \
         or _closing_remarks_passage(sentences) \
-        or _deferral_passage(sentences)
+        or _deferral_passage(sentences) \
+        or _wrapup_summary_passage(statement)
 
 
-# T-242 (26 Nov, tx394 ckpt_0014 P): a prepared remark that says "this quarter" / "the year" / "previous year" reads
-# alone only with the call's period; the reader's own call quarter is passed in, never guessed.
-_REL_QUARTER_RE = re.compile(r"\b(?:this|the|current)\s+quarter\b", re.I)
-_REL_HALF_RE = re.compile(r"\b(?:half\s+year|first\s+half|H1)\b", re.I)
-_REL_YEAR_RE = re.compile(r"\b(?:this|the|current|full)\s+year\b(?!-on-)", re.I)
+# T-242 (26 Nov, tx394 ckpt_0014 P / r2): a prepared remark anchors to the call's printed period (or call_quarter).
+_REL_QUARTER_RE = re.compile(r"\b(?:this|the|current)\s+quarter\b(?!\s+(?:ago|earlier|before|prior|-on-))", re.I)
+_REL_FIRST_HALF_RE = re.compile(
+    r"\b(?:first\s+half(?!\s+(?:of\s+)?(?:FY|financial\s+year|fiscal\s+year|['’]?\d{2,4}))"
+    r"|H1(?!\s*(?:FY|['’]?\d{2,4})))\b",
+    re.I,
+)
+_REL_SECOND_HALF_RE = re.compile(
+    r"\b(?:second\s+half(?!\s+(?:of\s+)?(?:FY|financial\s+year|fiscal\s+year|['’]?\d{2,4}))"
+    r"|H2(?!\s*(?:FY|['’]?\d{2,4})))\b",
+    re.I,
+)
+_REL_HALF_YEAR_RE = re.compile(r"\bhalf[-\s]+year\b", re.I)
+_REL_NINE_MONTHS_RE = re.compile(
+    r"\b(?:nine|9)[-\s]+months?\b(?!\s*(?:ago|earlier|before|of\s+|ended\s+|FY|financial\s+year|fiscal\s+year|['’]?\d{2,4}))",
+    re.I,
+)
+_REL_YEAR_RE = re.compile(r"\b(?:this|the|current|full)\s+year\b(?!\s*(?:-?on-|ago\b|earlier\b|before\b))", re.I)
 _REL_PRIOR_YEAR_RE = re.compile(r"\b(?:previous|last|prior)\s+year\b", re.I)
 _REL_PRIOR_QUARTER_RE = re.compile(r"\b(?:previous|last|prior)\s+quarter\b", re.I)
+_COMPARATIVE_PERIOD_RE = re.compile(
+    r"(?:\b(?:as\s+)?compared\s+(?:to|with)|\b(?:vis[- ]a[- ]vis|versus|vs\.?)|\b(?:as\s+)?against"
+    r"|\b(?:than|over|from)\s+(?=(?:the\s+)?(?:(?:same|corresponding)\s+|(?:previous|last|prior)\s+)))"
+    r"(?:\s+(?:the|that\s+of|in|of))*"
+    r"(?:\s+(?:same|corresponding)\s+(?:quarter|period|half|month|year)\s+(?:of\s+)?(?:the\s+)?)?"
+    r"(?:\s+(?:(?:previous|last|prior)\s+(?:year|quarter)|first\s+half|second\s+half|half\s+year"
+    r"|H[12]|(?:this|the|current|full)\s+(?:year|quarter))(?:'s|’s)?)"
+    r"|\b(?:same|corresponding)\s+(?:quarter|period|half)\s+(?:of\s+)?(?:the\s+)?(?:previous|last|prior)\s+year\b"
+    r"|\b(?:previous|last|prior)\s+(?:year|quarter)\s+(?:y-o-y|yoy|q-o-q|qoq)\b",
+    re.I,
+)
 _CALL_PERIOD_RE = re.compile(r"^Q([1-4])\s+FY(\d{2,4})$")
+_CALL_TITLE_CUE_RE = re.compile(
+    r"\b(?:(?:earn(?:ing|ings)|eamnings?|results?|investor|analyst|post[- ]?earnings?|post[- ]?results?|conference)"
+    r"\s+(?:conference\s+)?call|call\s+transcript|con[- ]?call)\b",
+    re.I,
+)
+_HEADER_Q_RE = re.compile(
+    r"\b(?:Q\s*([1-4])|([1-4])\s*Q)\s*(?:(?:and|&|/|,|-)\s*(?:H[12]|[12]H|9M|FY)\s*)?"
+    r"(?:FY\s*['’-]?\s*|(?=(?:\d{2}|\d{4})\s*-\s*\d{2,4}\b))(?:(\d{2,4})\s*-\s*)?(\d{2,4})\b",
+    re.I,
+)
+
+
+def printed_call_period(pages: Iterable[tuple[int, str]]) -> str:
+    """The call's printed quarter ('Q2 FY26') from the transcript's header or first pages; '' when absent."""
+    first_pages = [_normalise_ligatures(txt) for _pg, txt in sorted(pages, key=lambda item: int(item[0]))[:3] if txt]
+    candidates: list[str] = []
+    for txt in first_pages:
+        for sent in _sentences(" ".join(txt.split())):
+            if _CALL_TITLE_CUE_RE.search(sent):
+                candidates.append(sent)
+        candidates.append(" ".join(txt.splitlines()[:6]))
+    for cand in candidates:
+        m = _HEADER_Q_RE.search(cand)
+        if m:
+            q = int(m.group(1) or m.group(2))
+            fy = int(m.group(4)) % 100
+            return f"Q{q} FY{fy:02d}"
+    return ""
 
 
 def anchored_period(statement: str, call_period: str) -> str:
     """The fiscal label a prepared remark's own relative period resolves to on this call; '' when none or unknown.
 
-    ``call_period`` is the label the reader was given for the call ("Q2 FY26"), so nothing is invented: an unparsed
-    call period gives ''.  "this quarter" wins over "half year" (a half-year statement names its half), which wins
-    over "the year", and a prior-year comparison resolves to the prior year.
+    ``call_period`` is the label the reader was given for the call ("Q2 FY26").  Comparative references
+    ("compared to last year", "versus previous year") never set the period; on a Q3 call "half year" resolves to
+    "9M FY.." only when "nine months" is printed (else ''), and on a Q4 call "last/previous year" is left empty.
     """
     m = _CALL_PERIOD_RE.match(" ".join(str(call_period or "").split()))
     if not m:
         return ""
-    q, fy = int(m.group(1)), int(m.group(2))
-    if fy > 99:
-        fy %= 100
-    text = _normalise_ligatures(statement)
-    if _REL_QUARTER_RE.search(text):
+    q, fy = int(m.group(1)), int(m.group(2)) % 100
+    cleaned = _COMPARATIVE_PERIOD_RE.sub(" ", _normalise_ligatures(statement))
+    if _REL_QUARTER_RE.search(cleaned):
         return f"Q{q} FY{fy:02d}"
-    if _REL_HALF_RE.search(text):
-        return f"{'H1' if q <= 2 else 'H2'} FY{fy:02d}"
-    if _REL_YEAR_RE.search(text):
+    if _REL_HALF_YEAR_RE.search(cleaned):
+        if q == 2:
+            return f"H1 FY{fy:02d}"
+        if q == 3 and _REL_NINE_MONTHS_RE.search(cleaned):
+            return f"9M FY{fy:02d}"
+        return ""
+    if _REL_FIRST_HALF_RE.search(cleaned):
+        return f"H1 FY{fy:02d}"
+    if _REL_SECOND_HALF_RE.search(cleaned):
+        return f"H2 FY{fy:02d}"
+    if q == 3 and _REL_NINE_MONTHS_RE.search(cleaned):
+        return f"9M FY{fy:02d}"
+    if _REL_YEAR_RE.search(cleaned):
         return f"FY{fy:02d}"
-    if _REL_PRIOR_YEAR_RE.search(text):
+    if q != 4 and _REL_PRIOR_YEAR_RE.search(cleaned) and not re.search(r"\b(?:y-o-y|yoy|year-on-year)\b", cleaned, re.I):
         return f"FY{fy - 1:02d}"
-    if _REL_PRIOR_QUARTER_RE.search(text):
+    if _REL_PRIOR_QUARTER_RE.search(cleaned):
         return f"Q{q - 1} FY{fy:02d}" if q > 1 else f"Q4 FY{fy - 1:02d}"
     return ""
 
@@ -2061,6 +2175,10 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
                 stats["unverified"] += 1
         if i in notes:                    # a detail note only: the window rule never changes a status
             row["status_reason"] = "; ".join(p for p in (str(row.get("status_reason") or ""), notes[i]) if p)
+    effective_period = ""
+    cq_match = _CALL_PERIOD_RE.match(" ".join(str(printed_call_period(page_list) or call_period or "").split()))
+    if cq_match:
+        effective_period = f"Q{int(cq_match.group(1))} FY{int(cq_match.group(2)) % 100:02d}"
     for i in indexes:                              # 394_v3 ckpt_0001 J (NLCINDIA p1): a filing letter's closing line
         row = rows[i]
         statement = str(row.get("statement") or "")
@@ -2073,11 +2191,13 @@ def attach_statement_speakers(rows: list[dict[str, Any]], pages: list[tuple[int,
             stats["filing_lines"] = stats.get("filing_lines", 0) + 1
             if content_free:
                 stats["content_free"] += 1
-        # T-242 (26 Nov, tx394 ckpt_0014 P): a prepared remark that says "this quarter"/"the year" carries the
-        # call's period so it reads alone; only a kept row with an empty qc and an empty period is anchored.
-        if not row.get("_drop") and call_period and not str(row.get("question_context") or "").strip() \
+        # T-242 (26 Nov, tx394 ckpt_0014 P / r2): anchor prepared remarks (empty qc, empty period) to their own
+        # relative period, or to the call's reporting period when they carry a figure and no relative word.
+        if not row.get("_drop") and effective_period and not str(row.get("question_context") or "").strip() \
                 and not str(row.get("period") or "").strip():
-            anchor = anchored_period(statement, call_period)
+            anchor = anchored_period(statement, effective_period)
+            if not anchor and _has_figure(_normalise_ligatures(statement)):
+                anchor = effective_period
             if anchor:
                 row["period"] = anchor
                 row["period_kind"] = "actual"

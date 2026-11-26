@@ -7635,8 +7635,12 @@ def quarters_around(call_q: str) -> tuple[str, str, str]:
     return f"Q{q} FY{fy - 1:02d}", prev, f"{fy:02d}"
 
 
-def call_quarter(known_at: str) -> str:
-    """The fiscal quarter a call discusses: the last quarter that ended before its filing month ("Q1 FY25")."""
+def call_quarter(known_at: str, pages: Iterable[tuple[int, str]] | None = None) -> str:
+    """The fiscal quarter a call discusses: the transcript header's printed period first, else ``known_at``."""
+    if pages:
+        printed = obs_speaker.printed_call_period(pages)
+        if printed:
+            return printed
     m = re.match(r"(\d{4})-(\d{2})", known_at or "")
     if not m:
         return "the quarter just reported"
@@ -7867,7 +7871,7 @@ def reparse_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path], only: A
                 # and mark a referentless short reply; script-level, no prompt change
                 fixed = obs_speaker.attach_statement_speakers(
                     rows, doc_pages, symbol=meta["symbol"], company_names=company_names.get(meta["symbol"], []),
-                    call_period=call_quarter(meta["known_at"]))
+                    call_period=call_quarter(meta["known_at"], doc_pages))
                 stats["speaker_carried"] += fixed["carried"]
                 stats["speaker_resolved"] += fixed["resolved"]
                 stats["speaker_empty"] += fixed["empty"]
@@ -8210,7 +8214,7 @@ def process_window(store_db: str | Path, doc_key: str, own: list[int], context: 
         apply_number_gates(rows, str(meta.get("doc_type") or ""))
         if doc_pages and any(str(r.get("record_type") or "") == "statement" for r in rows):
             obs_speaker.attach_statement_speakers(rows, doc_pages, symbol=meta["symbol"], company_names=own_names,
-                                                  call_period=call_quarter(meta["known_at"]))
+                                                  call_period=call_quarter(meta["known_at"], doc_pages))
         out.append({**base[i], **common, "rows": rows, "parsed": len(rows_in), "bad_lines": bad if i == 0 else 0,
                     "raw": "\n".join(json.dumps(r, ensure_ascii=False) for r in rows_in) if rows_in else "",
                     "seconds": float(call.get("seconds") or 0.0) if i == 0 else 0.0,
@@ -8374,7 +8378,7 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
             obs_speaker.attach_statement_speakers(
                 result["rows"], pages, symbol=meta["symbol"],
                 company_names=[full for sym, full in (companies or {}).values() if sym == meta["symbol"]],
-                call_period=call_quarter(meta["known_at"]))
+                call_period=call_quarter(meta["known_at"], pages))
     return result
 
 
