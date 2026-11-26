@@ -3527,8 +3527,37 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   labels, which r4's rule keeps empty); 0 graded-R rows change beyond period, and the non-period counts equal
   r4 exactly (1,153 carried, 589 resolved, 332 short remarks, 295 content-free). Tests
   `test_r5_own_period_cue_beats_sentence_wide_blocks`,
-  `test_r5_five_stay_empty_cases_remain_empty`, and `test_r4_stay_empty_cases_and_w47_remain_unchanged`
-  (`BPLPHARMA` "by FY28" now anchors FY28; `CUB`, `IOLCP`, `KTKBANK`, `EMSLIMITED` stay empty).
+  `test_r5_stay_empty_cases_remain_empty` (renamed in r6), and `test_r4_stay_empty_cases_and_w47_remain_unchanged`
+  (`BPLPHARMA` "by FY28" now anchors FY28; `CUB`, `KTKBANK`, `EMSLIMITED` stay empty; r6 moves `IOLCP` to the bound
+  "for the quarter" set).
+  **r6 (26 Nov, DeepSeek): four narrow period fixes from Eagle's r5 review.** (1) `_FOR_QUARTER_CUE_RE` no longer
+  reads the sentence-wide `same quarter last year` as a block: a "for the quarter" bound to the reported figure
+  anchors the call quarter while the comparative names the base (`IOLCP` "EBITDA for the quarter rose by 19.5% ...
+  up from Rs. 58.2 crores in the same quarter last year", `BLS` 891 crore). `_OWN_QUARTER_CUE_RE` gains
+  `(?!\s*(?:\d|of\b|FY\b))`, so "in Quarter 3" / "in Quarter 4" is another named quarter, not "in the quarter"
+  (the r5 misread that took `PDSL` to Q2 FY26). `_bound_quarter_before` keeps a bound cue that precedes a forward
+  aside: `SOLARINDS` "volume for the quarter grew by 16% ... in line with our annual guidance for the year '25"
+  anchors the call quarter, while a cue only *after* the forward word still stays empty (`HFCL`). (2)
+  `_NAMED_QUARTER_FY_RE` reads `Q1 of FY27` and `first quarter of FY27` (quarter group 1 or 2, FY group 3; the two
+  call sites build the label through `_ORDINAL_QUARTER`), so `ARMANFIN` "Q1 of FY27 has been an encouraging start"
+  anchors Q1 FY27. (3) the FY token patterns accept a space, apostrophe or hyphen (`FY '25`, `FY 27`, `FY'27`,
+  `FY-27`) and the left single quote, and `_GUIDANCE_NOUN_RE` lets a guidance sentence name its own FY on a Q1-Q3
+  call (`AZAD` "guidance of 25%-30% for FY '25" -> FY25) while a guidance-less figure (`CUB` "NIM for FY26") stays
+  empty. (4) `_DURING_YEAR_CUE_RE` / `_FIRST_HALF_CUE_RE` resolve "during the year" to the call's FY and "first
+  half of the year" to `H1 FY<call fy>` (empty on a Q1 call) at the end of `_explicit_own_period` and, before a
+  forward cue, through `_bound_quarter_before`: `TARACHAND` "deployed INR1,434 million during the year" -> FY26
+  (not Q4 FY26), `PDSL` "During the first half of the year" -> H1 FY26 (not Q2 FY26), `MMP` "During the year" ->
+  FY26 (its printed call period is Q4 FY26; r5's Q2 FY27 was the forward approval target). Tests
+  `test_r6_quarter_bound_figure_beats_same_quarter_last_year`,
+  `test_r6_q1_of_fy27_form`, `test_r6_named_fy_space_apostrophe_hyphen`,
+  `test_r6_year_and_first_half_never_anchor_the_call_quarter` (74 passed). On the same 25,159-page 394
+  reparse (`tasks/t242_statement_r3_measure.md` r6 section; five store shards because the live DB had moved to
+  38,369 `page_reply` rows / 406,717 observation rows), period_anchored **10,241** vs r5 9,959 and r3 9,575
+  (+282 / +666); 1,769 statements regain an r3-empty period, 1,115 lose one and 301 are relabelled (r5
+  1,651 / 1,276 / 230); `tx394_grade_r2` 0 of the 36 graded-R rows change at all (0 beyond period), and the
+  11 non-period statement changes are the same speaker/status rows r5's review records from r4. The non-period
+  counts equal r5 (1,153 carried, 589 resolved, 332 short remarks, 295 content-free, 3,687 speaker unverified);
+  `test_observations.py` 177 passed.
 
 ### P. Checkpoint grading packs: one command, two rubrics (T-242, 25 Nov 2026)
 

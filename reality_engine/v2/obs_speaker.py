@@ -1437,11 +1437,13 @@ _REL_QUARTER_RE = re.compile(
 _REL_YEAR_RE = re.compile(
     r"\b(?:this|the|current)\s+year(?:'s|’s)?\b(?!\s*(?:-?on-|ago\b|earlier\b|before\b|ended\b|ending\b|to\s+date\b))",
     re.I)
+# T-242 r6: also "Q1 of FY27" and "first quarter of FY27" (the quarter is group 1 or 2, the FY group 3).
 _NAMED_QUARTER_FY_RE = re.compile(
-    r"\bQ([1-4])(?:\s*(?:and|&|,|/)\s*(?:9M|H[12]))?\s*FY\s*['’]?\s*(\d{2,4})\b", re.I)
+    r"\b(?:Q([1-4])|(first|second|third|fourth|1st|2nd|3rd|4th)\s+quarter)"
+    r"(?:\s*(?:and|&|,|/)\s*(?:9M|H[12]))?(?:\s+of)?\s*FY\s*['’‘]?\s*[-–]?\s*(\d{2,4})\b", re.I)
 _NAMED_FY_RE = re.compile(
-    r"(?:\b(?:for|in|of|during)\s+(?:the\s+)?(?:full\s+|financial\s+|fiscal\s+)?year\s+FY\s*['’]?\s*(\d{2,4})"
-    r"|\bfor\s+FY\s*['’]?\s*(\d{2,4}))\b", re.I)
+    r"(?:\b(?:for|in|of|during)\s+(?:the\s+)?(?:full\s+|financial\s+|fiscal\s+)?year\s+FY\s*['’‘]?\s*[-–]?\s*(\d{2,4})"
+    r"|\bfor\s+FY\s*['’‘]?\s*[-–]?\s*(\d{2,4}))\b", re.I)
 _COMPARATIVE_CUE_RE = re.compile(
     r"\b(?:y-o-y|yoy|year[- ]on[- ]year|q-o-q|qoq|quarter[- ]on[- ]quarter|versus|vs\.?"
     r"|compared\s+(?:to|with)|last\s+year|previous\s+year|prior\s+year|corresponding\s+(?:quarter|period)"
@@ -1492,7 +1494,8 @@ _EXPLICIT_Q_RE = re.compile(
     r"|\b(first|second|third|fourth|1st|2nd|3rd|4th)\s+quarter(?:\s+of\s+(?:FY\s*['’]?\s*(\d{2,4})|(\d{4})))?\b",
     re.I,
 )
-_EXPLICIT_FY_RE = re.compile(r"\bFY\s*['’]?\s*(\d{2,4})(?:\s*[-–/]\s*['’]?(\d{2,4}))?\b", re.I)
+_EXPLICIT_FY_RE = re.compile(
+    r"\bFY\s*['’‘]?\s*[-–]?\s*(\d{2,4})(?:\s*[-–/]\s*['’‘]?\s*(\d{2,4}))?\b", re.I)
 _ORDINAL_QUARTER = {"first": 1, "1st": 1, "second": 2, "2nd": 2, "third": 3, "3rd": 3, "fourth": 4, "4th": 4}
 _QUARTER_END = {1: (6, 30), 2: (9, 30), 3: (12, 31), 4: (3, 31)}
 _AS_ON_DATE_CUE_RE = re.compile(
@@ -1509,12 +1512,20 @@ _OVER_BASE_CMP_RE = re.compile(
 # comparative names the base only, and a guidance sentence takes the call's own year on a Q4 call.
 _OWN_QUARTER_CUE_RE = re.compile(
     r"\b(?:(?:in|during)\s+(?:the\s+)?(?:this\s+|current\s+)?(?:quarter(?:'s|’s)?|three\s+months)"
+    r"(?!\s*(?:\d|of\b|FY\b))"
     r"|(?:this|current)\s+quarter(?:'s|’s)?)\b", re.I)
 _CLAUSE_SPLIT_RE = re.compile(
     r";|\b(?:against|vs\.?|versus|compared\s+(?:to|with)|over|while|whereas|than)\b", re.I)
 _CMP_BEFORE_PERIOD_RE = re.compile(
     r"\b(?:against|vs\.?|versus|compared\s+(?:to|with)|over|than|from)\s*$", re.I)
 _FOR_QUARTER_CUE_RE = re.compile(r"\bfor\s+(?:the\s+)?quarter\b", re.I)
+# T-242 r6: "during the year" and "first half of the year" name the call's fiscal year, never its quarter.
+_DURING_YEAR_CUE_RE = re.compile(
+    r"\bduring\s+the\s+(?:full\s+|financial\s+|fiscal\s+)?year\b", re.I)
+_FIRST_HALF_CUE_RE = re.compile(
+    r"\b(?:(?:during|in)\s+)?(?:the\s+)?first\s+half\s+of\s+(?:the\s+|this\s+)?(?:financial\s+|fiscal\s+)?year\b",
+    re.I)
+_GUIDANCE_NOUN_RE = re.compile(r"\bguid(?:e|es|ed|ing|ance)\b", re.I)
 _QUARTER_ENDED_RE = re.compile(r"\s*(?:ended|ending)\s+(?=" + _PRINTED_DATE_RE.pattern + ")", re.I)
 
 
@@ -1648,13 +1659,48 @@ def _named_periods(sent: str) -> list[tuple[int, int, str]]:
     """Named fiscal periods in ``sent`` as ``(start, end, label)``: ``Qn FYnn`` and ``FYnn``."""
     found: list[tuple[int, int, str]] = []
     for nm in _NAMED_QUARTER_FY_RE.finditer(sent):
-        found.append((nm.start(), nm.end(), f"Q{int(nm.group(1))} FY{int(nm.group(2)) % 100:02d}"))
+        mq = int(nm.group(1)) if nm.group(1) else _ORDINAL_QUARTER[nm.group(2).lower()]
+        found.append((nm.start(), nm.end(), f"Q{mq} FY{int(nm.group(3)) % 100:02d}"))
     for fm in _EXPLICIT_FY_RE.finditer(sent):
         if any(start < fm.end() and fm.start() < end for start, end, _label in found):
             continue                       # the FY of a Qn FYnn label is not a bare year
         found.append((fm.start(), fm.end(), f"FY{int(fm.group(2) or fm.group(1)) % 100:02d}"))
     found.sort()
     return found
+
+
+def _bound_quarter_before(sent: str, stop: int, q: int, fy: int,
+                          end_year: int, end_month: int, end_day: int) -> str:
+    """The call quarter a bound cue before ``stop`` labels the reported figure with; '' otherwise.
+
+    T-242 r6: text before a forward cue reports the figure its own quarter is bound to ("volume for the
+    quarter grew 16% ... which is in line with our annual guidance for the year '25"); text after it states
+    the outlook.  "during the year" and "first half of the year" resolve to the fiscal year / half.
+    """
+    call_q = f"Q{q} FY{fy:02d}"
+    for cue_re, comparative_prefix in ((_OWN_QUARTER_CUE_RE, False), (_FOR_QUARTER_CUE_RE, True)):
+        for cm in cue_re.finditer(sent, 0, stop):
+            if _CMP_BEFORE_PERIOD_RE.search(sent[max(0, cm.start() - 20):cm.start()]):
+                continue
+            if comparative_prefix:
+                prefix = sent[:cm.start()]
+                if _COMPARATIVE_CUE_RE.search(prefix) and not re.search(r"\d", prefix):
+                    continue
+            if not _has_figure(sent[cm.start():stop]):
+                continue                   # the reported figure must precede the outlook
+            tail = _QUARTER_ENDED_RE.match(sent, cm.end())
+            if tail:
+                dm = _PRINTED_DATE_RE.match(sent, tail.end())
+                if dm and not _date_equals(_parse_printed_date(dm), end_year, end_month, end_day):
+                    continue
+            return call_q
+    ym = _DURING_YEAR_CUE_RE.search(sent, 0, stop)
+    if ym and not _CMP_BEFORE_PERIOD_RE.search(sent[max(0, ym.start() - 20):ym.start()]):
+        return f"FY{fy:02d}"
+    hm = _FIRST_HALF_CUE_RE.search(sent, 0, stop)
+    if hm and not _CMP_BEFORE_PERIOD_RE.search(sent[max(0, hm.start() - 20):hm.start()]):
+        return f"H1 FY{fy:02d}" if q != 1 else ""
+    return ""
 
 
 def _explicit_own_period(sent: str, q: int, fy: int) -> str:
@@ -1670,12 +1716,23 @@ def _explicit_own_period(sent: str, q: int, fy: int) -> str:
     the call's own year on a Q1-Q3 call is not another period (CUB's "NIM for FY26"), and with no named period
     it stays empty (HFCL's future quarter).  The caller's r4 cues (as-on date, quarterly metric, over-base)
     still run after this returns.
+
+    T-242 r6: (a) "for the quarter" bound to the figure beats a same-quarter-last-year comparative (the
+    comparative names the base) and a bound cue before a forward aside keeps the reported figure's quarter
+    (SOLARINDS "volume for the quarter grew 16% ... in line with our annual guidance"); (b) "Q1 of FY27" and
+    "first quarter of FY27" are named quarters; (c) an FY written with a space, apostrophe or hyphen is that
+    FY, and a guidance sentence names its own FY even on a Q1-Q3 call (AZAD "guidance of 25%-30% for FY '25");
+    (d) "during the year" is the call's fiscal year and "first half of the year" is H1 of it (empty on a Q1
+    call), never the call quarter.
     """
     end_year, end_month, end_day = _period_end_date(q, fy)
     call_q = f"Q{q} FY{fy:02d}"
     named = _named_periods(sent)
     forward = _FORWARD_CUE_RE.search(sent)
     if forward:
+        prior = _bound_quarter_before(sent, forward.start(), q, fy, end_year, end_month, end_day)
+        if prior:
+            return prior
         for _start, _end, label in named:
             if label == call_q:
                 return call_q
@@ -1689,8 +1746,8 @@ def _explicit_own_period(sent: str, q: int, fy: int) -> str:
         before = [p for p in in_clause if p[1] <= forward.start()]
         pick = after[0] if after else (before[-1] if before else None)
         if pick and not _CMP_BEFORE_PERIOD_RE.search(sent[fstart:pick[0]]):
-            if not (q != 4 and pick[2] == f"FY{fy:02d}"):
-                return pick[2]              # guidance names its target period (never the base, never the call year on a Q1-Q3 call)
+            if not (q != 4 and pick[2] == f"FY{fy:02d}" and not _GUIDANCE_NOUN_RE.search(sent)):
+                return pick[2]              # guidance names its target period (never the base, never a guidance-less call year on a Q1-Q3 call)
         return ""
     for start, end, label in named:
         if label != call_q or _CMP_BEFORE_PERIOD_RE.search(sent[max(0, start - 16):start]):
@@ -1712,9 +1769,8 @@ def _explicit_own_period(sent: str, q: int, fy: int) -> str:
                 continue                   # "in the quarter ended December 2024" on a March call
         return call_q
     for cm in _FOR_QUARTER_CUE_RE.finditer(sent):
-        if _SAME_QUARTER_LAST_YEAR_RE.search(sent) \
-                or _CMP_BEFORE_PERIOD_RE.search(sent[max(0, cm.start() - 20):cm.start()]):
-            continue                       # IOLCP: "for the quarter ... same quarter last year" is a comparative
+        if _CMP_BEFORE_PERIOD_RE.search(sent[max(0, cm.start() - 20):cm.start()]):
+            continue
         prefix = sent[:cm.start()]
         if _COMPARATIVE_CUE_RE.search(prefix) and not re.search(r"\d", prefix):
             continue                       # "On a Y-o-Y basis, ... for the quarter ..." is a comparative's figure
@@ -1727,6 +1783,10 @@ def _explicit_own_period(sent: str, q: int, fy: int) -> str:
             if dm and not _date_equals(_parse_printed_date(dm), end_year, end_month, end_day):
                 continue
         return call_q
+    if _DURING_YEAR_CUE_RE.search(sent):
+        return f"FY{fy:02d}"               # "during the year" names the fiscal year, never the call quarter
+    if _FIRST_HALF_CUE_RE.search(sent):
+        return f"H1 FY{fy:02d}" if q != 1 else ""
     return ""
 
 
@@ -1739,12 +1799,14 @@ def anchored_period(statement: str, call_period: str) -> str:
     forward/guidance sentence anchors its named target period ("for FY25 we expect", "by FY28") or the call's
     own "FYnn" on a Q4 call.  A comparative ("against/vs/compared to/over
     <base>", "same quarter last year", "last quarter") names the base and never blocks the own-period figure.
-    The r4 cues still run after that: "quarterly <metric/figure>", "as on/at/of/basis <date equal to period end>",
-    or "<figure> stood at/was/reached ... (growth|up|increase) over <date 1 year or 1 quarter before period end>"
-    resolve to the call quarter; "this/the year" and "for FYnn" (on Q4 calls) resolve to the call's fiscal year;
-    a named "Qn FYnn" resolves to itself when it is the call's own period.  Never anchors when a comparative cue
-    precedes a named period, or when a forward cue, "same quarter last year", "last quarter", an explicit other
-    FY/H/Q, or a future date sits in the cue's sentence (empty beats wrong).
+    T-242 r6 adds "Q1 of FY27"/"first quarter of FY27", an FY with a space/apostrophe/hyphen, a guidance
+    sentence's own FY on a Q1-Q3 call, "during the year" -> the call's FY and "first half of the year" ->
+    H1 of it.  The r4 cues still run after that: "quarterly <metric/figure>", "as on/at/of/basis <date equal to
+    period end>", or "<figure> stood at/was/reached ... (growth|up|increase) over <date 1 year or 1 quarter
+    before period end>" resolve to the call quarter; "this/the year" and "for FYnn" (on Q4 calls) resolve to
+    the call's fiscal year; a named "Qn FYnn" resolves to itself when it is the call's own period.  Never
+    anchors when a comparative cue precedes a named period, or when a forward cue, "same quarter last year",
+    "last quarter", an explicit other FY/H/Q, or a future date sits in the cue's sentence (empty beats wrong).
     """
     m = _CALL_PERIOD_RE.match(" ".join(str(call_period or "").split()))
     if not m:
@@ -1760,9 +1822,10 @@ def anchored_period(statement: str, call_period: str) -> str:
         if _SAME_QUARTER_LAST_YEAR_RE.search(sent):
             continue
         named = _NAMED_QUARTER_FY_RE.search(sent)
-        if named and not _COMPARATIVE_CUE_RE.search(sent[:named.start()]) \
-                and (int(named.group(1)), int(named.group(2)) % 100) == (q, fy):
-            return f"Q{q} FY{fy:02d}"
+        if named and not _COMPARATIVE_CUE_RE.search(sent[:named.start()]):
+            mq = int(named.group(1)) if named.group(1) else _ORDINAL_QUARTER[named.group(2).lower()]
+            if (mq, int(named.group(3)) % 100) == (q, fy):
+                return f"Q{q} FY{fy:02d}"
     end_year, end_month, end_day = _period_end_date(q, fy)
     end_ym = end_year * 12 + end_month
     if q == 4:
