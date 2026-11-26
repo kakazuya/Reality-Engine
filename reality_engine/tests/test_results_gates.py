@@ -441,3 +441,88 @@ def test_flow_duration_fill_populates_column_header_or_gates_while_stock_keeps_a
     assert ambig["status"] == "unverified" and "results_period_duration_missing" in ambig["status_reason"]
     assert mismatch_cf["status"] == "unverified" and "results_period_duration_missing" in mismatch_cf["status_reason"]
     assert rel["status"] == "unverified" and "results_period_duration_missing" in rel["status_reason"]
+
+
+# T-242 r3b -- the six graded-R rows r3 downgraded: a duration header the parser missed (misspelt, "ending on",
+# carried from the page before, or garbled under an annual cash-flow title), and a cash-flow adjustment line whose
+# NEW id already names its own line (never remapped, never unverified).
+def test_duration_is_read_from_a_misspelt_half_year_header():
+    half = row(measure="cash_generated_from_operations",
+               printed_label="Cash (used in)/ generated from operations", value_text="221.36", value=221.36,
+               unit="Rs in Crore", scale=10000000.0, period="30.09.2025")
+    page = ("Unaudited Consolidated Statement of Cash Flow\n(Rs in Crore)\nParticulars\n"
+            "for the Half Vear Ended\n30.09.2026\n30.09.2025\nA]\nCash Flow from Operating Activities\n"
+            "Cash (used in)/ generated from operations 221.36 208.79")
+    obs.apply_results_row_gates([half], page)
+    assert half["status"] == "verified" and half["period"] == "Half year ended 30.09.2025"
+
+
+def test_duration_is_read_from_a_year_ending_on_header():
+    prior = row(measure="cash_flow.financing", printed_label="Net Cash flowsj(used in) Financing Activities",
+                value_text="129.32", value=129.32, unit="Lakhs", scale=100000.0, period="31-March-2025")
+    page = ("Continuation Sheet\nM/s ALUFLUORIDE LIMITED, VISAKHAPATNAM\n"
+            "Consolidated Statement of Cash flows for the year ended 31st March, 2026\n"
+            "Figures for the\nParticulars\ncurrent reporting\nyear ending on\n31-March-2026\n"
+            "A) Cash Flow from Operating Activities:\nNet Cash flowsj(used in) Financing Activities 129.32 96.15\n"
+            "Figures for the\nprevious reporting\nyear ending on\n31-March-2025\n")
+    obs.apply_results_row_gates([prior], page)
+    assert prior["status"] == "verified" and prior["period"] == "Year ended 31-March-2025"
+
+
+def test_duration_carried_from_the_previous_page_resolves_a_flow_row():
+    carried = row(measure="pat", printed_label="Profit for the year", value_text="1,234.00", value=1234.0,
+                  period="31-Mar-26")
+    obs.apply_results_row_gates(
+        [carried], "Particulars 31-Mar-26 31-Mar-25\nProfit for the year 1,234.00 1,000.00",
+        previous_page_text="Statement of Financial Results\nYear ended\nMarch 31, 2026\nMarch 31, 2025")
+    assert carried["status"] == "verified" and carried["period"] == "Year ended 31-Mar-26"
+
+
+def test_an_ambiguous_carried_header_resolves_nothing():
+    stock = row(measure="total_current_assets", printed_label="Total current assets", period="31st March, 2026")
+    obs.apply_results_row_gates([stock], "Balance Sheet\n31st March, 2026",
+                                previous_page_text="Quarter ended 31 March 2026\nYear ended 31 March 2026")
+    assert stock["status"] == "verified" and stock["period"] == "31st March, 2026"
+
+
+def test_an_annual_cash_flow_statement_whose_title_garbles_the_duration_reads_year():
+    annual = row(measure="cash_flow.operating", printed_label="Net cash flow from operating activities (A)",
+                 value_text="22.04", value=22.04, unit="Rs. in Lakhs", scale=100000.0, period="31-Mar-26")
+    page = ("AAKSH OPTIFIBRE LIMITED\nConsolidated Statement of Cash Flows for the izar ended March 31 2026\n"
+            "Particulars\n31-Mar-26\n31-Mar-25\nCash flow from operating activities\n"
+            "Net cash flow from operating activities (A) 22.04 14.84")
+    obs.apply_results_row_gates([annual], page)
+    assert annual["status"] == "verified" and annual["period"] == "Year ended 31-Mar-26"
+
+
+def test_a_cash_flow_adjustment_line_that_names_its_own_line_is_not_remapped():
+    rents = row(measure="NEW:rent_received_other_income_adjustment", printed_label="Rent Received/Other Income",
+                value_text="(150.71)", value=-150.71, unit="Rs. In Lakhs", scale=100000.0, period="31-03-2025",
+                group_path="CASH FLOW FROM OPERATING ACTIVITIES > Adjustments for :")
+    interest = row(measure="NEW:interest_income_from_investing_activities",
+                   printed_label="Interest income from investing activities", value_text="(329.80)",
+                   value=-329.80, unit="\u20b9 in Lakhs", scale=100000.0, period="Year ended 31 March 2025",
+                   group_path="A. CASH FLOW FROM OPERATING ACTIVITIES > Adjustments for:")
+    derecognition = row(measure="NEW:net_gain_on_derecognition_of_financial_instruments_under_amortised_cost_category",
+                        printed_label="Net gain on derecognition of finanical instruments under amortised cost "
+                                      "category", value_text="(97.79)", value=-97.79, unit="Rs. in Lakhs",
+                        scale=100000.0, period="For the year ended 31 March 2025 (Audited)",
+                        group_path="Cash flow from operating activities > Adjustment for:")
+    rows = [rents, interest, derecognition]
+    obs.apply_results_row_gates(rows, "Consolidated Statement of Cash Flows\n31-03-2026 31-03-2025\n"
+                                      "Adjustments for:")
+    assert [r["measure"] for r in rows] == [
+        "NEW:rent_received_other_income_adjustment",
+        "NEW:interest_income_from_investing_activities",
+        "NEW:net_gain_on_derecognition_of_financial_instruments_under_amortised_cost_category",
+    ]
+    assert [r["status"] for r in rows] == ["verified"] * 3
+
+
+def test_a_plain_income_line_under_adjustments_is_still_remapped():
+    rental = row(measure="NEW:rental_income", printed_label="Rental income", value_text="(184.02)",
+                 value=-184.02, unit="Rs. in Lakhs", scale=100000.0, period="For the year ended 31 March 2025",
+                 group_path="Cash flow from operating activities > Adjustment for:")
+    obs.apply_results_row_gates([rental], "Consolidated Statement of Cash Flows\nAdjustment for:")
+    assert rental["measure"] == "NEW:rental_income_cash_flow" and rental["status"] == "unverified"
+    assert "results_cash_flow_measure" in rental["status_reason"]

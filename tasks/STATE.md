@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 01:40 IST (dsh)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-26 12:30 IST (dsh, T-242 results r3b)
 History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -8,6 +8,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD (`--start/--max-workers`), Zen rotates Nemotron VL / DeepSeek Flash by speed.
 - 26 Nov tx statement window (Eagle, 0e8b95f3): sentence snap + referent widen, page-local; recheck dedupes exact repeats. Filter r2: logistics/refusals/closings dropped; period from printed call period, comparatives never set it.
 - 26 Nov results gates r2+r3: cash-flow/adjustments, basis (standalone-only filer), duration fill, current/non-current, scope backing, statute junk.
+- 26 Nov results gates r3b: duration headers the parser missed ("Vear", "year ending on", carried previous page, annual cash-flow title), adjustment lines already naming their own line kept; full-copy recheck 0 graded-R status changes (numbers in `tasks/t242_results_measure.md`).
 - 26 Nov AR gates r4: jv/associate scopes, printed-name scope, junk; deck untied values.
 - 26 Nov extractors (next build): guidance superseded/entity/split; KPI quote-scale check.
 - 26 Nov deck r7/r8: scope, HoH/QoQ, quarter cue, segment not total

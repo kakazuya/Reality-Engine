@@ -5482,9 +5482,26 @@ RESULTS_DATE_TOKEN_PAT = (
 )
 RESULTS_DURATION_DATE_RE = re.compile(
     rf"\b({RESULTS_DUR_WORD_PAT})\b"
-    r"(?:\s+to\s+date)?(?:\s+figures?)?(?:\s+for\s+the\s+[^.]{0,30}?\s+ended(?:\s+on)?|\s+ended(?:\s+on)?)\s+"
+    r"(?:\s+to\s+date)?(?:\s+figures?)?"
+    r"(?:\s+for\s+the\s+[^.]{0,30}?\s+end(?:ed|ing)(?:\s+on)?|\s+end(?:ed|ing)(?:\s+on)?)\s+"
     rf"({RESULTS_DATE_TOKEN_PAT})", re.I)
-RESULTS_COL_GROUP_RE = re.compile(rf"(?<!previous\s)\b({RESULTS_DUR_WORD_PAT})\s+ended\b", re.I)
+RESULTS_COL_GROUP_RE = re.compile(rf"(?<!previous\s)\b({RESULTS_DUR_WORD_PAT})\s+end(?:ed|ing)\b", re.I)
+# T-242 r3b: "Vear" is this corpus's frequent text-layer/OCR reading of "year" (ALOKINDS p7 prints
+# "for the Half Vear Ended"); read it as year before any duration header is matched.
+RESULTS_OCR_VEAR_RE = re.compile(r"\b([Vv])ears?\b")
+# A printed cash-flow statement's columns ending on a fiscal year-end (31 March) are annual periods; the page
+# title often garbles the duration word (AKSHOPTFBR p11: "for the izar ended March 31 2026").
+RESULTS_CF_ANNUAL_END = (31, 3)
+# T-242 r3b: a NEW id that already names its own adjustment / cash-flow line is not a P&L/BS measure, so the
+# cash-flow gate leaves it alone; a NEW id that is a plain line name ("rental_income") is remapped.
+RESULTS_CF_ALREADY_LINE_RE = re.compile(
+    r"_adjustments?$|_cash_flow\b|\b(?:operating|investing|financing)\s+activities\b"
+    r"|\bderecognition\b|\bamorti[sz]ed\s+cost\b", re.I)
+RESULTS_CF_PLAIN_HEAD_RE = re.compile(
+    r"(?:^|_)(?:income|expenses?|costs?|profits?|loss|revenue|turnover|tax|"
+    r"depreciation|amorti[sz]ation|assets?|liabilities|payables?|receivables?|"
+    r"borrowings?|deposits?|investments?)$", re.I)
+RESULTS_CF_LABEL_DONE_RE = re.compile(r"\badjustments?\b|\(\s*cash\s*-?\s*flows?\s*\)", re.I)
 RESULTS_HAS_DURATION_RE = re.compile(
     r"\b(?:quarter|three\s+months?|3\s+months?|half[\s-]*year|six\s+months?|6\s+months?|"
     r"nine\s+months?|9\s+months?|twelve\s+months?|12\s+months?|year|fy\s*['\u2019-]?\s*\d{2,4}|"
@@ -5621,6 +5638,24 @@ def _results_in_operating_adjustments(row: dict[str, Any], page_text: str) -> bo
     return False
 
 
+def _results_cf_is_statement_line(measure: str) -> bool:
+    """True when a cash-flow line still carries a P&L/balance-sheet measure the gate must remap (T-242 r3b).
+
+    A dictionary measure is always remapped.  A NEW id is a free-form line name, so it is remapped only when
+    it names a plain P&L/BS line ('NEW:rental_income' under 'Adjustments for' -> 'NEW:rental_income_cash_flow');
+    an id that already names its own adjustment or cash-flow line ('..._adjustment', 'Interest income from
+    investing activities', 'Net gain on derecognition ... under amortised cost category') is left as stored.
+    """
+    if measure in _MEASURE_FAMILY:
+        return True
+    if not measure.startswith(NEW_PREFIX):
+        return False
+    bare = measure[len(NEW_PREFIX):]
+    if RESULTS_CF_ALREADY_LINE_RE.search(bare):
+        return False
+    return bool(RESULTS_CF_PLAIN_HEAD_RE.search(bare))
+
+
 def _results_cash_flow_reason(row: dict[str, Any], page_text: str, previous_page_text: str) -> str:
     """A cash-flow statement line (incl. operating 'Adjustments for') never keeps a P&L/BS measure."""
     head_ctx = " ".join((norm_space(page_text)[:1500], norm_space(previous_page_text)[:600],
@@ -5632,12 +5667,15 @@ def _results_cash_flow_reason(row: dict[str, Any], page_text: str, previous_page
         return ""
     measure = norm_space(row.get("measure"))
     if measure in RESULTS_CASH_FLOW_MEASURES or measure.startswith("changes_in_") \
-            or (measure.startswith(NEW_PREFIX) and RESULTS_CASH_FLOW_NEW_RE.search(measure)):
+            or (measure.startswith(NEW_PREFIX) and RESULTS_CASH_FLOW_NEW_RE.search(measure)) \
+            or RESULTS_CF_LABEL_DONE_RE.search(label):
         return ""
     in_adj = _results_in_operating_adjustments(row, page_text)
     if not (RESULTS_CASH_FLOW_PAID_RE.search(label) or RESULTS_CASH_FLOW_LINE_RE.search(label) or in_adj):
         return ""
     if in_adj and measure in RESULTS_CF_SUBTOTAL_MEASURES:
+        return ""
+    if not _results_cf_is_statement_line(measure):
         return ""
     mapped = next((mid for rx, mid in RESULTS_CASH_FLOW_LABEL_MEASURES if rx.search(label)), "")
     if not mapped:
@@ -5795,14 +5833,35 @@ def _results_duration_label(norm_dur: str) -> str:
     }.get(norm_dur, "Year ended")
 
 
-def _results_duration_dates(page_text: str) -> dict[Any, set[str]]:
+def _results_ocr_text(page_text: str) -> str:
+    """Read the corpus's 'Vear' text-layer spelling as 'year' (T-242 r3b; ALOKINDS p7)."""
+    return RESULTS_OCR_VEAR_RE.sub(lambda m: ("Y" if m.group(1) == "V" else "y") + m.group(0)[1:], page_text)
+
+
+def _results_duration_dates(page_text: str, previous_text: str = "") -> dict[Any, set[str]]:
+    """The end date of every printed column, with the duration(s) its header names.
+
+    The page's own header block is read first; a header carried over from the page before completes a date
+    the page itself does not resolve (T-242 r3b).
+    """
+    out = _results_duration_dates_one(page_text)
+    if previous_text:
+        for key, durations in _results_duration_dates_one(previous_text).items():
+            if len(durations) == 1:      # an ambiguous header ("quarter and year ended") resolves nothing
+                out.setdefault(key, set(durations))
+    return out
+
+
+def _results_duration_dates_one(page_text: str) -> dict[Any, set[str]]:
     """The end date of every printed column, with the duration(s) its header names."""
+    page_text = _results_ocr_text(page_text)
     out: dict[Any, set[str]] = {}
     cleaned = norm_space(page_text)
     lines = [norm_space(ln) for ln in str(page_text or "").splitlines() if norm_space(ln)]
     header_block = ""
     for i, ln in enumerate(lines[:30]):
-        if "ended" not in ln.lower() or not RESULTS_COL_GROUP_RE.search(ln) or RESULTS_DURATION_DATE_RE.search(ln):
+        if not re.search(r"\bend(?:ed|ing)\b", ln.lower()) or not RESULTS_COL_GROUP_RE.search(ln) \
+                or RESULTS_DURATION_DATE_RE.search(ln):
             continue
         block = " ".join(lines[i:min(len(lines), i + 25)])
         parsed_dates: list[tuple[str, tuple[int, int, int]]] = []
@@ -5875,6 +5934,16 @@ def _results_duration_dates(page_text: str) -> dict[Any, set[str]]:
                 if ck is not None and (ck[0], ck[1]) == (hk[0], hk[1]) and ck not in out:
                     out.setdefault(ck, set()).add(hdur)
                     out.setdefault((ck[1], ck[2]), set()).add(hdur)
+    if RESULTS_CASH_FLOW_HEADING_RE.search(cleaned[:600]) and not RESULTS_DURATION_DATE_RE.search(cleaned[:600]):
+        # T-242 r3b: an annual cash-flow statement whose title garbles the duration word ("for the izar ended
+        # March 31 2026", AKSHOPTFBR p11) prints its columns as bare 31 March year-ends: those columns are years.
+        # A title that does name a duration (a half-year statement) is never overridden.
+        for line in lines[:12]:
+            for dm in re.finditer(RESULTS_DATE_TOKEN_PAT, line, re.I):
+                key = _results_date_key(dm.group(0))
+                if key is not None and (key[0], key[1]) == RESULTS_CF_ANNUAL_END and key not in out:
+                    out[key] = {"year"}
+                    out.setdefault((key[1], key[2]), {"year"})
     return out
 
 
@@ -5896,7 +5965,8 @@ def _results_is_flow_measure(row: dict[str, Any], page_text: str) -> bool:
 
 def _results_period_reason(row: dict[str, Any], page_text: str,
                            durations: dict[Any, set[str]] | None = None,
-                           stats: dict[str, Any] | None = None) -> str:
+                           stats: dict[str, Any] | None = None,
+                           previous_page_text: str = "") -> str:
     """A year alone/release date is gated; flow rows fill duration from column header or gate unverified."""
     period = norm_space(row.get("period"))
     if not period:
@@ -5907,7 +5977,7 @@ def _results_period_reason(row: dict[str, Any], page_text: str,
     is_flow = _results_is_flow_measure(row, page_text)
     if is_as_at and (not is_flow or norm_space(row.get("measure")) not in RESULTS_FLOW_MEASURES):
         return ""
-    dur_map = durations if durations is not None else _results_duration_dates(page_text)
+    dur_map = durations if durations is not None else _results_duration_dates(page_text, previous_page_text)
     if is_flow and not re.search(r"\d", period):
         return f"results_period_duration_missing: {period!r} has no resolved date/duration"
     if RESULTS_HAS_DURATION_RE.search(period):
@@ -6077,7 +6147,7 @@ def apply_results_row_gates(rows: list[dict[str, Any]], page_text: str = "", com
     if note is None and doc_note is not None:
         note = doc_note
         note_source = "document"
-    durations = _results_duration_dates(page_text)
+    durations = _results_duration_dates(page_text, previous_page_text)
     equity_subjects = _results_equity_accounted_subjects(page_text)
     kept: list[dict[str, Any]] = []
     for row in rows:

@@ -149,3 +149,248 @@ The 9 J rows (31, 36, 41, 42, 44, 47, 50, 53, 54) are quarantined; 33/51/60 are 
 Measured by a scratch script calling the same `apply_results_row_gates` over the baseline rows and the stores' `doc_page` texts (1,858 pages; no model, no fetch): 49,993 rows, 14,171 verified. 1,201 verified rows become unverified across the five r2 rules (no rule over the 3% stop): `basis_unstated` 380 (2.68%), `results_period_duration_missing` 281 (1.98%), `results_period_not_a_period` 239 (1.69%), cash-flow line 277 (1.95%), `results_equity_accounted` 24. 625 cash-flow lines remapped in all (348 already unverified); 291 per-share rows lose the money scale, status unchanged. Graded-R rows of results_ckpt1 (40): 0 status changes; row 42 only gains `basis='standalone'`.
 P rows: 2/16/25 basis_unstated; 30/36/37/43 -> NEW:<line>_cash_flow + unverified; 31 bare year; 33 basis + release date; 35 associate + basis cleared; 46 EPS unit '₹'; 59 duration; 60 entity_scope jv + value -8193.50; 8/48/51/52 basis carried (52 also Lakhs); 11 Lakhs; 24 (misaligned OCR) and 26 (no duration word on its page) unchanged.
 A full `--recheck` of a copy was started but spent >25 min loading page words/PDFs and was abandoned; the gate path is the same function.
+
+## results gates r3b (26 Nov 2026, T-242, obs_results_fy27.db copy)
+
+Wolf's check of the r3 recheck copy `C:/RealityEngine/t242/results_recheck/results_r3.db` found 6 rows graded R in
+the two packs downgraded: a flow period whose duration is printed but not matched (ALOKINDS p7 "for the Half Vear
+Ended", ALUFLUOR p18 "year ending on 31-March-2025", AKSHOPTFBR p11 "for the izar ended March 31 2026") and three
+cash-flow adjustment lines stored under a `NEW:` id that already names the line (AMFORG, AKCAPIT, ABDL).
+`reality_engine/v2/observations.py` now reads those headers (and a single-duration header carried from the page
+before; an ambiguous one carries nothing), reads an annual cash-flow statement's bare 31 March columns as years
+when its title names no duration, and remaps a cash-flow line only when its measure is a dictionary P&L/BS measure
+or a `NEW:` id that is a plain line name. The rules are in `docs/DEVELOPER_GUIDE.md` (r3b bullet).
+
+```
+$env:REALITY_RAW_FETCH="0"
+python -m reality_engine.v2.observations --recheck --baseline .tmp/r3b/base.db --out .tmp/r3b/after.db `
+    --stores-root C:/RealityEngine/tg_build/universe_fy27 --doc-types results
+```
+
+(The run wrapped `observations.main` in a scratch script that retries a transient `unable to open database file`
+race on a store another working process held open; the pipeline code is untouched. Rule hits: `results_period`
+8,788, `results_duration_filled` 8,269, `results_cash_flow` 1,842, `results_scope_reset` 2,961,
+`results_dropped` 760, `results_junk` 1,435, `results_unit` 415, `results_doc_units` 1,330,
+`results_basis_unstated` 387, `results_current_mismatch` 58, `results_jv` 21, `results_equity_accounted` 24,
+`results_per_share` 291, `repeats_dropped` 542; r3 had `results_period` 9,669, `results_duration_filled` 7,419,
+`results_cash_flow` 2,420. `downgraded` 2,630 (r3 3,189), `upgraded` 37, `unproven_upgrades` 533 — the run stops
+with the same rc 2 "would verify without a new printed source", as r3 did.)
+
+recheck of a fresh copy (`REALITY_RAW_FETCH=0`, the 681 stores under
+`C:/RealityEngine/tg_build/universe_fy27`, `--doc-types results`): 1,858 pages, 49,993 rows read;
+49,071 rows written (542 exact repeats + 760 junk rows dropped); verified 14,171 -> 11,399
+(r3: 10,848).
+
+
+### The 68 graded-R rows
+
+0 status changes; 14 attribute changes (all verified -> verified).
+
+- ckpt1 #1 ALOKINDS obs 34701: period '30.09.2025' -> 'Half year ended 30.09.2025'
+- ckpt1 #3 ALUFLUOR obs 35953: period '31-March-2025' -> 'Year ended 31-March-2025'
+- ckpt1 #7 AMFORG obs 37167: period '31-03-2025' -> 'Year ended 31-03-2025'; basis '' -> 'standalone'
+- ckpt1 #38 ACC obs 19164: period 'March 31, 2026' -> 'Year ended March 31, 2026'
+- ckpt1 #41 AMNPLST obs 38424: period '31-Mar-26' -> 'Year ended 31-Mar-26'
+- ckpt1 #42 ADHBHUTIN obs 23295: basis '' -> 'standalone'
+- ckpt1 #54 ARSSINFRA obs 2197: period 'March 31, 2026' -> 'Year ended March 31, 2026'
+- ckpt1 #55 AKSHOPTFBR obs 32434: period '31-Mar-26' -> 'Year ended 31-Mar-26'
+- ckpt1 #57 ACCEDERE obs 19266: period 'As at March 31, 2026' -> 'Year ended March 31, 2026'
+- r2 #1 AJANTPHARM obs 31246: basis '' -> 'consolidated'
+- r2 #34 APOLLOTYRE obs 43783: basis '' -> 'standalone'
+- r2 #36 ADVENZYMES obs 24454: basis '' -> 'consolidated'
+- r2 #53 ADTECH obs 24988: basis '' -> 'standalone'
+- r2 #60 ANSALBU obs 42382: basis '' -> 'standalone'
+
+The six r3 downgrades (verified -> verified):
+
+- ckpt1 #1 ALOKINDS: `cash_generated_from_operations` period 'Half year ended 30.09.2025', status verified
+- ckpt1 #3 ALUFLUOR: `cash_flow.financing` period 'Year ended 31-March-2025', status verified
+- ckpt1 #7 AMFORG: `NEW:rent_received_other_income_adjustment` period 'Year ended 31-03-2025', status verified
+- ckpt1 #22 AKCAPIT: `NEW:net_gain_on_derecognition_of_financial_instruments_under_amortised_cost_category` period 'For the year ended 31 March 2025 (Audited)', status verified
+- ckpt1 #32 ABDL: `NEW:interest_income_from_investing_activities` period 'Year ended 31 March 2025', status verified
+- ckpt1 #55 AKSHOPTFBR: `cash_flow.operating` period 'Year ended 31-Mar-26', status verified
+
+### Downgrades by rule (verified -> not verified, 2809 rows)
+
+- `results_period_duration_missing`: 967
+- `results_cash_flow_measure`: 747
+- `other`: 522
+- `removed`: 262
+- `results_period_not_a_period`: 228
+- `results_unit`: 53
+- `results_equity_accounted`: 17
+- `results_current_mismatch`: 13
+
+#### results_period_duration_missing: 967 downgraded, 20 random (seed 7)
+
+- `17764` ABB p4: `verified` -> `unverified`, revenue_from_operations, period 'June 30, 2025', value_text '2,940.47'; results_period_duration_missing: no column duration header found for flow period 'June 30, 2025'
+- `9322` ANURAS p8: `verified` -> `unverified`, NEW:defined_benefit_plan_remeasurement_gain_loss, period 'March 31, 2026', value_text '9.50'; results_period_duration_missing: 'March 31, 2026' is printed under more than one duration (quarter, year), the row does not say which
+- `20770` ACESOFT p13: `verified` -> `unverified`, revenue.value, period '31st March 2026', value_text '95.00'; basis_unstated: the filing prints a standalone and a consolidated statement and neither this page nor the page before names which one this row comes from
+- `35504` ALPINEHOU p5: `verified` -> `unverified`, NEW:changes_in_trade_payables_and_current_liabilities, period '30-09-2026', value_text '-763.08'; results_period_duration_missing: no column duration header found for flow period '30-09-2026'
+- `4512` ASTRAL p11: `verified` -> `unverified`, total_comprehensive_income, period 'the period ended on that date', value_text 'Rs. 369 million'; results_period_duration_missing: 'the period ended on that date' has no resolved date/duration
+- `5538` AADHARHFC p7: `verified` -> `unverified`, NEW:ipo_proceeds_amount_utilised_upto, period 'March 31, 2026', value_text '75,000'; printed_label is not in the page text layer: 'To meet the future capital requirements towards onward lending'
+- `44999` ARAVALIS p2: `verified` -> `unverified`, finance_cost, period '31/03/2026', value_text '29.56'; results_period_duration_missing: no column duration header found for flow period '31/03/2026'
+- `29942` AIHL p11: `verified` -> `unverified`, purchase_of_finished_goods, period '31.12.2025', value_text '169.80'; results_period_duration_missing: no column duration header found for flow period '31.12.2025'
+- `6673` AGRIBIO p13: `verified` -> `unverified`, NEW:group_share_of_total_net_profit_loss_after_tax, period 'for the quarter', value_text '34.48'; results_period_duration_missing: 'for the quarter' has no resolved date/duration
+- `19165` ACC p7: `verified` -> `unverified`, NEW:changes_in_other_liabilities, period 'March 31, 2025', value_text '(42.13)'; results_period_duration_missing: no column duration header found for flow period 'March 31, 2025'
+- `32109` AKSHAR p5: `verified` -> `unverified`, operating_profit_before_working_capital_changes, period 'March 31, 2026', value_text '(256.49)'; results_period_duration_missing: no column duration header found for flow period 'March 31, 2026'
+- `4895` ALFL p3: `verified` -> `unverified`, investments, period '30.09.2026', value_text '637.46'; results_period_duration_missing: '30.09.2026' is printed under more than one duration (half_year, quarter), the row does not say which
+- `48403` ARVINDFASN p4: `verified` -> `unverified`, profit_before_tax, period '30.06.2026', value_text '(20.63)'; results_period_duration_missing: no column duration header found for flow period '30.06.2026'
+- `25912` AEIM p6: `verified` -> `unverified`, equity_share_capital, period '30-06-2026', value_text '2,766.96'; results_period_duration_missing: '30-06-2026' is printed under more than one duration (quarter, year), the row does not say which
+- `11168` AKSHOPTFBR p4: `verified` -> `unverified`, total_assets, period 'Mar-26', value_text '24,402.82'; results_period_duration_missing: 'Mar-26' is printed under more than one duration (quarter, year), the row does not say which
+- `4099` BHARTIARTL p26: `verified` -> `unverified`, revenue_growth_qoq, period 'sequentially', value_text '9.5%'; results_period_duration_missing: 'sequentially' has no resolved date/duration
+- `6012` ASTEC p3: `verified` -> `unverified`, profit_before_tax, period '30-Jun-25', value_text '(3,305.64)'; results_period_duration_missing: no column duration header found for flow period '30-Jun-25'
+- `23957` ADL p3: `verified` -> `unverified`, NEW:taxes_for_earlier_years, period '31.03.2026', value_text '0.69'; results_period_duration_missing: '31.03.2026' is printed under more than one duration (three_months, year), the row does not say which
+- `22814` ADFFOODS p10: `verified` -> `unverified`, total_comprehensive_income, period 'for the year ended on that date', value_text '59.72'; results_period_duration_missing: 'for the year ended on that date' has no resolved date/duration
+- `5531` AADHARHFC p7: `verified` -> `unverified`, NEW:fresh_issue_amount, period 'May 13, 2024', value_text 'Rs 100,000 lakhs'; results_period_duration_missing: no column duration header found for flow period 'May 13, 2024'
+
+#### results_cash_flow_measure: 747 downgraded, 20 random (seed 7)
+
+- `21529` ACI p5: `verified` -> `unverified`, NEW:profit_loss_on_sale_of_asset, period 'For the year ended March 31, 2025', value_text '42.42'; results_cash_flow_measure: '(Profit)/Loss on sale of asset' is a cash-flow line, not the P&L/balance-sheet 'NEW:profit_loss_on_sale_of_asset'
+- `6410` AIRFLOA p16: `verified` -> `unverified`, interest_income, period 'As at March 31, 2026', value_text '-26.53'; results_cash_flow_measure: 'Interest Income' is a cash-flow line, not the P&L/balance-sheet 'interest_income'
+- `35480` ALPINEHOU p5: `verified` -> `unverified`, NEW:provision_for_gratuity_and_earned_leave_payable, period '31-03-2026', value_text '11.37'; results_cash_flow_measure: 'Provision For Gratuity & Earned Leave Payable' is a cash-flow line, not the P&L/balance-sheet 'NEW:provision_for_gratuity_and_earned_leave_payable'
+- `31023` AIRFLOA p12: `verified` -> `unverified`, trade_receivables, period 'As at March 31, 2026', value_text '-8,641.54'; results_cash_flow_measure: 'Trade Receivables' is a cash-flow line, not the P&L/balance-sheet 'trade_receivables'
+- `3911` BBTCL p16: `verified` -> `unverified`, borrowings, period 'For the year ended March 31, 2026', value_text '2,433.40'; results_cash_flow_measure: 'Increase (Decrease) in Working Capital Borrowings' is a cash-flow line, not the P&L/balance-sheet 'borrowings'
+- `38166` AMJLAND p8: `verified` -> `unverified`, depreciation_and_amortisation_expense, period 'Period ended 30 September 2026', value_text '93.13'; results_cash_flow_measure: 'Depredation and amortisation expense' is a cash-flow line, not the P&L/balance-sheet 'depreciation_and_amortisation_expense'
+- `7799` ALSL p9: `verified` -> `unverified`, other_current_liabilities, period '31-03-2026', value_text '493.56'; results_cash_flow_measure: 'Increase/(Decrease) in Other Current Liabilities' is a cash-flow line, not the P&L/balance-sheet 'other_current_liabilities'
+- `21480` ACHYUT p4: `verified` -> `unverified`, other_financial_assets, period 'For the year ended 31 March 2026', value_text '(0.02)'; results_cash_flow_measure: 'Other Current Financial Assets' is a cash-flow line, not the P&L/balance-sheet 'other_financial_assets'
+- `43269` APCL p17: `verified` -> `unverified`, lease_liabilities, period '31-Mar-26', value_text '(1)'; results_cash_flow_measure: 'Payment of lease liabilities' is a cash-flow line, not the P&L/balance-sheet 'lease_liabilities'
+- `43234` APCL p17: `verified` -> `unverified`, NEW:loss_on_sale_of_investment, period '31-Mar-26', value_text '7,996'; results_cash_flow_measure: 'Loss of Sale of Investement' is a cash-flow line, not the P&L/balance-sheet 'NEW:loss_on_sale_of_investment'
+- `40094` ANDREWYU p20: `verified` -> `unverified`, interest_income, period 'Year ended 31st March, 2026', value_text '(208.54)'; results_cash_flow_measure: 'Interest Income' is a cash-flow line, not the P&L/balance-sheet 'interest_income'
+- `3915` BBTCL p16: `verified` -> `unverified`, lease_liabilities, period 'For the year ended March 31, 2025', value_text '(191.03)'; results_cash_flow_measure: 'Principle payment of lease liabilities' is a cash-flow line, not the P&L/balance-sheet 'lease_liabilities'
+- `40085` ANDREWYU p20: `verified` -> `unverified`, depreciation_and_amortisation_expense, period 'Year ended 31st March, 2026', value_text '689.99'; results_cash_flow_measure: 'Depreciation/Impairment of PPE' is a cash-flow line, not the P&L/balance-sheet 'depreciation_and_amortisation_expense'
+- `40101` ANDREWYU p20: `verified` -> `unverified`, NEW:gain_on_remeasurement_of_investments, period 'Year ended 31st March, 2026', value_text '(24.67)'; results_cash_flow_measure: 'Gain on Remeasurement of Investments' is a cash-flow line, not the P&L/balance-sheet 'NEW:gain_on_remeasurement_of_investments'
+- `29369` AGRIBIO p12: `verified` -> `unverified`, finance_cost, period '31.03.2023', value_text '10.70'; results_cash_flow_measure: 'Interest and Bank Charges' is a cash-flow line, not the P&L/balance-sheet 'finance_cost'
+- `3837` ATIL p21: `verified` -> `unverified`, finance_cost, period '31/03/2026', value_text '(233.29)'; results_cash_flow_measure: 'Interest and other finance charges paid' is a cash-flow line, not the P&L/balance-sheet 'finance_cost'
+- `21478` ACHYUT p4: `verified` -> `unverified`, trade_receivables, period 'For the period ended 30 September 2026', value_text '28.25'; results_cash_flow_measure: 'Trade Receivables' is a cash-flow line, not the P&L/balance-sheet 'trade_receivables'
+- `2746` AVALON p9: `verified` -> `unverified`, borrowings, period "30 Sep'25", value_text '(80.13)'; results_cash_flow_measure: 'Proceeds from / (Repayment) of Current borrowings' is a cash-flow line, not the P&L/balance-sheet 'borrowings'
+- `37161` AMFORG p11: `verified` -> `unverified`, depreciation_and_amortisation_expense, period '31-03-2026', value_text '28.04'; results_cash_flow_measure: 'Depreciation' is a cash-flow line, not the P&L/balance-sheet 'depreciation_and_amortisation_expense'
+- `9784` BHARATROHAN p19: `verified` -> `unverified`, interest_income, period '31st March, 2026', value_text '(38.20)'; results_cash_flow_measure: 'Interest income' is a cash-flow line, not the P&L/balance-sheet 'interest_income'
+
+#### other: 522 downgraded, 20 random (seed 7)
+
+- `20739` ACESOFT p10: `verified` -> `unverified`, count.shares, period 'June 30', value_text '361'; basis_unstated: the filing prints a standalone and a consolidated statement and neither this page nor the page before names which one this row comes from
+- `31211` AJANTPHARM p2: `verified` -> `unverified`, revenue_growth_yoy, period 'H1 FY 2027', value_text '49%'; parts sum to 213 but the printed total is 29%
+- `11589` ALKEM p23: `verified` -> `unverified`, revenue_growth_yoy, period 'Q2FY27', value_text '13.8%'; basis_unstated: the filing prints a standalone and a consolidated statement and neither this page nor the page before names which one this row comes from
+- `9952` AMBUJACEM p16: `verified` -> `unverified`, NEW:segment_results, period '30/06/2025', value_text '1,228'; printed_axis is not in the page text layer: 'Corresponding 3 months ended 30/06/2025 Unaudited (Refer Note 3)'
+- `22718` ADANIGREEN p50: `verified` -> `unverified`, capacity.growth_multiple, period 'FY26', value_text '1.5 times'; basis_unstated: the filing prints a standalone and a consolidated statement and neither this page nor the page before names which one this row comes from
+- `13681` 360ONE p3: `verified` -> `unverified`, other_income, period 'Q2 FY27', value_text '(44)'; basis_unstated: the filing prints a standalone and a consolidated statement and neither this page nor the page before names which one this row comes from
+- `6728` ABATEAS p11: `verified` -> `unverified`, share_of_profit_of_jv_and_associates, period 'half year ended September 30, 2026', value_text '4.71'; not_company: a jv figure is served labelled, never verified
+- `13688` 360ONE p3: `verified` -> `unverified`, revenue_growth_yoy, period 'Q2 FY27', value_text '4.8%'; basis_unstated: the filing prints a standalone and a consolidated statement and neither this page nor the page before names which one this row comes from
+- `27120` AEONXDIGI p6: `verified` -> `unverified`, other_current_assets, period '31st March, 2026', value_text '256.13'; basis_conflict: same measure/label/period with different values and no distinct basis
+- `4779` BOSCHLTD p9: `verified` -> `unverified`, share_of_profit_of_jv_and_associates, period 'year to date from April 01, 2026 to September 30, 2026', value_text 'Rs. 23 million'; not_company: a jv figure is served labelled, never verified
+- `1026` BHARTIARTL p74: `verified` -> `unverified`, ebitda_margin, period 'Jun-25', value_text '50.9%'; basis_unstated: the filing prints a standalone and a consolidated statement and neither this page nor the page before names which one this row comes from
+- `1023` BHARTIARTL p74: `verified` -> `unverified`, ebitda_margin, period 'Mar-26', value_text '44.2%'; basis_unstated: the filing prints a standalone and a consolidated statement and neither this page nor the page before names which one this row comes from
+- `18052` ABFRL p9: `verified` -> `unverified`, share_of_profit_of_jv_and_associates, period 'quarter ended June 30, 2026', value_text 'Rs.(6.39 crores)'; not_company: a jv figure is served labelled, never verified
+- `47637` ARVINDFASN p33: `verified` -> `unverified`, revenue.value, period 'Q4 FY26', value_text '1,365'; basis_unstated: the filing prints a standalone and a consolidated statement and neither this page nor the page before names which one this row comes from
+- `31360` AJRINFRA p7: `verified` -> `unverified`, ownership_stake_pct, period 'year ended March 31, 2025', value_text '16.29%'; basis_unstated: the filing prints a standalone and a consolidated statement and neither this page nor the page before names which one this row comes from
+- `22935` ADANIGREEN p19: `verified` -> `unverified`, profit_before_exceptional_items_and_tax, period '3 Months ended 30.06.2025', value_text '956'; not_company: a jv figure is served labelled, never verified
+- `41969` ANTHEM p14: `verified` -> `unverified`, total_comprehensive_income, period 'the year ended 31st March 2026', value_text '(788.10)'; basis_unstated: the filing prints a standalone and a consolidated statement and neither this page nor the page before names which one this row comes from
+- `40070` ANANTRAJ p5: `verified` -> `unverified`, share_of_profit_of_jv_and_associates, period 'Quarter ended 31.03.2025', value_text '0.65'; not_company: a jv figure is served labelled, never verified
+- `27091` AEONXDIGI p6: `verified` -> `unverified`, total_non_current_assets, period '31st March, 2026', value_text '803.49'; basis_conflict: same measure/label/period with different values and no distinct basis
+- `20762` ACESOFT p13: `verified` -> `unverified`, equity_share_capital, period '31st March 2026', value_text '111.00'; basis_unstated: the filing prints a standalone and a consolidated statement and neither this page nor the page before names which one this row comes from
+
+#### removed: 262 downgraded, 20 random (seed 7)
+
+- `25636` AEIM p10: `verified` -> `removed`, NEW:legal_reference, period 'March 31, 2026', value_text '143(10)'; 
+- `19264` ACCEDERE p4: `verified` -> `removed`, equity_share_capital, period '31-03-2026', value_text '457.09'; 
+- `25574` AEGISLOG p3: `verified` -> `removed`, NEW:statutory_section_reference, period 'March 31, 2026', value_text '143(10)'; 
+- `13907` 3PLAND p5: `verified` -> `removed`, property_plant_and_equipment, period '31.03.2026', value_text '11'; 
+- `29654` AHMDSTE p4: `verified` -> `removed`, NEW:secretarial_auditor_appointment_term_end, period '2030-31', value_text '2030-31'; 
+- `49940` ASAHIINDIA p10: `verified` -> `removed`, total_assets, period '31.03.2026', value_text '777225'; 
+- `31477` AKSHAR p6: `verified` -> `removed`, NEW:regulatory_reference_number, period '31.03.2026', value_text '33 (3) (d)'; 
+- `45979` ARENTERP p8: `verified` -> `removed`, NEW:biological_assets_other_than_bearer_plants, period '31-03-2026', value_text '0.00'; 
+- `28201` AGI p5: `verified` -> `removed`, NEW:increase_decrease_in_acceptances, period 'Half year ended 30th September 2026', value_text '20.07'; 
+- `13883` 3PLAND p5: `verified` -> `removed`, cash_and_cash_equivalents, period '31.03.2026', value_text '20'; 
+- `15241` A1L p9: `verified` -> `removed`, total_liabilities, period '31.03.2025', value_text '2,394.52'; 
+- `44338` APOLLOTYRE p10: `verified` -> `removed`, debt_equity, period '31.03.2026', value_text '0.20'; 
+- `18808` ACCORDTS p1: `verified` -> `removed`, NEW:regulations_30_and_33_reference, period 'September 30, 2026', value_text '30 & 33'; 
+- `15962` AAREYDRUGS p5: `verified` -> `removed`, count.shares, period 'June 30, 2026', value_text '28,454,303'; 
+- `49928` ASAHIINDIA p10: `verified` -> `removed`, NEW:segment_assets, period '31.03.2026', value_text '383854'; 
+- `44342` APOLLOTYRE p10: `verified` -> `removed`, long_term_debt_equity, period '31.03.2026', value_text '1.12'; 
+- `11167` AKSHOPTFBR p4: `verified` -> `removed`, NEW:unallocated_assets, period 'Mar-25', value_text '4,387.56'; 
+- `13899` 3PLAND p5: `verified` -> `removed`, current_tax_assets_net, period '31.03.2026', value_text '2'; 
+- `30969` AIIL p11: `verified` -> `removed`, NEW:segment_assets, period '30.09.2026', value_text '3,719.76'; 
+- `31476` AKSHAR p6: `verified` -> `removed`, NEW:regulatory_reference_number, period '31.03.2026', value_text '33(2)'; 
+
+#### results_period_not_a_period: 228 downgraded, 20 random (seed 7)
+
+- `36557` AMARJOTHI p16: `verified` -> `unverified`, cash_and_cash_equivalents, period '2025', value_text '417.74'; results_period_not_a_period: '2025' is a year, not a period
+- `12554` ALEMBICLTD p15: `verified` -> `unverified`, other_equity, period '2026', value_text '77,010'; results_period_not_a_period: '2026' is a year, not a period
+- `25825` AEONXDIGI p1: `verified` -> `unverified`, NEW:resignation_effective_date, period '26.05.2026', value_text '26th May, 2026'; results_period_not_a_period: '26.05.2026' is the release date, not the row's period
+- `12666` BHARTIARTL p32: `verified` -> `unverified`, cash_profit, period '2024', value_text '720,012'; results_period_not_a_period: '2024' is a year, not a period
+- `23354` ADMANUM p1: `verified` -> `unverified`, NEW:board_meeting_resolution_number, period '27/10-04', value_text '2026-27/10-04'; results_period_not_a_period: '27/10-04' is the release date, not the row's period
+- `36591` AMARJOTHI p16: `verified` -> `unverified`, deferred_tax_liabilities_net, period '2025', value_text '0.00'; results_period_not_a_period: '2025' is a year, not a period
+- `12619` BHARTIARTL p32: `verified` -> `unverified`, count.countries, period '2025', value_text '17'; results_period_not_a_period: '2025' is a year, not a period
+- `6684` ACCEDERE p13: `verified` -> `unverified`, deferred_tax_assets_net, period '2026', value_text '6.77'; results_period_not_a_period: '2026' is a year, not a period
+- `39651` ANANDRATHI p3: `verified` -> `unverified`, count.shares, period 'November 11, 2024', value_text '8,30,20,634'; basis_unstated: the filing prints a standalone and a consolidated statement and neither this page nor the page before names which one this row comes from
+- `6690` ACCEDERE p13: `verified` -> `unverified`, cash_and_cash_equivalents, period '2025', value_text '31.11'; results_period_not_a_period: '2025' is a year, not a period
+- `12534` ALEMBICLTD p15: `verified` -> `unverified`, inventories, period '2026', value_text '5,224'; results_period_not_a_period: '2026' is a year, not a period
+- `12642` BHARTIARTL p32: `verified` -> `unverified`, ebitda, period '2024', value_text '889,064'; results_period_not_a_period: '2024' is a year, not a period
+- `36559` AMARJOTHI p16: `verified` -> `unverified`, other_bank_balances, period '2025', value_text '23.19'; results_period_not_a_period: '2025' is a year, not a period
+- `36543` AMARJOTHI p16: `verified` -> `unverified`, NEW:other_non_current_financial_assets, period '2025', value_text '0.00'; results_period_not_a_period: '2025' is a year, not a period
+- `6682` ACCEDERE p13: `verified` -> `unverified`, long_term_loans_and_advances, period '2025', value_text '83.24'; results_period_not_a_period: '2025' is a year, not a period
+- `6681` ACCEDERE p13: `verified` -> `unverified`, long_term_loans_and_advances, period '2026', value_text '91.49'; results_period_not_a_period: '2026' is a year, not a period
+- `36568` AMARJOTHI p16: `verified` -> `unverified`, total_current_assets, period '2026', value_text '18359.16'; results_period_not_a_period: '2026' is a year, not a period
+- `36560` AMARJOTHI p16: `verified` -> `unverified`, loans, period '2026', value_text '0.00'; results_period_not_a_period: '2026' is a year, not a period
+- `12544` ALEMBICLTD p15: `verified` -> `unverified`, other_financial_assets, period '2026', value_text '353'; results_period_not_a_period: '2026' is a year, not a period
+- `36535` AMARJOTHI p16: `verified` -> `unverified`, NEW:biological_assets_other_than_bearer_plants, period '2025', value_text '0.00'; results_period_not_a_period: '2025' is a year, not a period
+
+#### results_unit: 53 downgraded, 20 random (seed 7)
+
+- `44886` ARCHIDPLY p16: `verified` -> `unverified`, finance_cost, period 'FOR YEAR ENDED 31 MARCH, 2026', value_text '1,734.42'; results_unit: previous page prints Lakhs
+- `44956` ARCHIDPLY p7: `verified` -> `unverified`, borrowings, period 'FOR YEAR ENDED 31 MARCH, 2025', value_text '1,500.00'; results_unit: document prints Lakhs
+- `44827` ARCHIDPLY p16: `verified` -> `unverified`, finance_cost, period 'FOR YEAR ENDED 31 MARCH, 2026', value_text '1,768.90'; results_unit: previous page prints Lakhs
+- `43690` APOLLOIN p7: `verified` -> `unverified`, other_current_liabilities, period '30.09.2026', value_text '-1.62'; results_unit: previous page prints Lakhs
+- `44958` ARCHIDPLY p7: `verified` -> `unverified`, borrowings, period 'FOR YEAR ENDED 31 MARCH, 2025', value_text '7.40'; results_unit: document prints Lakhs
+- `43710` APOLLOIN p7: `verified` -> `unverified`, equity_share_capital, period '30.09.2026', value_text '0.00'; results_unit: previous page prints Lakhs
+- `44955` ARCHIDPLY p7: `verified` -> `unverified`, borrowings, period 'FOR YEAR ENDED 31 MARCH, 2026', value_text '1,650.00'; results_unit: document prints Lakhs
+- `43708` APOLLOIN p7: `verified` -> `unverified`, borrowings, period '30.09.2026', value_text '-2.83'; results_unit: previous page prints Lakhs
+- `5646` APPL p7: `verified` -> `unverified`, NEW:share_issue_premium, period 'half year under review', value_text '270'; results_unit: previous page prints Lakhs
+- `44828` ARCHIDPLY p16: `verified` -> `unverified`, finance_cost, period 'FOR YEAR ENDED 31 MARCH, 2025', value_text '1,774.11'; results_unit: previous page prints Lakhs
+- `44961` ARCHIDPLY p7: `verified` -> `unverified`, lease_liabilities, period 'FOR YEAR ENDED 31 MARCH, 2026', value_text '122.88'; results_unit: document prints Lakhs
+- `43674` APOLLOIN p7: `verified` -> `unverified`, depreciation_and_amortisation_expense, period '30.09.2026', value_text '15.00'; results_unit: previous page prints Lakhs
+- `44901` ARCHIDPLY p7: `verified` -> `unverified`, finance_cost, period 'FOR YEAR ENDED 31 MARCH, 2025', value_text '809.66'; results_unit: document prints Lakhs
+- `39649` ANANDRATHI p3: `verified` -> `unverified`, NEW:amount_securities_proposed_to_be_issued, period 'November 11, 2024', value_text 'Rs. 41,51,03,170'; results_unit: document prints Lakhs
+- `44855` ARCHIDPLY p16: `verified` -> `unverified`, provisions, period 'FOR YEAR ENDED 31 MARCH, 2025', value_text '336.36'; results_unit: previous page prints Lakhs
+- `22323` ADANIGREEN p26: `verified` -> `unverified`, NEW:acquisition_consideration, period 'April 2026', value_text 'USD 1,515,000'; results_unit: document prints Crores
+- `43683` APOLLOIN p7: `verified` -> `unverified`, other_current_assets, period '30.09.2025', value_text '0.00'; results_unit: previous page prints Lakhs
+- `44962` ARCHIDPLY p7: `verified` -> `unverified`, lease_liabilities, period 'FOR YEAR ENDED 31 MARCH, 2025', value_text '109.25'; results_unit: document prints Lakhs
+- `39650` ANANDRATHI p3: `verified` -> `unverified`, NEW:bonus_ratio, period 'November 11, 2024', value_text '1:1'; results_unit: document prints Lakhs
+- `43685` APOLLOIN p7: `verified` -> `unverified`, other_financial_assets, period '30.09.2025', value_text '-48.38'; results_unit: previous page prints Lakhs
+
+#### results_equity_accounted: 17 downgraded, 20 random (seed 7)
+
+- `17731` ABCAPITAL p22: `verified` -> `unverified`, NEW:gross_stage_3_ratio, period 'Q1 FY27', value_text '1.30%'; results_equity_accounted: 'Gross stage 3 ratio improved by 97 bps year-on-year and 3 bps sequentially to 1.30%' is the equity-accounted business (business), not a consolidated figu
+- `17749` ABCAPITAL p22: `verified` -> `unverified`, aum.value, period 'Q1 FY27', value_text '1,98,722'; results_equity_accounted: 'Equity QAAUM grew by 10% year-on-year to ₹ 1,98,722 crore' is the equity-accounted business (business), not a consolidated figure
+- `17747` ABCAPITAL p22: `verified` -> `unverified`, aum.value, period 'Q1 FY27', value_text '4,27,675'; results_equity_accounted: 'Mutual fund quarterly average assets under management grew by 6% year-on year to 4,27,675 crore' is the equity-accounted business (asset management), not
+- `17746` ABCAPITAL p22: `verified` -> `unverified`, aum.growth_yoy, period 'Q1 FY27', value_text '6%'; results_equity_accounted: 'Mutual fund quarterly average assets under management grew by 6% year-on year to 4,27,675 crore' is the equity-accounted business (asset management), not
+- `17725` ABCAPITAL p22: `verified` -> `unverified`, profit_before_tax, period 'Q1 FY27', value_text '1,222'; results_equity_accounted: 'Profit before tax grew by 32% year-on-year and 10% sequentially to ₹ 1,222 crore' is the equity-accounted business (business), not a consolidated figure
+- `17719` ABCAPITAL p22: `verified` -> `unverified`, loans.disbursement, period 'Q1 FY27', value_text '21,201'; results_equity_accounted: 'Disbursements grew by 34% year-on-year to ₹ 21,201 crore' is the equity-accounted business (business), not a consolidated figure
+- `17720` ABCAPITAL p22: `verified` -> `unverified`, aum.growth_yoy, period 'Q1 FY27', value_text '28%'; results_equity_accounted: 'AUM grew by 28% year-on-year and 5% sequentially to ₹ 1,67,456 crore' is the equity-accounted business (business), not a consolidated figure
+- `17748` ABCAPITAL p22: `verified` -> `unverified`, aum.growth_yoy, period 'Q1 FY27', value_text '10%'; results_equity_accounted: 'Equity QAAUM grew by 10% year-on-year to ₹ 1,98,722 crore' is the equity-accounted business (business), not a consolidated figure
+- `17724` ABCAPITAL p22: `verified` -> `unverified`, profit_before_tax_growth_qoq, period 'Q1 FY27', value_text '10%'; results_equity_accounted: 'Profit before tax grew by 32% year-on-year and 10% sequentially to ₹ 1,222 crore' is the equity-accounted business (business), not a consolidated figure
+- `17722` ABCAPITAL p22: `verified` -> `unverified`, aum.value, period 'Q1 FY27', value_text '1,67,456'; results_equity_accounted: 'AUM grew by 28% year-on-year and 5% sequentially to ₹ 1,67,456 crore' is the equity-accounted business (business), not a consolidated figure
+- `17729` ABCAPITAL p22: `verified` -> `unverified`, NEW:gross_stage_3_ratio_change_yoy_bps, period 'Q1 FY27', value_text '97'; results_equity_accounted: 'Gross stage 3 ratio improved by 97 bps year-on-year and 3 bps sequentially to 1.30%' is the equity-accounted business (business), not a consolidated figu
+- `17721` ABCAPITAL p22: `verified` -> `unverified`, NEW:aum_growth_sequential, period 'Q1 FY27', value_text '5%'; results_equity_accounted: 'AUM grew by 28% year-on-year and 5% sequentially to ₹ 1,67,456 crore' is the equity-accounted business (business), not a consolidated figure
+- `17727` ABCAPITAL p22: `verified` -> `unverified`, NEW:return_on_assets_change_sequential_bps, period 'Q1 FY27', value_text '8'; results_equity_accounted: 'Return on assets increased by 14 bps year-on-year and 8 bps sequentially to 2.39%' is the equity-accounted business (business), not a consolidated figure
+- `17728` ABCAPITAL p22: `verified` -> `unverified`, roa, period 'Q1 FY27', value_text '2.39%'; results_equity_accounted: 'Return on assets increased by 14 bps year-on-year and 8 bps sequentially to 2.39%' is the equity-accounted business (business), not a consolidated figure
+- `17723` ABCAPITAL p22: `verified` -> `unverified`, profit_before_tax_growth_yoy, period 'Q1 FY27', value_text '32%'; results_equity_accounted: 'Profit before tax grew by 32% year-on-year and 10% sequentially to ₹ 1,222 crore' is the equity-accounted business (business), not a consolidated figure
+- `17726` ABCAPITAL p22: `verified` -> `unverified`, NEW:return_on_assets_change_yoy_bps, period 'Q1 FY27', value_text '14'; results_equity_accounted: 'Return on assets increased by 14 bps year-on-year and 8 bps sequentially to 2.39%' is the equity-accounted business (business), not a consolidated figure
+- `17718` ABCAPITAL p22: `verified` -> `unverified`, loans.disbursement_share, period 'Q1 FY27', value_text '34%'; results_equity_accounted: 'Disbursements grew by 34% year-on-year to ₹ 21,201 crore' is the equity-accounted business (business), not a consolidated figure
+
+#### results_current_mismatch: 13 downgraded, 20 random (seed 7)
+
+- `48807` ASAL p5: `verified` -> `unverified`, current_tax_assets_net, period 'September 30, 2026', value_text '100.78'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
+- `40444` ANDREWYU p12: `verified` -> `unverified`, current_tax_assets_net, period 'As at March 31 , 2026', value_text '1657.07'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
+- `10174` ACEVECTOR p14: `verified` -> `unverified`, current_tax_assets_net, period 'March 31, 2026', value_text '45.80'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
+- `5668` ACC p19: `verified` -> `unverified`, current_tax_assets_net, period 'March 31, 2025', value_text '714.51'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
+- `5667` ACC p19: `verified` -> `unverified`, current_tax_assets_net, period 'March 31, 2026', value_text '117.39'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
+- `40589` ANDREWYU p19: `verified` -> `unverified`, current_tax_assets_net, period 'As at March 31, 2026', value_text '1,657.07'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
+- `40588` ANDREWYU p19: `verified` -> `unverified`, current_tax_assets_net, period 'As at September 30, 2026', value_text '1711.23'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
+- `48808` ASAL p5: `verified` -> `unverified`, current_tax_assets_net, period 'March 31, 2026', value_text '279.28'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
+- `38111` AMPVOLTS p7: `verified` -> `unverified`, current_tax_assets_net, period '31-Mar-25', value_text '9.91'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
+- `727` AVALON p11: `verified` -> `unverified`, current_tax_assets_net, period 'March 31, 2025', value_text '28.52'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
+- `24764` ADROITINFO p11: `verified` -> `unverified`, current_tax_assets_net, period '31-Mar-26', value_text '65.86'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
+- `49671` ASHIMASYN p18: `verified` -> `unverified`, current_tax_assets_net, period 'As at 31/03/2026', value_text '372'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
+- `40445` ANDREWYU p12: `verified` -> `unverified`, current_tax_assets_net, period 'As at March 31, 2025', value_text '1,199.05'; results_current_mismatch: section is non_current under 'current_tax_assets_net'
