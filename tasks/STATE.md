@@ -17,7 +17,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 00000. 26 Nov (Eagle) events: order_win/fund_raise hy4 model + script check merged; VERIFIED_KINDS empty until fresh8 grade.
-00000. 26 Nov deck-wide: rechecked copy swapped into obs_decks_wide.db (backup _before_r5ocr), loading via SUPPLEMENTS. OCR rows QUARANTINED (grade2 FAIL 18R/13P/5W/24J; needs a slide-type filter).
+00000. 26 Nov deck-wide: rechecked copy swapped into obs_decks_wide.db (backup _before_r5ocr), LOADED via SUPPLEMENTS 08:10 (39,941 rows, 176 stores). OCR rows QUARANTINED (grade2 FAIL 18R/13P/5W/24J; needs a slide-type filter).
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
 1. T-214/T-218 Telegram build: plan `tasks/handoff/T-214_TG_BUILD_PLAN.md`, queue `D:/RealityEngine/tg_build/build_queue.csv`, stores `tg_build/measure10/c01..c91`; repair notes `tasks/store_repair/INDEX.md`, grid `reports/store_repair_grid.xlsx`.
 
