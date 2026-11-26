@@ -8819,3 +8819,9 @@
 -- 26 Nov tx statements r3 merged (e8a03846): sentence snap/widen, labels stripped, period only on an explicit own-period cue (call_period 27,022->9,531); r4 (own-period cues) under Eagle review. `tasks/t242_statement_r3_measure.md`.
 +- 26 Nov tx statements r3 -> r4 (failed) -> r5 merged: own-period token bound to its figure wins; period_anchored 9,959 (r3 9,579); r6 for 4 remaining cases (`tasks/t242_statement_r3_measure.md`).
 ```
+
+## 2026-11-26T22:17:59 | kakazuya (Wolf) | branch main
+```diff
+-- 24-26 Nov T-242 retrieval audits 4-9 (`grade_pack.py`, `docs/grading/`); fixes F3-F9 in DEVELOPER_GUIDE; audit9 23->32R.
++- Retrieval audits 4-10 (`docs/grading/`); audit10 (26 Nov, first after results/AR loads, 48 q): 34R/2P/4W/7M, statements 16/16; next: asked-duration match, AR NEW-code reach, auditor-note scope (`C:/RealityEngine/t242/retrieval_audit10/report.md`).
+```
