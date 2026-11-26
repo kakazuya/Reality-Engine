@@ -50,3 +50,13 @@ Rule: rows store read_model, read_gateway, read_harness, prompt_fp, read_at.
 > bigger, you cut out them and dilute the messages to keep it under the 8,000 character limits. I don't want that.
 > Going forward, you maintain two separate copies of the markdown files, one for you to read into each session, and
 > another for the whole toolings. So whenever we need to look at the exact set rules earlier, you have the copy handy.
+
+## 2026-11-26 20:30 | Stop operations by 08:00 IST Fri 27 Nov, then cleanup only (one-time, T-245)
+Rule: all operations stop by 08:00 IST Fri 27 Nov (Eagle stops hy4 loops 07:45, Wolf fallback 08:00); afterwards only
+cleanup - data-heavy files to Drive, keep essentials on the MSI - so it runs as a lean cloud box from 10:00.
+> After EOD today, Start uploading the raw sources onto gdrive and wrapping up everything on the cloud. so that by 10 am
+> IST tomorrow, we are good to close this laptop and it stays as a cloud box from remote desktop by my hyderabad
+> computer. Leave the data onto the cloud reast scripts and other environment variables can be kept, just that the data
+> heavy files are moved on Gdrive so the SSD and HDD remains lean on the laptop by 10 am friday IST
+> ok, stop the operations by 8 am IST tomorrow and focus the energy afterwards, on cleaning the operations and only
+> keeping the essentials on this machine

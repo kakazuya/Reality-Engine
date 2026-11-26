@@ -8804,3 +8804,12 @@
 -- 26 Nov Go reader bake-off: no free Go model replaces hy4 (`C:/RealityEngine/t242/go_bakeoff/results.md`).
 +- 26 Nov xbrl check now also covers `fin_annual_line` (BS/H1/FY/CF): 2,448 match / 132 unit fix / 232 contradict; annual contradictions 70% real in the seed-7 sample, not installed; matches safe. `tasks/t242_xbrl_annual_measure.md`.
 ```
+
+## 2026-11-26T20:31:45 | kakazuya (Wolf) | branch main
+```diff
+-- 26 Nov results gates r2/r3/r3b/r3c merged: cash-flow, basis, duration fill (r3c: a date printed in 2+ columns never filled by key, 'Year' only on 31 March), current/non-current, scope, statute junk. r3c copy C:/RealityEngine/t242/results_r3c/after.db: 0 graded-R status change, verified 14,171->11,069 (`tasks/t242_results_measure.md`).
++- 26 Nov results gates r2-r3c merged (r3d recheck running); verified 14,171->11,069 on r3c copy (`tasks/t242_results_measure.md`).
++000000. T-245 (Shivam 26 Nov): ALL operations stop by 08:00 IST Fri 27 Nov (Eagle hy4_ctl stop 07:45, Wolf fallback `.tmp/t245_stop_0800.sh`); then cleanup only: uploads to Drive, remove worktrees, keep essentials (`C:/RealityEngine/t242/T-245_keep_local.txt`), lean by 10:00. Words: `docs/rulings/RULINGS_VERBATIM.md`.
+-00000. 26 Nov deck-wide: rechecked copy swapped into obs_decks_wide.db (backup _before_r5ocr), LOADED via SUPPLEMENTS 08:10 (39,941 rows, 176 stores). OCR rows QUARANTINED (grade2 FAIL 18R/13P/5W/24J); `ocr_fill --classify` merged.
++00000. 26 Nov deck-wide rechecked copy loaded (39,941 rows); OCR rows quarantined.
+```

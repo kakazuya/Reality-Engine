@@ -8,15 +8,16 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - 24-26 Nov T-242 retrieval audits 4-9 (`grade_pack.py`, `docs/grading/`); fixes F3-F9 in DEVELOPER_GUIDE; audit9 23->32R.
 - OCR fill (`scripts/ocr_fill.py`): Kilo+Zen, per-route AIMD (`--start/--max-workers`), Zen rotates Nemotron VL / DeepSeek Flash by speed.
 - 26 Nov tx statements r3 merged (e8a03846): sentence snap/widen, labels stripped, period only on an explicit own-period cue (call_period 27,022->9,531); r4 (own-period cues) under Eagle review. `tasks/t242_statement_r3_measure.md`.
-- 26 Nov results gates r2/r3/r3b/r3c merged: cash-flow, basis, duration fill (r3c: a date printed in 2+ columns never filled by key, 'Year' only on 31 March), current/non-current, scope, statute junk. r3c copy C:/RealityEngine/t242/results_r3c/after.db: 0 graded-R status change, verified 14,171->11,069 (`tasks/t242_results_measure.md`).
+- 26 Nov results gates r2-r3c merged (r3d recheck running); verified 14,171->11,069 on r3c copy (`tasks/t242_results_measure.md`).
 - 26 Nov AR gates r4: jv/associate scopes, printed-name scope, junk; deck untied values.
 - 26 Nov `gate_not_company`: industry/country/peer/customer rows never verified (read + recheck); recheck keeps not_company/subsidiary_unnamed.
 - 26 Nov events: read-provenance columns on `event` rows (T-242, dsh); script rows `read_model='script'`.
 - 26 Nov xbrl check now also covers `fin_annual_line` (BS/H1/FY/CF): 2,448 match / 132 unit fix / 232 contradict; annual contradictions 70% real in the seed-7 sample, not installed; matches safe. `tasks/t242_xbrl_annual_measure.md`.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
+000000. T-245 (Shivam 26 Nov): ALL operations stop by 08:00 IST Fri 27 Nov (Eagle hy4_ctl stop 07:45, Wolf fallback `.tmp/t245_stop_0800.sh`); then cleanup only: uploads to Drive, remove worktrees, keep essentials (`C:/RealityEngine/t242/T-245_keep_local.txt`), lean by 10:00. Words: `docs/rulings/RULINGS_VERBATIM.md`.
 00000. 26 Nov events: order_win gated (fresh9 55/3/1/1); fund_raise r3 merged (fresh9 W/P/J 11/11 fixed, 0 R changed), fresh10 grade next. filing_events needs T228_STORE_ROOT.
-00000. 26 Nov deck-wide: rechecked copy swapped into obs_decks_wide.db (backup _before_r5ocr), LOADED via SUPPLEMENTS 08:10 (39,941 rows, 176 stores). OCR rows QUARANTINED (grade2 FAIL 18R/13P/5W/24J); `ocr_fill --classify` merged.
+00000. 26 Nov deck-wide rechecked copy loaded (39,941 rows); OCR rows quarantined.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
 1. T-214/T-218 Telegram build: plan `tasks/handoff/T-214_TG_BUILD_PLAN.md`, queue `D:/RealityEngine/tg_build/build_queue.csv`, stores `tg_build/measure10/c01..c91`; repair notes `tasks/store_repair/INDEX.md`, grid `reports/store_repair_grid.xlsx`.
 
