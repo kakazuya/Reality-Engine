@@ -188,8 +188,9 @@ def status() -> dict:
 
 
 def serve() -> None:
-    from mcp.server.fastmcp import FastMCP
-    app = FastMCP("gemini-worker")
+    from mcp.server import MCPServer
+    app = MCPServer(name="gemini-worker", version="0.1.0",
+                    instructions="Gemini via Shivam's AI Studio key pool (free tier, paced per key). gemini_ask / gemini_status.")
 
     @app.tool()
     def gemini_ask(prompt: str, model: str = DEFAULT_MODEL, system: str | None = None, max_tokens: int = 8192,
@@ -203,7 +204,7 @@ def serve() -> None:
         """Keys in the pool, calls today per model, rested keys, and per-key/pool daily limits."""
         return status()
 
-    app.run()
+    app.run("stdio")
 
 
 if __name__ == "__main__":
