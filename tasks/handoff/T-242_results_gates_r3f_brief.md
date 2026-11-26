@@ -9,6 +9,8 @@ D:/RealityEngine/hy4_out/obs_results_fy27.db.audit/ckpt_0003.fix.md and ckpt_000
 C:/RealityEngine/t242/results_ckpt3/pack.jsonl and results_ckpt4/pack.jsonl (id = line number). Structural rules only, in the
 results row gates of reality_engine/v2/observations.py; rows end unverified/quarantined or right, never deleted.
 
+Evidence: ckpt_0003.fix.md and ckpt_0004.fix.md (paths above); packs results_ckpt3 / results_ckpt4 with page_text.
+
 ## Kinds (one test each from the pack row's page_text, plus a counter-test)
 1. OCR brackets and split digits: '{171.56)' / '(171.56}' are brackets -> negative (ALOKINDS ckpt3); '(2 69)' / '3, 221 59' -
    digits split by one space inside a number rejoin with the decimal at the printed position (ATGL -2.69), else unverified;
