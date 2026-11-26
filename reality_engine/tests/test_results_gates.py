@@ -307,3 +307,137 @@ def test_an_equity_accounted_business_is_the_associates_figure():
     obs.gate_not_company([aum])
     assert aum["entity_scope"] == "associate" and aum["basis"] == ""
     assert aum["status"] == "unverified" and "results_equity_accounted" in aum["status_reason"]
+
+
+# T-242 r3 -- results_grade_r2 (28R/23P/8W/1J): scope backing, cash-flow "Adjustments for", current vs
+# non-current, standalone-only basis, statute/clause junk references, and flow duration fill.
+def test_scope_backing_resets_unbacked_scopes_and_keeps_named_subsidiary_table():
+    arssbl = row(measure="revenue_from_operations", printed_label="Total Revenue from Operations",
+                 series_title="STATEMENT OF UNAUDITED CONSOLIDATED FINANCIAL RESULTS FOR THE QUARTER ENDED JUNE 30, 2026",
+                 entity_scope="subsidiary", basis="consolidated")
+    arssbl_page = ("/-\\ N ,\\ Ni 1 Jt .-\\ 1 1-1 I\nANAND RATHI SHARE AND STOCK BROKERS LIMITED\n"
+                   "STATEMENT OF UNAUDITED CONSOLIDATED FINANCIAL RESULTS FOR THE QUARTER ENDED JUNE 30, 2026\n")
+    alfl = row(measure="deferred_tax_assets_net", printed_label="Deferred Tax Assets (net)",
+               series_title="STATEMENT OF ASSETS AND LIABILITIES", entity_scope="subsidiary", period="As at 31st March 2026")
+    abhifin = row(measure="property_plant_and_equipment", printed_label="Property,Plant and Equipment",
+                  series_title="STATEMENT OF ASSET & LIABLITIES AS ON 31ST MARCH, 2026",
+                  entity_scope="subsidiary", period="31.03.2025")
+    parent_own = row(measure="profit_before_tax", printed_label="Profit before taxes",
+                     series_title="STATEMENT OF CASH FLOWS", entity_scope="parent")
+    named_sub = row(measure="revenue_from_operations", printed_label="Revenue from operations",
+                    series_title="Acme Mobility Private Limited - Financial Results", entity_scope="subsidiary")
+    obs.apply_results_row_gates([arssbl], arssbl_page, company="Anand Rathi Share and Stock Brokers Limited")
+    obs.apply_results_row_gates([alfl], "STATEMENT OF ASSETS AND LIABILITIES\nDeferred Tax Assets (net) 3.57",
+                                company="Abhinav Leasing & Finance Ltd",
+                                previous_page_text="Abhinay Leasing and Finance Limited\nAUDITED FINANCIAL RESULTS")
+    obs.apply_results_row_gates([abhifin], "ABHISHEK FINLEASE LIMITED\nSTATEMENT OF ASSET & LIABLITIES AS ON 31ST MARCH, 2026",
+                                company="Abhishek Finlease Ltd")
+    obs.apply_results_row_gates([parent_own], "ARISE INDUSTRIES LIMITED\nSTATEMENT OF CASH FLOWS",
+                                company="Arise Industries Limited")
+    obs.apply_results_row_gates([named_sub],
+                                "Acme Mobility Private Limited\nStatement of Profit and Loss for the year ended March 31, 2026",
+                                company="Acme India Limited")
+    assert all(r["entity_scope"] == "company" and r["status"] == "verified"
+               for r in (arssbl, alfl, abhifin, parent_own))
+    assert named_sub["entity_scope"] == "subsidiary" and named_sub["status"] == "verified"
+
+
+def test_cash_flow_adjustments_for_lines_map_to_cash_flow_while_pnl_keeps_measure():
+    cf_interest = row(measure="interest_income", printed_label="Interest income", value_text="(3.39)", value=-3.39,
+                      series_title="Statement of unaudited cash flows",
+                      group_path="Cash flows from operating activities > Adjustments for :",
+                      period="For the half year ended 30 September 2025")
+    cf_rental = row(measure="NEW:rental_income", printed_label="Rental income", value_text="(184.02)", value=-184.02,
+                    series_title="PART III - AUDITED CONSOLIDATED STATEMENT OF CASH FLOWS FOR THE YEAR ENDED 31 MARCH 2026",
+                    group_path="Cash flow from operating activities > Adjustment for:",
+                    period="For the year ended 31 March 2025")
+    pnl_interest = row(measure="interest_income", printed_label="Interest income", value_text="42.50", value=42.5,
+                       series_title="Statement of Standalone Financial Results",
+                       period="Quarter ended June 30, 2026")
+    obs.apply_results_row_gates([cf_interest], "Statement of unaudited cash flows\nAdjustments for :\nInterest income (3.39)")
+    obs.apply_results_row_gates([cf_rental], "A. K. Capital Services Limited\n(184.02)")
+    obs.apply_results_row_gates([pnl_interest], "Statement of Standalone Financial Results\nInterest income 42.50")
+    assert cf_interest["measure"] == "NEW:interest_income_cash_flow" and cf_interest["status"] == "unverified"
+    assert cf_rental["measure"] == "NEW:rental_income_cash_flow" and cf_rental["status"] == "unverified"
+    assert pnl_interest["measure"] == "interest_income" and pnl_interest["status"] == "verified"
+
+
+def test_current_vs_non_current_heading_selects_twin_or_marks_unverified():
+    twin_fix = row(measure="other_current_assets", printed_label="Other non-current assets",
+                   group_path="Assets > Non-current assets", period="As at March 31, 2026")
+    no_twin = row(measure="current_tax_assets_net", printed_label="Non current tax asset (net)",
+                  group_path="Assets > Non-current assets", period="March 31, 2026")
+    page_sec = row(measure="non_current_investments", printed_label="Investments",
+                   group_path="", period="As at March 31, 2026")
+    obs.apply_results_row_gates([twin_fix, no_twin], "Statement of Assets and Liabilities")
+    obs.apply_results_row_gates([page_sec], "Balance Sheet\nNon-current assets\nProperty 10\nCurrent assets\nInvestments 50")
+    assert twin_fix["measure"] == "other_non_current_assets" and twin_fix["status"] == "verified"
+    assert no_twin["status"] == "unverified" and "results_current_mismatch" in no_twin["status_reason"]
+    assert page_sec["measure"] == "current_investments" and page_sec["status"] == "verified"
+
+
+def test_standalone_only_filer_rewrites_consolidated_while_consolidated_filer_keeps_it():
+    sa_filer = row(measure="pat", printed_label="Net Profit for the period", basis="consolidated",
+                   period="Quarter ended Dec 31, 2025")
+    cons_filer = row(measure="pat", printed_label="Net Profit for the period", basis="consolidated",
+                     period="Quarter ended Dec 31, 2025")
+    obs.apply_results_row_gates([sa_filer], "Apex Frozen Foods Ltd\nStatement of Audited Financial Results",
+                                doc_standalone_only=True)
+    obs.apply_results_row_gates([cons_filer], "Consolidated Financial Results for the Quarter ended Dec 31, 2025",
+                                doc_standalone_only=False)
+    assert sa_filer["basis"] == "standalone" and sa_filer["basis_source"] == "doc_standalone_only"
+    assert sa_filer["status"] == "verified"
+    assert cons_filer["basis"] == "consolidated" and cons_filer["status"] == "verified"
+
+
+def test_statute_and_clause_references_are_dropped_while_financial_lines_stay():
+    sec = row(measure="NEW:section_reference", printed_label="Section 143(10) of the Companies Act, 2013",
+              value_text="143(10)", value=143.0, unit="Millions", scale=1000000.0)
+    reg = row(measure="NEW:sebi_regulation", printed_label="Regulation 33 of SEBI (LODR) Regulations, 2015",
+              value_text="33", value=33.0, unit="Lakhs", scale=100000.0)
+    reg_unitless = row(measure="NEW:sebi_regulation", printed_label="Regulation 33 of SEBI (LODR) Regulations, 2015",
+                       value_text="33", value=33.0, unit="", scale=1.0)
+    sched = row(measure="NEW:schedule_ref", printed_label="Schedule III to the Companies Act",
+                value_text="III", value=3.0, unit="", scale=1.0)
+    rule = row(measure="NEW:rule_ref", printed_label="Rule 3(1) of Companies Rules",
+               value_text="3(1)", value=3.0, unit="", scale=1.0)
+    kept = row(measure="revenue_from_operations", printed_label="Revenue under Ind AS 115",
+               value_text="1,234.50", value=1234.5, unit="Lakhs", scale=100000.0)
+    rows = [sec, reg, sched, rule, kept]
+    obs.apply_results_row_gates(rows, "Independent Auditor's Report")
+    assert rows == [kept] and kept["status"] == "verified"
+    assert obs.junk_ordinal_reason(reg_unitless).startswith("junk_statute_reference:")
+
+
+def test_flow_duration_fill_populates_column_header_or_gates_while_stock_keeps_as_at():
+    q_row = row(measure="pat", printed_label="Profit for the period", period="June 30, 2025")
+    y_as_at = row(measure="finance_cost", printed_label="Finance Costs", period="As at 31-03-2026")
+    yr_tail = row(measure="raw_material_cost", printed_label="Cost of Materials Consumed", period="31-Mar-26")
+    ambig = row(measure="other_comprehensive_income", printed_label="OCI", period="Mar-26")
+    mismatch_cf = row(measure="NEW:bad_debts_cash_flow", printed_label="Bad debts", period="31.03.2026")
+    rel = row(measure="revenue_growth_qoq", printed_label="Airtel Business grew sequentially by", period="sequentially")
+    stock = row(measure="trade_receivables", printed_label="Trade receivables", period="As at 31-03-2026")
+
+    pnl_page = ("Statement of Financial Results\nQuarter ended\nYear ended\n"
+                "June 30, 2026\nMarch 31, 2026\nJune 30, 2025\nMarch 31, 2026")
+    anuras_page = ("Quarter Ended\nFinancial Year Ended\n"
+                   "March 31, 2026\nDecember 31, 2025\nMarch 31, 2025\nAs at 31-03-2026\nAs at 31-03-2025")
+    half_page = ("Statement of Financial Results\nQuarter ended\nHalf Year ended\nYear ended\n"
+                 "30-Sep-26\n30-Jun-26\n30-Sep-25\n30-Sep-26\n30-Sep-25\n31-Mar-26")
+    alpa_page = "Statement of Profit and Loss\nQuarter Ended\nYear Ended\nJun26\nMar-26\nJun-25\nMar-26"
+    cf_half = "Standalone Statement of Cash Flow for the Half Year ended on 30th September, 2026\n30.09.2026 30.09.2025 31.03.2026"
+
+    obs.apply_results_row_gates([q_row], pnl_page)
+    obs.apply_results_row_gates([y_as_at, stock], anuras_page)
+    obs.apply_results_row_gates([yr_tail], half_page)
+    obs.apply_results_row_gates([ambig], alpa_page)
+    obs.apply_results_row_gates([mismatch_cf], cf_half)
+    obs.apply_results_row_gates([rel], "Media Release")
+
+    assert q_row["period"] == "Quarter ended June 30, 2025" and q_row["status"] == "verified"
+    assert y_as_at["period"] == "Year ended 31-03-2026" and y_as_at["status"] == "verified"
+    assert yr_tail["period"] == "Year ended 31-Mar-26" and yr_tail["status"] == "verified"
+    assert stock["period"] == "As at 31-03-2026" and stock["status"] == "verified"
+    assert ambig["status"] == "unverified" and "results_period_duration_missing" in ambig["status_reason"]
+    assert mismatch_cf["status"] == "unverified" and "results_period_duration_missing" in mismatch_cf["status_reason"]
+    assert rel["status"] == "unverified" and "results_period_duration_missing" in rel["status_reason"]
