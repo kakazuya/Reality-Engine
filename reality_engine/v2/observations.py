@@ -5475,16 +5475,33 @@ RESULTS_DUR_WORD_PAT = (
 )
 _MONTH_PAT = r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)"
 RESULTS_DATE_TOKEN_PAT = (
-    r"(?:as\s+(?:at|on)\s+)?(?:\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\d{8}|"
-    rf"\d{{1,2}}(?:st|nd|rd|th)?[\s-]+{_MONTH_PAT},?[\s-]+\d{{2,4}}|"
-    rf"{_MONTH_PAT}\s+\d{{1,2}}(?:st|nd|rd|th)?,?\s+\d{{2,4}}|"
+    r"(?:as\s+(?:at|on)\s+)?(?:\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\d{1,2}\s*[./-]\s*\d{1,2}\s*[./-]\s*(?:19|20)\d{2}|\d{8}|"
+    rf"\d{{1,2}}\s*(?:st|nd|rd|th)?[\s-]+{_MONTH_PAT}\s*,?[\s-]+\d{{2,4}}|"
+    rf"{_MONTH_PAT}\s+\d{{1,2}}\s*(?:st|nd|rd|th)?(?:\s*,\s*|\s+)\d{{2,4}}|"
     rf"{_MONTH_PAT}[\s-]?\d{{2,4}})"
 )
 RESULTS_DURATION_DATE_RE = re.compile(
     rf"\b({RESULTS_DUR_WORD_PAT})\b"
-    r"(?:\s+to\s+date)?(?:\s+figures?)?(?:\s+for\s+the\s+[^.]{0,30}?\s+ended(?:\s+on)?|\s+ended(?:\s+on)?)\s+"
+    r"(?:\s+to\s+date)?(?:\s+figures?)?"
+    r"(?:\s+for\s+the\s+[^.]{0,30}?\s+end(?:ed|ing)(?:\s+on)?|\s+end(?:ed|ing)(?:\s+on)?)\s+"
     rf"({RESULTS_DATE_TOKEN_PAT})", re.I)
-RESULTS_COL_GROUP_RE = re.compile(rf"(?<!previous\s)\b({RESULTS_DUR_WORD_PAT})\s+ended\b", re.I)
+RESULTS_COL_GROUP_RE = re.compile(rf"(?<!previous\s)\b({RESULTS_DUR_WORD_PAT})\s+end(?:ed|ing)\b", re.I)
+# T-242 r3b: "Vear" is this corpus's frequent text-layer/OCR reading of "year" (ALOKINDS p7 prints
+# "for the Half Vear Ended"); read it as year before any duration header is matched.
+RESULTS_OCR_VEAR_RE = re.compile(r"\b([Vv])ears?\b")
+# A printed cash-flow statement's columns ending on a fiscal year-end (31 March) are annual periods; the page
+# title often garbles the duration word (AKSHOPTFBR p11: "for the izar ended March 31 2026").
+RESULTS_CF_ANNUAL_END = (31, 3)
+# T-242 r3b: a NEW id that already names its own adjustment / cash-flow line is not a P&L/BS measure, so the
+# cash-flow gate leaves it alone; a NEW id that is a plain line name ("rental_income") is remapped.
+RESULTS_CF_ALREADY_LINE_RE = re.compile(
+    r"_adjustments?$|_cash_flow\b|\b(?:operating|investing|financing)\s+activities\b"
+    r"|\bderecognition\b|\bamorti[sz]ed\s+cost\b", re.I)
+RESULTS_CF_PLAIN_HEAD_RE = re.compile(
+    r"(?:^|_)(?:income|expenses?|costs?|profits?|loss|revenue|turnover|tax|"
+    r"depreciation|amorti[sz]ation|assets?|liabilities|payables?|receivables?|"
+    r"borrowings?|deposits?|investments?)$", re.I)
+RESULTS_CF_LABEL_DONE_RE = re.compile(r"\badjustments?\b|\(\s*cash\s*-?\s*flows?\s*\)", re.I)
 RESULTS_HAS_DURATION_RE = re.compile(
     r"\b(?:quarter|three\s+months?|3\s+months?|half[\s-]*year|six\s+months?|6\s+months?|"
     r"nine\s+months?|9\s+months?|twelve\s+months?|12\s+months?|year|fy\s*['\u2019-]?\s*\d{2,4}|"
@@ -5621,6 +5638,24 @@ def _results_in_operating_adjustments(row: dict[str, Any], page_text: str) -> bo
     return False
 
 
+def _results_cf_is_statement_line(measure: str) -> bool:
+    """True when a cash-flow line still carries a P&L/balance-sheet measure the gate must remap (T-242 r3b).
+
+    A dictionary measure is always remapped.  A NEW id is a free-form line name, so it is remapped only when
+    it names a plain P&L/BS line ('NEW:rental_income' under 'Adjustments for' -> 'NEW:rental_income_cash_flow');
+    an id that already names its own adjustment or cash-flow line ('..._adjustment', 'Interest income from
+    investing activities', 'Net gain on derecognition ... under amortised cost category') is left as stored.
+    """
+    if measure in _MEASURE_FAMILY:
+        return True
+    if not measure.startswith(NEW_PREFIX):
+        return False
+    bare = measure[len(NEW_PREFIX):]
+    if RESULTS_CF_ALREADY_LINE_RE.search(bare):
+        return False
+    return bool(RESULTS_CF_PLAIN_HEAD_RE.search(bare))
+
+
 def _results_cash_flow_reason(row: dict[str, Any], page_text: str, previous_page_text: str) -> str:
     """A cash-flow statement line (incl. operating 'Adjustments for') never keeps a P&L/BS measure."""
     head_ctx = " ".join((norm_space(page_text)[:1500], norm_space(previous_page_text)[:600],
@@ -5632,12 +5667,15 @@ def _results_cash_flow_reason(row: dict[str, Any], page_text: str, previous_page
         return ""
     measure = norm_space(row.get("measure"))
     if measure in RESULTS_CASH_FLOW_MEASURES or measure.startswith("changes_in_") \
-            or (measure.startswith(NEW_PREFIX) and RESULTS_CASH_FLOW_NEW_RE.search(measure)):
+            or (measure.startswith(NEW_PREFIX) and RESULTS_CASH_FLOW_NEW_RE.search(measure)) \
+            or RESULTS_CF_LABEL_DONE_RE.search(label):
         return ""
     in_adj = _results_in_operating_adjustments(row, page_text)
     if not (RESULTS_CASH_FLOW_PAID_RE.search(label) or RESULTS_CASH_FLOW_LINE_RE.search(label) or in_adj):
         return ""
     if in_adj and measure in RESULTS_CF_SUBTOTAL_MEASURES:
+        return ""
+    if not _results_cf_is_statement_line(measure):
         return ""
     mapped = next((mid for rx, mid in RESULTS_CASH_FLOW_LABEL_MEASURES if rx.search(label)), "")
     if not mapped:
@@ -5743,17 +5781,20 @@ def _results_current_mismatch_reason(row: dict[str, Any], page_text: str) -> str
 
 def _results_date_key(text: str) -> tuple[int, int, int] | None:
     s = re.sub(r"^\s*as\s+(?:at|on)\s+", "", norm_space(text), flags=re.I)
-    match = re.fullmatch(r"(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})", s)
+    match = re.fullmatch(r"(\d{1,2})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{2,4})", s)
     if match:
-        return (int(match.group(1)), int(match.group(2)), _results_year4(match.group(3)))
+        d, m = int(match.group(1)), int(match.group(2))
+        if 1 <= d <= 31 and 1 <= m <= 12:
+            return (d, m, _results_year4(match.group(3)))
+        return None
     match = re.fullmatch(r"(\d{2})(\d{2})(\d{4})", s)
     if match and 1 <= int(match.group(1)) <= 31 and 1 <= int(match.group(2)) <= 12:
         return (int(match.group(1)), int(match.group(2)), int(match.group(3)))
-    match = re.fullmatch(r"(\d{1,2})(?:st|nd|rd|th)?[\s-]+([A-Za-z]{3,9}),?[\s-]+(\d{2,4})", s)
-    if match and _results_month(match.group(2)):
+    match = re.fullmatch(r"(\d{1,2})\s*(?:st|nd|rd|th)?[\s-]+([A-Za-z]{3,9})\s*,?[\s-]+(\d{2,4})", s)
+    if match and _results_month(match.group(2)) and 1 <= int(match.group(1)) <= 31:
         return (int(match.group(1)), _results_month(match.group(2)), _results_year4(match.group(3)))
-    match = re.fullmatch(r"([A-Za-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{2,4})", s)
-    if match and _results_month(match.group(1)):
+    match = re.fullmatch(r"([A-Za-z]{3,9})\s+(\d{1,2})\s*(?:st|nd|rd|th)?(?:\s*,\s*|\s+)(\d{2,4})", s)
+    if match and _results_month(match.group(1)) and 1 <= int(match.group(2)) <= 31:
         return (int(match.group(2)), _results_month(match.group(1)), _results_year4(match.group(3)))
     match = re.fullmatch(r"([A-Za-z]{3,9})[\s-]?(\d{2,4})", s)
     if match and _results_month(match.group(1)):
@@ -5792,19 +5833,89 @@ def _results_duration_label(norm_dur: str) -> str:
         "half_year": "Half year ended",
         "nine_months": "Nine months ended",
         "year": "Year ended",
-    }.get(norm_dur, "Year ended")
+    }.get(norm_dur, "")
 
 
-def _results_duration_dates(page_text: str) -> dict[Any, set[str]]:
+def _results_is_fiscal_year_end(key: tuple[int, int, int]) -> bool:
+    """True for 31 March (or month-only Mar), the default Indian fiscal year-end (T-242 r3c)."""
+    return (key[0], key[1]) == RESULTS_CF_ANNUAL_END or (key[0] == 0 and key[1] == 3)
+
+
+def _results_ocr_text(page_text: str) -> str:
+    """Read the corpus's 'Vear' text-layer spelling as 'year' (T-242 r3b; ALOKINDS p7)."""
+    return RESULTS_OCR_VEAR_RE.sub(lambda m: ("Y" if m.group(1) == "V" else "y") + m.group(0)[1:], page_text)
+
+
+def _results_duration_dates(page_text: str, previous_text: str = "") -> dict[Any, set[str]]:
+    """The end date of every printed column, with the duration(s) its header names.
+
+    The page's own header block is read first; a header carried over from the page before completes a date
+    the page itself does not resolve when unambiguous on both pages (T-242 r3b/r3c).
+    """
+    out, ambiguous = _results_duration_dates_scan(page_text)
+    if previous_text:
+        prev_out, prev_ambig = _results_duration_dates_scan(previous_text)
+        for key, durations in prev_out.items():
+            if key in ambiguous or key in prev_ambig or len(durations) != 1:
+                continue
+            dur = next(iter(durations))
+            if dur == "ytd":
+                continue
+            if dur == "year":
+                if isinstance(key, tuple) and len(key) == 3 and not _results_is_fiscal_year_end(key):
+                    continue
+                if isinstance(key, tuple) and len(key) == 2 and key[0] == "as_at" \
+                        and not _results_is_fiscal_year_end(key[1]):
+                    continue
+                if isinstance(key, tuple) and len(key) == 2 and isinstance(key[0], int) and key[0] != 3:
+                    continue
+            out.setdefault(key, set(durations))
+    return out
+
+
+def _results_duration_dates_one(page_text: str) -> dict[Any, set[str]]:
     """The end date of every printed column, with the duration(s) its header names."""
+    return _results_duration_dates_scan(page_text)[0]
+
+
+def _results_mark_ambiguous(ambiguous: set[Any], raw_d: str, k: tuple[int, int, int]) -> None:
+    if re.match(r"^as\s+(?:at|on)\b", raw_d, re.I):
+        ambiguous.add(("as_at", k))
+    else:
+        ambiguous.add(k)
+        ambiguous.add((k[1], k[2]))
+
+
+def _results_duration_dates_scan(page_text: str) -> tuple[dict[Any, set[str]], set[Any]]:
+    """Return ``(durations_by_key, ambiguous_keys)`` for one page (T-242 r3c).
+
+    A date printed in more than one column of the header block (or top header lines) is marked ambiguous and
+    never assigned a single duration; ``year`` is only filled on a 31 March year-end unless the header block
+    binds it 1-to-1 to an exact single column.
+    """
+    page_text = _results_ocr_text(page_text)
     out: dict[Any, set[str]] = {}
+    ambiguous: set[Any] = set()
     cleaned = norm_space(page_text)
     lines = [norm_space(ln) for ln in str(page_text or "").splitlines() if norm_space(ln)]
     header_block = ""
     for i, ln in enumerate(lines[:30]):
-        if "ended" not in ln.lower() or not RESULTS_COL_GROUP_RE.search(ln) or RESULTS_DURATION_DATE_RE.search(ln):
+        if not re.search(r"\bend(?:ed|ing)\b", ln.lower()) or not RESULTS_COL_GROUP_RE.search(ln) \
+                or RESULTS_DURATION_DATE_RE.search(ln):
             continue
-        block = " ".join(lines[i:min(len(lines), i + 25)])
+        block_lines: list[str] = []
+        seen_date = False
+        for cand in lines[i:min(len(lines), i + 25)]:
+            if seen_date and (RESULTS_DURATION_DATE_RE.search(cand)
+                              or re.match(r"^(?:[A-Z][.)\]]|\d+[.)]|[IVX]+\.)\s+", cand)
+                              or (len(cand) > 35 and not re.search(RESULTS_DATE_TOKEN_PAT, cand, re.I)
+                                  and not re.search(r"^(?:unaudited|audited|particulars|refer\s+note|notes?)\b",
+                                                    cand, re.I))):
+                break
+            if re.search(RESULTS_DATE_TOKEN_PAT, cand, re.I):
+                seen_date = True
+            block_lines.append(cand)
+        block = " ".join(block_lines)
         parsed_dates: list[tuple[str, tuple[int, int, int]]] = []
         first_date_pos = len(block)
         for dm in re.finditer(RESULTS_DATE_TOKEN_PAT, block, re.I):
@@ -5813,14 +5924,28 @@ def _results_duration_dates(page_text: str) -> dict[Any, set[str]]:
                 if not parsed_dates:
                     first_date_pos = dm.start()
                 parsed_dates.append((norm_space(dm.group(0)), k))
+        header_prefix = block[:first_date_pos]
         groups = [_results_norm_duration(m.group(1))
-                  for m in RESULTS_COL_GROUP_RE.finditer(block[:first_date_pos])]
+                  for m in RESULTS_COL_GROUP_RE.finditer(header_prefix)]
         if not parsed_dates or not groups:
             continue
+        counts: dict[Any, int] = {}
+        for raw_d, k in parsed_dates:
+            tag = ("as_at", k) if re.match(r"^as\s+(?:at|on)\b", raw_d, re.I) else k
+            counts[tag] = counts.get(tag, 0) + 1
+        for raw_d, k in parsed_dates:
+            tag = ("as_at", k) if re.match(r"^as\s+(?:at|on)\b", raw_d, re.I) else k
+            if counts[tag] > 1:
+                _results_mark_ambiguous(ambiguous, raw_d, k)
+        stripped_prefix = RESULTS_COL_GROUP_RE.sub(" ", header_prefix)
+        prefix_complete = not re.search(
+            rf"\b(?:{RESULTS_DUR_WORD_PAT})\b|\bytd\b|\bend(?:ed|ing)\b", stripped_prefix, re.I)
         assignments: list[tuple[tuple[str, tuple[int, int, int]], str]] = []
-        if len(parsed_dates) == len(groups):
+        exact_col = False
+        if len(parsed_dates) == len(groups) and prefix_complete:
             assignments = list(zip(parsed_dates, groups))
-        elif len(groups) >= 2 and len(parsed_dates) > len(groups):
+            exact_col = True
+        elif len(groups) >= 2 and len(parsed_dates) > len(groups) and prefix_complete:
             cur_date = parsed_dates[0][1]
             cur_dm = (cur_date[0], cur_date[1])
             split_idx: list[int] = [0]
@@ -5840,42 +5965,120 @@ def _results_duration_dates(page_text: str) -> dict[Any, set[str]]:
             for g_idx, g_dur in enumerate(groups):
                 end = split_idx[g_idx + 1] if g_idx + 1 < len(split_idx) else len(parsed_dates)
                 assignments.extend((parsed_dates[j], g_dur) for j in range(split_idx[g_idx], end))
-        elif len(groups) == 1:
+        elif len(groups) == 1 and prefix_complete:
             cur_dm = (parsed_dates[0][1][0], parsed_dates[0][1][1])
-            assignments = [((raw_d, k), groups[0]) for raw_d, k in parsed_dates
-                           if (k[0], k[1]) == cur_dm or k[0] == 0]
-        if assignments:
-            header_block = block
-            for (raw_d, k), dur in assignments:
+            all_same_dm = all((k[0], k[1]) == cur_dm or (k[0] == 0 and k[1] == cur_dm[1])
+                              for _, k in parsed_dates)
+            if all_same_dm and not ambiguous:
+                assignments = [((raw_d, k), groups[0]) for raw_d, k in parsed_dates]
+        header_block = block
+        for (raw_d, k), dur in assignments:
+            is_as_at = bool(re.match(r"^as\s+(?:at|on)\b", raw_d, re.I))
+            tag = ("as_at", k) if is_as_at else k
+            if tag in ambiguous:
+                continue
+            if dur == "year" and not exact_col and not _results_is_fiscal_year_end(k):
+                continue
+            if is_as_at:
+                out.setdefault(("as_at", k), set()).add(dur)
+            else:
                 out.setdefault(k, set()).add(dur)
                 out.setdefault((k[1], k[2]), set()).add(dur)
-                if re.match(r"^as\s+(?:at|on)\b", raw_d, re.I):
-                    out.setdefault(("as_at", k), set()).add(dur)
-            break
+        break
+    if not header_block:
+        top_lines: list[str] = []
+        seen_top_date = False
+        for ln in lines[:20]:
+            if RESULTS_RELEASE_LINE_RE.search(ln):
+                continue
+            if seen_top_date and (re.match(r"^(?:[A-Z][.)\]]|\d+[.)]|[IVX]+\.)\s+", ln)
+                                  or RESULTS_CASH_FLOW_HEADING_RE.match(ln)
+                                  or (len(ln) > 35 and not re.search(RESULTS_DATE_TOKEN_PAT, ln, re.I)
+                                      and not re.search(r"^(?:unaudited|audited|particulars|refer\s+note|notes?)\b",
+                                                        ln, re.I))):
+                break
+            cleaned_ln = RESULTS_DURATION_DATE_RE.sub(" ", ln)
+            cleaned_ln = re.sub(
+                rf"\bfor\s+the\b[^.\n]{{0,40}}?\bend(?:ed|ing)(?:\s+(?:on|as\s+on))?\s+{RESULTS_DATE_TOKEN_PAT}",
+                " ", cleaned_ln, flags=re.I)
+            if re.search(RESULTS_DATE_TOKEN_PAT, cleaned_ln, re.I):
+                seen_top_date = True
+            top_lines.append(cleaned_ln)
+        top_text = " ".join(top_lines)
+        top_dates: list[tuple[str, tuple[int, int, int]]] = []
+        top_counts: dict[Any, int] = {}
+        for dm in re.finditer(RESULTS_DATE_TOKEN_PAT, top_text, re.I):
+            k = _results_date_key(dm.group(0))
+            if k is not None:
+                raw_d = norm_space(dm.group(0))
+                tag = ("as_at", k) if re.match(r"^as\s+(?:at|on)\b", raw_d, re.I) else k
+                top_dates.append((raw_d, k))
+                top_counts[tag] = top_counts.get(tag, 0) + 1
+        for raw_d, k in top_dates:
+            tag = ("as_at", k) if re.match(r"^as\s+(?:at|on)\b", raw_d, re.I) else k
+            if top_counts[tag] > 1:
+                _results_mark_ambiguous(ambiguous, raw_d, k)
     scan_text = cleaned.replace(header_block, " ") if header_block else cleaned
     for match in RESULTS_DURATION_DATE_RE.finditer(scan_text):
         raw_date = norm_space(match.group(2))
         key = _results_date_key(raw_date)
-        dur = _results_norm_duration(match.group(1))
-        if key is not None:
-            # Skip title restatement when table column header already mapped that date cleanly.
-            if header_block and key in out:
-                continue
+        if key is None:
+            continue
+        is_as_at = bool(re.match(r"^as\s+(?:at|on)\b", raw_date, re.I))
+        tag = ("as_at", key) if is_as_at else key
+        if tag in ambiguous:
+            continue
+        if header_block and (tag in out or key in out):
+            continue
+        if re.match(r"^(?:(?:accounting|financial)\s+)?year\s+to\s+date\b", match.group(0), re.I):
+            dur = "ytd"
+        else:
+            dur = _results_norm_duration(match.group(1))
+        prefix = scan_text[max(0, match.start() - 40):match.start()]
+        if re.search(rf"\b(?:{RESULTS_DUR_WORD_PAT})\b\s*(?:and|&|,|/)\s*$", prefix, re.I):
+            _results_mark_ambiguous(ambiguous, raw_date, key)
+            out.pop(key, None)
+            out.pop((key[1], key[2]), None)
+            if is_as_at:
+                out.pop(("as_at", key), None)
+            continue
+        if dur == "year" and not _results_is_fiscal_year_end(key):
+            continue
+        if is_as_at:
+            out.setdefault(("as_at", key), set()).add(dur)
+        else:
             out.setdefault(key, set()).add(dur)
             out.setdefault((key[1], key[2]), set()).add(dur)
-            if re.match(r"^as\s+(?:at|on)\b", raw_date, re.I):
-                out.setdefault(("as_at", key), set()).add(dur)
     head_matches = list(RESULTS_DURATION_DATE_RE.finditer(cleaned))
     if len(head_matches) == 1 and not header_block:
         hk = _results_date_key(head_matches[0].group(2))
-        hdur = _results_norm_duration(head_matches[0].group(1))
-        if hk is not None:
+        if re.match(r"^(?:(?:accounting|financial)\s+)?year\s+to\s+date\b", head_matches[0].group(0), re.I):
+            hdur = "ytd"
+        else:
+            hdur = _results_norm_duration(head_matches[0].group(1))
+        if hk is not None and hk not in ambiguous and hdur != "ytd" and hdur in out.get(hk, set()):
             for dm in re.finditer(RESULTS_DATE_TOKEN_PAT, cleaned[:1200], re.I):
                 ck = _results_date_key(dm.group(0))
-                if ck is not None and (ck[0], ck[1]) == (hk[0], hk[1]) and ck not in out:
+                if ck is not None and ck not in ambiguous and (ck[0], ck[1]) == (hk[0], hk[1]) and ck not in out:
+                    if hdur == "year" and not _results_is_fiscal_year_end(ck):
+                        continue
                     out.setdefault(ck, set()).add(hdur)
                     out.setdefault((ck[1], ck[2]), set()).add(hdur)
-    return out
+    if RESULTS_CASH_FLOW_HEADING_RE.search(cleaned[:600]) and not RESULTS_DURATION_DATE_RE.search(cleaned[:600]):
+        # T-242 r3b: an annual cash-flow statement whose title garbles the duration word ("for the izar ended
+        # March 31 2026", AKSHOPTFBR p11) prints its columns as bare 31 March year-ends: those columns are years.
+        # A title that does name a duration (a half-year statement) is never overridden.
+        for line in lines[:12]:
+            for dm in re.finditer(RESULTS_DATE_TOKEN_PAT, line, re.I):
+                key = _results_date_key(dm.group(0))
+                if key is not None and (key[0], key[1]) == RESULTS_CF_ANNUAL_END \
+                        and key not in ambiguous and (key[1], key[2]) not in ambiguous and key not in out:
+                    out[key] = {"year"}
+                    out.setdefault((key[1], key[2]), {"year"})
+    for key in list(out):
+        if key in ambiguous and len(out[key]) <= 1:
+            out.pop(key, None)
+    return out, ambiguous
 
 
 def _results_is_flow_measure(row: dict[str, Any], page_text: str) -> bool:
@@ -5896,7 +6099,8 @@ def _results_is_flow_measure(row: dict[str, Any], page_text: str) -> bool:
 
 def _results_period_reason(row: dict[str, Any], page_text: str,
                            durations: dict[Any, set[str]] | None = None,
-                           stats: dict[str, Any] | None = None) -> str:
+                           stats: dict[str, Any] | None = None,
+                           previous_page_text: str = "") -> str:
     """A year alone/release date is gated; flow rows fill duration from column header or gate unverified."""
     period = norm_space(row.get("period"))
     if not period:
@@ -5907,7 +6111,7 @@ def _results_period_reason(row: dict[str, Any], page_text: str,
     is_flow = _results_is_flow_measure(row, page_text)
     if is_as_at and (not is_flow or norm_space(row.get("measure")) not in RESULTS_FLOW_MEASURES):
         return ""
-    dur_map = durations if durations is not None else _results_duration_dates(page_text)
+    dur_map = durations if durations is not None else _results_duration_dates(page_text, previous_page_text)
     if is_flow and not re.search(r"\d", period):
         return f"results_period_duration_missing: {period!r} has no resolved date/duration"
     if RESULTS_HAS_DURATION_RE.search(period):
@@ -5919,22 +6123,24 @@ def _results_period_reason(row: dict[str, Any], page_text: str,
     head = norm_space(page_text)[:250]
     if RESULTS_RELEASE_LINE_RE.search(head) and text_has(head, clean_p):
         return f"results_period_not_a_period: {period!r} is the release date, not the row's period"
+    if not is_flow:
+        return ""
     lookup_key: Any = ("as_at", key) if (is_as_at and ("as_at", key) in dur_map) else (
         (key[1], key[2]) if key[0] == 0 else key)
     found = dur_map.get(lookup_key, set())
     if len(found) > 1:
         return (f"results_period_duration_missing: {period!r} is printed under more than one duration "
                 f"({', '.join(sorted(found))}), the row does not say which")
-    if is_flow:
-        if len(found) == 1:
-            row["period"] = f"{_results_duration_label(next(iter(found)))} {clean_p}"
+    if len(found) == 1:
+        dur_label = _results_duration_label(next(iter(found)))
+        if dur_label:
+            row["period"] = f"{dur_label} {clean_p}"
             if not row.get("period_source"):
                 row["period_source"] = "column_header"
             if stats is not None:
                 stats["results_duration_filled"] = int(stats.get("results_duration_filled", 0)) + 1
             return ""
-        return f"results_period_duration_missing: no column duration header found for flow period {period!r}"
-    return ""
+    return f"results_period_duration_missing: no column duration header found for flow period {period!r}"
 
 
 def _results_currency_only(unit: str) -> bool:
@@ -6077,7 +6283,7 @@ def apply_results_row_gates(rows: list[dict[str, Any]], page_text: str = "", com
     if note is None and doc_note is not None:
         note = doc_note
         note_source = "document"
-    durations = _results_duration_dates(page_text)
+    durations = _results_duration_dates(page_text, previous_page_text)
     equity_subjects = _results_equity_accounted_subjects(page_text)
     kept: list[dict[str, Any]] = []
     for row in rows:
