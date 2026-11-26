@@ -161,6 +161,19 @@ before; an ambiguous one carries nothing), reads an annual cash-flow statement's
 when its title names no duration, and remaps a cash-flow line only when its measure is a dictionary P&L/BS measure
 or a `NEW:` id that is a plain line name. The rules are in `docs/DEVELOPER_GUIDE.md` (r3b bullet).
 
+### results gates r3c (26 Nov 2026, T-242)
+
+Eagle's non-author review of r3b (`D:/RealityEngine/t242/grades/results_r3b_review_eagle.md`) failed on two structural
+defects: `D1` `'Year ended'` on non-year-end dates (`APOLLOIN` p6->p7 `30.09`, `AGL` p3 `30 Jun`, `ARVINDFASN`, `AMBIT`)
+and `D2` `'Quarter ended'` on annual columns sharing the same end date (`AGL` p3 `31 Mar 2026`, `ASITCFIN` p14
+`31.03.2026`). `_results_duration_dates_scan`, `_results_duration_dates`, and `_results_period_reason` in
+`reality_engine/v2/observations.py` now: (1) mark any end date printed in >1 column on the current or carrying page
+ambiguous so it is never carried and never filled by key; (2) require complete header-prefix matching and uniform
+`(day, month)` for single-group headers (rejecting `Year to Date` / `"Quarter and Year ended"` collapses); (3) allow
+`'Year ended'` only on 31 March unless the header block binds `'year'` 1-to-1 to an exact single unique column; (4)
+parse spaced dot/ordinal/comma dates (`31 .03.2026`, `31 st March, 2026`, `September 30,2026`); and (5) leave refused
+flow rows without a duration (`unverified`, `results_period_duration_missing`) while sparing non-flow stock rows.
+
 ```
 $env:REALITY_RAW_FETCH="0"
 python -m reality_engine.v2.observations --recheck --baseline .tmp/r3b/base.db --out .tmp/r3b/after.db `
