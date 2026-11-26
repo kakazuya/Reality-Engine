@@ -3530,7 +3530,8 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   **0 graded-R changes**; all 14 named ckpt3/ckpt4 W rows change as intended (two extra named rows, ADHBHUTIN and
   APTUS's duration fill, are the already-merged r3e rule). Seed-7 measurement over 200 store pages (5,176
   observation pages sampled): rule hits and judged precision -- OCR 13/13, garbled 0 (pack row + counter test),
-  measure section 112 hits / 20 judged all right, change 1/1, share-count 0 (pack row + counter test),
+  measure section 112 hits / 20 judged all right (the lane includes the already-merged r3e cash-flow rules; r3f adds
+  the balance-sheet/exceptional subset), change 1/1, share-count 0 (pack row + counter test),
   segment-column/geography 0 after the guards (pack rows + counter test; a partial/duplicate-date table abstains),
   own scope 0 (pack row + counter test). The full `--recheck` of the baseline copy did not finish inside the
   sandbox's 10-minute per-call cap (two runs were left ~25 min in, and the `--only` selector over the packs' 264

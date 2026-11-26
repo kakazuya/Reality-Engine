@@ -543,7 +543,7 @@ its rows with the store's `doc_page` text and the page before it:
 |---|---:|---|
 | OCR bracket / split | 13 | 13/13 right (BLUESTONE, ABFRL, ANIRIT, BALLARPUR x5, AMBUJACEM x2, ARKADE x2, AEIM) |
 | garbled OCR | 0 | pack row + counter test right |
-| measure from the section | 112 | 20/20 judged right (AIAENG, ACCURACY, ALPINEHOU, ACI, ANSALAPI) |
+| measure from the section | 112 | 20/20 judged right (AIAENG, ACCURACY, ALPINEHOU, ACI, ANSALAPI); the lane includes the already-merged r3e cash-flow rules, r3f adds the balance-sheet/exceptional subset |
 | change, not balance | 1 | 1/1 right (AHLEAST hypothetical reduction) |
 | share-count table | 0 | pack row + counter test right |
 | segment column / geography | 0 after the guards | pack rows AEQUS/BHARATROHAN/ARTEMISMED + 3MINDIA/ABLBL/AURUS abstain |
