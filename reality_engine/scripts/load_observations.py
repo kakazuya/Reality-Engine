@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import sqlite3
+from collections import Counter
 import time
 from pathlib import Path
 
@@ -71,6 +72,11 @@ CHECKS: dict[str, list[str]] = {
     "D:/RealityEngine/hy4_out/pilot_decks_entity.db": ["D:/RealityEngine/t242/sonnet_settle/pilot_decks/verdicts.jsonl"],
     "D:/RealityEngine/hy4_out/obs_decks_fy27.db": ["D:/RealityEngine/t242/sonnet_settle/decks_fy27/verdicts.jsonl"],
 }
+# T-242 26 Nov (Shivam: review and improve, never block): every hy4 output DB also takes the filed-XBRL verdicts.
+XBRL_CHECKS_DIR = Path("D:/RealityEngine/checks/xbrl")
+for _key, _db, _src in OBS_SOURCES:
+    if "/hy4_out/" in _db:
+        CHECKS.setdefault(_db, []).append(str(XBRL_CHECKS_DIR / f"{Path(_db).stem}.jsonl"))
 CHECK_COLS = ("check_status", "check_fields", "check_evidence", "checker")
 FIX_FIELDS = ("period", "unit", "scale", "basis", "segment")
 
@@ -90,6 +96,13 @@ def load_checks(db_path: str) -> dict[int, tuple]:
             except (ValueError, KeyError, TypeError):
                 continue
             verdict = str(v.get("verdict") or "")
+            if verdict.startswith("xbrl_"):     # T-242 26 Nov: filed-XBRL cross-check (reality_engine/v2/xbrl_crosscheck.py)
+                fx = {"filed_value": v.get("filed"), "filed_basis": v.get("basis")}
+                if verdict == "xbrl_unit_fix":
+                    fx["scale"] = v.get("fix_scale")
+                out[rid] = (verdict, json.dumps(fx, ensure_ascii=False), str(v.get("evidence") or "")[:500],
+                            "xbrl_crosscheck")
+                continue
             fields = {k: v[k] for k in FIX_FIELDS if v.get(k) not in (None, "")}
             if verdict in ("confirm", "fix"):
                 status = "model_checked"
@@ -162,6 +175,27 @@ def _cap_unverified(rows: list, cols: list[str], db_path: str) -> tuple[list, in
     return out, n
 
 
+def _apply_check_status(rows: list, cols: list[str], checks: dict[int, tuple]) -> tuple[list, dict]:
+    """Filed-XBRL verdicts move status: a match is served `verified` (even in a capped doc type); a contradiction or
+    a unit fix is served `unverified` (the fix rides in check_fields).  The read's own fields are never changed."""
+    if "status" not in cols or "observation_id" not in cols or not checks:
+        return rows, {}
+    si, ii = cols.index("status"), cols.index("observation_id")
+    moved: Counter = Counter()
+    out = []
+    for r in rows:
+        ck = checks.get(int(r[ii])) if r[ii] is not None else None
+        verdict = ck[0] if ck else ""
+        new = "verified" if verdict == "xbrl_match" else "unverified" if verdict in (
+            "xbrl_contradicts", "xbrl_unit_fix") else None
+        if new and r[si] != new:
+            r = list(r)
+            moved[f"{r[si]}->{new}"] += 1
+            r[si] = new
+        out.append(r)
+    return out, dict(moved)
+
+
 def _obs_vals(rows, source: str, checks: dict[int, tuple], id_pos: int | None, id_offset: int = 0,
               reader_pos: int | None = None, reader_mark: str = "") -> list[list]:
     """obs_fact insert values: the source row, source/doc_type, and the check verdict of its ORIGINAL id."""
@@ -228,6 +262,9 @@ def _load_store(store_path: Path, symbol: str | None = None) -> dict:
             rows, capped = _cap_unverified(rows, obs_cols, db_path)
             if capped:
                 stats.setdefault("capped_unverified", {})[source] = capped
+            rows, moved = _apply_check_status(rows, obs_cols, checks)
+            if moved:
+                stats.setdefault("check_status_moves", {})[source] = moved
             vals = _obs_vals(rows, source, checks, id_pos)
             if vals:
                 con.executemany(insert_sql, vals)
