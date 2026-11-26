@@ -8,7 +8,7 @@ description: What every stored row must carry (numbers/KPIs, call statements, gu
 A row is served only when `status='verified'`; `unverified` is served labelled; `quarantined` never. Unsure = no row. The author of a reader never writes its checks (`row_checks` layer is independent).
 
 ## Every row
-`symbol, doc_key, page, known_at` (point in time: filing before 15:30 IST -> day T, after -> T+1; `doc_date` is the crawl date, never use it as known_at), `record_type`, `reader`, `read_at`, `text_source` (text layer / ocr / jumbled), `status`, `status_reason`.
+`symbol, doc_key, page, known_at` (point in time: filing before 15:30 IST -> day T, after -> T+1; `doc_date` is the crawl date, never use it as known_at), `record_type`, `reader`, `read_at`, read provenance `read_model` (e.g. `opencode-go/hy4-flash-free`), `read_gateway` (opencode-go / opencode-zen / kilo-gateway / google-ai-studio / ...), `read_harness` (our script, agy, Claude Code, dsh, OpenCode harness), `prompt_fp` (Shivam 26 Nov: every reader and every new table writes these, see `observations.read_provenance`), `text_source` (text layer / ocr / jumbled), `status`, `status_reason`.
 
 ## Number / KPI rows
 | Field | Must be | Common failure (seen in grades) |
