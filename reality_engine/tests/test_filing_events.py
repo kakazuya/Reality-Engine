@@ -22,18 +22,23 @@ OUT_DIR = Path(".tmp/t231")
 
 @pytest.fixture(autouse=True)
 def _order_win_checks_as_gated(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
-    """These tests check the order_win row checks, so they run with order_win as a gated kind.  The LIVE gate is
-    empty since 25 Nov 2026 (order_win failed its fresh-store grade 39/5/14/2); `test_live_gate` checks that."""
+    """These tests check the order_win row checks, so they run with order_win as a gated kind.  The LIVE gate
+    holds order_win again since 26 Nov 2026 (fresh9 pass); `test_live_gate` checks that."""
     if "live_gate" not in request.node.name:
         monkeypatch.setattr(fe, "VERIFIED_KINDS", frozenset({"order_win"}))
 
 
-def test_live_gate_is_empty_until_a_kind_passes_a_fresh_store_grade() -> None:
-    assert fe.VERIFIED_KINDS == frozenset()
+def test_live_gate_holds_order_win_only_after_its_fresh9_pass() -> None:
+    """26 Nov 2026: order_win passed fresh9 (55/3/1/1); fund_raise failed it (49/5/4/2) and stays unverified."""
+    assert fe.VERIFIED_KINDS == frozenset({"order_win"})
     order = _doc("New orders worth Rs. 816 Crores",
                  "The Company has secured new orders of Rs. 816 crores across its various businesses.")
-    row = _row(fe.event_rows(order)[0], "order_win")
-    assert row["status"] == "unverified" and "kind_not_gated: order_win" in row["detail"]
+    assert _row(fe.event_rows(order)[0], "order_win")["status"] == "verified"
+    fund = _doc("Outcome of Board Meeting - Issue of listed, rated, secured, redeemable non-convertible debentures",
+                "The Board of Directors of the Company at its meeting held today has approved the issuance of 2,50,000 "
+                "listed, rated, secured, redeemable non-convertible debentures aggregating up to INR 250,00,00,000.")
+    row = _row(fe.event_rows(fund)[0], "fund_raise")
+    assert row["status"] == "unverified" and "kind_not_gated: fund_raise" in row["detail"]
 
 
 def _doc(title: str, text: str, *, symbol: str = "ACME", doc_key: str = "doc-1",

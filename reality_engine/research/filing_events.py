@@ -250,7 +250,10 @@ _RAISE_FOREIGN_ISSUE_VETO = re.compile(
 # ``order_win`` was gated after the 24 Nov fresh3 grade (25/5/0/0) but failed the 25 Nov grade on 40 untuned stores
 # (fresh5, round 6: 39 R / 5 P / 14 W / 2 J), so since 25 Nov no kind is gated: every event is stored
 # ``unverified`` (served labelled) until its kind passes a fresh-store grade.
-VERIFIED_KINDS: frozenset[str] = frozenset()
+# 26 Nov: ``order_win`` passed on the model-first r2 code (4a3c41b3), fresh9 = 40 full394 stores no round saw:
+# Hydrogen 55/3/1/1, Wolf's own check 52 R / 3 W+J (a BOOT concession revenue stored as an order, row 47).
+# ``fund_raise`` failed the same round (49/5/4/2: double counts, one tranche, a 100% warrant price) and stays out.
+VERIFIED_KINDS: frozenset[str] = frozenset({"order_win"})
 # a title naming the company's own QIP/NCD/preferential/rights issue is never vetoed by the agreement words below
 # (the annexure of a genuine issuance also prints "sanction letter" / "facility" boilerplate).
 _OWN_ISSUE_TITLE = re.compile(
