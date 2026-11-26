@@ -770,13 +770,13 @@ def test_a_product_demo_statement_with_substance_stays():
 
 
 def test_prepared_remark_period_is_anchored_to_the_call():
-    """394 v3 ckpt_0014 P: "this quarter"/"the year"/"half year"/"previous year" read alone on a prepared remark."""
+    """394 v3 ckpt_0014 P: "this quarter"/"the year" read alone on a prepared remark."""
     assert ospeaker.anchored_period("This quarter has been our highest ever presales.", "Q1 FY26") == "Q1 FY26"
     assert ospeaker.anchored_period("Finance costs for the year stood at 562 million.", "Q2 FY27") == "FY27"
-    assert ospeaker.anchored_period("Turnover grew 74% year-on-year, half year basis.", "Q2 FY26") == "H1 FY26"
-    assert ospeaker.anchored_period("Lower tax in previous year was due to the budget.", "Q2 FY27") == "FY26"
+    assert ospeaker.anchored_period("Turnover grew 74% year-on-year, half year basis.", "Q2 FY26") == ""
+    assert ospeaker.anchored_period("Lower tax in previous year was due to the budget.", "Q2 FY27") == ""
     assert ospeaker.anchored_period("Lower tax in previous year, whereas this year is normal.", "Q2 FY27") == "FY27"
-    assert ospeaker.anchored_period("Revenue grew 12% in Q2 FY27.", "Q2 FY27") == ""
+    assert ospeaker.anchored_period("Revenue grew 12% in Q2 FY27.", "Q2 FY27") == "Q2 FY27"
     assert ospeaker.anchored_period("This quarter was strong.", "") == ""
     pages = [(1, _CALL_HEAD + _CALL_TAIL), (2, "Ramesh Iyer: This quarter has been our highest ever presales.")]
     rows = [_statement(2, "This quarter has been our highest ever presales.", speaker="Ramesh Iyer")]
@@ -791,39 +791,53 @@ def test_prepared_remark_period_is_anchored_to_the_call():
     assert not rows[0].get("period")
 
 
-def test_r2_period_anchoring_comparatives_printed_call_and_figure_prepared_remarks():
-    """T-242 r2: comparatives never anchor, Q3 half-year needs 'nine months', Q4 skips 'last year',
-    printed call period overrides known_at, and figure-bearing prepared remarks take the call's period."""
+def test_r3_period_anchoring_explicit_cues_only_and_comparatives_never_anchor():
+    """T-242 r3: a figure alone never takes the call quarter; only an explicit own-period cue anchors, a
+    comparative's named period never does, and a printed call header still overrides known_at."""
     assert ospeaker.anchored_period("Compared to last year revenue grew 20%.", "Q2 FY26") == ""
     assert ospeaker.anchored_period("Machine price rose to 20 compared to last year 18.", "Q2 FY26") == ""
     assert ospeaker.anchored_period("Margins expanded versus previous year.", "Q2 FY26") == ""
-    assert ospeaker.anchored_period("Shortfall in H1 FY '26 will be offset by Q3 FY 26.", "Q3 FY26") == ""
-    assert ospeaker.anchored_period("Execution ramps in the second half of FY26; YTD bookings are Rs 3,464 cr.", "Q2 FY26") == ""
+    assert ospeaker.anchored_period("Shortfall in H1 FY '26 will be offset by Q3 FY 26.", "Q3 FY26") == "Q3 FY26"
+    assert ospeaker.anchored_period("Execution ramps in the second half of FY26; YTD bookings are Rs 3,464 cr.",
+                                    "Q2 FY26") == ""
     assert ospeaker.anchored_period("Turnover grew 74% on a half year basis.", "Q3 FY26") == ""
-    assert ospeaker.anchored_period("Half year, actually nine months ended, grew 74%.", "Q3 FY26") == "9M FY26"
+    assert ospeaker.anchored_period("Half year, actually nine months ended, grew 74%.", "Q3 FY26") == ""
     assert ospeaker.anchored_period("Our CASA grew last year by 10,000 crore on a YoY basis.", "Q4 FY25") == ""
+    # r3 W rows: a Y-o-Y comparative's figure never takes the call quarter; a full-year figure takes its own FY.
+    assert ospeaker.anchored_period(
+        "On a Y-o-Y basis, NII for Q4 FY '26 stood at INR781 crores, recording an 8% Y-o-Y growth.",
+        "Q4 FY26") == ""
+    assert ospeaker.anchored_period(
+        "EBITDA for FY '25 stood at INR437 crores, up by 20% as compared to INR363 crores in FY '24.",
+        "Q4 FY25") == "FY25"
+    # r3: a figure-bearing prepared remark with no own-period cue stays empty (empty beats wrong).
+    assert ospeaker.anchored_period("Capex is INR 200 crore.", "Q3 FY26") == ""
+    assert ospeaker.anchored_period("The results of the last quarter are uploaded.", "Q1 FY27") == ""
 
     # Printed header period beats a stale/later call_quarter(known_at) fallback passed as call_period.
     pages = [
         (1, "Synth Corp Limited\nQ2 & H1 FY26 Post Earnings Conference Call\n" + _CALL_HEAD + _CALL_TAIL),
         (2, "Ramesh Iyer: Compared to last year revenue grew 20%.\n"
-            "Our margin of 27.3% is broadly in line with Q4 FY25.\n"
+            "This quarter our margin was 27.3%.\n"
+            "Finance costs for the year stood at 562 million.\n"
             "Exports continue to drive demand.\n"
             "Capex is INR 200 crore.\n"),
     ]
     rows = [
         _statement(2, "Compared to last year revenue grew 20%.", speaker="Ramesh Iyer"),
-        _statement(2, "Our margin of 27.3% is broadly in line with Q4 FY25.", speaker="Ramesh Iyer"),
+        _statement(2, "This quarter our margin was 27.3%.", speaker="Ramesh Iyer"),
+        _statement(2, "Finance costs for the year stood at 562 million.", speaker="Ramesh Iyer"),
         _statement(2, "Exports continue to drive demand.", speaker="Ramesh Iyer"),
         dict(_statement(2, "Capex is INR 200 crore.", speaker="Ramesh Iyer"),
              question_context="Q (Rahul): What is the FY28 capex?"),
     ]
     stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"], call_period="Q3 FY26")
     assert stats["period_anchored"] == 2
-    assert rows[0]["period"] == "Q2 FY26" and rows[0]["period_source"] == "call_period"
+    assert not rows[0].get("period")        # a comparative never anchors
     assert rows[1]["period"] == "Q2 FY26" and rows[1]["period_source"] == "call_period"
-    assert not rows[2].get("period")        # no figure and no relative word -> stays empty
-    assert not rows[3].get("period")        # has question_context -> never anchored as prepared remark
+    assert rows[2]["period"] == "FY26" and rows[2]["period_source"] == "call_period"
+    assert not rows[3].get("period")        # a figure alone no longer takes the call quarter
+    assert not rows[4].get("period")        # has question_context -> never anchored as prepared remark
     from reality_engine.v2 import observations as obs
     assert obs.call_quarter("2025-07-10", [(1, "Synth Corp Q4 FY25 Earnings Call")]) == "Q4 FY25"
 
@@ -1200,4 +1214,65 @@ def test_statement_window_never_crosses_a_speaker_label():
     assert rows[0]["statement"] == "It will remain in that range."
     assert "The value added share" not in rows[0]["statement"]
     assert stats["widened"] == 0 and stats["noted"] == 1
+
+
+def test_statement_window_widens_a_connector_fragment_to_the_figure_before_it():
+    """r3 #39 NITINSPIN: "So it's a gradual step-by-step increase ..." is a fragment whose 50%/95% ramp sits in
+    the previous sentence, even though question_context already names the topic (the r2 window kept it)."""
+    page = _WINDOW_HEAD + (
+        "Anurag Soni: First of all, it is always slow and steady. So you start with 50% and then you reach the 90%, "
+        "95%. So it's a gradual step-by-step increase of the productivity as well as the efficiency. So that is a "
+        "step-by-step process, which happens.\n")
+    rows = [_window_row(1, "So it's a gradual step-by-step increase of the productivity as well as the efficiency.",
+                        question_context="Q (Rina): How does utilization ramp up?")]
+    stats = ospeaker.attach_statement_speakers(rows, [(1, page)], "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["statement"] == ("So you start with 50% and then you reach the 90%, 95%. So it's a gradual "
+                                    "step-by-step increase of the productivity as well as the efficiency.")
+    assert stats["widened"] == 1
+    _assert_verbatim(rows[0]["statement"], page)
+
+
+def test_statement_window_widens_when_that_to_the_full_year_capacity_sentence():
+    """r3 #21 HINDZINC: "And that at the full year ..." points at the 28 KT capacity sentence before it."""
+    page = _WINDOW_HEAD + (
+        "Anurag Soni: So at a full capacity, when we run the next year, the plant capacity is 28 KT and this year, "
+        "it was the part operations. And that at the full year, it should be around INR250 crores to INR275 crores "
+        "of the EBITDA at a full capacity.\n")
+    rows = [_window_row(1, "And that at the full year, it should be around INR250 crores to INR275 crores of the "
+                           "EBITDA at a full capacity.",
+                        question_context="zinc alloy plant EBITDA for the quarter and PAT")]
+    stats = ospeaker.attach_statement_speakers(rows, [(1, page)], "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["statement"].startswith("So at a full capacity, when we run the next year")
+    assert stats["widened"] == 1
+    _assert_verbatim(rows[0]["statement"], page)
+
+
+def test_a_copied_speaker_label_is_stripped_from_the_statement_start():
+    """r3 #60 BANKINDIA: the model copied "Shri <Name>, MD & CEO" into the passage; a "<Name> - CFO:" label too."""
+    label = "Shri Rajneesh Karnatak, MD & CEO"
+    speech = "One of the reason is the penal charges also, but otherwise NIM has come down to 2.80%."
+    pages = [(1, _CALL_HEAD + _CALL_TAIL), (2, label + " \n \n " + speech + "\n")]
+    rows = [dict(_statement(2, label + " \n \n " + speech, speaker=label))]
+    stats = ospeaker.attach_statement_speakers(rows, pages, "SYNTH", ["Synth Corp Limited"])
+    assert rows[0]["statement"] == speech
+    assert stats["labels_stripped"] == 1
+    assert ospeaker.strip_leading_speaker_label("Ramesh Iyer - CFO: Revenue grew 12%.", "")[0] \
+        == "Revenue grew 12%."
+    assert ospeaker.strip_leading_speaker_label("MR. SATISH PARAKH – MANAGING DIRECTOR.\nThe quarter was strong.",
+                                                "")[0] == "The quarter was strong."
+    assert ospeaker.strip_leading_speaker_label(
+        "Muralidharan, Group Chief Financial Officer\nMr. Manish Bhatia, Chief Financial Officer\n"
+        "The quarter was strong.", "")[0] == "The quarter was strong."
+    # a passage that merely starts with a name-then-comma phrase is not a label
+    kept = "Ramesh Iyer said the capex plan is unchanged."
+    assert ospeaker.strip_leading_speaker_label(kept, "Ramesh Iyer")[0] == kept
+    kept2 = "Yes, we grew 12% in the quarter ended March 2026\nand margins held."
+    assert ospeaker.strip_leading_speaker_label(kept2, "")[0] == kept2
+    # a snap can pull the printed label line into the passage; it is stripped again after the widen
+    pages2 = [(1, _CALL_HEAD + _CALL_TAIL),
+              (2, "Anurag Soni: Some intro. " + label + " \n \n " + speech + "\n")]
+    rows2 = [dict(_statement(2, speech, speaker=label))]
+    stats2 = ospeaker.attach_statement_speakers(rows2, pages2, "SYNTH", ["Synth Corp Limited"])
+    assert rows2[0]["statement"] == speech
+    assert stats2["labels_stripped"] == 1
 
