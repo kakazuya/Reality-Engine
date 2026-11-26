@@ -11,6 +11,9 @@ This folder is about running the machines, not about the Reality Engine itself. 
   never covers a loop. Every action therefore finds the loop's processes by their exact command line: bash running
   the loop script, and python readers whose `--out` is one of the loop's DBs. It then acts on those PIDs only, never
   on processes picked by image name. (On 25 Nov a kill-by-name ended every worker and MCP server.)
+- The `bash -lc '... exec bash <script>'` start wrapper stays behind as an idle stub after the loop re-launches
+  itself. It is not counted as a loop instance, but `stop` ends it too. A reader is matched only by its `--out`
+  file name, so a recheck that names the DB in `--baseline` is never touched (26 Nov).
 - `status` lists each loop instance and reader PID, and prints `DUPLICATE` when two instances run. On 26 Nov three
   transcript loops were found, two writing `obs_transcripts_394_v3.db` at once.
 - `start` refuses while any instance runs, launches the loop hidden, and records its PID in

@@ -22,21 +22,23 @@ $Loops = @{
 $names = if ($Loop -eq 'all') { $Loops.Keys } else { @($Loop) }
 
 function Get-LoopProcs($cfg) {
-  # loop instances: bash running the loop script; readers: python observations writing one of the loop's DBs
+  # loop instances: bash running the loop script itself (not the `bash -lc '... exec bash <script>'` start wrapper,
+  # which stays as an idle stub after the loop re-launches itself); readers: python observations whose --out VALUE
+  # is one of the loop's DBs (26 Nov: matching any mention caught Wolf's recheck reader with --baseline <db>)
   $all = Get-CimInstance Win32_Process
   $script = [regex]::Escape($cfg.script)
-  $loops = $all | Where-Object { $_.Name -eq 'bash.exe' -and $_.CommandLine -match $script }
-  $roots = $loops | Where-Object { $p = $_.ParentProcessId; -not ($loops | Where-Object ProcessId -eq $p) }
+  $wrappers = @($all | Where-Object { $_.Name -eq 'bash.exe' -and $_.CommandLine -match $script -and $_.CommandLine -match ' -lc ' })
+  $loops = @($all | Where-Object { $_.Name -eq 'bash.exe' -and $_.CommandLine -match $script -and $_.CommandLine -notmatch ' -lc ' })
+  $loopIds = @($loops.ProcessId)
+  $roots = @($loops | Where-Object { $loopIds -notcontains $_.ParentProcessId })
   $readers = @()
-  foreach ($db in $cfg.dbs) {
-    $readers += $all | Where-Object { $_.Name -eq 'python.exe' -and $_.CommandLine -match 'reality_engine\.v2\.observations' -and
-                                      $_.CommandLine -notmatch '--recheck' -and $_.CommandLine -match [regex]::Escape($db) }
+  if ($cfg.dbs.Count -gt 0) {
+    $readers = @($all | Where-Object { $_.Name -eq 'python.exe' -and $_.CommandLine -match 'reality_engine\.v2\.observations' } | Where-Object {
+      $m = [regex]::Match($_.CommandLine, '--out[= ](\S+)'); $m.Success -and ($cfg.dbs -contains (Split-Path $m.Groups[1].Value -Leaf)) })
+  } else {   # ar: readers are the python children of its own loop instances
+    $readers = @($all | Where-Object { $_.Name -eq 'python.exe' -and $loopIds -contains $_.ParentProcessId })
   }
-  if ($cfg.dbs.Count -eq 0) {   # ar: readers are the python children of its own loop instances
-    $ids = @($loops.ProcessId)
-    $readers = $all | Where-Object { $_.Name -eq 'python.exe' -and $ids -contains $_.ParentProcessId }
-  }
-  [pscustomobject]@{ roots = @($roots); loops = @($loops); readers = @($readers) }
+  [pscustomobject]@{ roots = $roots; loops = $loops; readers = $readers; wrappers = $wrappers }
 }
 
 foreach ($n in $names) {
@@ -54,21 +56,21 @@ foreach ($n in $names) {
       else { "${n}: no running loop found" }
     }
     'start' {
-      if ($procs.loops.Count -gt 0) { "$n already running (pids $(($procs.roots | ForEach-Object ProcessId) -join ',')); stop it first"; continue }
+      if ($procs.loops.Count -gt 0 -or $procs.wrappers.Count -gt 0) { "$n already running (pids $(($procs.roots | ForEach-Object ProcessId) -join ',')); stop it first"; continue }
       $p = Start-Process -WindowStyle Hidden -PassThru -FilePath $Bash -ArgumentList '-lc', "'cd /c/Users/warri/Downloads/Info_Diffusion_Model && exec bash $($cfg.script)'"
       Set-Content "$Out\$n.pid" $p.Id
       "$n started (pid $($p.Id))"
     }
     'stop' {
-      $targets = @($procs.roots) + @($procs.readers)
+      $targets = @($procs.roots) + @($procs.readers) + @($procs.wrappers)
       if ($targets.Count -eq 0) { "$n not running"; continue }
       foreach ($t in $targets) { & taskkill /PID $t.ProcessId /T /F 2>$null | Out-Null }
       Start-Sleep -Seconds 2
       $left = Get-LoopProcs $cfg
-      foreach ($t in @($left.loops) + @($left.readers)) { & taskkill /PID $t.ProcessId /F 2>$null | Out-Null }
+      foreach ($t in @($left.loops) + @($left.readers) + @($left.wrappers)) { & taskkill /PID $t.ProcessId /F 2>$null | Out-Null }
       Start-Sleep -Seconds 1
       $left = Get-LoopProcs $cfg
-      $surv = @($left.loops) + @($left.readers)
+      $surv = @($left.loops) + @($left.readers) + @($left.wrappers)
       if ($surv.Count) { "$n stop INCOMPLETE; survivors: $(($surv | ForEach-Object ProcessId) -join ',')" }
       else { "$n stopped (pids $(($targets | ForEach-Object ProcessId) -join ',') and their children)" }
     }
