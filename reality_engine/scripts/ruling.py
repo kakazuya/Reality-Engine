@@ -49,7 +49,7 @@ def _insert(text: str, section: str, bullet: str) -> str:
 
 
 def add(*, section: str, text: str, check: str | None = None, ticket_title: str | None = None,
-        root: Path | None = None) -> dict[str, Any]:
+        root: Path | None = None, quote: str | None = None) -> dict[str, Any]:
     """Append one ruling; open a gate ticket when it has no ``[check: ...]``; refresh the sheet."""
     root = Path(root) if root is not None else ROOT
     path = root / RULINGS
@@ -74,6 +74,12 @@ def add(*, section: str, text: str, check: str | None = None, ticket_title: str 
         raise ValueError(f"{RULINGS} would go over its limit by " + " and ".join(over)
                          + ": shorten the rule or move detail to docs/ or a dated record")
     path.write_text(after, encoding="utf-8")
+    if quote:       # Shivam 26 Nov: his own words are kept in full, never condensed
+        vpath = root / "docs" / "rulings" / "RULINGS_VERBATIM.md"
+        vpath.parent.mkdir(parents=True, exist_ok=True)
+        with vpath.open("a", encoding="utf-8") as fh:
+            fh.write(f"\n## {datetime.date.today().isoformat()} | {section.strip()}\nRule: {rule}\n"
+                     + "".join(f"> {line}\n" for line in quote.strip().splitlines()))
 
     ticket = None
     if not tag:
@@ -130,6 +136,7 @@ def _parser() -> argparse.ArgumentParser:
     add_cmd.add_argument("--text", required=True, help="the rule, one sentence")
     add_cmd.add_argument("--check", default=None, help="the gate tag in standing_rules_report.CODE_GATES")
     add_cmd.add_argument("--ticket-title", default=None, help="the gate ticket's title")
+    add_cmd.add_argument("--quote", default=None, help="Shivam's own words, kept in full in docs/rulings/RULINGS_VERBATIM.md")
     sub.add_parser("list", help="rulings per section and the space left")
     return parser
 
@@ -141,7 +148,7 @@ def main(argv: list[str] | None = None) -> int:
             print(summary())
             return 0
         result = add(section=args.section, text=args.text, check=args.check,
-                     ticket_title=args.ticket_title)
+                     ticket_title=args.ticket_title, quote=args.quote)
     except Exception as exc:
         print(f"ruling: {exc}", file=sys.stderr)
         return 1

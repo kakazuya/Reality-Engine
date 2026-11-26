@@ -5,7 +5,7 @@ description: Move gated hy4 reads (or a re-checked copy) into the company stores
 
 # hy4 reads -> stores
 
-Rules: databases and builds on C: SSD only (D: holds raw docs and hy4 output DBs). One writer per DB (ops_gate flags two). Nothing loads from a doc type whose latest grade failed (AR gated until a pass).
+Rules: databases and builds on C: SSD only (D: holds raw docs and hy4 output DBs). One writer per DB (ops_gate flags two). Everything loads (Shivam 26 Nov); an output whose latest graded sample is >10% W+J loads unverified (skill store-accuracy-review).
 
 ## 1. Recheck on a copy (after gate code changes)
 ```

@@ -1,5 +1,5 @@
 # Shivam's rulings: loaded into every session, also after compaction. Max 8,000 characters.
-New rulings via `ruling add`; `[check]` = enforced by code. Full wording `docs/rulings/RULINGS_full_2026-11-08.md`; `project_rules(topic)`.
+New rulings via `ruling add`; `[check]` = enforced by code. Full wording `docs/rulings/RULINGS_FULL.md`; `project_rules(topic)`.
 ## Goal and scope
 - Ultimate goal (8 Nov): predict any stock 6m/1y/2y ahead from reliably held data, least information that does it; few heavyweight factors; more data is not the goal. Factor rewards aren't fixed laws (10 Nov): re-run every month-end, ongoing (14 Nov), per stock, sector and regime; report the statistical mode of rewarded factors and shifts.
 - Store facts so a cheap model gets Opus-quality answers through the `reality-data` MCP (raw reads only when needed); tables, extractors, tools must scale unchanged to all NSE+BSE; pilot companies teach the build. Scripts first; AI/OCR only where scripts fail, within 1-2 months of subscription, with his OK.
