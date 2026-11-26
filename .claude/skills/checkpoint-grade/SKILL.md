@@ -26,7 +26,7 @@ Checkpoint rows first, then a seeded fill (one company per row where possible, <
 ```
 python -m reality_engine.v2.read_gate grade --ckpt <ckpt> --verdict pass|fail --reviewer <name> --counts R/P/W/J
 ```
-A fail needs `ckpt_NNNN.fix.md` first: each W/J kind with one example row, the structural cause, the gate or prompt fix. Delete the `.grading.md` marker after recording.
+The author of the FIX that a re-grade tests also counts as author: a pass after Wolf's fix is recorded by Eagle (and vice versa). A fail needs `ckpt_NNNN.fix.md` first: each W/J kind with one example row, the structural cause, the gate or prompt fix. Delete the `.grading.md` marker after recording.
 
 ## 4. After a fail
 Fix = structural rule (never per company), measured on a COPY: count changed verified rows, 20 random changed rows (seed 7), 0 graded R rows may change, stop if a rule changes > 3% of verified rows. Then `--recheck` a copy, fresh grade by a non-author, then swap + load (skill `hy4-store-load`).
