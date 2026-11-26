@@ -842,6 +842,46 @@ def _add_money(row: dict[str, Any], value: Any, unit: str | None, scale: Any = N
     return row
 
 
+# T-242 fix 9: the digits a row's own quote prints are evidence the store's value must reproduce.  AYE's deck card
+# prints "AUM Sep-26 INR 7,597" while the store holds 75.97 crore (the extractor dropped the hundreds), so that row
+# is never elected first beside the filing rows that print 7,597 crore.
+_QUOTE_MONEY = re.compile(
+    r"(?<![\w.])(?:₹|rs\.?|inr|usd|\$)?\s*(\d[\d,]*(?:\.\d+)?)\s*"
+    r"(crores?|crs?|lakhs?|lacs?|millions?|mn|billions?|bn|thousand)?(?![\w.])",
+    re.I)
+_QUOTE_MONEY_MULT = {"crore": 1e7, "crores": 1e7, "cr": 1e7, "crs": 1e7, "lakh": 1e5, "lakhs": 1e5, "lac": 1e5,
+                     "lacs": 1e5, "million": 1e6, "millions": 1e6, "mn": 1e6, "billion": 1e9, "billions": 1e9,
+                     "bn": 1e9, "thousand": 1e3}
+
+
+def _quote_scale_mismatch(value: Any, unit: str | None, scale: Any, quote: str | None) -> bool:
+    """T-242 fix 9: can the money figure the row's own quote prints reproduce the row's value in its unit?
+
+    Only an INR money row is checked, and a quote that prints no money figure is never demoted on a guess.  The
+    comparison is the row's own currency base, so "7,597 crore", "7,597" (in a crore row) and "70.44 billion" all
+    reproduce their value."""
+    pair = _money_inr_cr(value, unit, scale)
+    unit_pair = _money_inr_cr(1.0, unit)
+    if pair is None or unit_pair is None or not str(quote or "").strip():
+        return False
+    saved, unit_mult = pair[0], unit_pair[0]
+    if not saved:
+        return False
+    tol = max(abs(saved) * 0.01, 1e-9)
+    seen = False
+    for match in _QUOTE_MONEY.finditer(str(quote)):
+        try:
+            number = float(match.group(1).replace(",", ""))
+        except ValueError:
+            continue
+        word = (match.group(2) or "").lower().rstrip(".")
+        seen = True
+        if abs(number * _QUOTE_MONEY_MULT.get(word, unit_mult) - saved) <= tol:
+            return False
+    return seen
+
+
+
 # --- T-239: model-free query expansion, and the pages to read when a lookup has no row ------------------
 SYNONYMS_PATH = Path(__file__).with_name("synonyms.json")
 
@@ -1068,6 +1108,15 @@ _MEASURE_ALIASES = {
     "capital_expenditure": "capex",
     "capital_expenditures": "capex",
     "capital_outlay": "capex",
+    # T-242 fix 9: the spelled-out name of a ratio / KPI the store files under its short code (audit 9: ARCIL
+    # "return on equity" was found=false while "ROE" answered 18.1%, AIAENG "earnings per share" vs "EPS" 26.76).
+    "return_on_equity": "roe",
+    "return_on_capital_employed": "roce",
+    "return_on_assets": "roa",
+    "earnings_per_share": "eps",
+    "net_interest_margin": "nim",
+    "gross_non_performing_assets": "gnpa",
+    "assets_under_management": "aum",
 }
 
 
@@ -1356,16 +1405,22 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
                                      r["known_at"], doc_type=r["doc_type"], title=r["title"],
                                      row_id=r["id"])}, r["value"], r["unit"], r["scale"]), r)
             item.setdefault("status", item.get("check_status"))
+            # T-242 fix 9: the quote's own digits say whether the stored value is the page's figure (AYE 75.97 vs
+            # "INR 7,597"): a mismatched row is served later, labelled, never elected first.
+            if _quote_scale_mismatch(r["value"], r["unit"], r["scale"], r["quote"]):
+                item["scale_mismatch"] = True
             items_out.append(item)
         return items_out
 
     out = _items(rows)
     # the company's own rows first (T-088), then the operating definition of a measure that has several (T-192)
-    out.sort(key=lambda row: (0 if row["entity"] == sym else 1, _definition_rank(row, str(row["metric"]))))
+    out.sort(key=lambda row: (0 if row["entity"] == sym else 1, _definition_rank(row, str(row["metric"])),
+                              1 if row.get("scale_mismatch") else 0))
     if obs_rows:
         combined = out + obs_rows
         combined.sort(key=lambda row: (
             *_ask_row_rank(row, kpi, period),          # T-242 fix 7: company / asked period / unit / no scope
+            1 if row.get("scale_mismatch") else 0,     # T-242 fix 9: a value its own quote cannot reproduce
             0 if row.get("entity", sym) == sym else 1,
             0 if not row.get("segment") else 1,
             _definition_rank(row, str(row.get("metric") or "")),
@@ -2633,7 +2688,7 @@ _ASK_STOP = {"how", "what", "when", "why", "where", "which", "who", "whom", "who
              "that", "with", "from", "will", "would", "could", "should", "can", "may", "might", "must", "they",
              "them", "their", "there", "these", "those", "was", "were", "are", "has", "have", "had", "does", "did",
              "done", "much", "many", "more", "most", "some", "any", "all", "also", "just", "only", "than", "then",
-             "into", "onto", "over", "under", "about", "after", "before", "between", "during", "each", "other",
+             "into", "onto", "over", "under", "about", "after", "before", "between", "during", "each",
              "same", "both", "here", "very", "been", "being", "because", "while", "such", "its", "our", "your",
              "you", "we", "us", "me", "my", "he", "she", "his", "her", "not", "but", "off", "out", "up", "down",
              "per", "is", "be", "as", "at", "by", "in", "on", "of", "to", "or", "if", "no", "so", "do", "new"}
@@ -2819,14 +2874,15 @@ def _sentence_hits(text: str | None, words: list[str], measures: list[str] | Non
 
 
 def _group_ask_rank(group: list[dict[str, Any]], words: list[str], measures: list[str] | None = None,
-                    quant: bool = False, weights: dict[str, float] | None = None,
-                    tie_words: list[str] | None = None) -> tuple[int, float, int, int]:
+                     quant: bool = False, weights: dict[str, float] | None = None,
+                     tie_words: list[str] | None = None, text: str | None = None) -> tuple[int, float, int, int]:
     """Every ask word in one sentence first, then the sentence's weighted score, then fix-6 proximity (T-242 fix 7).
 
     The proximity tie-break is the ``fix 6`` order (ask words close together, then how often) over the question's own
     words: two rows that score the same fall back to the ranking that was already proven, and only a real gain from
-    the new sentence score outranks it.  The stable tie-break is the reply's existing order."""
-    text = " ".join(str(r.get("quote") or "") for r in group)
+    the new sentence score outranks it.  The stable tie-break is the reply's existing order.  ``text`` (T-242 fix 9)
+    is the group's pre-split text, so serving extra sentences never changes the rank the reply already had."""
+    text = text if text is not None else " ".join(str(r.get("quote") or "") for r in group)
     all_hit, score, _tokens = _sentence_hits(text, words, measures, quant, weights)
     close, occ = _proximity(text, tie_words) if tie_words else (0, 0)
     return (0 if all_hit else 1, -score, -close, -occ)
@@ -2868,8 +2924,8 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     For a question about one call ('In the 2026-05-27 call, what did management say about X?'), pass that call's
     date as ``date_from`` and ``date_to`` (both YYYY-MM-DD): only that call's statements are then served -- matched
     by the transcript's own printed call date or by the document's filing date within 3 days, so a call printed on
-    2026-08-10 and filed on 2026-08-13 is the same call -- one statement per answer turn, best match first, and the
-    window is 25 statements instead of 10.
+    2026-08-10 and filed on 2026-08-13 is the same call -- up to three sentences of one answer turn when they answer
+    different ask words, best match first, and the window is 25 rows instead of 10.
 
     ``period`` (Q4FY26 / FY26) and ``rank_terms`` (the question's own words) rank the rows: a statement of the
     period asked, carrying more of the question's words, comes first; the newest call breaks a tie.  Inside a named
@@ -3091,29 +3147,101 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     measures = _measure_words(topic, terms, rank_terms) if named_day else []
     quant = bool(named_day and _ASK_QUANT.search(" ".join(x for x in (rank_terms, terms, topic) if x)))
     weights = _ask_weights(items, ask_tokens) if ask_tokens else {}
+    rank_weights = weights      # the reply's existing group order, unchanged by the sentence-selection boost below
+    if weights:
+        # T-242 fix 9: the question's own words (rank_terms / terms) weigh more than its coarse topic tag, so
+        # "what happened to other expenses versus a year ago" (topic ``cost``) prefers the "other expenses"
+        # sentence over a generic costs sentence of the same call.
+        asked_words = set(_ask_tokens(rank_terms, terms))
+        weights = {word: (value * 1.5 if word in asked_words else value) for word, value in weights.items()}
     tie_words = _ask_tokens(topic, terms, rank_terms, stop=False) if ask_tokens else []
+    rank_text: dict[int, str] = {}
     if one_per_turn and ask_tokens:
-        # T-242 fix 8: one row per answer turn is still served, but a prepared-remarks turn serves the sentence
+        # T-242 fix 8/9: one row per answer turn is still served, but a prepared-remarks turn serves the sentence
         # that answers the ask.  A prepared-remarks turn is a paragraph: ADSL's p4 turn opens on revenue growth
         # and prints "large contracts are taking longer to conclude" 12 rows later, so the turn's first sentence
-        # was never the asked one.  A Q&A turn keeps its first row: its sentences are already the answer's own.
+        # was never the asked one.
+        # T-242 fix 9: an answer turn is not one sentence.  ARCIL's "Other expenses were INR25 crores compared to
+        # INR18.3 crores" sits in the same paragraph as the employee-expenses sentence, and from obs_fact the whole
+        # paragraph arrives as one long quote whose 600-character cut dropped the asked sentence entirely.  So every
+        # sentence of the turn is scored and up to three are served, each carrying an ask word the earlier ones do
+        # not; only an identical sentence is deduped, and the 25-row window below bounds the reply.
+        def _sentences(row: dict[str, Any]) -> list[str]:
+            # a PDF line wrap is not a sentence break ("we integrated \nOcclutech"): whitespace is normalised first
+            text = re.sub(r"\s+", " ", str(row.get("quote") or "")).strip()
+            if row.get("match") not in ("obs", "tag"):
+                return [text] if text else []
+            parts = [part.strip() for part in _SENTENCE_SPLIT.split(text) if len(part.strip()) > 12]
+            return parts or ([text] if text else [])
+
+        def _covers(sentence: str) -> set[str]:
+            tokens = re.findall(r"[a-z0-9]+", sentence.lower())
+            return {word for word in ask_tokens if any(_token_matches(tok, word) for tok in tokens)}
+
+        def _best(rows: list[dict[str, Any]]) -> dict[str, Any]:
+            return max(rows, key=lambda row: (
+                *_sentence_hits(str(row.get("quote") or ""), ask_tokens, measures, quant, weights)[:2],
+                -len(str(row.get("quote") or ""))))
+
+        def _served_text(group: list[dict[str, Any]]) -> str:
+            """The text the group's OLD order was ranked on, so fix 9 never reshuffles groups it did not touch."""
+            if not group:
+                return ""
+            if id(group) in tagged_ids and str(group[0].get("section") or "") != "prepared":
+                old = group[0]                      # a Q&A turn kept its first row
+            elif id(group) in tagged_ids:
+                old = _best(group)                  # a prepared turn kept its best sentence
+            else:
+                old = group[0]                      # an obs statement / page hit was one row
+            return str(old.get("quote") or "")
+
         tagged_ids = {id(group) for group in tagged}
         for group in items:
-            if len(group) > 1 and id(group) in tagged_ids:
-                if str(group[0].get("section") or "") == "prepared":
-                    best = max(group, key=lambda row: (
-                        *_sentence_hits(str(row.get("quote") or ""), ask_tokens, measures, quant, weights)[:2],
-                        -len(str(row.get("quote") or ""))))
-                    group[:] = [best]
-                else:
-                    group[:] = group[:1]     # a Q&A turn serves its first row, as before
+            rank_text[id(group)] = _served_text(group)
+        seen_sentences: set[str] = set()
+        for group in items:
+            candidates: list[dict[str, Any]] = []
+            for row in group:
+                for sentence in _sentences(row):
+                    norm_sentence = re.sub(r"\s+", " ", sentence).strip().lower()
+                    if not norm_sentence or norm_sentence in seen_sentences:
+                        continue
+                    seen_sentences.add(norm_sentence)
+                    candidate = dict(row)
+                    candidate["quote"] = sentence
+                    candidates.append(candidate)
+            if not candidates:
+                group[:] = []
+                continue
+            # T-242 fix 9: the turn's best-scoring sentence answers it, whether the turn is prepared remarks or a
+            # Q&A answer (a multi-part answer lists its figures across several sentences).
+            if id(group) in tagged_ids and str(group[0].get("section") or "") != "prepared":
+                primary = candidates[0]             # a Q&A turn keeps its first row, as before
+            else:
+                primary = _best(candidates)
+            chosen = [primary]
+            covered = _covers(str(primary.get("quote") or ""))
+            rest = sorted((row for row in candidates if row is not primary),
+                          key=lambda row: (*_sentence_hits(str(row.get("quote") or ""), ask_tokens, measures,
+                                                           quant, weights)[:2],
+                                           -len(str(row.get("quote") or ""))), reverse=True)
+            for row in rest:
+                if len(chosen) >= 3:
+                    break
+                extra_words = _covers(str(row.get("quote") or ""))
+                if extra_words - covered:
+                    chosen.append(row)
+                    covered |= extra_words
+            group[:] = chosen
 
     def _key(group: list[dict[str, Any]]) -> tuple:
         # T-242 fix 7: a question phrased with rank_terms is ranked by the sentence score; a bare topic search keeps
         # the fix-6 order (every ask word in one sentence, then close, then often) that already answers it.
+        # T-242 fix 9: the group is ranked on the text it was ranked on BEFORE its sentences were split out, so a
+        # turn that now serves three sentences never gains or loses rank for having done so.
+        text = rank_text.get(id(group)) or " ".join(str(r.get("quote") or "") for r in group)
         if rank_terms:
-            return _group_ask_rank(group, ask_tokens, measures, quant, weights, tie_words)
-        text = " ".join(str(r.get("quote") or "") for r in group)
+            return _group_ask_rank(group, ask_tokens, measures, quant, rank_weights, tie_words, text=text)
         close, occ = _proximity(text, ask_tokens)
         return (0 if _sentence_hits(text, ask_tokens)[0] else 1, -close, -occ)
 
@@ -3134,6 +3262,17 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
             show += 1
     page_groups = items[start:start + show]
     out = [item for group in page_groups for item in group]
+    if one_per_turn and len(out) > cap:
+        # T-242 fix 9: a named call's window is 25 ROWS, not 25 turns; a turn may serve up to three sentences, so
+        # the reply keeps the same row window and drops the rows past it (a group is kept whole when it fits).
+        out = []
+        kept_groups = 0
+        for group in page_groups:
+            if out and len(out) + len(group) > cap:
+                break
+            out.extend(group[: cap - len(out)])
+            kept_groups += 1
+        page_groups = page_groups[:kept_groups]
     fallback = "doc_page_bm25" if (topic and tagged_match is False and not obs_v and page_items) else None
     matched_total = len(merged_stmts) + len(page_items)    # items (answer turns, obs statements and page hits)
     shown_items = len(page_groups)
@@ -3359,9 +3498,66 @@ _GUIDANCE_COMPONENT = re.compile(
     r"proprietary\s+brand|brand|division|segment|joint\s+venture|jv|associate|step[- ]down)\b", re.I)
 
 
+# T-242 fix 9: a target whose own quote calls its value the PREVIOUS one ("exceeding our previously communicated
+# FY27 consolidated revenue growth guidance of 12% to 14%") is stale beside the sibling the same filing elected
+# against it ("delivering on our upgraded guidance of 15% to 17%").  Both markers are structural: the quote's own
+# words, no company and no metric.
+_GUIDANCE_STALE = re.compile(
+    r"(?:exceed\w*|ahead of|higher than|beat\w*|surpass\w*|against|versus)\b[^.]{0,90}?"
+    r"(?:previously|previous|earlier|last)\s+(?:communicated|guided|stated|given|indicated|shared)"
+    r"|(?:previously|previous|earlier)\s+(?:communicated|guided|stated|given|indicated)\b"
+    r"|\bguidance\s+(?:we|it)\s+(?:had\s+)?(?:given|stated|communicated)\b", re.I)
+_GUIDANCE_UPGRADED = re.compile(
+    r"\b(?:upgraded|raised|revised\s+upward|increased)\s+(?:our\s+)?(?:full[- ]year\s+)?"
+    r"(?:revenue|ebitda|margin|earnings|profit|growth|aum|order|capex|consolidated\s+revenue)?\s*"
+    r"(?:guidance|target|outlook)\b", re.I)
+
+
+def _guidance_stale(row: dict[str, Any]) -> bool:
+    """Does this row's own quote present its value as the previously communicated guidance being exceeded?"""
+    return bool(_GUIDANCE_STALE.search(str(row.get("quote") or "")))
+
+
+def _guidance_upgraded(row: dict[str, Any]) -> bool:
+    """Does this row's own quote say the guidance it prints is the upgraded / raised one?  Such a row is the
+    company's own target even when the same sentence goes on to name a segment ('our upgraded guidance of 15% to
+    17% revenue growth for FY27 with Hotel segment growing from 17% to 19%' is still the FY27 consolidated target)."""
+    return bool(_GUIDANCE_UPGRADED.search(str(row.get("quote") or "")))
+
+
+# T-242 fix 9: a target the quote attributes to another named entity ("in line with Syngene's revised full year
+# guidance") is that entity's, never the group's, even when the store left ``entity`` empty (BIOCON audit 9).  The
+# name is read from the quote's own possessive, so no company list is hard-coded; the reporting company's own name
+# is never foreign.
+_GUIDANCE_FOREIGN = re.compile(
+    r"\b((?:[A-Z][A-Za-z&.\-]{2,})(?:\s+[A-Z][A-Za-z&.\-]{1,}){0,3})['’]s\s+"
+    r"(?:revised\s+)?(?:full[- ]year\s+)?(?:guidance|target|outlook)\b")
+_GUIDANCE_GENERIC_NAME = {"company", "management", "board", "group", "business", "consolidated", "standalone",
+                          "full", "year", "its", "their", "our", "the", "previous", "current"}
+
+
+def _guidance_foreign_entity(row: dict[str, Any], own: list[str] | tuple[str, ...] = ()) -> str:
+    """The other entity a target's own quote attributes the guidance to ('' when it is the company's own)."""
+    match = _GUIDANCE_FOREIGN.search(str(row.get("quote") or ""))
+    if not match:
+        return ""
+    name = match.group(1).strip()
+    word = re.sub(r"[^a-z]", "", name.lower())
+    if len(word) < 3 or word in _GUIDANCE_GENERIC_NAME:
+        return ""
+    if any(word in o or o in word for o in own if len(o) >= 3):
+        return ""
+    return name
+
+
 def _guidance_group_target(row: dict[str, Any]) -> bool:
-    """Is this target the company's / group's own, not a component's or a subsidiary approval?"""
+    """Is this target the company's / group's own, not a component's, a subsidiary approval's or another entity's?"""
+    if _guidance_upgraded(row):
+        return True
+    if row.get("entity_quote"):
+        return False
     return not _GUIDANCE_COMPONENT.search(str(row.get("quote") or ""))
+
 
 
 # T-242 fix 8: a target the page itself disclaims or calls an aspiration ("it should be aspiring for 10% margin" on
@@ -3388,11 +3584,45 @@ def _guidance_noise_measure(metric: str | None) -> bool:
     return bool(_GUIDANCE_NOISE.search(code)) or code.endswith("_pct")
 
 
+def _guidance_subject_words(metric: str | None) -> list[str]:
+    """The subject words a guidance metric's own name carries ('aum_growth' -> aum, plus the thesaurus spelling).
+
+    A movement token ("growth", "yoy") never counts: the row's quote must print the measure it claims to be, so a
+    disbursement-growth remark tagged ``aum_growth`` (AYE audit 9) is not evidence of an AUM target."""
+    code = _norm_measure(str(metric or ""))
+    if not code or code.startswith("new:"):
+        return []
+    words = [t for t in code.split("_") if len(t) > 2 and t not in _MOVEMENT_TOKENS]
+    out = list(words)
+    for word in words:
+        for term in _synonyms_for(word):
+            low = term.lower()
+            if low not in out:
+                out.append(low)
+    return out
+
+
+def _guidance_quote_evidence(row: dict[str, Any]) -> bool:
+    """Does the row's own quote print the measure's own subject word (AUM, revenue, EBITDA ...)?
+
+    T-242 fix 9: a row whose quote never names the measure ("the disbursement for this quarter and growth of
+    roughly 22%") is a looser sibling of one that does ("we are targeting an AUM growth ... between 25% to 30%"),
+    and loses to it.  A row whose metric has no checkable subject keeps its place."""
+    words = _guidance_subject_words(row.get("metric"))
+    if not words:
+        return True
+    text = re.sub(r"[^a-z0-9]+", " ", str(row.get("quote") or "").lower())
+    return any(word in text for word in words)
+
+
 def _guidance_elect(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """One current row per metric+period (T-242): the company's / group's own full-year target wins over a
     component's or subsidiary approval's ("ARACT, WOS, has approved a capex of Rs. 2,320 crores" is not the group's
     FY27 capex) and over the balance-of-year restatement of the same target ("INR80 crores for the year" over "the
     balance INR75 crores for the next three quarters"); otherwise the first row served (the table is newest first).
+    T-242 fix 9 adds the row's own printed evidence: a quote that calls its value the previously communicated one
+    loses to the upgraded sibling the same filing elected against it, a quote that prints the metric's subject
+    word beats a looser growth sibling, and a target its quote attributes to another entity never wins.
     Returns (kept, alternatives)."""
     groups: dict[tuple, list[dict[str, Any]]] = {}
     for row in rows:
@@ -3400,12 +3630,20 @@ def _guidance_elect(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], l
     kept_ids: set[int] = set()
     alternatives: list[dict[str, Any]] = []
     for group in groups.values():
-        full = [row for row in group if not _GUIDANCE_BALANCE.search(str(row.get("quote") or ""))]
-        company = [row for row in (full or group) if _guidance_group_target(row)]
-        chosen = (company or full or group)[0]
+        stale_any = any(_guidance_stale(row) for row in group)
+
+        def _key(row: dict[str, Any]) -> tuple[int, int, int, int, int]:
+            return (1 if _guidance_stale(row) else 0,
+                    0 if (stale_any and _guidance_upgraded(row)) else 1,
+                    0 if _guidance_group_target(row) else 1,
+                    0 if _guidance_quote_evidence(row) else 1,
+                    1 if _GUIDANCE_BALANCE.search(str(row.get("quote") or "")) else 0)
+
+        chosen = sorted(group, key=_key)[0]
         kept_ids.add(id(chosen))
         alternatives += [row for row in group if row is not chosen]
     return [row for row in rows if id(row) in kept_ids], alternatives
+
 
 
 def _guidance_demote_components(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -3423,38 +3661,51 @@ def _guidance_demote_components(rows: list[dict[str, Any]]) -> tuple[list[dict[s
     kept_ids: set[int] = set()
     alternatives: list[dict[str, Any]] = []
     for group in groups.values():
-        company = [row for row in group if _guidance_group_target(row)]
+        foreign = [row for row in group if row.get("entity_quote")]
+        rest = [row for row in group if not row.get("entity_quote")]
+        company = [row for row in rest if _guidance_group_target(row)]
         clear = [row for row in company if not _guidance_disclaimed(row)]
         if clear:
             kept_ids.update(id(row) for row in clear)
-            alternatives.extend(row for row in group if id(row) not in {id(x) for x in clear})
         elif company:
-            # every candidate group target is disclaimed / aspirational: none is the answer, all are shown labelled
-            alternatives.extend(company)
-        else:
-            kept_ids.update(id(row) for row in group)
+            pass        # every candidate group target is disclaimed / aspirational: none is the answer
+        elif rest:
+            # the old fallback: a group whose only rows are component-ish still answers (a build that names no
+            # entity); another entity's target is never kept, however alone it is (T-242 fix 9).
+            kept_ids.update(id(row) for row in rest)
+        alternatives.extend(row for row in group if id(row) not in kept_ids)
     return [row for row in rows if id(row) in kept_ids], alternatives
 
 
 def _guidance_alt(row: dict[str, Any]) -> dict[str, Any]:
     """A dropped current row, said plainly, so the reply shows the other target it elected against (T-242)."""
     balance = bool(_GUIDANCE_BALANCE.search(str(row.get("quote") or "")))
+    entity = str(row.get("entity_quote") or "")
     component = not _guidance_group_target(row)
     disclaimed = _guidance_disclaimed(row)
+    stale = _guidance_stale(row)
     if balance:
         why = "balance-of-year restatement of the full-year target"
+    elif entity:
+        why = f"another entity's target ({entity}), not the group's own full-year one"
     elif component:
         why = "a component / subsidiary target, not the group's own full-year one"
     elif disclaimed:
         why = "a target its own page disclaims or calls an aspiration, not a guidance target"
+    elif stale:
+        why = "a target its own quote calls the previously communicated one, which the filing's upgraded target supersedes"
     else:
         why = "an earlier target of the same metric and period"
-    return {"metric": row["metric"], "period": row["target_period"], "low": row["low"], "high": row["high"],
-            "unit": row["unit"], "said_on": row["said_on"], "quote": _trim(row["quote"], 240),
-            "why_not_preferred": why,
-            "provenance": _prov("guidance", f"{row['doc_key']} p{row['page']}", row.get("known_at"),
-                                doc_type=row.get("doc_type"), title=_trim(row.get("title"), 120),
-                                row_id=row["id"])}
+    out = {"metric": row["metric"], "period": row["target_period"], "low": row["low"], "high": row["high"],
+           "unit": row["unit"], "said_on": row["said_on"], "quote": _trim(row["quote"], 240),
+           "why_not_preferred": why,
+           "provenance": _prov("guidance", f"{row['doc_key']} p{row['page']}", row.get("known_at"),
+                               doc_type=row.get("doc_type"), title=_trim(row.get("title"), 120),
+                               row_id=row["id"])}
+    if entity:
+        out["entity"] = entity
+    return out
+
 
 
 def _guidance_held_quarantined(symbol: str, names: list[str], label: str | None,
@@ -3503,7 +3754,10 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
     period is the period asked when the call printed the range without a year, marked ``period_source='unstated'``).
     Every row says ``check_status`` verified or unverified (T-113).  A target its own quote disclaims or calls an
     aspiration is never elected first, and a money ask such as capex skips allocation-share / ``_pct`` measure
-    noise.  A target
+    noise.  A target the same filing's quote calls the previously communicated one loses to the upgraded sibling of
+    its metric+period+date, a target its own quote attributes to another named entity never wins, and a row whose
+    quote never prints the measure's own subject word loses to a sibling that does.
+    A target
     stated for a named subsidiary, segment or investee is stored with that ``entity`` and never returned here: only
     the group's own guidance is served (T-192)."""
     sym = resolve_symbol(symbol)
@@ -3547,6 +3801,13 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
                   f"LEFT JOIN guidance pv ON pv.id=g.revision_of{join} WHERE {where}{extra} "
                   f"ORDER BY COALESCE(g.known_at, g.said_on) DESC, g.id DESC LIMIT 400", (*args, *eargs))
         kept = [dict(r) for r in rows]
+    # T-242 fix 9: the quote's own possessive names the entity a target belongs to ("in line with Syngene's revised
+    # full year guidance"), which the store's empty ``entity`` cannot; the reporting company's own name is never
+    # another entity's.
+    own_words = [re.sub(r"[^a-z]", "", str(r[0] or "").lower())
+                 for r in (_q("SELECT name FROM company WHERE symbol=?", (sym,)) if _has_table("company") else [])]
+    for r in kept:
+        r["entity_quote"] = _guidance_foreign_entity(r, own_words)
     # T-242 fix 8: a money ask ("capex") is never answered by an allocation-share percentage the store happens to
     # tag under the same word (AZTEC NEW:capex_allocation_share 5%/3%/8%: a pie chart's shares, not a capex plan).
     money_ask = bool(metric) and (_metric_family(metric or "") == "money"
@@ -4533,7 +4794,12 @@ def _fact_alt(row: dict[str, Any], period: str | None = None) -> dict[str, Any]:
     scope = _scope_label(row)     # T-242 fix 7: an alternative says whose figure it is ('industry figure')
     if scope:
         alt["scope"] = scope
+    if row.get("scale_mismatch"):
+        # T-242 fix 9: the row's own quote cannot reproduce its value in its unit, so it is labelled, never the answer
+        alt["scale_mismatch"] = True
+        alt["note"] = "the row's own quote prints a different figure than the stored value (a scale/extraction defect)"
     return alt
+
 
 
 def _fact_mismatch(asked_period: str | None, asked_basis: str | None, row: dict[str, Any]) -> str | None:
@@ -5749,7 +6015,10 @@ def _obs_statement_rows(sym: str, topic: str | None = None, terms: str | None = 
             "topics": g("measure"), "entities": None, "period_discussed": g("period") or None,
             "answer_turn": None, "match": "obs", "status": g("status"), "source": "obs_fact",
             "entity_scope": g("entity_scope"), "page": g("page"), "doc_key": g("doc_key"), "doc_type": doc_type,
-            "quote": _trim(stmt, QUOTE_CHARS),
+            # T-242 fix 9: with the question's own words, a named call's statement is read to its end, because the
+            # asked sentence may be its last one (ARCIL's "Other expenses ..." is the final sentence of a long
+            # paragraph); the sentence scorer serves only the sentence it picks, so the reply stays short.
+            "quote": _trim(stmt, 1600 if (named_day and (rank_terms or terms)) else QUOTE_CHARS),
             "provenance": _prov("obs_fact", f"{g('doc_key')} p{g('page')}", g("known_at"),
                                 title=title, doc_type=doc_type, row_id=g("observation_id")),
             "_term_score": t_score,
