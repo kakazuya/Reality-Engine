@@ -3828,23 +3828,70 @@ AR_BASIS_WORD_RE = re.compile(r"\b(?:standalone|consolidated)\b", re.I)
 AR_NET_CASH_LABEL_RE = re.compile(
     r"\bnet\s+cash\b(?!\s*(?:flow|generated|provided|from|used|in\b|out\b))", re.I)
 AR_OTHER_ENTITY_HEAD_RE = re.compile(
-    r"(?:^|\n)\s*([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Limited|Ltd\.?))"
-    r"\s*(?:and\s+its\s+subsidiaries\s+)?(?:standalone\s+|consolidated\s+|audited\s+|unaudited\s+)*"
-    r"(?:financial\s+statements?|notes?\s+to|balance\s+sheet|statement\s+of\s+(?:profit|financial))"
-    r"|(?:financial\s+statements?|notes?\s+to(?:\s+the)?\s+financial\s+statements?|balance\s+sheet|"
-    r"statement\s+of\s+(?:profit(?:\s+and\s+loss)?|financial\s+position))\s+of\s+"
-    r"([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Limited|Ltd\.?))", re.I)
+    r"(?:^|\n)\s*(?:standalone\s+|consolidated\s+|audited\s+|unaudited\s+)*"
+    r"(?:financial\s+statements?|balance\s+sheet|"
+    r"statement\s+of\s+(?:profit(?:\s+and\s+loss)?|financial\s+position|cash\s+flows?|changes\s+in\s+equity))\s+of\s+"
+    r"(?!the\s+company\b)([A-Za-z][A-Za-z0-9&.,'()\- ]{2,70}?(?:Private\s+Limited|Pvt\.?\s*Ltd\.?|Limited|Ltd\.?))(?:\s|$|[,.])"
+    r"|(?:^|\n)\s*([A-Za-z][A-Za-z0-9&.,'()\- ]{2,70}?(?:Private\s+Limited|Pvt\.?\s*Ltd\.?|Limited|Ltd\.?))"
+    r"(?:\s*\n\s*|\s+)(?:and\s+its\s+subsidiaries\s+)?(?:standalone\s+|consolidated\s+|audited\s+|unaudited\s+)*"
+    r"(?:notes?\s+to(?:\s+the)?\s+(?:standalone\s+|consolidated\s+)?(?:financial\s+statements?|accounts)|"
+    r"financial\s+statements?|balance\s+sheet(?:\s+as\s+at)?|"
+    r"statement\s+of\s+(?:profit(?:\s+and\s+loss)?|financial\s+position|cash\s+flows?|changes\s+in\s+equity))\b",
+    re.I,
+)
 AR_OTHER_ENTITY_LINE_RE = re.compile(
-    r"(?:^|\n)\s*([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Pvt\.?\s+Ltd\.?|Limited|Ltd\.?))\s*(?=\n|$)",
+    r"(?:^|\n)\s*([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Pvt\.?\s*Ltd\.?|Limited|Ltd\.?))\s*(?=\n|$)",
     re.I,
 )
 AR_OTHER_ENTITY_STMT_HEAD_RE = re.compile(
     r"\b(?:notes?\s+to(?:\s+the)?\s+financial\s+statements?|financial\s+statements?|"
     r"balance\s+sheet|statement\s+of\s+(?:profit|cash|changes))\b", re.I)
+AR_OTHER_ENTITY_STMT_BANNER_RE = re.compile(
+    r"(?:^|\n)\s*(?:(?:standalone|consolidated)\s+)?(?:financial\s+statements?|balance\s+sheet|"
+    r"statement\s+of\s+profit(?:\s+and\s+loss)?)\s*(?=\n|$)",
+    re.I,
+)
+AR_OTHER_ENTITY_BANNER_BLOCK_RE = re.compile(
+    r"\b(?:interest\s+in\s+other\s+entities|related[\s-]+part(?:y|ies)|ind[\s-]*as[\s-]*24|"
+    r"enterprises?\s+(?:over\s+which|owned)|significant\s+influence|key\s+manager(?:ial)?\s+personnel|"
+    r"post\s+employment\s+benefit|"
+    r"subsidiar(?:y|ies)|associates?|joint\s+ventures?|investments?\s+in|aoc[\s-]*1|form\s+aoc|"
+    r"stock\s+exchange|unclaimed\s+dividend|\biepf\b|"
+    r"sr\.?\s*no|name\s+of\s+(?:the\s+)?(?:entity|subsidiary|related|party|shareholder|promoter))\b",
+    re.I,
+)
+AR_OTHER_ENTITY_NON_STMT_RE = re.compile(
+    r"\b(?:csr\s+committee|corporate\s+social\s+responsibility|"
+    r"attendance\s+at\s+(?:the\s+)?board|board\s+meetings?\s+(?:held|attended)|"
+    r"(?:audit|nomination|remuneration|stakeholders?\s+relationship|risk\s+management)\s+committee|"
+    r"independent\s+auditors?['\u2019]?\s*report|"
+    r"annexure\s*(?:[\"'a-z0-9\-]+\s*)?to\s+(?:the\s+)?(?:independent\s+)?auditors?['\u2019]?\s*report|"
+    r"secretarial\s+audit\s+report|form\s+(?:no\.?\s*)?aoc[\s-]*1|"
+    r"statement\s+containing\s+salient\s+features\s+of\s+the\s+financial\s+statement|"
+    r"unclaimed\s+dividend\s+and\s+shares\s+transferred|investor\s+education\s+and\s+protection\s+fund|"
+    r"details\s+of\s+(?:investments|subsidiaries|related\s+party))\b",
+    re.I,
+)
+AR_OTHER_ENTITY_BAD_NAME_RE = re.compile(
+    r"^\s*(?:to\s+the\s+members|members\s+of|report|annexure|corporate\s+guarantee|"
+    r"guarantee\s+(?:by|of|for)|holding\b|parent\b|subsidiar|associate|joint\s+venture|"
+    r"in\s+respect\s+of|name\s+of|details\s+of|on\s+behalf|for\s+and\s+on\s+behalf|notes?\s+to|"
+    r"financial\s+statements?\s+of|cin\s*:)|"
+    r"\b(?:to\s+the\s+members\s+of|on\s+the\s+(?:standalone|consolidated)|corporate\s+guarantee)\b",
+    re.I,
+)
+AR_OTHER_ENTITY_OWN_EQUITY_RE = re.compile(
+    r"\b(?:equity_share_capital|preference_share_capital|share_capital|authorised_shares|"
+    r"other_equity|retained_earnings|reserves_and_surplus|total_equity|net_worth|"
+    r"capital_and_net_debt|capital_management|gearing_ratio)\b|"
+    r"\b(?:equity\s+share\s+capital|authorised\s+share\s+capital|issued,?\s+subscribed|"
+    r"other\s+equity|capital\s+management|statement\s+of\s+changes\s+in\s+equity)\b",
+    re.I,
+)
 AR_OTHER_ENTITY_SKIP_LINE_RE = re.compile(
     r"\b(?:holding\s+company|parent\s+company|auditor|chartered\s+accountants?|for\s+and\s+on\s+behalf)\b", re.I)
 AR_OTHER_ENTITY_RUNNING_RE = re.compile(
-    r"(?:^|\n)\s*([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Limited|Ltd\.?))"
+    r"(?:^|\n)\s*([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Pvt\.?\s*Ltd\.?|Limited|Ltd\.?))"
     r"\s*\|\s*(?:FINANCIALS?|ANNUAL\s+REPORT)", re.I)
 AR_NEW_NODE_FAMILY = {"revenue": "money", "cost": "money", "capex": "money", "debt": "money",
                       "equity": "money", "working_capital": "money", "capacity": "capacity",
@@ -4733,10 +4780,11 @@ AR_RPT_NON_SUBSIDIARY_RE = re.compile(
     re.I,
 )
 AR_RPT_HEAD_LINE_RE = re.compile(
-    r"^(?:[A-Z]\)|\([a-z0-9]+\)|[ivxlc]+\)|[a-z]\.)?\s*(?:details\s+of\s+transactions?\s+relating\s+to\s+)?"
+    r"^(?:[A-Z]\)|\([a-z0-9]+\)|[ivxlc]+[.)]|\d+[.)]|[a-z]\.)?\s*(?:details\s+of\s+transactions?\s+relating\s+to\s+)?"
     r"(other\s+related\s+part(?:y|ies)|enterprises?\s+(?:owned|over\s+which|where\s+key\s+management)[^:\n]{0,80}|"
     r"associates?(?:\s+and\s+joint\s+ventures?)?|joint\s+ventures?|key\s+manager(?:ial)?\s+personnel|"
-    r"(?:(?:step[\s-]*down|wholly\s+owned)\s+)?subsidiar(?:y|ies))\s*:?\s*$",
+    r"(?:(?:step[\s-]*down|wholly\s+owned)\s+)?subsidiar(?:y|ies))"
+    r"(?:\s*,?\s*including\b[^:\n]{0,40})?\s*:?\s*$",
     re.I,
 )
 AR_RPT_TX_HEAD_RE = re.compile(
@@ -4782,16 +4830,31 @@ def _ar_rpt_relationship_and_category(row: dict[str, Any], page_text: str, previ
         return ""
     reason = ""
     scope = str(row.get("entity_scope") or "")
-    if scope == "subsidiary" and label:
+    # T-242 r6: only move scope when 'subsidiary'/'parent' came from the counterparty (never touch already-'company' rows).
+    # Moving a non-subsidiary RPT counterparty to 'company' (with customer=counterparty) fixes the scope and keeps valid
+    # company RPT transactions verified (ACC, AGL, A2ZINFRA, ADVENTHTL, AFSL); only category mismatches (#3) go unverified.
+    existing_customer = norm_space(row.get("customer"))
+    existing_segment = norm_space(row.get("segment"))
+    party_from_label = bool(
+        label and (
+            AR_SUBSIDIARY_NAME_RE.search(label)
+            or AR_ENTITY_NAME_RE.search(label)
+            or (existing_customer and normalize_name(existing_customer) == normalize_name(label))
+        )
+    )
+    party_name = label if party_from_label else existing_customer
+    if scope in ("subsidiary", "parent") and party_name and (
+            not existing_segment or normalize_name(existing_segment) == normalize_name(party_name)):
         lines = [norm_space(ln) for ln in page_text.splitlines() if norm_space(ln)]
         has_rel_col = bool(AR_RPT_REL_COL_RE.search(f"{previous_text[-500:]}\n{page_text[:700]}"))
-        lbl_low = label.lower()
+        lbl_low = party_name.lower()
         lbl_head = lbl_low[:40]
         hit_idx = -1
         for i, ln in enumerate(lines):
             if lbl_low in ln.lower() or (len(lbl_head) >= 12 and lbl_head in ln.lower()):
                 hit_idx = i
                 break
+        moved_scope = False
         if has_rel_col and hit_idx >= 0:
             rel_tokens: list[str] = []
             for j in range(hit_idx + 1, min(len(lines), hit_idx + 6)):
@@ -4812,9 +4875,9 @@ def _ar_rpt_relationship_and_category(row: dict[str, Any], page_text: str, previ
                 row["entity_scope"] = "company"
                 row["scope_source"] = "rpt_not_subsidiary"
                 if not row.get("customer"):
-                    row["customer"] = label
-                reason = f"ar_rpt_not_subsidiary: printed relationship {rel_win!r} for {label!r} is not subsidiary"
-        if not reason and row.get("entity_scope") == "subsidiary":
+                    row["customer"] = party_name
+                moved_scope = True
+        if not moved_scope and row.get("entity_scope") in ("subsidiary", "parent"):
             # Check section/party-directory headings above the party across previous_text + page_text
             comb_lines = [norm_space(ln) for ln in combined_raw.splitlines() if norm_space(ln)]
             comb_hit = -1
@@ -4829,7 +4892,7 @@ def _ar_rpt_relationship_and_category(row: dict[str, Any], page_text: str, previ
                         comb_hit = i
                         break
             if comb_hit >= 0:
-                # Look upward for the nearest party-category heading or inline directory label ("Step-down subsidiaries : ...")
+                # Look upward for the nearest party-category heading or inline directory label ("Subsidiaries, including: ...")
                 found_cat = ""
                 for i in range(comb_hit - 1, -1, -1):
                     ln = comb_lines[i]
@@ -4839,28 +4902,30 @@ def _ar_rpt_relationship_and_category(row: dict[str, Any], page_text: str, previ
                         elif AR_RPT_SUBSIDIARY_VAL_RE.search(ln):
                             found_cat = f"sub:{ln}"
                         break
-                    if re.match(r"^(?:step[\s-]*down\s+)?subsidiar(?:y|ies)\s*$", ln, re.I) \
-                            or re.search(r"^(?:step[\s-]*down\s+)?subsidiar(?:y|ies)\s*:", ln, re.I):
+                    if re.match(r"^(?:step[\s-]*down\s+)?subsidiar(?:y|ies)(?:\s*,?\s*including\b[^:]*)?\s*$", ln, re.I) \
+                            or re.search(r"^(?:step[\s-]*down\s+)?subsidiar(?:y|ies)(?:\s*,?\s*including\b[^:]*)?\s*:", ln, re.I):
                         found_cat = f"sub:{ln}"
                         break
                     if re.search(r"^(?:other\s+related\s+parties|associates?|joint\s+ventures?|"
-                                 r"enterprises?\s+(?:owned|over\s+which|where))\s*:", ln, re.I):
+                                 r"enterprises?\s+(?:owned|over\s+which|where))\s*(?:,\s*including\b[^:]*)?\s*:", ln, re.I):
                         found_cat = f"non_sub:{ln}"
                         break
                 if found_cat.startswith("non_sub:"):
                     row["entity_scope"] = "company"
                     row["scope_source"] = "rpt_not_subsidiary"
                     if not row.get("customer"):
-                        row["customer"] = label
-                    reason = (f"ar_rpt_not_subsidiary: {label!r} sits under {found_cat[8:]!r}, "
-                              f"not a subsidiary category")
+                        row["customer"] = party_name
     # Check printed transaction category vs generic sale/service measure (#3 AMBUJACEM)
     if not reason and label and re.search(r"(?:sale|purchase)_of_(?:services|goods)", measure):
+        page_lines = [norm_space(ln) for ln in page_text.splitlines() if norm_space(ln)]
         comb_lines = [norm_space(ln) for ln in combined_raw.splitlines() if norm_space(ln)]
         lbl_low = label.lower()
-        hit = next((i for i, ln in enumerate(comb_lines) if lbl_low in ln.lower()), -1)
+        offset = max(0, len(comb_lines) - len(page_lines))
+        hit = next((i for i in range(offset, len(comb_lines)) if lbl_low in comb_lines[i].lower()), -1)
+        if hit < 0:
+            hit = next((i for i, ln in enumerate(comb_lines) if lbl_low in ln.lower()), -1)
         if hit >= 0:
-            for i in range(hit - 1, max(-1, hit - 120), -1):
+            for i in range(hit - 1, max(-1, hit - 400), -1):
                 ln = comb_lines[i]
                 if AR_RPT_TX_HEAD_RE.match(ln):
                     low_h = ln.lower()
@@ -5355,54 +5420,91 @@ AR_TABLE_START_RE = re.compile(
 )
 
 
+def _ar_is_non_other_entity_page(page_text: str) -> bool:
+    """True when the page is governance, CSR, board attendance, auditor report, AOC-1, or a subsidiary list."""
+    if not page_text:
+        return False
+    head = page_text[:600]
+    head_norm = norm_space(head)
+    if AR_SUB_COMPANY_SECTION_RE.search(head_norm) or AR_OTHER_ENTITY_NON_STMT_RE.search(head_norm):
+        return True
+    return False
+
+
+def _ar_clean_entity_candidate(raw_name: str) -> str:
+    name = norm_space(raw_name).strip(" .,;|")
+    if not name or AR_OTHER_ENTITY_SKIP_LINE_RE.search(name) or RESULTS_AUDIT_FIRM_RE.search(name) \
+            or AR_OTHER_ENTITY_BAD_NAME_RE.search(name):
+        return ""
+    return name
+
+
 def _ar_other_entity_single_page(page_text: str, company: str) -> tuple[str, bool]:
     """Return ``(other_entity, sees_own_header)`` from one AR page's statement/running header."""
     if not company or not page_text:
         return "", False
+    if _ar_is_non_other_entity_page(page_text):
+        return "", True
     head = page_text[:450]
     m = AR_OTHER_ENTITY_HEAD_RE.search(head)
     if m:
-        name = norm_space(m.group(1) or m.group(2) or "").strip(" .,;|")
-        if name and not AR_OTHER_ENTITY_SKIP_LINE_RE.search(name) and not RESULTS_AUDIT_FIRM_RE.search(name):
+        name = _ar_clean_entity_candidate(m.group(1) or m.group(2) or "")
+        if name:
             if _is_own_entity(name, company):
                 return "", True
             return name, False
-    if AR_OTHER_ENTITY_STMT_HEAD_RE.search(page_text[:350]):
+    rm = AR_OTHER_ENTITY_RUNNING_RE.search(page_text)
+    if rm:
+        name = _ar_clean_entity_candidate(rm.group(1))
+        if name:
+            if _is_own_entity(name, company):
+                return "", True
+            return name, False
+    # Bound subsidiary section title block (e.g. "Financial Statements\nStatutory Reports\nGJS Hotels Limited\n5. INVESTMENTS")
+    # Never fire inside Notes/RPT/Investments/Subsidiaries tables.
+    if AR_OTHER_ENTITY_STMT_BANNER_RE.search(head) and not AR_OTHER_ENTITY_BANNER_BLOCK_RE.search(head):
         tbl_m = AR_TABLE_START_RE.search(head)
         pre_table = head[:tbl_m.start()] if tbl_m else head
         lines = [norm_space(ln) for ln in pre_table.splitlines() if norm_space(ln)]
+        banner_seen = False
         for idx, name_raw in enumerate(lines):
-            if not re.match(r"^[A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Pvt\.?\s+Ltd\.?|Limited|Ltd\.?)$",
-                            name_raw, re.I):
+            if AR_OTHER_ENTITY_STMT_BANNER_RE.search(name_raw):
+                banner_seen = True
                 continue
-            name = name_raw.strip(" .,;|")
-            if AR_OTHER_ENTITY_SKIP_LINE_RE.search(name) or RESULTS_AUDIT_FIRM_RE.search(name):
+            if not banner_seen:
+                if _is_own_entity(name_raw, company):
+                    return "", True
                 continue
-            if idx + 1 < len(lines) and re.fullmatch(r"(?:\(?[\d,]+(?:\.\d+)?\)?|-|–|—|\d{1,2})", lines[idx + 1]):
+            if AR_OTHER_ENTITY_BANNER_BLOCK_RE.search(name_raw) or re.match(r"^(?:note\s+)?\d+\.", name_raw, re.I):
+                break
+            if not re.match(
+                    r"^[A-Za-z][A-Za-z0-9&.,'()\- ]{2,70}?(?:Private\s+Limited|Pvt\.?\s*Ltd\.?|Limited|Ltd\.?)$",
+                    name_raw, re.I):
+                continue
+            name = _ar_clean_entity_candidate(name_raw)
+            if not name:
+                continue
+            if idx + 1 < len(lines) and (
+                    re.fullmatch(r"(?:\(?[\d,]+(?:\.\d+)?\)?|-|–|—|\d{1,2})", lines[idx + 1])
+                    or AR_SUBSIDIARY_NAME_RE.search(lines[idx + 1])):
                 continue
             if _is_own_entity(name, company):
                 return "", True
             if not re.search(r"\b(?:subsidiary|associate|joint\s+venture|promoter|nominee)\b", name, re.I):
                 return name, False
-    rm = AR_OTHER_ENTITY_RUNNING_RE.search(page_text)
-    if rm:
-        name = norm_space(rm.group(1)).strip(" .,;|")
-        if name and not RESULTS_AUDIT_FIRM_RE.search(name):
-            if _is_own_entity(name, company):
-                return "", True
-            return name, False
     return "", False
 
 
 def _ar_other_entity_in(page_text: str, previous_text: str, company: str) -> str:
-    """T-242 r5: detect another entity's statements on this page or on the preceding page of a bound run."""
+    """T-242 r5/r6: detect another entity's statements on this page or on the preceding page of a bound run."""
     ent, own_head = _ar_other_entity_single_page(page_text, company)
     if ent:
         return ent
     if own_head or not previous_text:
         return ""
-    if AR_OTHER_ENTITY_STMT_HEAD_RE.search(page_text[:350]) \
-            or AR_OTHER_ENTITY_STMT_HEAD_RE.search(previous_text[:350]):
+    if (AR_OTHER_ENTITY_STMT_HEAD_RE.search(page_text[:350])
+            or AR_OTHER_ENTITY_STMT_HEAD_RE.search(previous_text[:350])) \
+            and not AR_CONS_GROUP_HEAD_RE.search(page_text[:350]):
         prev_ent, _ = _ar_other_entity_single_page(previous_text, company)
         if prev_ent:
             return prev_ent
@@ -5411,13 +5513,14 @@ def _ar_other_entity_in(page_text: str, previous_text: str, company: str) -> str
 
 def _ar_company_is_holding(page_text: str, company: str) -> bool:
     """True when the page names ``company`` as the Holding Company of the statements' entity (#47 AHLEAST)."""
-    if not company or not page_text or AR_CONS_GROUP_HEAD_RE.search(page_text[:350]):
+    if not company or not page_text or AR_CONS_GROUP_HEAD_RE.search(page_text[:350]) \
+            or _ar_is_non_other_entity_page(page_text) or AR_OTHER_ENTITY_BANNER_BLOCK_RE.search(page_text[:450]):
         return False
     for raw_ln in page_text.splitlines():
         ln = norm_space(raw_ln)
         if not ln or not re.search(r"\b(?:the\s+)?holding\s+company\b", ln, re.I):
             continue
-        m = re.search(r"([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Limited|Ltd\.?))\s*,?\s*"
+        m = re.search(r"([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80}?(?:Private\s+Limited|Pvt\.?\s*Ltd\.?|Limited|Ltd\.?))\s*,?\s*"
                       r"(?:is\s+)?(?:the\s+)?holding\s+company\b", ln, re.I)
         if m and _is_own_entity(m.group(1), company):
             return True
@@ -5437,6 +5540,7 @@ def _ar_note_context(store_db: str | Path, doc_key: str, page: int,
                   and (not previous_text or ar_scale_note(norm_space(previous_text)) is None))
     need_entity = bool(company and not _ar_other_entity_in(page_text, previous_text, company)
                        and not _ar_other_entity_single_page(page_text, company)[1]
+                       and not AR_CONS_GROUP_HEAD_RE.search(page_text[:350])
                        and AR_OTHER_ENTITY_STMT_HEAD_RE.search(page_text[:350]))
     if not need_scale and not need_entity:
         return note_fallback, other_entity_hint
@@ -5455,12 +5559,15 @@ def _ar_note_context(store_db: str | Path, doc_key: str, page: int,
     for pg, pg_txt in rows:
         pg_norm = norm_space(pg_txt)
         if need_entity and int(page) - pg <= 6:
-            ent, own_head = _ar_other_entity_single_page(pg_txt, company)
-            if own_head:
+            if AR_CONS_GROUP_HEAD_RE.search(pg_txt[:350]) or _ar_is_non_other_entity_page(pg_txt):
                 need_entity = False
-            elif ent:
-                other_entity_hint = ent
-                need_entity = False
+            else:
+                ent, own_head = _ar_other_entity_single_page(pg_txt, company)
+                if own_head:
+                    need_entity = False
+                elif ent:
+                    other_entity_hint = ent
+                    need_entity = False
         if need_scale:
             pg_basis = heading_basis(pg_norm)
             if cur_basis and pg_basis and pg_basis != cur_basis:
@@ -5551,7 +5658,10 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             basis, basis_source = previous_heading, "previous_page_heading"
     # a bound subsidiary section names its entity in the page head, or (its field pages) only in the printed
     # running header/footer, or on the preceding page of its statement run; either one is another reporting entity
-    other_entity = _ar_other_entity_in(page_text, previous_text, company) or other_entity_hint
+    direct_other_entity = _ar_other_entity_single_page(page_text, company)[0]
+    other_entity = _ar_other_entity_in(page_text, previous_text, company) or (
+        other_entity_hint if not _ar_is_non_other_entity_page(page_text) and not AR_CONS_GROUP_HEAD_RE.search(text[:350]) else ""
+    )
     company_is_holding = bool(not other_entity and _ar_company_is_holding(page_text, company))
     cons_group_head = bool(AR_CONS_GROUP_HEAD_RE.search(text[:300]))
     has_prose_consolidated = bool(CONSOLIDATED_RE.search(page_text) or CONSOLIDATED_PAGE_RE.search(page_text))
@@ -5697,14 +5807,24 @@ def apply_ar_row_gates(rows: list[dict[str, Any]], page_text: str = "", company:
             cash_measure = measure[len(NEW_PREFIX):] if measure.startswith(NEW_PREFIX) else measure
             if cash_measure.startswith("net_debt") and AR_NET_CASH_LABEL_RE.search(cash_label):
                 reason = f"ar_net_cash_sign: {cash_label!r} is net cash, the opposite of {measure}"
-        if not reason and other_entity and not (
-                str(row.get("entity_scope") or "") == "subsidiary"
-                and normalize_name(str(row.get("segment") or "")) == normalize_name(other_entity)):
-            row["entity_scope"], row["segment"] = "subsidiary", other_entity
-            reason = f"ar_other_entity: {other_entity!r} statements, not {company}"
-        elif not reason and company_is_holding:
-            row["entity_scope"] = "subsidiary"
-            reason = f"ar_other_entity: subsidiary statements (holding company is {company})"
+        if not reason and (other_entity or company_is_holding):
+            row_ctx = " ".join(norm_space(row.get(k)) for k in ("measure", "series_title", "group_path", "printed_label"))
+            non_stmt_row = bool(AR_SUB_COMPANY_SECTION_RE.search(row_ctx) or AR_OTHER_ENTITY_NON_STMT_RE.search(row_ctx)
+                                or re.search(r"\b(?:board_meetings|csr_|committee_meetings|sitting_fees)\b", measure, re.I))
+            own_equity_tie = bool(
+                not direct_other_entity
+                and not company_is_holding
+                and (AR_OTHER_ENTITY_OWN_EQUITY_RE.search(row_ctx) or AR_OTHER_ENTITY_OWN_EQUITY_RE.search(text[:600]))
+            )
+            if not non_stmt_row and not own_equity_tie:
+                if other_entity and not (
+                        str(row.get("entity_scope") or "") == "subsidiary"
+                        and _entity_key(str(row.get("segment") or "")) == _entity_key(other_entity)):
+                    row["entity_scope"], row["segment"] = "subsidiary", other_entity
+                    reason = f"ar_other_entity: {other_entity!r} statements, not {company}"
+                elif not other_entity and company_is_holding:
+                    row["entity_scope"] = "subsidiary"
+                    reason = f"ar_other_entity: subsidiary statements (holding company is {company})"
         if not reason:
             reason = _ar_subset_as_total_reason(row, page_text=page_text)
         if not reason:
@@ -6960,9 +7080,10 @@ def _measure_names_qualifier(measure: str, label: str) -> bool:
 
 
 def _entity_key(name: str) -> str:
-    """Letters-and-digits key of a company name, without a leading "The" ("A. K." == "AK")."""
-    normalized = re.sub(r"^the\s+", "", normalize_name(name).strip())
-    return re.sub(r"[^a-z0-9]+", "", normalized)
+    """Letters-and-digits key of a company name, normalising corporate suffixes, punctuation and leading 'The'."""
+    cleaned = re.sub(r"[^a-z0-9]+", " ", norm_space(name).lower()).strip()
+    cleaned = re.sub(r"\b(?:the|limited|ltd|private|pvt|company|co|corporation|corp|incorporated|inc|and)\b", " ", cleaned)
+    return re.sub(r"\s+", "", cleaned)
 
 
 def _is_own_entity(name: str, company: str) -> bool:

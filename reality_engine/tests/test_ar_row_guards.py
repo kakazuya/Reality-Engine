@@ -137,7 +137,8 @@ def test_w3_ambujacem_rpt_other_related_party_and_category_mismatch():
     )
     obs.apply_ar_row_gates([row_sub, row_comp], page, "Ambuja Cements Limited", previous_text=prev)
     assert row_sub["entity_scope"] == "company" and row_sub["status"] == "unverified"
-    assert "ar_rpt_not_subsidiary" in row_sub["status_reason"]
+    assert row_sub["scope_source"] == "rpt_not_subsidiary" and row_sub["customer"] == "Ordefence Systems Limited"
+    assert "ar_rpt_category_mismatch" in row_sub["status_reason"]
     assert row_comp["status"] == "unverified" and "ar_rpt_category_mismatch" in row_comp["status_reason"]
 
 
@@ -183,8 +184,8 @@ def test_w7_abansent_rpt_non_subsidiary_category_not_subsidiary():
     obs.apply_ar_row_gates([row_code], page_code, "Abans Enterprises Limited")
     obs.apply_ar_row_gates([row_text_cat], page_text_cat, "Abans Enterprises Limited")
     for r in (row_code, row_text_cat):
-        assert r["entity_scope"] == "company" and r["status"] == "unverified"
-        assert "ar_rpt_not_subsidiary" in r["status_reason"]
+        assert r["entity_scope"] == "company" and r["scope_source"] == "rpt_not_subsidiary"
+        assert "Abans Investment Managers" in r["customer"] and r["status"] == "verified"
 
 
 def test_w10_accelya_currency_slice_under_canonical_measure():
@@ -453,4 +454,172 @@ def test_p_units_hundreds_thousands_and_facing_page_carried():
         previous_text="(All Amounts in Indian Rupees (₹) (in Lakhs) unless otherwise stated)",
     )
     assert (r14["unit"], r14["scale"], r14["status"]) == ("Lakhs", 1e5, "verified")
+
+
+# ------------------------------------------------- T-242 AR gates r6 (narrow ar_rpt_not_subsidiary & ar_other_entity)
+
+
+def test_r6_rpt_company_associate_jv_transactions_and_lt_subsidiaries_including_stay_verified():
+    from reality_engine.v2 import observations as obs
+    # ACC: company RPT with Adani Enterprises under "other related parties" (both pre-company & counterparty-sub)
+    p_acc = (
+        "Notes to Consolidated financial statements for the year ended March 31, 2026\n"
+        "Related Party Disclosures\n(I) Details of Transactions relating to other related parties\n"
+        "Receipt of services\nAdani Enterprises Limited (Corporate cost allocation)\n91.02\n53.19\n"
+    )
+    for sc in ("company", "subsidiary"):
+        r_acc = _ar_r5_row(
+            measure="NEW:related_party_receipt_of_services",
+            printed_label="Adani Enterprises Limited (Corporate cost allocation)",
+            value=91.02, value_text="91.02", unit="Crores", scale=1e7,
+            customer="Adani Enterprises Limited", entity_scope=sc, basis="consolidated",
+        )
+        obs.apply_ar_row_gates([r_acc], p_acc, "ACC Limited")
+        assert (r_acc["entity_scope"], r_acc["status"]) == ("company", "verified")
+
+    # AGL (Contech 12), A2ZINFRA (Mansi 12.91), ADVENTHTL (Bamboo loans 10,176.47), AFSL (Abans Metals (1,753.90))
+    p_agl = (
+        "Notes to Financial Statements for the year ended March 31, 2026\n27. Related party disclosures\n"
+        "Joint Venture\nContech Logistics Solutions Private Limited\nBusiness support income\n12\n-\n"
+    )
+    r_agl = _ar_r5_row(
+        measure="NEW:business_support_income", printed_label="Contech Logistics Solutions Private Limited",
+        value=12.0, value_text="12", unit="Lakhs", scale=1e5, entity_scope="subsidiary",
+    )
+    obs.apply_ar_row_gates([r_agl], p_agl, "Allcargo Global Limited")
+    assert (r_agl["entity_scope"], r_agl["status"]) == ("company", "verified")
+
+    p_a2z = (
+        "Notes to Standalone Financial Statements for the year ended March 31, 2026\n"
+        "B. Transactions with related parties\nAssociates\n"
+        "- Mansi Bijlee & Rice Mills Limited\n14.77\n12.91\n"
+    )
+    r_a2z = _ar_r5_row(
+        measure="NEW:fund_transferred_expenses_incurred_on_behalf_of_related_party",
+        printed_label="- Mansi Bijlee & Rice Mills Limited", value=12.91, value_text="12.91",
+        unit="Lakhs", scale=1e5, entity_scope="subsidiary", basis="standalone",
+    )
+    obs.apply_ar_row_gates([r_a2z], p_a2z, "A2Z Infra Engineering Limited")
+    assert (r_a2z["entity_scope"], r_a2z["status"]) == ("company", "verified")
+
+    p_adv = (
+        "Notes to Consolidated Financial Statements for the year ended March 31, 2026\n"
+        "Disclosure in Respect of Major Related Party Balances\nJoint Venture\n"
+        "Bamboo Hotel and Global Centre (Delhi) Private Limited\n10,176.47\n"
+    )
+    r_adv = _ar_r5_row(
+        measure="NEW:loans_granted_net_related_party",
+        printed_label="Bamboo Hotel and Global Centre (Delhi) Private Limited",
+        value=10176.47, value_text="10,176.47", unit="Lakhs", scale=1e5,
+        customer="Bamboo Hotel and Global Centre (Delhi) Private Limited", entity_scope="subsidiary",
+    )
+    obs.apply_ar_row_gates([r_adv], p_adv, "Advent Hotels International Limited")
+    assert (r_adv["entity_scope"], r_adv["status"]) == ("company", "verified")
+
+    p_afsl = (
+        "Notes to the Consolidated Financial Statements for the year ended March 31, 2026\n"
+        "Related party transactions\nRelationship\nMarch 31, 2026\nMarch 31, 2025\n"
+        "Abans Metals Private Limited\n4\n(1,753.90)\n(1,726.79)\n"
+    )
+    r_afsl = _ar_r5_row(
+        measure="NEW:net_loans_given_or_received_back", printed_label="Abans Metals Private Limited",
+        value=-1753.90, value_text="(1,753.90)", unit="Lakhs", scale=1e5,
+        entity_scope="subsidiary", basis="consolidated",
+    )
+    obs.apply_ar_row_gates([r_afsl], p_afsl, "Abans Financial Services Limited")
+    assert (r_afsl["entity_scope"], r_afsl["customer"], r_afsl["status"]) == (
+        "company", "Abans Metals Private Limited", "verified"
+    )
+
+    # LT p574: "Subsidiaries, including:" below "Joint venture:" decides nearest heading -> stays subsidiary + verified
+    p_lt = (
+        "Disclosure of related parties/related party transactions pursuant to Ind AS 24\n"
+        "As at 31-3-2026\nAs at 31-3-2025\n"
+        "₹ crore\nvi.\nImpairment loss on loans & advances recoverable\nJoint venture:\n"
+        "Raykal Aluminium Company Private Limited\n0.89\n0.88\n"
+        "vii.\nUnsecured loans taken (including lease finance)\nSubsidiaries, including:\n825.05\n456.70\n"
+        "L&T Construction Equipment Limited\n77.75\n70.50\n"
+    )
+    r_lt = _ar_r5_row(
+        measure="NEW:unsecured_loans_taken_including_lease_finance",
+        printed_label="L&T Construction Equipment Limited", value=70.50, value_text="70.50",
+        unit="crore", scale=1e7, period="31-3-2025", entity_scope="subsidiary",
+    )
+    obs.apply_ar_row_gates([r_lt], p_lt, "Larsen & Toubro Limited")
+    assert (r_lt["entity_scope"], r_lt["status"]) == ("subsidiary", "verified")
+
+
+def test_r6_other_entity_narrowed_to_statement_headings_and_keeps_own_capital_governance_and_7nr():
+    from reality_engine.v2 import observations as obs
+    # AMBALALSA share capital / capital management with earlier RPT/subsidiary page
+    prev_rpt = (
+        "Ambalal Sarabhai Enterprises Limited\nNotes to the Standalone Financial Statements for the year ended March 31, 2026\n"
+        "Related Party Disclosures\nSystronics India Limited\n"
+    )
+    p_amb = (
+        "CIN : L52100GJ1978PLC003159\nNotes to the Standalone Financial Statements for the year ended March 31, 2026\n"
+        "(` in Lakhs)\nNote 37 : Capital management\nEquity share capital\n7,663.33\n7,663.33\n"
+    )
+    r_amb = _ar_r5_row(
+        measure="equity_share_capital", printed_label="Equity share capital",
+        value=7663.33, value_text="7,663.33", unit="Lakhs", scale=1e5, basis="standalone",
+    )
+    obs.apply_ar_row_gates([r_amb], p_amb, "Ambalal Sarabhai Enterprises Limited", previous_text=prev_rpt)
+    assert (r_amb["entity_scope"], r_amb["segment"], r_amb["status"]) == ("company", "", "verified")
+
+    # PERSISTENT investments page naming Altizon
+    p_per = (
+        "Notes to the Financial Statements for the year ended March 31, 2026\n"
+        "Note 6: Investments\nParticulars\nAltizon Systems Private Limited\n10.50\n"
+    )
+    r_per = _ar_r5_row(measure="NEW:non_current_investments_other", printed_label="Altizon Systems Private Limited",
+                       value=10.50, value_text="10.50", unit="Millions", scale=1e6)
+    obs.apply_ar_row_gates([r_per], p_per, "Persistent Systems Limited")
+    assert (r_per["entity_scope"], r_per["status"]) == ("company", "verified")
+
+    # AIAENG CSR page with Form AOC-1 (VEGA MPS PTY LIMITED) before it
+    p_aoc = "Annual Report 2025-26\nFORM NO. AOC-1\nPart - A : Subsidiaries\nVEGA MPS PTY LIMITED\n"
+    p_csr = (
+        "Corporate Governance Report\nFor the year ended March 31, 2026\nCSR Committee Meetings Held\n"
+        "Notes to Financial Statements reference\n* Mr. Rajan R. Harivallabhdas\n2\n2\n"
+    )
+    r_aia = _ar_r5_row(measure="NEW:csr_committee_meetings_held", printed_label="* Mr. Rajan R. Harivallabhdas",
+                       value=2.0, value_text="2")
+    obs.apply_ar_row_gates([r_aia], p_csr, "AIA Engineering Limited", previous_text=p_aoc)
+    assert (r_aia["entity_scope"], r_aia["status"]) == ("company", "verified"), r_aia["status_reason"]
+
+    # ASIANTILES board attendance page & (v) KMP enterprise page with nav tabs
+    p_asi = (
+        "Annual Report 2025-26 253\nMarch 31, 2026\nStatutory Reports\nFinancial Statements\nCorporate Overview\n"
+        "(v) Enterprises over which KMP and/or their relatives having significant influence\n"
+        "Affil Vitrified Private Limited\nAmaxo Granite\n(c) Compensation of key management personnel\n(` in Lakhs)\n"
+        "Board meetings held during tenure\n6\n"
+    )
+    r_asi = _ar_r5_row(measure="NEW:board_meetings_attended_during_tenure", printed_label="Mr. Bhaveshkumar Patel",
+                       value=6.0, value_text="6")
+    obs.apply_ar_row_gates([r_asi], p_asi, "Asian Granito India Limited")
+    assert (r_asi["entity_scope"], r_asi["status"]) == ("company", "verified"), r_asi["status_reason"]
+
+    # 7NR 'Limited' vs 'Ltd' and Annexure to Auditors' Report 'to the members of 7NR Retail Limited'
+    p_7nr = (
+        "Annexure A to Auditors' Report\nReferred to in paragraph 1\n"
+        "to the members of 7NR Retail Limited on the standalone financial statements for the year ended March 31, 2026\n"
+        "(Rupees in Lakhs)\nAggregate amount of Loans repayable on demand\n1,121.84\n"
+    )
+    r_7nr = _ar_r5_row(measure="NEW:aggregate_loans_repayable_on_demand", printed_label="Aggregate amount of Loans",
+                       value=1121.84, value_text="1,121.84", unit="Rupees in Lakhs", scale=1e5, basis="standalone")
+    obs.apply_ar_row_gates([r_7nr], p_7nr, "7NR Retail Ltd")
+    assert (r_7nr["entity_scope"], r_7nr["segment"], r_7nr["status"]) == ("company", "", "verified")
+
+    # Explicit other-entity statement heading still flags ar_other_entity
+    p_sub_stmt = (
+        "Financial Statements of GJS Hotels Limited\nBalance Sheet as at March 31, 2026\n"
+        "(Rupees in Lakhs)\nTotal Assets\n4,500.00\n"
+    )
+    r_sub_stmt = _ar_r5_row(measure="total_assets", printed_label="Total Assets", value=4500.0, value_text="4,500.00",
+                            unit="Lakhs", scale=1e5, period="As at March 31, 2026")
+    obs.apply_ar_row_gates([r_sub_stmt], p_sub_stmt, "Asian Hotels (East) Limited")
+    assert r_sub_stmt["entity_scope"] == "subsidiary" and r_sub_stmt["segment"] == "GJS Hotels Limited"
+    assert r_sub_stmt["status"] == "unverified" and "ar_other_entity" in r_sub_stmt["status_reason"]
+
 
