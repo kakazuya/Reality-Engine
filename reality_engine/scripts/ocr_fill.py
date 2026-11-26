@@ -63,6 +63,19 @@ from reality_engine import raw_store
 
 PROMPT = ("Transcribe all text on this slide exactly, in reading order. Keep every number with its label, unit and "
           "column or period header. Output plain text only.")
+SLIDE_KINDS = ("data_table", "data_chart", "kpi_highlights", "text_only", "cover_divider",
+               "advert_product_photo", "news_clipping", "mock_ui", "other")
+DATA_SLIDE_KINDS = frozenset({"data_table", "data_chart", "kpi_highlights"})
+CLASSIFY_PROMPT = (
+    "Classify this slide using both the slide image and its OCR text.\n"
+    f"Valid kinds: {', '.join(SLIDE_KINDS)}.\n"
+    "Data slides (data_table, data_chart, kpi_highlights) have structured financial/operational tables, "
+    "charts, or KPI summary cards. Non-data slides are prose/bullets (text_only), covers/dividers/logos "
+    "(cover_divider), ads/product photos/packaging/price tags (advert_product_photo), news clippings "
+    "(news_clipping), app/dashboard mockups (mock_ui), or other.\n"
+    'Return a single JSON object only: {"kind": "<kind>"}\n\n'
+    "OCR text:\n"
+)
 DPI = 150
 LINE_H = 12.0               # pseudo-word line pitch in PDF points
 MAX_TRIES = 4               # a page may bounce between routes this many times before it is an error
@@ -114,6 +127,13 @@ CREATE TABLE IF NOT EXISTS ocr_page (
   symbol TEXT NOT NULL, doc_key TEXT NOT NULL, page INTEGER NOT NULL, doc_type TEXT, known_at TEXT,
   text TEXT NOT NULL, words_json TEXT NOT NULL, ocr_conf REAL, n_boxes INTEGER, dpi INTEGER,
   seconds REAL, method TEXT NOT NULL DEFAULT 'ocr_rapid',
+  PRIMARY KEY (symbol, doc_key, page)
+);
+"""
+CLASSIFY_SCHEMA = """
+CREATE TABLE IF NOT EXISTS ocr_slide_kind (
+  symbol TEXT NOT NULL, doc_key TEXT NOT NULL, page INTEGER NOT NULL,
+  kind TEXT NOT NULL, data INTEGER NOT NULL, model TEXT NOT NULL, seconds REAL,
   PRIMARY KEY (symbol, doc_key, page)
 );
 """
@@ -275,7 +295,7 @@ def parse_events(raw: str) -> tuple[str, float, str]:
 
 
 def ask_http(route: str, png: bytes, timeout: float = 420,
-             model: dict[str, Any] | str | None = None) -> str:
+             model: dict[str, Any] | str | None = None, prompt: str = PROMPT) -> str:
     """One HTTP reading (Kilo).  Raises Throttled on 429, RuntimeError on any other failure."""
     import requests
 
@@ -288,10 +308,10 @@ def ask_http(route: str, png: bytes, timeout: float = 420,
     key = user_env().get(cfg["key_env"], "")
     if not key:
         raise RuntimeError(f"{cfg['key_env']} is not set")
-    body = {"model": entry["id"], **cfg["body"],
+    body = {"model": entry["id"], **cfg["body"], "temperature": 0,
             "messages": [{"role": "user", "content": [
                 {"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(png).decode()}},
-                {"type": "text", "text": PROMPT}]}]}
+                {"type": "text", "text": prompt}]}]}
     r = requests.post(f"{cfg['base']}/chat/completions", json=body,
                       headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"}, timeout=timeout)
     if r.status_code == 429:
@@ -305,7 +325,7 @@ def ask_http(route: str, png: bytes, timeout: float = 420,
 
 
 def ask_cli(route: str, png: bytes, timeout: float = 420,
-            model: dict[str, Any] | str | None = None) -> str:
+            model: dict[str, Any] | str | None = None, prompt: str = PROMPT) -> str:
     """One OpenCode Zen reading through ``opencode run --standalone`` (HTTP refuses free models there).
 
     Parses the JSON event stream; a non-zero ``step_finish`` cost raises :class:`PaidModel` and stops the run."""
@@ -323,7 +343,7 @@ def ask_cli(route: str, png: bytes, timeout: float = 420,
     image.write_bytes(png)
     try:
         proc = subprocess.run([exe, "run", "--standalone", "-m", entry["cli_model"], "--format", "json",
-                               "-f", str(image), PROMPT],
+                               "-f", str(image), prompt],
                               capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
                               cwd=tmp, stdin=subprocess.DEVNULL, creationflags=0x08000000)  # no console window
     except subprocess.TimeoutExpired:
@@ -342,11 +362,11 @@ def ask_cli(route: str, png: bytes, timeout: float = 420,
 
 
 def ask(route: str, png: bytes, timeout: float = 420,
-        model: dict[str, Any] | str | None = None) -> str:
+        model: dict[str, Any] | str | None = None, prompt: str = PROMPT) -> str:
     """One reading from ``route`` with ``model`` (the seam tests monkeypatch; the route's first model by default)."""
     if FREE_ROUTES[route]["kind"] == "http":
-        return ask_http(route, png, timeout, model)
-    return ask_cli(route, png, timeout, model)
+        return ask_http(route, png, timeout, model, prompt)
+    return ask_cli(route, png, timeout, model, prompt)
 
 
 def render_page(pdf: str, page: int) -> bytes:
@@ -502,13 +522,13 @@ def _label(route: str, model: dict[str, Any]) -> str:
     return f"{route}:{'-'.join(bare.split('-')[:2])}"
 
 
-def _db(path: Path) -> sqlite3.Connection:
+def _db(path: Path, schema: str = SCHEMA) -> sqlite3.Connection:
     with WRITE_LOCK:
         con = _DBS.get(path)
         if con is None:
             path.parent.mkdir(parents=True, exist_ok=True)
             con = sqlite3.connect(path, check_same_thread=False)
-            con.executescript(SCHEMA)
+            con.executescript(schema)
             con.commit()
             _DBS[path] = con
         return con
@@ -522,8 +542,8 @@ def _stats() -> dict[str, Any]:
     with _META_LOCK:
         if not _STATS:
             _STATS.update({"written": 0, "skipped": 0, "errors": 0, "attempt_errors": 0,
-                          "route": Counter(), "seconds": [], "figures": [], "pages_with_4_figures": 0,
-                          "samples": [], "paid": ""})
+                          "route": Counter(), "kinds": Counter(), "seconds": [], "figures": [],
+                          "pages_with_4_figures": 0, "samples": [], "paid": ""})
         return _STATS
 
 
@@ -585,7 +605,173 @@ def _drain(q: queue.Queue) -> None:
         q.task_done()
 
 
-def _worker(reader: Reader, q: queue.Queue, timeout: float, fh) -> None:
+def _active_routes(routes: list[str], enabled: dict[str, bool] | None = None) -> list[str]:
+    if enabled is None:                          # a route without its key is left out, not failed page by page
+        from reality_engine.scripts.resource_watchdog import user_env
+        env = user_env()
+        enabled = {r: FREE_ROUTES[r]["kind"] == "cli" or bool(env.get(FREE_ROUTES[r].get("key_env", "")))
+                   for r in routes}
+    return [r for r in routes if enabled.get(r, True)]
+
+
+def parse_slide_kind(raw: str) -> tuple[str, bool]:
+    """Parse a model's JSON slide classification into ``(kind, is_data_slide)``; malformed -> ``('other', False)``."""
+    text = (raw or "").strip()
+    obj: Any = None
+    try:
+        obj = json.loads(text)
+    except json.JSONDecodeError:
+        idx = text.find("{")
+        if idx >= 0:
+            try:
+                obj, _ = json.JSONDecoder().raw_decode(text, idx)
+            except json.JSONDecodeError:
+                obj = None
+    if not isinstance(obj, dict):
+        return "other", False
+    kind = str(obj.get("kind") or "").strip().lower()
+    if kind not in SLIDE_KINDS:
+        return "other", False
+    return kind, kind in DATA_SLIDE_KINDS
+
+
+def _classify_call(route: str, entry: dict[str, Any], png: bytes, ocr_text: str,
+                   timeout: float) -> tuple[dict[str, Any], float]:
+    prompt = CLASSIFY_PROMPT + ((ocr_text or "").strip()[:4000] or "(none)")
+    t0 = time.time()
+    raw = ask(route, png, timeout, entry, prompt=prompt)
+    seconds = round(time.time() - t0, 2)
+    kind, data = parse_slide_kind(raw)
+    return {"kind": kind, "data": data, "model": entry["id"], "seconds": seconds}, seconds
+
+
+def classify_slide(png: bytes, ocr_text: str, *, route: str | None = None,
+                   model: dict[str, Any] | str | None = None, reader: Reader | None = None,
+                   timeout: float = 420) -> dict[str, Any]:
+    """Classify one slide image + OCR text with one free vision model at temperature 0."""
+    if route is not None:
+        route = parse_routes(route)[0]
+    if reader is None:
+        routes = [route] if route is not None else _active_routes(list(FREE_ROUTES))
+        if not routes:
+            raise SystemExit("no usable free route (keys missing and no CLI route)")
+        reader = Reader(routes, 1, 1)
+    acquired = False
+    chosen_route = route
+    if chosen_route is None:
+        chosen_route = reader.acquire()
+        if chosen_route is None:
+            raise RuntimeError("classify stopped before acquiring a route")
+        acquired = True
+    try:
+        picked = model if model is not None else reader.model_for(chosen_route)
+        if picked is None:
+            raise RuntimeError("classify stopped before selecting a model")
+        entry = model_entry(chosen_route, picked)
+        try:
+            result, seconds = _classify_call(chosen_route, entry, png, ocr_text, timeout)
+        except Throttled:
+            reader.throttle(chosen_route, entry, "429")
+            raise
+        except PaidModel:
+            reader.error(chosen_route, entry, "paid")
+            raise
+        except Exception as ex:
+            reader.error(chosen_route, entry, str(ex))
+            raise
+        reader.success(chosen_route, entry, seconds)
+        return result
+    finally:
+        if acquired:
+            reader.release(chosen_route)
+
+
+def data_slide_pages(ocr_db: Path | str) -> set[tuple[str, int]]:
+    """``{(doc_key, page)}`` classified as a data slide (``data_table``/``data_chart``/``kpi_highlights``)."""
+    path = Path(ocr_db)
+    if not path.is_file():
+        return set()
+    try:
+        con = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)
+        try:
+            return {(str(r[0]), int(r[1])) for r in con.execute("SELECT doc_key, page FROM ocr_slide_kind WHERE data=1")}
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return set()
+
+
+def _write_kind(item: dict[str, Any], res: dict[str, Any], route: str, model: dict[str, Any], fh) -> None:
+    out = Path(item.get("ocr_db") or out_db(item["store"], item.get("out_dir")))
+    con = _db(out, CLASSIFY_SCHEMA)
+    with WRITE_LOCK:
+        con.execute("INSERT OR REPLACE INTO ocr_slide_kind VALUES (?,?,?,?,?,?,?)",
+                    (item["symbol"], item["doc_key"], item["page"], res["kind"], int(res["data"]),
+                     res["model"], res["seconds"]))
+        con.commit()
+        stats = _stats()
+        stats["written"] += 1
+        stats["route"][route] += 1
+        stats["kinds"][res["kind"]] += 1
+        stats["seconds"].append(res["seconds"])
+        _log(fh, {"symbol": item["symbol"], "ocr_db": str(out), "doc_key": item["doc_key"], "page": item["page"],
+                  "route": route, "model": res["model"], "kind": res["kind"], "data": res["data"],
+                  "seconds": res["seconds"], "error": "", "written": True})
+    print(f"kind {_label(route, model)} {item['symbol']:12s} p{item['page']:<3d} {res['seconds']:5.1f}s "
+          f"{res['kind']}", flush=True)
+
+
+def select_classified(out_dir: Path | str | None = None, universe: Path | str = DEFAULT_UNIVERSE,
+                      symbols: Iterable[str] = (), seed: int | None = None,
+                      limit: int | None = None) -> list[dict[str, Any]]:
+    """Pages already stored in ``<out-dir>/<stem>_ocr.db`` (or beside universe stores) to classify."""
+    wanted = {s.strip().upper() for s in symbols if s.strip()}
+    if out_dir:
+        dbs = sorted(Path(out_dir).glob("*_ocr.db"))
+    else:
+        dbs = [p for s in universe_stores(universe) if (p := out_db(s / f"{s.name}.db", None)).is_file()]
+    pages: list[dict[str, Any]] = []
+    for db_path in dbs:
+        stem = db_path.stem.removesuffix("_ocr")
+        store_db = Path(universe) / stem / f"{stem}.db"
+        con = sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True)
+        try:
+            rows = con.execute("SELECT symbol, doc_key, page, text FROM ocr_page").fetchall()
+        except sqlite3.Error:
+            rows = []
+        finally:
+            con.close()
+        meta = _doc_meta(store_db, {str(r[1]) for r in rows}) if store_db.is_file() and rows else {}
+        for symbol, doc_key, page, text in rows:
+            sym = str(symbol)
+            if wanted and sym.upper() not in wanted:
+                continue
+            key = str(doc_key)
+            pdf = meta[key][1] if key in meta else key
+            pages.append({"ocr_db": str(db_path), "store": str(store_db), "symbol": sym, "doc_key": key,
+                          "page": int(page), "text": text or "", "pdf": pdf})
+    pages.sort(key=lambda p: (p["ocr_db"], p["doc_key"], p["page"]))
+    if seed is not None:
+        random.Random(seed).shuffle(pages)
+    return pages[:limit] if limit else pages
+
+
+def _classified(out: Path) -> set[tuple[str, str, int]]:
+    """``{(symbol, doc_key, page)}`` already in ``ocr_slide_kind`` (empty if missing)."""
+    if not out.is_file():
+        return set()
+    try:
+        con = sqlite3.connect(f"file:{out.as_posix()}?mode=ro", uri=True)
+        try:
+            return {(str(r[0]), str(r[1]), int(r[2]))
+                    for r in con.execute("SELECT symbol, doc_key, page FROM ocr_slide_kind")}
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return set()
+
+
+def _worker(reader: Reader, q: queue.Queue, timeout: float, fh, classify: bool = False) -> None:
     """Take a page, hold a route slot for one call, and retry it on another route or model on failure."""
     backoff = BACKOFF_START
     while True:
@@ -607,9 +793,14 @@ def _worker(reader: Reader, q: queue.Queue, timeout: float, fh) -> None:
                 item.setdefault("failed", set()).add(route)
                 t0 = time.time()
                 try:
-                    text = ask(route, render_page(item["pdf"], item["page"]), timeout, model)
-                    if not text.strip():
-                        raise RuntimeError("empty transcription")
+                    png = render_page(item["pdf"], item["page"])
+                    if classify:
+                        res, seconds = _classify_call(route, model, png, item.get("text", ""), timeout)
+                    else:
+                        text = ask(route, png, timeout, model)
+                        if not text.strip():
+                            raise RuntimeError("empty transcription")
+                        seconds = time.time() - t0
                 except Throttled as ex:
                     reader.throttle(route, model, "429")
                     if item["tries"] <= MAX_TRIES:
@@ -636,9 +827,11 @@ def _worker(reader: Reader, q: queue.Queue, timeout: float, fh) -> None:
                         q.put(item)
                     continue
                 backoff = BACKOFF_START
-                seconds = time.time() - t0
                 reader.success(route, model, seconds)
-                _write(item, text, route, model, seconds, fh)
+                if classify:
+                    _write_kind(item, res, route, model, fh)
+                else:
+                    _write(item, text, route, model, seconds, fh)
             finally:
                 reader.release(route)
         finally:
@@ -662,39 +855,40 @@ def _held(out: Path) -> dict[tuple[str, str, int], str]:
 
 def run(pages: list[dict[str, Any]], routes: list[str], out_dir: Path | str | None = None, resume: bool = False,
         log: Path | str | None = None, timeout: float = 420, enabled: dict[str, bool] | None = None,
-        start_workers: int = 6, max_workers: int = 24) -> dict[str, Any]:
-    """Read ``pages`` over ``routes`` and write the rows.  Returns the summary dict.
+        start_workers: int = 6, max_workers: int = 24, classify: bool = False) -> dict[str, Any]:
+    """Read (or with ``classify=True``, slide-classify) ``pages`` over ``routes`` and write the rows.
 
     Each route starts at ``start_workers`` calls in flight and adapts between one and ``max_workers``; threads are the
     sum of the caps and a thread holds a route slot for its call.  A page already held under any ocr_fill method
-    (:data:`OCR_METHODS`) is never overwritten; ``resume`` also skips pages this fill already read, whichever of its
-    models read them.  With ``out_dir`` the rows go to ``<out_dir>/<stem>_ocr.db`` and nothing is written beside a
-    live store."""
+    (:data:`OCR_METHODS`) is never overwritten; ``resume`` also skips pages this fill already read (or classified).
+    With ``out_dir`` the rows go to ``<out_dir>/<stem>_ocr.db`` and nothing is written beside a live store."""
     log_path = Path(log) if log else (Path(out_dir) / "ocr_fill.jsonl" if out_dir else Path("ocr_fill.jsonl"))
     log_path.parent.mkdir(parents=True, exist_ok=True)
     STOP.clear()
     with _META_LOCK:
         _STATS.clear()
-    if enabled is None:                          # a route without its key is left out, not failed page by page
-        from reality_engine.scripts.resource_watchdog import user_env
-        env = user_env()
-        enabled = {r: FREE_ROUTES[r]["kind"] == "cli" or bool(env.get(FREE_ROUTES[r].get("key_env", "")))
-                   for r in routes}
-    active = [r for r in routes if enabled.get(r, True)]
+    active = _active_routes(routes, enabled)
     stats = _stats()
     stats["routes_enabled"] = active
-    held_cache: dict[Path, dict[tuple[str, str, int], str]] = {}
+    held_cache: dict[Path, Any] = {}
     todo: list[dict[str, Any]] = []
     for item in pages:
         item = dict(item)
         item["out_dir"] = str(out_dir) if out_dir else None
-        out = out_db(item["store"], item["out_dir"])
-        if out not in held_cache:
-            held_cache[out] = _held(out)
-        method = held_cache[out].get((item["symbol"], item["doc_key"], item["page"]))
-        if method is not None and (method not in OCR_METHODS or resume):
-            stats["skipped"] += 1
-            continue
+        out = Path(item["ocr_db"]) if item.get("ocr_db") else out_db(item["store"], item["out_dir"])
+        if classify:
+            if out not in held_cache:
+                held_cache[out] = _classified(out) if resume else set()
+            if resume and (item["symbol"], item["doc_key"], item["page"]) in held_cache[out]:
+                stats["skipped"] += 1
+                continue
+        else:
+            if out not in held_cache:
+                held_cache[out] = _held(out)
+            method = held_cache[out].get((item["symbol"], item["doc_key"], item["page"]))
+            if method is not None and (method not in OCR_METHODS or resume):
+                stats["skipped"] += 1
+                continue
         todo.append(item)
     if not active:
         raise SystemExit("no usable free route (keys missing and no CLI route)")
@@ -705,7 +899,7 @@ def run(pages: list[dict[str, Any]], routes: list[str], out_dir: Path | str | No
         q.put(item)
     with log_path.open("a", encoding="utf-8") as fh, _shared_acl_tempdirs(), \
             store.prefetch([item["pdf"] for item in todo]):
-        threads = [threading.Thread(target=_worker, args=(reader, q, timeout, fh), daemon=True)
+        threads = [threading.Thread(target=_worker, args=(reader, q, timeout, fh, classify), daemon=True)
                    for _ in range(sum(state["cap"] for state in reader.routes.values()))]
         for thread in threads:
             thread.start()
@@ -725,11 +919,12 @@ def run(pages: list[dict[str, Any]], routes: list[str], out_dir: Path | str | No
     stats["seconds_total"] = total_seconds
     stats["seconds_per_page"] = round(total_seconds / stats["written"], 1) if stats["written"] else 0.0
     stats["median_seconds"] = round(sorted(stats["seconds"])[len(stats["seconds"]) // 2], 1) if stats["seconds"] else 0.0
-    samples = Path(log_path).with_name("samples.txt")
-    samples.write_text("\n\n".join(f"== {s['symbol']} p{s['page']} [{s['route']}:{s['model']}] {s['seconds']}s\n"
-                                   f"{s['text']}" for s in stats["samples"]), encoding="utf-8")
+    if not classify:
+        samples = Path(log_path).with_name("samples.txt")
+        samples.write_text("\n\n".join(f"== {s['symbol']} p{s['page']} [{s['route']}:{s['model']}] {s['seconds']}s\n"
+                                       f"{s['text']}" for s in stats["samples"]), encoding="utf-8")
+        stats["samples_file"] = str(samples)
     stats["log"] = str(log_path)
-    stats["samples_file"] = str(samples)
     STOP.clear()
     print(json.dumps({k: (dict(v) if isinstance(v, Counter) else v) for k, v in stats.items()
                       if k not in ("seconds", "figures", "samples")}, indent=2))
@@ -746,6 +941,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out-dir", default=None, help="write <store stem>_ocr.db under this dir instead of beside the "
                                                     "live store (a pilot must not feed the live loop)")
     ap.add_argument("--resume", action="store_true", help="skip pages these models already read")
+    ap.add_argument("--classify", action="store_true",
+                    help="classify pages already in <out-dir>/<stem>_ocr.db into ocr_slide_kind")
     ap.add_argument("--routes", default="kilo,zen")
     ap.add_argument("--start-workers", type=int, default=6,
                     help="each route's starting calls in flight; AIMD grows it (default 6)")
@@ -754,12 +951,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--log", default=None)
     ap.add_argument("--timeout", type=float, default=420)
     args = ap.parse_args(argv)
-    pages = select(args.universe, [s for s in (args.symbols or "").split(",") if s], args.seed, args.limit)
+    sym_list = [s for s in (args.symbols or "").split(",") if s]
+    pages = (select_classified(args.out_dir, args.universe, sym_list, args.seed, args.limit)
+             if args.classify else select(args.universe, sym_list, args.seed, args.limit))
     if not pages:
         print("no pages selected", file=sys.stderr)
         return 1
     run(pages, parse_routes(args.routes), args.out_dir, args.resume, args.log, args.timeout,
-        start_workers=args.start_workers, max_workers=args.max_workers)
+        start_workers=args.start_workers, max_workers=args.max_workers, classify=args.classify)
     return 0
 
 
