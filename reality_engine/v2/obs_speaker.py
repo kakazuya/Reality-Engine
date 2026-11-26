@@ -1505,6 +1505,17 @@ _QUARTERLY_METRIC_RE = re.compile(
 _OVER_BASE_VERB_RE = re.compile(r"\b(?:stood\s+at|stands\s+at|was|were|reached)\b", re.I)
 _OVER_BASE_CMP_RE = re.compile(
     r"\b(?:growth|up|increase|increased)\b[^.!?;]{0,40}?\bover\s+(?:the\s+)?(?=" + _PRINTED_DATE_RE.pattern + ")", re.I)
+# T-242 r5: an explicit own-period token bound to its own figure wins over any sentence-wide block; a
+# comparative names the base only, and a guidance sentence takes the call's own year on a Q4 call.
+_OWN_QUARTER_CUE_RE = re.compile(
+    r"\b(?:(?:in|during)\s+(?:the\s+)?(?:this\s+|current\s+)?(?:quarter(?:'s|’s)?|three\s+months)"
+    r"|(?:this|current)\s+quarter(?:'s|’s)?)\b", re.I)
+_CLAUSE_SPLIT_RE = re.compile(
+    r";|\b(?:against|vs\.?|versus|compared\s+(?:to|with)|over|while|whereas|than)\b", re.I)
+_CMP_BEFORE_PERIOD_RE = re.compile(
+    r"\b(?:against|vs\.?|versus|compared\s+(?:to|with)|over|than|from)\s*$", re.I)
+_FOR_QUARTER_CUE_RE = re.compile(r"\bfor\s+(?:the\s+)?quarter\b", re.I)
+_QUARTER_ENDED_RE = re.compile(r"\s*(?:ended|ending)\s+(?=" + _PRINTED_DATE_RE.pattern + ")", re.I)
 
 
 def _parse_printed_date(match: re.Match[str]) -> tuple[int, int, int | None, bool] | None:
@@ -1622,16 +1633,118 @@ def _sentence_blocked_for_anchor(sent: str, q: int, fy: int, end_ym: int, *, che
     return False
 
 
+def _clause_span(text: str, pos: int) -> tuple[int, int]:
+    """Start and end of the clause holding ``pos``; a comparative connector ends the clause."""
+    start = 0
+    for cm in _CLAUSE_SPLIT_RE.finditer(text):
+        if cm.end() <= pos:
+            start = cm.end()
+        elif cm.start() > pos:
+            return start, cm.start()
+    return start, len(text)
+
+
+def _named_periods(sent: str) -> list[tuple[int, int, str]]:
+    """Named fiscal periods in ``sent`` as ``(start, end, label)``: ``Qn FYnn`` and ``FYnn``."""
+    found: list[tuple[int, int, str]] = []
+    for nm in _NAMED_QUARTER_FY_RE.finditer(sent):
+        found.append((nm.start(), nm.end(), f"Q{int(nm.group(1))} FY{int(nm.group(2)) % 100:02d}"))
+    for fm in _EXPLICIT_FY_RE.finditer(sent):
+        if any(start < fm.end() and fm.start() < end for start, end, _label in found):
+            continue                       # the FY of a Qn FYnn label is not a bare year
+        found.append((fm.start(), fm.end(), f"FY{int(fm.group(2) or fm.group(1)) % 100:02d}"))
+    found.sort()
+    return found
+
+
+def _explicit_own_period(sent: str, q: int, fy: int) -> str:
+    """The call's own period when ``sent`` binds an explicit token to a figure; '' when it does not.
+
+    T-242 r5: the call's own ``Qn FYnn`` (e.g. "EBITDA in Q1 FY25 at Rs. 103 crore against ... same quarter
+    last year") and "in/during the quarter" / "this quarter" / a non-comparative "for the quarter" bound to a
+    figure anchor the call quarter whatever other comparative, other-period or "last quarter" words the
+    sentence holds; a named token under a sentence-wide comparative frame ("On a Y-o-Y basis, NII for Q4 FY26
+    ...") or directly after a comparative connector ("against/vs/compared to/over/from <base>") names the base
+    and never anchors.  A forward/guidance sentence anchors the call's own named quarter, the named target
+    period in the cue's clause (e.g. "for FY25 we expect", "by FY28") or the call's own "FYnn" on a Q4 call;
+    the call's own year on a Q1-Q3 call is not another period (CUB's "NIM for FY26"), and with no named period
+    it stays empty (HFCL's future quarter).  The caller's r4 cues (as-on date, quarterly metric, over-base)
+    still run after this returns.
+    """
+    end_year, end_month, end_day = _period_end_date(q, fy)
+    call_q = f"Q{q} FY{fy:02d}"
+    named = _named_periods(sent)
+    forward = _FORWARD_CUE_RE.search(sent)
+    if forward:
+        for _start, _end, label in named:
+            if label == call_q:
+                return call_q
+        if q == 4:
+            for start, _end, label in named:
+                if label == f"FY{fy:02d}" and not _CMP_BEFORE_PERIOD_RE.search(sent[max(0, start - 12):start]):
+                    return label
+        fstart, fend = _clause_span(sent, forward.start())
+        in_clause = [p for p in named if fstart <= p[0] and p[1] <= fend]
+        after = [p for p in in_clause if p[0] >= forward.end()]
+        before = [p for p in in_clause if p[1] <= forward.start()]
+        pick = after[0] if after else (before[-1] if before else None)
+        if pick and not _CMP_BEFORE_PERIOD_RE.search(sent[fstart:pick[0]]):
+            if not (q != 4 and pick[2] == f"FY{fy:02d}"):
+                return pick[2]              # guidance names its target period (never the base, never the call year on a Q1-Q3 call)
+        return ""
+    for start, end, label in named:
+        if label != call_q or _CMP_BEFORE_PERIOD_RE.search(sent[max(0, start - 16):start]):
+            continue                       # a token after "against/vs/compared to/over/from" names the base
+        prefix = sent[:start]
+        if _COMPARATIVE_CUE_RE.search(prefix) and not re.search(r"\d", prefix):
+            continue                       # "On a Y-o-Y basis, NII for Q4 FY26 ..." is a comparative's figure
+        return label
+    for cm in _OWN_QUARTER_CUE_RE.finditer(sent):
+        if _CMP_BEFORE_PERIOD_RE.search(sent[max(0, cm.start() - 20):cm.start()]):
+            continue
+        start, end = _clause_span(sent, cm.start())
+        if not _has_figure(sent[start:end]):
+            continue                       # an own-quarter cue must label a figure
+        tail = _QUARTER_ENDED_RE.match(sent, cm.end())
+        if tail:
+            dm = _PRINTED_DATE_RE.match(sent, tail.end())
+            if dm and not _date_equals(_parse_printed_date(dm), end_year, end_month, end_day):
+                continue                   # "in the quarter ended December 2024" on a March call
+        return call_q
+    for cm in _FOR_QUARTER_CUE_RE.finditer(sent):
+        if _SAME_QUARTER_LAST_YEAR_RE.search(sent) \
+                or _CMP_BEFORE_PERIOD_RE.search(sent[max(0, cm.start() - 20):cm.start()]):
+            continue                       # IOLCP: "for the quarter ... same quarter last year" is a comparative
+        prefix = sent[:cm.start()]
+        if _COMPARATIVE_CUE_RE.search(prefix) and not re.search(r"\d", prefix):
+            continue                       # "On a Y-o-Y basis, ... for the quarter ..." is a comparative's figure
+        start, end = _clause_span(sent, cm.start())
+        if not _has_figure(sent[start:end]):
+            continue
+        tail = _QUARTER_ENDED_RE.match(sent, cm.end())
+        if tail:
+            dm = _PRINTED_DATE_RE.match(sent, tail.end())
+            if dm and not _date_equals(_parse_printed_date(dm), end_year, end_month, end_day):
+                continue
+        return call_q
+    return ""
+
+
 def anchored_period(statement: str, call_period: str) -> str:
     """The fiscal label a prepared remark's own period resolves to on this call; '' when none or unknown.
 
-    ``call_period`` is the label the reader was given for the call ("Q2 FY26").  Only an explicit own-period cue
-    anchors: "this/the quarter", "this quarter's", "quarterly <metric/figure>", "as on/at/of/basis <date equal to
-    period end>", or "<figure> stood at/was/reached ... (growth|up|increase) over <date 1 year or 1 quarter before
-    period end>" resolve to the call quarter; "this/the year" and "for FYnn" (on Q4 calls) resolve to the call's
-    fiscal year; a named "Qn FYnn" resolves to itself when it is the call's own period.  Never anchors when a
-    comparative cue precedes a named period, or when a forward cue, "same quarter last year", "last quarter", an
-    explicit other FY/H/Q, or a future date sits in the cue's sentence (empty beats wrong).
+    ``call_period`` is the label the reader was given for the call ("Q2 FY26").  T-242 r5: an explicit own-period
+    token bound to a figure wins over any sentence-wide block -- the call's own "Qn FYnn", "in/during the
+    quarter", "this quarter" or a non-comparative "for the quarter" anchors the call period, and a
+    forward/guidance sentence anchors its named target period ("for FY25 we expect", "by FY28") or the call's
+    own "FYnn" on a Q4 call.  A comparative ("against/vs/compared to/over
+    <base>", "same quarter last year", "last quarter") names the base and never blocks the own-period figure.
+    The r4 cues still run after that: "quarterly <metric/figure>", "as on/at/of/basis <date equal to period end>",
+    or "<figure> stood at/was/reached ... (growth|up|increase) over <date 1 year or 1 quarter before period end>"
+    resolve to the call quarter; "this/the year" and "for FYnn" (on Q4 calls) resolve to the call's fiscal year;
+    a named "Qn FYnn" resolves to itself when it is the call's own period.  Never anchors when a comparative cue
+    precedes a named period, or when a forward cue, "same quarter last year", "last quarter", an explicit other
+    FY/H/Q, or a future date sits in the cue's sentence (empty beats wrong).
     """
     m = _CALL_PERIOD_RE.match(" ".join(str(call_period or "").split()))
     if not m:
@@ -1639,6 +1752,10 @@ def anchored_period(statement: str, call_period: str) -> str:
     q, fy = int(m.group(1)), int(m.group(2)) % 100
     text = _normalise_ligatures(statement)
     sentences = _sentences(text)
+    for sent in sentences:
+        own = _explicit_own_period(sent, q, fy)
+        if own:
+            return own
     for sent in sentences:
         if _SAME_QUARTER_LAST_YEAR_RE.search(sent):
             continue

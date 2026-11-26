@@ -3470,8 +3470,24 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   `ratio`/`yield`/`equity`/`assets`/`deposits`/`advances` so `strip_leading_speaker_label` only strips roster
   speakers or role-word labels (`CEO`/`CFO`/`MD`/`Chairman`/`Director`/`Head`/`Officer`/`Moderator`), never a
   metric heading like `Cost-to-income ratio:`. Tests `test_r4_regains_own_period_cues_across_the_five_evidence_cases`,
-  `test_r4_seven_stay_empty_cases_and_w47_remain_unchanged`,
+  `test_r4_stay_empty_cases_and_w47_remain_unchanged`,
   `test_r4_metric_heading_label_not_stripped_while_roster_and_role_strip`.
+  **r5 (26 Nov, DeepSeek): the own-period token bound to its figure wins over the sentence-wide blocks.**
+  `anchored_period` asks `_explicit_own_period` first: the call's own `Qn FYnn` bound to a figure
+  (`ASKAUTOLTD` "EBITDA in Q1 FY25 at Rs. 103 crore against Rs. 65 crore in the same quarter last year"), and
+  `in/during the quarter`, `this quarter` or a non-comparative `for the quarter` bound to a figure anchor the
+  call quarter; a named token under a sentence-wide comparative frame (`On a Y-o-Y basis, NII for Q4 FY'26 ...`)
+  or directly after `against/vs/compared to/over/from` names the base and never anchors; a forward/guidance
+  sentence anchors the named target period in the cue's clause (`for FY25 we expect`, `by FY28`) or the call's
+  own `FYnn` on a Q4 call, but not the call's own year on a Q1-Q3 call (`CUB`) and never a relative future cue
+  with no named period (`HFCL`). The r4 cues still run after, so no r4 regain is lost. On the fresh 394 reparse
+  (`tasks/t242_statement_r3_measure.md` r5 section): period_anchored **9,959** vs r3 9,579 and r4 8,575; +1,651
+  statements regain an r3-empty period and 1,276 lose one (mostly r3's forward/relative call-period
+  labels, which r4's rule keeps empty); 0 graded-R rows change beyond period, and the non-period counts equal
+  r4 exactly (1,153 carried, 589 resolved, 332 short remarks, 295 content-free). Tests
+  `test_r5_own_period_cue_beats_sentence_wide_blocks`,
+  `test_r5_five_stay_empty_cases_remain_empty`, and `test_r4_stay_empty_cases_and_w47_remain_unchanged`
+  (`BPLPHARMA` "by FY28" now anchors FY28; `CUB`, `IOLCP`, `KTKBANK`, `EMSLIMITED` stay empty).
 
 ### P. Checkpoint grading packs: one command, two rubrics (T-242, 25 Nov 2026)
 
