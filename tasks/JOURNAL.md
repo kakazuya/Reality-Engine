@@ -6,6 +6,32 @@ architecture / execution / output. Every new session reads the latest entry firs
 "Carry forward" bullets). Transcripts and the run ledger keep WHAT happened; this file keeps WHY and what we learned.
 Keep entries short; facts with numbers; no repetition of STATE or tickets.
 
+## 2026-11-27 05:05 Eagle wrap-up (sv-review-wolf-s-ungraded-work): non-author reviews and grades through the night
+
+Work done: reviewed 13 branches written to Wolf's briefs: results r3b FAIL, r3c PASS, r3e PASS (blocked on r3d), r3d2 PASS, r3f PASS;
+tx r3 PASS, r4 FAIL, r5 net-gain merge, r6 PASS; AR r5 FAIL, r6 PASS; arith checks PASS; XBRL annual PASS with tolerance fix;
+events provenance PASS. Recorded 7 checkpoint grades: results 2/3/4 FAIL, AR 3/4/5 FAIL, tx 14 re-grade FAIL. Retrieval audit 10:
+34R/2P/4W/7M of 48, statements 16/16. Briefs: AR r7, tx r7 (merged after Wolf's review). Fixed hy4_ctl for the results loop and
+false DUPLICATE; loop watches moved from WAL files to loop logs.
+
+What worked: sampling the rows a fix DOWNGRADES or DROPS, not only the graded pack. AR r5 kept 0/37 graded-R changes but ~60% of
+its random downgrades were right rows; tx r4 regained 20/20 right but lost 11/20 right. Probing helper functions with edge inputs
+(the OCR digit rejoin, the 1% XBRL tolerance that let '578.22' match '576.22').
+
+What did not, and why: dsh starts from this session failed 4x with exit 126 (heartbeat plugin did not bind), and Wolf's graders
+failed the same way under 100% CPU; agy Hydrogen was the fallback. Eagle and Wolf both started r3d2 in the same minute: a claim
+message before any start is now agreed. A 60-row AR grader died mid-run: 30-row halves with page lookups capped work.
+The AR reader held one write transaction for 90 min in DELETE journal mode and blocked loads; WAL fixed the locking but WAL files
+vanish between runs, so watches belong on loop logs.
+
+What to improve: a fix stacked on an unreviewed branch (r3e on r3d) inherits its defects; review the base first. Measure from
+shard DBs by their own doc lists (the combined copy was r4's base / malformed). Accept bars must include random downgrades.
+
+Carry forward: after T-245 cleanup - full results --recheck (3% bar + count of verified rows whose value changed) before any
+obs_results_fy27 swap; AR r7 (brief has ckpt_0004 + ckpt_0005 evidence; AR W rate 20% -> 27% -> 30%); retrieval fixes from audit 10
+(dual-date column election in fact(), NEW-code AR / guidance rows unreachable, auditor-note subsidiary figures); tx r8 list;
+reparse + load of tx r7.
+
 ## 2026-11-14 06:20 Wolf (same session): round 14 checked lookups built, replayed, failed
 
 Work done: T-213 r14 + r14b (checked_lookups.py, 29 tests) built by two DeepSeek workers; replay on the 29 r13-miss
