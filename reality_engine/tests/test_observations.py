@@ -2668,3 +2668,19 @@ def test_dedupe_repeats_keeps_the_verified_row_then_the_lowest_id_and_scopes_by_
            "statement, speaker HAVING COUNT(*) > 1)")
     assert con.execute(key).fetchone()[0] == 0
     con.close()
+
+def test_hungerg_free_reader_entry():
+    """T-242 (26 Nov): HungerG is free on Go and selectable as the observations reader."""
+    from reality_engine.v2 import reference_pages as rp
+
+    base = rp.MODELS["hungerg-free"]
+    assert base["price"] == (0.0, 0.0) and base["capped"] is False
+    before = obs.OBS_READER
+    try:
+        obs.set_reader("hungerg-free")
+        entry = rp.MODELS[obs.OBS_READER]
+        assert entry["id"] == "hungerg-free"
+        assert entry["body"]["max_tokens"] == 16000
+    finally:
+        obs.set_reader(before.split("@")[0])
+    assert obs.OBS_READER == before
