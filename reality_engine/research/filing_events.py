@@ -607,12 +607,12 @@ _SUB_COMPANY_ITEM = re.compile(
     r"\s+(?i:Private\s+Limited|Private\s+Ltd\.?|Pvt\.?\s+Ltd\.?|Limited|Ltd\.?|LLP|Inc\.?|GmbH|LLC|Corp(?:oration)?\.?))"
 )
 _ORDER_BOOK = re.compile(r"\border\s+book\b|\border\s+intake\b|\border\s+inflow\b|\bbacklog\b", re.I)
-_DATE_DMY = re.compile(r"\bdated?\s+(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})\b", re.I)
+_DATE_DMY = re.compile(r"\b(?:dated?|made\s+on)\s+(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})\b", re.I)
 _DATE_MD = re.compile(
-    r"\bdated?\s+(\d{1,2})(?:st|nd|rd|th)?\s+(January|February|March|April|May|June|July|August|September|"
+    r"\b(?:dated?|made\s+on)\s+(\d{1,2})(?:st|nd|rd|th)?\s+(January|February|March|April|May|June|July|August|September|"
     r"October|November|December),?\s+(\d{4})\b", re.I)
 _DATE_MDY = re.compile(
-    r"\bdated?\s+(January|February|March|April|May|June|July|August|September|October|November|December)"
+    r"\b(?:dated?|made\s+on)\s+(January|February|March|April|May|June|July|August|September|October|November|December)"
     r"\s+(\d{1,2}),?\s+(\d{4})\b", re.I)
 _MONTHS = {name: i for i, name in enumerate(
     ("january", "february", "march", "april", "may", "june", "july", "august", "september", "october",
@@ -3497,15 +3497,36 @@ def _assign_raise_ids(rows: list[dict[str, Any]]) -> None:
         best["raise_primary"] = 1
 
 
-def _fold_same_raise(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """C1/T-242 round 5: a press release, errata or second letter repeating a raise step already filed is one
-    event.
+def _same_doc_text(first: Mapping[str, Any], second: Mapping[str, Any]) -> bool:
+    """True when two filings of the same symbol share the same (or >=92% identical) normalised body text."""
+    import difflib
 
-    Same company, an amount within 0.5% or the same printed share count, within 10 days: the restating row names
-    the step it repeats in ``amends`` (fresh4 #9, #29, #48, #60).  Two letters filed the same day about one step
-    keep the more advanced stage (a QIP allotment over the board's allocation letter); a step *after* the earlier
-    one, a notice (a postal-ballot or EGM notice is its own dated step) and an earlier-stage row that is not the
-    same day are never folded.
+    left = re.sub(r"\s+", " ", _flat(first.get("_text_full") or first.get("_text") or "")).strip().lower()
+    right = re.sub(r"\s+", " ", _flat(second.get("_text_full") or second.get("_text") or "")).strip().lower()
+    if len(left) < 120 or len(right) < 120:
+        return False
+    if left[:3000] == right[:3000]:
+        return True
+    if abs(len(left) - len(right)) > 0.20 * max(len(left), len(right)):
+        return False
+    return difflib.SequenceMatcher(None, left[:3000], right[:3000]).ratio() >= 0.92
+
+
+def _is_revised_outcome(row: Mapping[str, Any]) -> bool:
+    title = _flat(row.get("title") or "")
+    return bool(re.search(r"\brevised\b", title, re.I) and re.search(
+        r"\b(?:outcome|board|committee|intimation|disclosure|allotment)\b|^revised\b", title, re.I
+    ))
+
+
+def _fold_same_raise(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """C1/T-242 round 5 + model r2: fold repeat filings, same-text duplicates, and same-day revised outcomes.
+
+    Same company, an amount within 0.5%, the same printed share count, or identical body text within 10 days:
+    the restating/superseded row names the kept step in ``amends``.  A same-day "Revised" outcome supersedes
+    the original.  Two letters filed the same day about one step keep the more advanced stage; a step *after*
+    the earlier one, a notice (a postal-ballot or EGM notice is its own dated step) and an earlier-stage row
+    that is not the same day are never folded.
     """
     kept: list[dict[str, Any]] = []
     dropped: set[int] = set()
@@ -3513,6 +3534,8 @@ def _fold_same_raise(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -
                     key=lambda r: (str(r.get("known_at") or ""), str(r.get("doc_key") or "")))
     for row in raises:
         match = None
+        fold_reason = ("same raise step: same stage or a restatement, amount within 0.5% or the same share count, "
+                       "within 10 days; the completed step and its earlier known_at are kept")
         for prior in kept:
             if prior["symbol"] != row["symbol"] or prior.get("doc_key") == row.get("doc_key"):
                 continue
@@ -3523,21 +3546,31 @@ def _fold_same_raise(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -
                 continue
             if gap > 10:
                 continue
+            same_day = str(row.get("filing_date")) == str(prior.get("filing_date"))
+            row_rev, prior_rev = _is_revised_outcome(row), _is_revised_outcome(prior)
+            if same_day and row_rev != prior_rev and not _RAISE_NOTICE.search(_flat(row.get("title"))):
+                match = prior
+                fold_reason = "same-day revised outcome supersedes original"
+                break
+            same_text = gap <= 7 and _same_doc_text(prior, row)
             same_amount = _same_value(prior, row, tolerance=0.005)
             same_shares = (prior.get("shares") is not None and row.get("shares") is not None
                            and abs(float(prior["shares"]) - float(row["shares"])) < 1e-6)
-            if not (same_amount or same_shares) or _RAISE_NOTICE.search(_flat(row.get("title"))):
+            if not (same_text or same_amount or same_shares):
+                continue
+            if not same_text and _RAISE_NOTICE.search(_flat(row.get("title"))):
                 continue
             rank = _RAISE_STAGE_RANK.get(str(row.get("raise_stage")), 0)
             prior_rank = _RAISE_STAGE_RANK.get(str(prior.get("raise_stage")), 0)
-            same_day = str(row.get("filing_date")) == str(prior.get("filing_date"))
-            if not same_day and rank > prior_rank:
+            if not same_text and not same_day and rank > prior_rank:
                 continue            # a later stage is a new dated step of the same raise
             row_has_amt = row.get("amount_inr_cr") is not None or row.get("amount_usd_mn") is not None
             prior_has_amt = prior.get("amount_inr_cr") is not None or prior.get("amount_usd_mn") is not None
-            if same_day and rank > prior_rank and not row_has_amt and prior_has_amt:
+            if not same_text and same_day and rank > prior_rank and not row_has_amt and prior_has_amt:
                 continue            # never drop a quantified raise step for an unquantified same-day twin
             match = prior
+            if same_text:
+                fold_reason = "duplicate filing: same document text filed twice"
             break
         if match is None:
             kept.append(row)
@@ -3546,8 +3579,19 @@ def _fold_same_raise(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -
         prior_rank = _RAISE_STAGE_RANK.get(str(match.get("raise_stage")), 0)
         row_has_amt = row.get("amount_inr_cr") is not None or row.get("amount_usd_mn") is not None
         match_has_amt = match.get("amount_inr_cr") is not None or match.get("amount_usd_mn") is not None
-        if rank > prior_rank or (rank == prior_rank and row_has_amt and not match_has_amt):
-            winner, loser = row, match               # the completed (or quantified) step stands, the twin is the repeat
+        same_day = str(row.get("filing_date")) == str(match.get("filing_date"))
+        row_wins = (
+            (same_day and _is_revised_outcome(row) and not _is_revised_outcome(match))
+            or (not (same_day and _is_revised_outcome(match) and not _is_revised_outcome(row))
+                and (
+                    rank > prior_rank
+                    or (rank == prior_rank and (match.get("method") == "computed" and row.get("method") != "computed"))
+                    or (rank == prior_rank and not (row.get("method") == "computed" and match.get("method") != "computed")
+                        and row_has_amt and not match_has_amt)
+                ))
+        )
+        if row_wins:
+            winner, loser = row, match
             kept[kept.index(match)] = row
             dropped.add(id(match))
         else:
@@ -3556,8 +3600,7 @@ def _fold_same_raise(rows: list[dict[str, Any]], amends: list[dict[str, Any]]) -
         amends.append({
             "doc_key": loser["doc_key"], "symbol": loser["symbol"], "amends": winner["doc_key"],
             "filing_date": loser.get("filing_date"), "known_at": loser.get("known_at"),
-            "why": "same raise step: same stage or a restatement, amount within 0.5% or the same share count, "
-                   "within 10 days; the completed step and its earlier known_at are kept",
+            "why": fold_reason,
         })
     return [row for row in rows if id(row) not in dropped]
 
@@ -3886,7 +3929,17 @@ _SCALE_WORD_RX = re.compile(
     r"(?<![a-zA-Z])(crores?|cr\.?|crs\.?|lakhs?|lacs?|millions?|mn|billions?|bn)(?![a-zA-Z])",
     re.I,
 )
-_SKIP_STAGES = frozenset({"l1_only", "cancelled", "withdrawn"})
+_SKIP_STAGES = frozenset({"l1_only", "cancelled", "withdrawn", "intimation"})
+_MAX_EVENT_INR_CR = 100_000.0
+_PAREN_WORDS_GLOSS_RX = re.compile(r"\(\s*(?:Indian\s+)?Rupees?\b[^)]*\)", re.I)
+_ABOUT_BOILERPLATE_HEAD_RX = re.compile(
+    r"(?:^|\n)\s*About\s+(?:the\s+Company|Us|[A-Z][A-Za-z0-9&.'’\-]*(?:\s+[A-Z][A-Za-z0-9&.'’\-]*){0,5})\s*[:\-–—]",
+    re.I,
+)
+_ABOUT_BOILERPLATE_END_RX = re.compile(
+    r"\n\s*(?:For\s+more\s+information|For\s+further\s+information|Media\s+(?:queries|contact)|DISCLAIMER|Follow\s+us\s+on)\b",
+    re.I,
+)
 
 
 def _find_printed_span(pages: dict[int, str], title: str, value_text: str) -> tuple[str | None, int | None]:
@@ -4011,7 +4064,13 @@ def _parse_printed_amount(amt: Mapping[str, Any], pages: dict[int, str], title: 
                 "value_text": matched_span}
 
     # Check currency and scale are printed (allowing OCR ¥->₹ on crore/lakh, Indian comma full rupees, and page unit headers)
-    scale_matches = [_norm_scale(m.group(1)) for m in _SCALE_WORD_RX.finditer(matched_span)]
+    # Strip parenthetical written-out rupee glosses only when chosen_num >= 100k (a full-rupee integer),
+    # so "INR 3,849,088,060 (Indian Rupees Three Billion ...)" stays in rupees while "Rs. 660.79/- (Rupees ... Crore ...)"
+    # keeps its Crore scale word (T-242 r2).
+    scale_span = _PAREN_WORDS_GLOSS_RX.sub(" ", matched_span) if chosen_num >= 100_000.0 else matched_span
+    scale_matches = [_norm_scale(m.group(1)) for m in _SCALE_WORD_RX.finditer(scale_span)]
+    if not scale_matches and _norm_scale(amt.get("unit")) in ("crore", "lakh", "million", "billion"):
+        scale_matches = [_norm_scale(m.group(1)) for m in _SCALE_WORD_RX.finditer(matched_span)]
     has_inr = bool(_INR_CUR_RX.search(matched_span))
     has_usd = bool(_USD_CUR_RX.search(matched_span))
     foreign_m = _FOREIGN_CUR_RX.search(matched_span)
@@ -4054,8 +4113,10 @@ def _parse_printed_amount(amt: Mapping[str, Any], pages: dict[int, str], title: 
                     "value_text": matched_span}
         scale = decl_unit
     elif decl_unit == "unit":
-        if scale_matches:
-            # e.g. model set unit='unit' when 'crore' was actually printed
+        if scale_matches and chosen_num < 100_000.0:
+            # e.g. model set unit='unit' when 'crore' was actually printed (not a full >=100k rupee figure)
+            scale = scale_matches[0]
+        elif scale_matches and any(s in ("crore", "lakh") for s in scale_matches) and chosen_num >= 100_000.0:
             scale = scale_matches[0]
         else:
             min_full = 100_000.0 if currency == "INR" else 10_000.0
@@ -4075,6 +4136,9 @@ def _parse_printed_amount(amt: Mapping[str, Any], pages: dict[int, str], title: 
         else:
             factor = _TO_CR[scale]
             inr_cr = round(chosen_num / 1e7, 4) if (scale == "crore" and chosen_num >= 1e6) else round(chosen_num * factor, 4)
+        if inr_cr > _MAX_EVENT_INR_CR:
+            return {"ok": False, "role": role, "reason": f"amount {inr_cr:g} cr exceeds {_MAX_EVENT_INR_CR:g} cr limit",
+                    "value_text": matched_span}
     elif currency == "USD":
         if scale == "unit":
             usd_mn = round(chosen_num / 1e6, 4)
@@ -4253,6 +4317,402 @@ def _legacy_model_rows(doc: dict[str, Any], kinds: list[str], events: list[dict[
     return list(best.values())
 
 
+_ESOP_PLAN_VETO = re.compile(
+    r"\b(?:ESOPs?|ESOS|ESPS|RSUs?)\b|employee\s+stock\s+option|stock\s+option\s+(?:plan|scheme)"
+    r"|(?:management|employee|staff|long[-\s]?term)\s+incentive\s+plan|share\s+based\s+employee\s+benefit"
+    r"|sweat\s+equity|restricted\s+stock\s+unit|\bexercise\s+of\s+(?:(?:employee|stock|incentive)\s+)+options?\b",
+    re.I,
+)
+_NOT_CASH_RAISE_RX = re.compile(r"\bconsideration\s+other\s+than\s+cash\b|\bshare\s+swap\b", re.I)
+_SCHEME_ALLOT_RX = re.compile(
+    r"(?:pursuant\s+to|under|in\s+terms\s+of)\s+(?:the\s+|a\s+)?scheme\s+of\s+(?:amalgamation|arrangement)\b"
+    r"|\bscheme\s+of\s+(?:amalgamation|arrangement)\b[^.;]{0,140}\b(?:allot\w*|issu\w*)",
+    re.I,
+)
+_BOARD_INTIMATION_MEETING_RX = re.compile(
+    r"\b(?:board\s+meeting\s+intimation|intimation\s+of\s+(?:forthcoming\s+)?board\s+meeting"
+    r"|prior\s+intimation\b[^.]{0,80}\bregulation\s*(?:29|50))\b"
+    r"|\b(?:meeting\s+of\s+the\s+board(?:\s+of\s+directors)?|board\s+meeting)\b[^.]{0,100}\b"
+    r"(?:will\s+be\s+held|is\s+scheduled(?:\s+to\s+be\s+held)?|scheduled\s+on|to\s+be\s+held)\b",
+    re.I,
+)
+_BOARD_INTIMATION_CONSIDER_RX = re.compile(
+    r"\b(?:to\s+consider|will\s+consider|may\b[^.]{0,30}\bconsider|to\s+transact)\b", re.I
+)
+_BOARD_OUTCOME_DONE_RX = re.compile(
+    r"\b(?:outcome\s+of\s+(?:the\s+)?(?:board|committee)\s+meeting"
+    r"|board\s+(?:of\s+directors\s+)?(?:at\s+(?:its|their)\s+meeting\s+)?(?:held\s+(?:today|on)|has\s+(?:,?\s*inter[-\s]?alia\s*,?\s*)?(?:considered\s+and\s+)?approved)"
+    r"|commenced\s+at\b[^.]{0,60}\bconcluded\s+at\b)",
+    re.I,
+)
+_SHAREHOLDER_MEETING_NOTICE_RX = re.compile(
+    r"\b(?:notice\s+of\s+(?:the\s+)?(?:EGM|AGM|postal\s+ballot|extra[-\s]?ordinary\s+general\s+meeting|annual\s+general\s+meeting)"
+    r"|postal\s+ballot\s+notice"
+    r"|(?:EGM|AGM|extra[-\s]?ordinary\s+general\s+meeting|annual\s+general\s+meeting)\s+of\s+(?:the\s+)?members)\b",
+    re.I,
+)
+_CAPEX_PRESS_LEAD_RX = re.compile(
+    r"\b(?:greenfield\s+plant|brownfield|expand\s+capacity|capacity\s+expansion"
+    r"|setup\s+(?:a\s+)?(?:new\s+)?(?:greenfield\s+)?plant|setting\s+up\s+(?:a\s+)?(?:new\s+)?(?:plant|facility)"
+    r"|new\s+manufacturing\s+facilit(?:y|ies)|new\s+facilities"
+    r"|with\s+(?:Rs\.?|INR|₹|\"?\s*\d+)[^.;]{0,30}(?:investment|capex))\b",
+    re.I,
+)
+_ORDER_REPEAT_RX = re.compile(
+    r"\b(?:this\s+is\s+)?further\s+to\s+our\s+(?:disclosure|letter|announcement|intimation)\s+dated\b"
+    r"|\bin\s+continuation\s+(?:to|of)\s+our\s+(?:earlier\s+)?(?:disclosure|letter|announcement|intimation)\s+dated\b"
+    r"|\badditional\s+announcement\s+in\s+relation\s+to\b",
+    re.I,
+)
+_SHARES_PRINT_RX = re.compile(
+    r"(?P<v>\d[\d,]*)\s*(?:\([^)]{0,140}\)\s*)?(?:fully\s+)?(?:convertible\s+)?(?:partly\s+)?"
+    r"(?:paid[-\s]?up\s+)?(?:unlisted\s+)?(?:secured\s+|unsecured\s+)?(?:non[-\s]?convertible\s+)?"
+    r"(?:equity\s+)?(?:shares?|warrants?|NCDs?|CCDs?|debentures?|units?)\b",
+    re.I,
+)
+_PREMIUM_OF_RX = re.compile(r"(?:at\s+(?:a\s+)?)?premium\s+of\s+(?:Rs\.?|INR|₹|Re\.?)\s*(?P<p>\d[\d,]*(?:\.\d+)?)", re.I)
+_FACE_VALUE_BEFORE_RX = re.compile(
+    r"(?:face\s+value(?:\s+of)?|equity\s+shares?\s+of|shares?\s+of)\s*(?:Rs\.?|INR|₹|Re\.?)\s*(?P<f>\d[\d,]*(?:\.\d+)?)",
+    re.I,
+)
+_INR_EQV_TAIL_RX = re.compile(
+    r"^\s*(?:\(|,|\s)*(?:equivalent\s+to|eqv\.?|eq\.?)?\s*\(?\s*(?:equivalent\s+to\s+|eqv\.?\s+)?"
+    r"(?:approx\.?\s*|approximately\s*|~\s*)?(?:Rs\.?|INR|₹)\s*(?:approx\.?\s*|~\s*)?"
+    r"(?P<v>\d[\d,]*(?:\.\d+)?)\s*(?P<u>crores?|cr\.?|crs\.?|lakhs?|lacs?|millions?|mn|billions?|bn)?\b",
+    re.I,
+)
+
+
+def _in_about_boilerplate(span: str, pages: dict[int, str], title: str) -> bool:
+    """True when every occurrence of ``span`` sits inside an 'About <Company>:' boilerplate block."""
+    needle = _flat(span)
+    if not needle:
+        return False
+    if _flat(title) and needle in _flat(title):
+        return False
+    found_in_bp = False
+    for page in sorted(pages):
+        if int(page) > PAGES:
+            continue
+        raw = str(pages[page] or "")
+        if not raw.strip():
+            continue
+        spans_bp: list[tuple[int, int]] = []
+        for hm in _ABOUT_BOILERPLATE_HEAD_RX.finditer(raw):
+            em = _ABOUT_BOILERPLATE_END_RX.search(raw, hm.end())
+            spans_bp.append((hm.start(), em.start() if em else len(raw)))
+        if not spans_bp:
+            if needle in _flat(raw):
+                return False
+            continue
+        outside_parts: list[str] = []
+        pos = 0
+        for s_idx, e_idx in spans_bp:
+            if s_idx > pos:
+                outside_parts.append(raw[pos:s_idx])
+            if needle in _flat(raw[s_idx:e_idx]):
+                found_in_bp = True
+            pos = max(pos, e_idx)
+        if pos < len(raw):
+            outside_parts.append(raw[pos:])
+        if needle in _flat("\n".join(outside_parts)):
+            return False
+    return found_in_bp
+
+
+def _has_plus_band(span: str, pages: dict[int, str], title: str) -> tuple[bool, str]:
+    """True when ``span`` (or its immediate suffix on the page) ends with '+' (a band floor, not exact)."""
+    needle = _flat(span)
+    if not needle:
+        return False, needle
+    if re.search(r"\+\s*$", needle) or re.search(
+        r"\d\s*\+\s*(?:crores?|cr\.?|crs\.?|lakhs?|lacs?|millions?|mn|billions?|bn)\b", needle, re.I
+    ):
+        return True, needle
+    for src in [title] + [pages[p] for p in sorted(pages) if int(p) <= PAGES]:
+        flat_src = _flat(src)
+        idx = flat_src.find(needle)
+        if idx >= 0:
+            tail = flat_src[idx + len(needle): idx + len(needle) + 4]
+            if re.match(r"^\s*\+", tail):
+                return True, needle + "+"
+    return False, needle
+
+
+def _printed_inr_equivalent(
+    chosen: Mapping[str, Any], valid_amounts: list[dict[str, Any]], pages: dict[int, str], title: str
+) -> tuple[float | None, str | None]:
+    """Find a printed INR equivalent beside a foreign-currency order amount."""
+    vt = _flat(chosen.get("value_text"))
+    page = chosen.get("page")
+    page_text = _flat(title if page == 0 else (pages.get(page or 1) or ""))
+    if not vt or not page_text:
+        return None, None
+    idx = page_text.find(vt)
+    tail = page_text[idx + len(vt): idx + len(vt) + 160] if idx >= 0 else ""
+    for candidate in (vt, tail):
+        if not candidate:
+            continue
+        # Require an equivalence word or parenthesized INR beside the foreign amount
+        if candidate is vt and "(" not in vt and not re.search(r"\bequivalent\b|\beqv\b", vt, re.I):
+            continue
+        if candidate is tail and not re.match(
+            r"^\s*(?:\(|,|\s)*(?:equivalent\b|eqv\b|eq\.|\(\s*(?:approx|approximately|~)?\s*(?:Rs\.?|INR|₹))",
+            tail, re.I,
+        ):
+            continue
+        for a in valid_amounts:
+            if a.get("currency") == "INR" and a.get("inr_cr") is not None and _flat(a.get("value_text")) in candidate:
+                return float(a["inr_cr"]), _flat(a["value_text"])
+        search_str = candidate if candidate is tail else candidate[max(0, candidate.find("(")):]
+        m = _INR_EQV_TAIL_RX.search(search_str)
+        if m:
+            num = float(m.group("v").replace(",", ""))
+            u = _norm_scale(m.group("u") or "")
+            if u in _TO_CR:
+                val = round(num * _TO_CR[u], 4)
+            elif num >= 100_000.0:
+                val = round(num / 1e7, 4)
+            else:
+                val = None
+            if val is not None and 0 < val <= _MAX_EVENT_INR_CR:
+                return val, _flat(m.group(0)).strip("(), ")
+    return None, None
+
+
+def _not_a_fund_raise_reason(
+    doc: Mapping[str, Any], ev: Mapping[str, Any], instr: str | None, quote: str
+) -> tuple[str | None, str | None]:
+    """Return ``(stage_override, reason)`` when a model fund_raise is not a listed-company cash raise."""
+    title = _flat(doc.get("title") or "")
+    head = _flat(doc.get("head") or doc.get("text") or "")
+    text = _flat(doc.get("text") or "")
+    lead = f"{title} {head[:1600]}"
+    # Step 2: Reg 29 / Reg 50 notice of a future Board Meeting ("will consider")
+    raw_head = ((doc.get("pages") or {}).get(1) or doc.get("head") or doc.get("text") or "")[:2000]
+    sub_m_lead = re.search(r"(?:Sub(?:ject)?|Ref)\s*[:.\-]\s*[^\n]{0,250}", raw_head, re.I)
+    subj_line = _flat(f"{title} {sub_m_lead.group(0) if sub_m_lead else ''}")
+    is_sh_notice = bool(
+        _SHAREHOLDER_MEETING_NOTICE_RX.search(subj_line)
+        or re.search(r"\b(?:EGM|AGM|Extra[-\s]?Ordinary\s+General\s+Meeting|Annual\s+General\s+Meeting)\b[^.]{0,60}\b(?:will\s+be\s+held|is\s+scheduled)\b",
+                     lead, re.I)
+    )
+    if not _BOARD_OUTCOME_DONE_RX.search(lead) and not is_sh_notice:
+        if _BOARD_INTIMATION_MEETING_RX.search(lead) and _BOARD_INTIMATION_CONSIDER_RX.search(lead):
+            return "intimation", "board meeting intimation (stage intimation), not an approved raise"
+    # Step 1(c): ESOP / ESOS / Incentive Plan / options exercise
+    if _ESOP_PLAN_VETO.search(f"{title} {text}"):
+        return None, "ESOP / incentive plan / options exercise, not a fund raise"
+    # Step 1(a) & 1(b): consideration other than cash, share swap, or Scheme of Amalgamation/Arrangement allotment
+    pages_map = doc.get("pages") or {}
+    p1_head = _flat(pages_map.get(1) or head)[:3500]
+    has_cash_raise = bool(
+        re.search(r"\bfor\s+cash\b|\breceived\s+(?:Rs\.?|INR|₹)\s*[\d,]+|\b(?:NCDs?|non[-\s]?convertible\s+debentures?|QIP)\b",
+                  f"{title} {p1_head} {quote}", re.I)
+    )
+    # Check title + Subject line + the specific clause around the raise (not unrelated later agenda items)
+    sub_m = re.search(r"(?:Sub(?:ject)?|Ref)\s*[:.\-]\s*[^\n]{0,250}", _flat(pages_map.get(1) or head), re.I)
+    raise_head = f"{title} {sub_m.group(0) if sub_m else ''}"
+    has_non_cash_head = bool(_NOT_CASH_RAISE_RX.search(raise_head) or (not has_cash_raise and _NOT_CASH_RAISE_RX.search(p1_head)))
+    has_scheme_head = bool(_SCHEME_ALLOT_RX.search(raise_head) or (not has_cash_raise and _SCHEME_ALLOT_RX.search(p1_head)))
+    if has_non_cash_head:
+        return None, "consideration other than cash / share swap, not a fund raise"
+    if has_scheme_head:
+        return None, "scheme of amalgamation/arrangement allotment, not a fund raise"
+    full = f"{title} {text}"
+    if (_NOT_CASH_RAISE_RX.search(full) or _SCHEME_ALLOT_RX.search(full)) and not has_cash_raise:
+        reason = ("consideration other than cash / share swap, not a fund raise"
+                  if _NOT_CASH_RAISE_RX.search(full)
+                  else "scheme of amalgamation/arrangement allotment, not a fund raise")
+        return None, reason
+    # Step 1(d): subsidiary's own DRHP/IPO, or an OFS by the company
+    if instr == "ipo" and re.search(
+        r"\b(?:subsidiary|DRHP|RHP|initial\s+public\s+offer|offer\s+for\s+sale|\bOFS\b)", full, re.I
+    ):
+        return None, "subsidiary DRHP/IPO or OFS, not listed company's fund raise"
+    if re.search(
+        r"\b(?:subsidiary\b[^.]{0,120}\b(?:DRHP|RHP|IPO|initial\s+public\s+offer)"
+        r"|(?:DRHP|RHP|initial\s+public\s+offer)\b[^.]{0,120}\bsubsidiary"
+        r"|\boffer\s+for\s+sale\s*\(?\s*OFS\s*\)?)",
+        raise_head, re.I,
+    ):
+        return None, "subsidiary DRHP/IPO or OFS, not listed company's fund raise"
+    return None, None
+
+
+def _not_an_order_win_reason(doc: Mapping[str, Any], row: Mapping[str, Any]) -> tuple[str | None, str | None]:
+    """Return ``(reason, referenced_date)`` when a model order_win is background capex or a repeat update."""
+    has_val = any(row.get(k) is not None for k in ("amount_inr_cr", "amount_usd_mn", "value_annual")) or bool(
+        row.get("value_text")
+    )
+    if has_val:
+        return None, None
+    title = _flat(doc.get("title") or "")
+    head = _flat(doc.get("head") or doc.get("text") or "")
+    text = _flat(doc.get("text") or "")
+    if _CAPEX_PRESS_LEAD_RX.search(f"{title} {head[:900]}") \
+            and not re.search(r"\b(?:order|orders|contract|contracts|LOA|LOI|letter\s+of\s+(?:award|acceptance|intent))\b", title, re.I) \
+            and not re.search(r"name\s+of\s+the\s+entity\s+awarding\s+the\s+order", text, re.I):
+        return "capex/plant press release mentioning order as background only", None
+    if _ORDER_REPEAT_RX.search(f"{title} {head[:1500]}") and not re.search(
+        r"\b(?:received\s+(?:a\s+)?(?:new|fresh|additional)\s+(?:order|contract|LOA)"
+        r"|value\s+of\s+(?:the\s+)?(?:order|contract)\s+is\s+(?:Rs\.?|INR|₹|USD|\$)\s*\d)",
+        f"{title} {head[:1500]}", re.I,
+    ):
+        ref_date = _referenced_date(title, "") or _referenced_date(title, text)
+        reason = (f"repeat/update of earlier disclosure dated {ref_date} (no new value)"
+                  if ref_date else "repeat/update of earlier disclosure (no new value)")
+        return reason, ref_date
+    return None, None
+
+
+def _fix_issue_price(pps: float, pages: dict[int, str], title: str) -> tuple[float, bool]:
+    """When ``pps`` is the printed premium and face value precedes it, return ``(face + premium, True)``."""
+    flat_all = _flat(" ".join([title] + [pages[p] for p in sorted(pages) if int(p) <= PAGES]))
+    for m in _PREMIUM_OF_RX.finditer(flat_all):
+        try:
+            prem = float(m.group("p").replace(",", ""))
+        except ValueError:
+            continue
+        if abs(prem - pps) > 1e-4 * max(1.0, pps):
+            continue
+        before_short = flat_all[max(0, m.start() - 40): m.start()]
+        if re.search(r"\b(?:includ\w*|with\s+(?:a\s+)?)\s*$", before_short, re.I):
+            continue
+        before = flat_all[max(0, m.start() - 180): m.start()]
+        fv_matches = list(_FACE_VALUE_BEFORE_RX.finditer(before))
+        if fv_matches:
+            try:
+                fv = float(fv_matches[-1].group("f").replace(",", ""))
+            except ValueError:
+                continue
+            if 0 < fv <= 1000.0:
+                return round(fv + prem, 4), True
+    return pps, False
+
+
+def _printed_share_counts(pages: dict[int, str], title: str) -> list[float]:
+    flat_all = _flat(" ".join([title] + [pages[p] for p in sorted(pages) if int(p) <= PAGES]))
+    out: list[float] = []
+    for m in _SHARES_PRINT_RX.finditer(flat_all):
+        try:
+            val = float(m.group("v").replace(",", ""))
+            if val > 0:
+                out.append(val)
+        except ValueError:
+            pass
+    return out
+
+
+def _fix_printed_shares(shares: float, pages: dict[int, str], title: str) -> float:
+    """Fix Indian-comma 10x/100x/1000x LLM slips on ``shares`` using printed security counts."""
+    counts = _printed_share_counts(pages, title)
+    if not counts:
+        return shares
+    if any(abs(n - shares) <= 1e-4 * max(1.0, shares) for n in counts):
+        return shares
+    for n in counts:
+        ratio = max(n, shares) / min(n, shares)
+        if any(abs(ratio - p) <= 1e-4 * p for p in (10.0, 100.0, 1000.0)):
+            return n
+    return shares
+
+
+def _is_number_printed(num: float, pages: dict[int, str], title: str) -> bool:
+    flat_all = _flat(" ".join([title] + [pages[p] for p in sorted(pages) if int(p) <= PAGES]))
+    for tok in re.findall(r"\d[\d,]*(?:\.\d+)?", flat_all):
+        try:
+            v = float(tok.replace(",", ""))
+            if abs(v - num) <= 1e-4 * max(1.0, abs(num), abs(v)):
+                return True
+        except ValueError:
+            pass
+    return False
+
+
+def _merge_same_filing_raises(
+    fr_rows: list[dict[str, Any]], doc: Mapping[str, Any], script_check: Mapping[str, list[dict[str, Any]]] | None
+) -> list[dict[str, Any]]:
+    """Combine multiple fund_raise events from the same filing into one event (Step 3b)."""
+    if not fr_rows:
+        return []
+    if len(fr_rows) > 1:
+        # Deduplicate distinct leg amounts (within 0.5%) so a combined total repeated on 2 legs isn't double-counted
+        amt_legs: list[tuple[float, str, str | None]] = []
+        for r in fr_rows:
+            a = r.get("amount_inr_cr")
+            if a is None:
+                continue
+            if not any(abs(a - prev_a) <= 0.005 * max(1.0, abs(a), abs(prev_a)) for prev_a, _vt, _in in amt_legs):
+                amt_legs.append((float(a), str(r.get("value_text") or ""), r.get("instrument")))
+        base = dict(fr_rows[0])
+        if len(amt_legs) > 1:
+            # Check if one leg already equals the sum of the others
+            amt_legs_sorted = sorted(amt_legs, key=lambda x: x[0], reverse=True)
+            top_a = amt_legs_sorted[0][0]
+            rest_sum = sum(x[0] for x in amt_legs_sorted[1:])
+            if abs(top_a - rest_sum) <= 0.01 * max(1.0, top_a):
+                base["amount_inr_cr"] = round(top_a, 4)
+                base["value_text"] = amt_legs_sorted[0][1] or None
+                leg_note = f"printed total {top_a:g} cr covers legs"
+            else:
+                total_cr = round(sum(x[0] for x in amt_legs), 4)
+                if total_cr <= _MAX_EVENT_INR_CR:
+                    base["amount_inr_cr"] = total_cr
+                vts = [x[1] for x in amt_legs if x[1]]
+                base["value_text"] = "; ".join(vts) if vts else None
+                if all(r.get("method") == "computed" for r in fr_rows if r.get("amount_inr_cr") is not None):
+                    base["method"] = "computed"
+                else:
+                    base["method"] = "model"
+                leg_desc = " + ".join(f"{x[2] or 'leg'} Rs {x[0]:g} cr" for x in amt_legs)
+                leg_note = f"sum of printed legs ({leg_desc})"
+            base["status"] = "unverified"
+        elif len(amt_legs) == 1:
+            base["amount_inr_cr"] = round(amt_legs[0][0], 4)
+            base["value_text"] = amt_legs[0][1] or None
+            leg_note = ""
+        else:
+            leg_note = ""
+        instrs = list(dict.fromkeys(r["instrument"] for r in fr_rows if r.get("instrument")))
+        if len(instrs) > 1:
+            base["instrument"] = "mixed"
+        elif instrs:
+            base["instrument"] = instrs[0]
+        # Sum distinct share counts across legs (if legs have distinct share counts)
+        share_vals: list[float] = []
+        for r in fr_rows:
+            sh = r.get("shares")
+            if sh is not None and not any(abs(sh - s0) < 1.0 for s0 in share_vals):
+                share_vals.append(float(sh))
+        if share_vals:
+            base["shares"] = sum(share_vals)
+        # Re-merge notes cleanly
+        details: list[str] = []
+        for r in fr_rows:
+            for part in str(r.get("detail") or "").split(";"):
+                p = part.strip()
+                if p and not p.startswith("amount mismatch:") and p not in details:
+                    details.append(p)
+        if leg_note and leg_note not in details:
+            details.append(leg_note)
+        base["detail"] = "; ".join(details)
+        fr_rows = [base]
+
+    # Run script cross-check after combining same-filing legs
+    for r in fr_rows:
+        if r.get("status") == "quarantined":
+            continue
+        mismatch = _check_script_mismatch(r, (script_check or {}).get("fund_raise"))
+        if mismatch:
+            parts = [p.strip() for p in str(r.get("detail") or "").split(";") if p.strip()]
+            if mismatch not in parts:
+                parts.append(mismatch)
+            r["detail"] = "; ".join(parts)
+            r["status"] = "unverified"
+    return fr_rows
+
+
 def model_rows(doc: dict[str, Any], kinds: list[str], raw: str, *,
                script_check: Mapping[str, list[dict[str, Any]]] | None = None,
                skips_out: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
@@ -4339,14 +4799,29 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str, *,
             annuals = [a for a in valid_amounts if a["role"] == "annual_value"]
             if order_sizes:
                 chosen = order_sizes[0]
-                row["value_text"] = chosen["value_text"]
+                is_band, band_vt = _has_plus_band(chosen["value_text"], pages, title)
                 row["page"] = chosen["page"]
-                if chosen["currency"] == "INR":
-                    row["amount_inr_cr"] = chosen["inr_cr"]
-                elif chosen["currency"] == "USD":
-                    row["amount_usd_mn"] = chosen["usd_mn"]
+                if is_band:
+                    row["value_text"] = band_vt
+                    notes.append(f"band floor (not exact): {band_vt}")
+                    force_unverified = True
                 else:
-                    notes.append(f"printed in non-INR/non-USD currency ({chosen['currency']}); not converted")
+                    row["value_text"] = chosen["value_text"]
+                    if chosen["currency"] == "INR":
+                        row["amount_inr_cr"] = chosen["inr_cr"]
+                    elif chosen["currency"] == "USD":
+                        row["amount_usd_mn"] = chosen["usd_mn"]
+                        eq_cr, eq_span = _printed_inr_equivalent(chosen, valid_amounts, pages, title)
+                        if eq_cr is not None:
+                            row["amount_inr_cr"] = eq_cr
+                            notes.append(f"INR equivalent printed ({eq_span})")
+                    else:
+                        eq_cr, eq_span = _printed_inr_equivalent(chosen, valid_amounts, pages, title)
+                        if eq_cr is not None:
+                            row["amount_inr_cr"] = eq_cr
+                            notes.append(f"printed in {chosen['currency']} with INR equivalent ({eq_span})")
+                        else:
+                            notes.append(f"printed in non-INR/non-USD currency ({chosen['currency']}); not converted")
             elif annuals:
                 ann = annuals[0]
                 row["value_text"] = ann["value_text"]
@@ -4374,20 +4849,52 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str, *,
                 quarantined_reason = rejected_relevant[0]["reason"]
         else:
             # fund_raise: total_issue wins over sum of tranche/leg rows; never add board_limit/offered_size/threshold
-            totals = [a for a in valid_amounts if a["role"] == "total_issue"]
-            parts = [a for a in valid_amounts if a["role"] in ("tranche", "equity_leg", "warrant_leg")]
+            raw_totals = [a for a in valid_amounts if a["role"] == "total_issue"]
+            raw_parts = [a for a in valid_amounts if a["role"] in ("tranche", "equity_leg", "warrant_leg")]
+            totals = [a for a in raw_totals if not _in_about_boilerplate(a["value_text"], pages, title)]
+            parts = [a for a in raw_parts if not _in_about_boilerplate(a["value_text"], pages, title)]
+            bp_rejected = (len(totals) < len(raw_totals)) or (len(parts) < len(raw_parts))
+            if bp_rejected and not totals and not parts:
+                notes.append("rejected amount in About boilerplate")
+                force_unverified = True
             if totals:
-                inr_totals = [a for a in totals if a["currency"] == "INR" and a["inr_cr"] is not None]
+                inr_totals: list[dict[str, Any]] = []
+                for a in totals:
+                    if a["currency"] == "INR" and a["inr_cr"] is not None:
+                        if not any(abs(a["inr_cr"] - prev["inr_cr"]) <= 0.005 * max(1.0, abs(a["inr_cr"]), abs(prev["inr_cr"]))
+                                   for prev in inr_totals):
+                            inr_totals.append(a)
                 usd_totals = [a for a in totals if a["currency"] == "USD" and a["usd_mn"] is not None]
-                chosen = inr_totals[0] if inr_totals else (usd_totals[0] if usd_totals else totals[0])
-                row["value_text"] = chosen["value_text"]
-                row["page"] = chosen["page"]
-                if chosen["currency"] == "INR":
+                if len(inr_totals) > 1:
+                    by_amt = sorted(inr_totals, key=lambda x: x["inr_cr"], reverse=True)
+                    top_a = by_amt[0]["inr_cr"]
+                    rest_sum = sum(x["inr_cr"] for x in by_amt[1:])
+                    if abs(top_a - rest_sum) <= 0.01 * max(1.0, top_a):
+                        chosen = by_amt[0]
+                        row["value_text"] = chosen["value_text"]
+                        row["page"] = chosen["page"]
+                        row["amount_inr_cr"] = chosen["inr_cr"]
+                    else:
+                        total_cr = round(sum(x["inr_cr"] for x in inr_totals), 4)
+                        row["page"] = inr_totals[0]["page"]
+                        if total_cr <= _MAX_EVENT_INR_CR:
+                            row["amount_inr_cr"] = total_cr
+                        row["value_text"] = "; ".join(x["value_text"] for x in inr_totals)
+                        notes.append("sum of printed tranche/leg amounts")
+                        force_unverified = True
+                elif inr_totals:
+                    chosen = inr_totals[0]
+                    row["value_text"] = chosen["value_text"]
+                    row["page"] = chosen["page"]
                     row["amount_inr_cr"] = chosen["inr_cr"]
-                elif chosen["currency"] == "USD":
-                    row["amount_usd_mn"] = chosen["usd_mn"]
                 else:
-                    notes.append(f"printed in non-INR/non-USD currency ({chosen['currency']}); not converted")
+                    chosen = usd_totals[0] if usd_totals else totals[0]
+                    row["value_text"] = chosen["value_text"]
+                    row["page"] = chosen["page"]
+                    if chosen["currency"] == "USD":
+                        row["amount_usd_mn"] = chosen["usd_mn"]
+                    else:
+                        notes.append(f"printed in non-INR/non-USD currency ({chosen['currency']}); not converted")
             elif parts:
                 inr_parts = []
                 seen_part: set[tuple[float, str]] = set()
@@ -4403,7 +4910,9 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str, *,
                         row["amount_inr_cr"] = inr_parts[0]["inr_cr"]
                         row["value_text"] = inr_parts[0]["value_text"]
                     else:
-                        row["amount_inr_cr"] = round(sum(p["inr_cr"] for p in inr_parts), 4)
+                        total_cr = round(sum(p["inr_cr"] for p in inr_parts), 4)
+                        if total_cr <= _MAX_EVENT_INR_CR:
+                            row["amount_inr_cr"] = total_cr
                         row["value_text"] = "; ".join(p["value_text"] for p in inr_parts)
                         notes.append("sum of printed tranche/leg amounts")
                         force_unverified = True
@@ -4418,9 +4927,6 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str, *,
                             force_unverified = True
             elif rejected_relevant:
                 quarantined_reason = rejected_relevant[0]["reason"]
-            else:
-                notes.append("no printed issue amount")
-                force_unverified = True
 
         # Awardee / entity_scope check
         parent = bool(_PARENT_SCOPE.search(_flat(f"{title} {text[:1500]}")))
@@ -4476,6 +4982,32 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str, *,
                         row[num_k] = float(str(val).replace(",", ""))
                     except (TypeError, ValueError):
                         row[num_k] = None
+            if row.get("shares") is not None:
+                row["shares"] = _fix_printed_shares(row["shares"], pages, title)
+            changed_pps = False
+            if row.get("price_per_share") is not None:
+                row["price_per_share"], changed_pps = _fix_issue_price(row["price_per_share"], pages, title)
+                if changed_pps:
+                    notes.append("issue price = face + premium")
+            if row.get("amount_inr_cr") is None and row.get("amount_usd_mn") is None \
+                    and not quarantined_reason and not bp_rejected:
+                sh, pps_val = row.get("shares"), row.get("price_per_share")
+                if sh and pps_val and 0.01 <= pps_val <= 100_000.0:
+                    sh_ok = _is_number_printed(sh, pages, title) or any(
+                        abs(n - sh) <= 1e-4 * max(1.0, sh) for n in _printed_share_counts(pages, title)
+                    )
+                    pps_ok = changed_pps or _is_number_printed(pps_val, pages, title)
+                    if sh_ok and pps_ok:
+                        comp_amt = round(sh * pps_val / 1e7, 4)
+                        if 0 < comp_amt <= _MAX_EVENT_INR_CR:
+                            row["amount_inr_cr"] = comp_amt
+                            row["method"] = "computed"
+                            row["value_text"] = None
+                            force_unverified = True
+                            notes.append(f"computed: {int(sh):,} x Rs {pps_val:g} / 1e7")
+            if row.get("amount_inr_cr") is None and row.get("amount_usd_mn") is None and not quarantined_reason:
+                notes.append("no printed issue amount")
+                force_unverified = True
 
         # Quote around matched value_text or opening text
         if row.get("value_text"):
@@ -4487,11 +5019,49 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str, *,
         if not row.get("quote"):
             row["quote"] = _flat(text)[:MAX_QUOTE]
 
-        # Cross-check against script parse
-        mismatch = _check_script_mismatch(row, (script_check or {}).get(etype))
-        if mismatch:
-            notes.append(mismatch)
-            force_unverified = True
+        if etype == "fund_raise":
+            row["_text_full"] = _flat(f"{title} {text}")
+            fr_stage, fr_skip = _not_a_fund_raise_reason(doc, ev, instr, row["quote"])
+            if fr_skip:
+                if skips_out is not None:
+                    skips_out.append({
+                        "store": doc.get("store"),
+                        "symbol": doc.get("symbol"),
+                        "doc_key": doc.get("doc_key"),
+                        "candidate_kind": ",".join(kinds),
+                        "event_type": etype,
+                        "stage": fr_stage or stage or None,
+                        "instrument": instr,
+                        "reason": fr_skip[:300],
+                        "title": title[:300],
+                        "filing_date": doc.get("filing_date"),
+                    })
+                continue
+        else:
+            ow_skip, ref_date = _not_an_order_win_reason(doc, row)
+            if ow_skip:
+                if skips_out is not None:
+                    skips_out.append({
+                        "store": doc.get("store"),
+                        "symbol": doc.get("symbol"),
+                        "doc_key": doc.get("doc_key"),
+                        "candidate_kind": ",".join(kinds),
+                        "event_type": etype,
+                        "stage": stage or None,
+                        "instrument": instr,
+                        "reason": ow_skip[:300],
+                        "title": title[:300],
+                        "filing_date": doc.get("filing_date"),
+                        "_ref_date": ref_date,
+                    })
+                continue
+
+        # Cross-check against script parse (fund_raise runs after merging same-filing legs)
+        if etype == "order_win":
+            mismatch = _check_script_mismatch(row, (script_check or {}).get(etype))
+            if mismatch:
+                notes.append(mismatch)
+                force_unverified = True
 
         if quarantined_reason:
             row["status"] = "quarantined"
@@ -4515,6 +5085,9 @@ def model_rows(doc: dict[str, Any], kinds: list[str], raw: str, *,
             row["detail"] = f"{row['detail']}; customer not disclosed" if row.get("detail") else "customer not disclosed"
 
         rows_by_kind[etype].append(row)
+
+    if rows_by_kind.get("fund_raise"):
+        rows_by_kind["fund_raise"] = _merge_same_filing_raises(rows_by_kind["fund_raise"], doc, script_check)
 
     out: list[dict[str, Any]] = []
     for k, kind_rows in rows_by_kind.items():
@@ -4782,6 +5355,7 @@ def build(stores: list[str] | None = None, limit: int | None = None, use_model: 
     other_classified = 0
     docs_seen = 0
     doc_keys: list[str] = []
+    docs_by_store: dict[str, list[dict[str, Any]]] = {}
     for store in chosen:
         try:
             docs = load_docs(store)
@@ -4797,6 +5371,7 @@ def build(stores: list[str] | None = None, limit: int | None = None, use_model: 
             docs_seen += 1
             doc_keys.append(str(doc["doc_key"]))
             subset.append(doc)
+        docs_by_store[store] = subset
         parsed: list[tuple[dict[str, Any], list[dict[str, Any]], list[str], list[str]]] = []
         classified_keys: set[str] = set()
         for doc in subset:
@@ -4908,6 +5483,33 @@ def build(stores: list[str] | None = None, limit: int | None = None, use_model: 
 
     rows = _fold_same_order(rows, amends)
     rows = _fold_same_raise(rows, amends)
+    # Link skipped repeat/update order_win filings (Step 5b) to the earlier filing on _ref_date
+    kept_order_dks = {str(r["doc_key"]) for r in rows if r["kind"] == "order_win"}
+    for sk in skips:
+        ref_d = sk.pop("_ref_date", None)
+        if not ref_d:
+            continue
+        pool = [
+            d for d in docs_by_store.get(str(sk.get("store") or ""), [])
+            if d.get("symbol") == sk.get("symbol")
+            and d.get("filing_date") == ref_d
+            and d["doc_key"] != sk["doc_key"]
+        ]
+        if not pool:
+            continue
+        sk_words = _content_words(f"{sk.get('title') or ''}")
+        pool.sort(key=lambda d: (
+            0 if d["doc_key"] in kept_order_dks else 1,
+            -len(sk_words & _content_words(f"{d.get('title') or ''} {(d.get('text') or '')[:600]}")),
+            str(d.get("known_at") or ""),
+        ))
+        target = pool[0]
+        amends.append({
+            "doc_key": sk["doc_key"], "symbol": sk.get("symbol"), "amends": target["doc_key"],
+            "filing_date": sk.get("filing_date"), "known_at": None,
+            "why": sk.get("reason") or f"repeat/update of earlier disclosure dated {ref_d}",
+        })
+        sk["reason"] = f"{sk['reason']}; amends={target['doc_key']}"[:300]
     amends = list({item["doc_key"]: item for item in amends}.values())
     _link_amendments(rows)
     _assign_raise_ids(rows)
