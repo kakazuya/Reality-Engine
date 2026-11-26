@@ -64,3 +64,30 @@ def test_loader_moves_status_on_xbrl_verdicts_only():
     out, moved = lo._apply_check_status(rows, cols, checks)
     assert [r[1] for r in out] == ["verified", "unverified", "unverified", "verified"]
     assert moved == {"unverified->verified": 1, "verified->unverified": 2}
+
+
+def test_read_provenance_on_rows_and_backfill(tmp_path, monkeypatch):
+    """Shivam 26 Nov 2026: every row says which model, gateway, harness and prompt read it."""
+    from reality_engine.scripts import backfill_read_provenance as bf
+    from reality_engine.v2 import observations as obs
+    assert obs.gateway_of({"base": "https://opencode.ai/zen/go/v1"}) == "opencode-go"
+    assert obs.gateway_of({"api": "gemini_native"}) == "google-ai-studio"
+    assert obs.gateway_of({"base": "https://api.kilo.ai/v1"}) == "kilo-gateway"
+    con = obs.create_db(tmp_path / "o.db")
+    monkeypatch.setattr(obs, "PROMPT_FP", "results:abc")
+    row = {c: None for c in obs.OBS_COLUMNS} | {"symbol": "ACME", "doc_key": "d", "page": 1, "measure": "pat",
+                                                 "status": "verified", "record_type": "number"}
+    row = {k: ("" if v is None and k not in ("value", "value_high", "scale") else v)
+           for k, v in row.items()}
+    row.update({"adjusted": 0, "is_total": 0, "scale": 1.0, "reader": "hy4-flash-free"})
+    obs.write_rows(con, [row])
+    got = con.execute("SELECT read_model, read_gateway, read_harness, prompt_fp FROM observation").fetchone()
+    assert got == ("opencode-go/hy4-flash-free", "opencode-go", obs.READ_HARNESS_DEFAULT, "results:abc")
+    con.execute("UPDATE observation SET read_model='', read_gateway='', read_harness='', prompt_fp=''")
+    con.execute("INSERT INTO page_reply VALUES ('d', 1, 'fp1', '{}', '2026-11-26')")
+    con.commit()
+    con.close()
+    bf.backfill(tmp_path / "o.db")
+    con = sqlite3.connect(tmp_path / "o.db")
+    assert con.execute("SELECT read_model, read_gateway, prompt_fp FROM observation").fetchone() == (
+        "opencode-go/hy4-flash-free", "opencode-go", "fp1")

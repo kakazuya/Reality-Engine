@@ -274,7 +274,11 @@ MIGRATIONS = (("group_source", "TEXT NOT NULL DEFAULT ''"), ("group_check", "TEX
               # T-238 stage O: the question a short answer needs (the answer stays verbatim)
               ("question_context", "TEXT NOT NULL DEFAULT ''"),
               ("value_high", "REAL"), ("new_definition", "TEXT NOT NULL DEFAULT ''"),
-              ("new_driver_node", "TEXT NOT NULL DEFAULT ''"))
+              ("new_driver_node", "TEXT NOT NULL DEFAULT ''"),
+              # Shivam 26 Nov 2026: read provenance on every row - which model, through which gateway and harness,
+              # with which prompt - so a later, better model can replace exactly the rows an older one read.
+              ("read_model", "TEXT NOT NULL DEFAULT ''"), ("read_gateway", "TEXT NOT NULL DEFAULT ''"),
+              ("read_harness", "TEXT NOT NULL DEFAULT ''"), ("prompt_fp", "TEXT NOT NULL DEFAULT ''"))
 
 # id, name, unit family, node in the T-228 driver tree
 MEASURES: tuple[tuple[str, str, str, str], ...] = (
@@ -7220,13 +7224,48 @@ OBS_COLUMNS = ("symbol", "doc_key", "page", "region", "known_at", "measure", "pr
                "plant", "customer", "group_path", "group_source", "group_check", "stage", "series_id",
                "series_title", "entity_scope", "text_source", "record_type", "statement", "speaker", "direction",
                "question_context", "value_high", "new_definition", "new_driver_node", "status", "status_reason",
-               "reader", "read_at")
+               "reader", "read_at", "read_model", "read_gateway", "read_harness", "prompt_fp")
+
+READ_HARNESS_DEFAULT = "reality_engine.v2.observations (direct HTTP)"
+PROMPT_FP = ""          # set by the run (doc type:fingerprint list) before pages are read
+
+
+def gateway_of(entry: dict[str, Any]) -> str:
+    """The gateway a MODELS entry is called through, from its base URL / api kind."""
+    base = str(entry.get("base") or "https://opencode.ai/zen/go/v1").lower()
+    api = str(entry.get("api") or "")
+    if api == "gemini_native" or "generativelanguage" in base:
+        return "google-ai-studio"
+    if api == "cli" or entry.get("cmd"):
+        return "local-cli"
+    for key, name in (("zen/go", "opencode-go"), ("opencode.ai/zen", "opencode-zen"), ("kilo", "kilo-gateway"),
+                      ("deepseek.com", "deepseek-api"), ("openrouter", "openrouter"), ("deepinfra", "deepinfra"),
+                      ("nebius", "nebius"), ("anthropic", "anthropic-api")):
+        if key in base:
+            return name
+    return base
+
+
+def read_provenance() -> dict[str, str]:
+    """read_model / read_gateway / read_harness / prompt_fp for rows written by this run."""
+    entry = rp.MODELS.get(OBS_READER, {}) if isinstance(OBS_READER, str) else dict(OBS_READER or {})
+    model = str(entry.get("id") or entry.get("model") or READER)
+    gateway = gateway_of(entry)
+    if gateway in ("opencode-go", "opencode-zen") and "/" not in model:
+        model = f"{gateway}/{model}"
+    return {"read_model": model, "read_gateway": gateway,
+            "read_harness": os.environ.get("REALITY_READ_HARNESS", READ_HARNESS_DEFAULT), "prompt_fp": PROMPT_FP}
 
 
 def write_rows(con: sqlite3.Connection, rows: Iterable[dict[str, Any]]) -> int:
     rows = list(rows)
     if not rows:
         return 0
+    prov = read_provenance()
+    for row in rows:
+        for k, v in prov.items():
+            if not row.get(k):
+                row[k] = v
     con.execute("DELETE FROM observation WHERE doc_key=? AND page=?", (rows[0]["doc_key"], int(rows[0]["page"])))
     con.executemany(f"INSERT INTO observation ({', '.join(OBS_COLUMNS)}) "
                     f"VALUES ({', '.join('?' for _ in OBS_COLUMNS)})",
@@ -9783,6 +9822,8 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
         selected = triage_selection(selected, pool=(todo if resume else pages), limit=limit, seed=seed,
                                     dropped=dropped_by_reason)
     reply_fp = ",".join(f"{d}:{read_gate.fingerprint(d)}" for d in doc_types)   # which prompt wrote page_reply.raw
+    global PROMPT_FP
+    PROMPT_FP = reply_fp
     statement_filter = {"kept": len(pages), "dropped": sum(dropped_by_reason.values()),
                         "by_reason": dict(sorted(dropped_by_reason.items(), key=lambda kv: -kv[1]))}
     if skip_statements or ar_sections:

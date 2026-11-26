@@ -126,6 +126,17 @@ def _cols(db_path, table):
     return c
 
 
+_SELECT_CACHE: dict[str, str] = {}
+
+
+def _select_list(db_path: str, obs_cols: list[str]) -> str:
+    """The SELECT list for one source db: a column it lacks (an older read without provenance) comes back NULL."""
+    if db_path not in _SELECT_CACHE:
+        have = set(_cols(db_path, "observation"))
+        _SELECT_CACHE[db_path] = ",".join(f'"{c}"' if c in have else f'NULL AS "{c}"' for c in obs_cols)
+    return _SELECT_CACHE[db_path]
+
+
 def _ro(path):
     # 26 Nov: hy4 loops now write these DBs while loads run (reading never stops): wait for the writer's lock
     return sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=300)
@@ -138,6 +149,9 @@ def _create_tables(con, obs_cols):
     col_defs += ['"source" TEXT', '"doc_type" TEXT']
     con.execute(f'CREATE TABLE IF NOT EXISTS obs_fact ({", ".join(col_defs)})')
     have = {r[1] for r in con.execute("PRAGMA table_info(obs_fact)")}
+    for c in obs_cols:                  # 26 Nov: read provenance columns (read_model, read_gateway, ...) join later
+        if c not in have:
+            con.execute(f'ALTER TABLE obs_fact ADD COLUMN "{c}"')
     for c in CHECK_COLS:
         if c not in have:
             con.execute(f'ALTER TABLE obs_fact ADD COLUMN "{c}" TEXT')
@@ -250,7 +264,8 @@ def _load_store(store_path: Path, symbol: str | None = None) -> dict:
             t0 = time.perf_counter()
             src_con = _ro(db_path)
             rows = src_con.execute(
-                f"SELECT {placeholders} FROM observation WHERE symbol=? AND status IN ('verified','unverified')",
+                f"SELECT {_select_list(db_path, obs_cols)} FROM observation WHERE symbol=? "
+                "AND status IN ('verified','unverified')",
                 (symbol,)).fetchall()
             if not rows and any(s == source and k != source_key for k, _p, s in OBS_SOURCES[
                     OBS_SOURCES.index((source_key, db_path, source)) + 1:]):
@@ -285,7 +300,8 @@ def _load_store(store_path: Path, symbol: str | None = None) -> dict:
             t0 = time.perf_counter()
             src_con = _ro(sup_db)
             rows = src_con.execute(
-                f"SELECT {placeholders} FROM observation WHERE symbol=? AND status IN ('verified','unverified')",
+                f"SELECT {_select_list(sup_db, obs_cols)} FROM observation WHERE symbol=? "
+                "AND status IN ('verified','unverified')",
                 (symbol,)).fetchall()
             src_con.close()
             # drop this supplement's own rows from an earlier load, then keep the pages any db of the source supplied
