@@ -3760,16 +3760,17 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
     A target
     stated for a named subsidiary, segment or investee is stored with that ``entity`` and never returned here: only
     the group's own guidance is served (T-192)."""
+    def _served_metrics() -> list[str]:
+        return _available("guidance", "metric", sym, extra="" if include_quarantined else _visible("guidance"))
+
     sym = resolve_symbol(symbol)
     has_obs = _has_table("obs_fact")
-    names, allnames = ([], list(GUIDANCE_METRICS))
-    if metric:
-        # T-242 fix 6: the metric NAMES are resolved without the quarantine filter -- a target whose only rows the
-        # checker quarantined still has a name, and the reply must say it is held (never serve it as the answer).
-        names, allnames = _pick("guidance", "metric", sym, metric)
-        if not names and not has_obs:
-            return _reply(sym, [], "pilot3_guidance", available=allnames[:40], metric_asked=metric,
-                          nearest=f"{metric} {period or ''}".strip(), nearest_as_of=as_of)
+    # T-242 fix 6: the metric NAMES are resolved without the quarantine filter -- a target whose only rows the
+    # checker quarantined still has a name, and the reply must say it is held (never serve it as the answer).
+    names, _allnames = _pick("guidance", "metric", sym, metric) if metric else ([], list(GUIDANCE_METRICS))
+    if metric and not names and not has_obs:
+        return _reply(sym, [], "pilot3_guidance", available=_served_metrics(), metric_asked=metric,
+                      nearest=f"{metric} {period or ''}".strip(), nearest_as_of=as_of)
     kind, label = norm_period(period)
     # only the group's own targets: a target stated for a named subsidiary, associate, joint venture or acquired
     # company carries its ``entity`` and is never served as the company's (T-192).  A store built before the column
@@ -3926,6 +3927,7 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
                                   0 if (row.get("status") or row.get("check_status")) == "verified" else 1))
     held = None
     held_hidden = None
+    served_names = None
     if not out:   # say what the table does hold, so the next call can be exact
         held = [f"{r[0]} / {r[1]} ({r[2]} rows)" for r in _q(
             f"SELECT metric, target_period, COUNT(*) FROM guidance WHERE symbol=?"
@@ -3933,10 +3935,13 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
             + _visible("guidance") + " GROUP BY 1, 2 ORDER BY MAX(known_at) DESC LIMIT 40", (sym, *names))]
         if not include_quarantined:     # T-242 fix 6: a quarantined target is held and hidden, not absent
             held_hidden = _guidance_held_quarantined(sym, names, label, _day(as_of, "as_of"))
+        if metric:
+            # T-242: a miss still lists metrics with served rows alongside held_quarantined (not quarantined-only ones)
+            served_names = _served_metrics()
     return _reply(sym, out, "pilot3_guidance", metrics_matched=names or None, history=True if history else None,
                   alternatives=alternatives or None,
-                  available=allnames[:40] if (metric and not out and not names) else None,
-                  metric_asked=metric if (metric and not out and not names) else None,
+                  available=served_names,
+                  metric_asked=metric if (metric and not out) else None,
                   nearest=f"{metric or ''} {period or ''}".strip(), nearest_as_of=as_of,
                   held_options=held, held_quarantined=held_hidden or None, as_of=_day(as_of, "as_of"))
 
