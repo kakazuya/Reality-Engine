@@ -8893,3 +8893,11 @@
 -- 26 Nov tx statements r3 -> r5 -> r6 merged: own-period token bound to its figure wins; period_anchored 10,241 (r3 9,575); r7 list in `D:/RealityEngine/t242/grades/tx_r6_review_eagle.md`.
 +- 26 Nov tx statements r3 -> r5 -> r6 merged; r7 (27 Nov) merged: the explicit own-period cue bound to its figure anchors (bound FY, this-time/for-the-quarter after a forward, guidance "for the year", stood-at + YoY, recap quarter, started operation); stored anchored 11,296 (r6 10,190); regained 2,742 / lost 984 / relabelled 363 vs r3 (r6 1,769 / 1,115 / 301), pack 0 of 54 changed; `tasks/t242_statement_r3_measure.md` r7.
 ```
+
+## 2026-11-27T05:50:34 | kakazuya (Wolf) | branch main
+```diff
+-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-27 05:12 IST (dsh T-242 tx statements r7)
++# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-27 06:05 IST (dsh T-242 tx statements r8b)
+-- 26 Nov tx statements r3 -> r5 -> r6 merged; r7 (27 Nov) merged: the explicit own-period cue bound to its figure anchors (bound FY, this-time/for-the-quarter after a forward, guidance "for the year", stood-at + YoY, recap quarter, started operation); stored anchored 11,296 (r6 10,190); regained 2,742 / lost 984 / relabelled 363 vs r3 (r6 1,769 / 1,115 / 301), pack 0 of 54 changed; `tasks/t242_statement_r3_measure.md` r7.
++- Tx statements r3-r8 merged (27 Nov): r7's own-period cue bound to its figure anchors; stored anchored 11,296 (r6 10,190); regained 2,742 / lost 984 / relabelled 363 (r6 1,769/1,115/301), pack 0 of 54 changed. r8b (Eagle r8 FAILED): the base cue blocks the call/guidance year only when it binds "for the year" itself, spans need consecutive years, a leading "For FY27," binds its figure; 89+177 tests pass; no reparse (stop 08:00).
+```

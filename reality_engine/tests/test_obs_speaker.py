@@ -1657,3 +1657,90 @@ def test_r7_review_recap_keeps_named_fy_and_this_time_last_year_is_comparative()
     assert anchored_period("This time last year revenue was INR 500 crores.", "Q2 FY27") != "Q2 FY27"
     assert anchored_period("On our last earnings call in January, I had shared that the company was targeting to "
                            "close Q4 with revenue of INR100 crores plus.", "Q4 FY26") == "Q4 FY26"
+
+
+# ------------------------------------------------ T-242 r8: base year cue and two-year FY span
+
+
+def test_r8_base_year_cue_never_takes_the_guidance_or_call_year():
+    """Eagle r7 review: "for the year a year ago" on a Q4 call is the base year, not the call/guidance year."""
+    assert ospeaker.anchored_period(
+        "Revenue for the year a year ago was 900 crores.", "Q4 FY26") in ("", "FY25")
+    # a guidance "for the year" with no base cue still takes the guidance year
+    assert ospeaker.anchored_period(
+        "In line with Board approved growth projects, our growth capex guidance for the year would be in the "
+        "range of $350 million to $400 million.", "Q4 FY26") == "FY27"
+    # a reported "for the year" with no base cue is still the call year
+    assert ospeaker.anchored_period("Finance costs for the year stood at 562 million.", "Q2 FY27") == "FY27"
+
+
+def test_r8_bound_fy_two_year_span_takes_the_ending_year():
+    """Eagle r7 review: "FY25-'26" through the bound-FY cue names FY26, as the plain FY token already does."""
+    assert ospeaker.anchored_period(
+        "Our guidance for FY25-'26 is revenue of INR 700 crores.", "Q2 FY26") == "FY26"
+    assert ospeaker.anchored_period(
+        "planned outlay for FY 25-26 stands at INR 250 crores", "Q2 FY26") == "FY26"
+    assert ospeaker.anchored_period(
+        "planned outlay for FY25-'26 stands at INR 250 crores", "Q2 FY26") == "FY26"
+    # a leading single-year FY keeps its own year
+    assert ospeaker.anchored_period("FY '25 revenue was INR 500 crores", "Q2 FY26") == "FY25"
+
+
+def test_r8_review_span_needs_consecutive_years_not_a_figure():
+    """Wolf review of r8: 'for FY27 - 20% growth' / '- 25 crore' is FY27; only 'FY27/28' style pairs are spans."""
+    from reality_engine.v2.obs_speaker import anchored_period
+    assert anchored_period("Our revenue guidance for FY27 - 20% to 25% growth is intact.", "Q2 FY27") == "FY27"
+    assert anchored_period("Our guidance for FY27 - 25 crore capex.", "Q2 FY27") == "FY27"
+    assert anchored_period("Planned outlay for FY27/28 stands at INR 250 crores.", "Q2 FY27") == "FY28"
+
+
+# ------------------------------------------------ T-242 r8b: the base cue binds "for the year" only
+
+
+def test_r8b_base_cue_blocks_only_when_it_binds_for_the_year():
+    """Eagle r8 review: a base cue beside an own figure compares it; only a base cue bound to "for the year" blocks."""
+    # an own figure compared against/over a base is the reported (call) year
+    assert ospeaker.anchored_period(
+        "Revenue for the year was INR 1,200 crores against INR 1,000 crores last year", "Q4 FY26") == "FY26"
+    assert ospeaker.anchored_period(
+        "EBITDA for the year grew 20% over the previous year to INR 300 crores", "Q4 FY26") == "FY26"
+    # a guidance "for the year" shares a clause with the forward cue and takes the guidance year
+    assert ospeaker.anchored_period(
+        "This compares with 15% in the same period last year; for the year we expect 18%", "Q2 FY27") == "FY27"
+    # a base cue bound to "for the year" itself still blocks the call/guidance year
+    assert ospeaker.anchored_period(
+        "Revenue for the year a year ago was 900 crores.", "Q4 FY26") in ("", "FY25")
+    assert ospeaker.anchored_period(
+        "Last year, for the year, EBITDA was INR 200 crores.", "Q4 FY26") in ("", "FY25")
+
+
+def test_r8b_explicit_fy_span_needs_consecutive_years():
+    """Eagle r8 review: a dash followed by a figure is not a span; only consecutive FY pairs name the ending year."""
+    assert ospeaker.anchored_period(
+        "Our revenue guidance for FY27 - 20% to 25% growth is intact.", "Q2 FY27") == "FY27"
+    assert ospeaker.anchored_period("Our guidance for FY27 - 25 crore capex.", "Q2 FY27") == "FY27"
+    # the consecutive spans keep the ending year
+    assert ospeaker.anchored_period("Our guidance for FY25-26 is revenue of INR 700 crores.", "Q2 FY26") == "FY26"
+    assert ospeaker.anchored_period("Our guidance for FY 25-'26 is revenue of INR 700 crores.", "Q2 FY26") == "FY26"
+    assert ospeaker.anchored_period("Planned outlay for FY27/28 stands at INR 250 crores.", "Q2 FY27") == "FY28"
+    # a non-consecutive pair is not a span: the first year stands
+    assert ospeaker.anchored_period("Our guidance for FY25-28 is revenue of INR 700 crores.", "Q2 FY25") == "FY25"
+
+
+def test_r8b_leading_for_fy_comma_binds_its_figure():
+    """Eagle r8 review: "For FY27, 20% to 25% revenue growth." names FY27; CUB's "NIM for FY26" stays empty."""
+    assert ospeaker.anchored_period("For FY27, 20% to 25% revenue growth.", "Q2 FY27") == "FY27"
+    assert ospeaker.anchored_period("For FY27, revenue growth.", "Q2 FY27") == ""   # no figure after the comma
+    assert ospeaker.anchored_period("Our NIM for FY26 is 3.5%.", "Q1 FY26") == ""    # CUB keep-case
+
+
+def test_r8b_review_reported_year_with_later_forward_word_is_not_guidance_year():
+    """Wolf review of r8b: a reported 'for the year' figure never moves to the coming FY because a forward word follows."""
+    from reality_engine.v2.obs_speaker import anchored_period
+    assert anchored_period("Revenue for the year was INR 1,200 crores and we expect 15% growth next year.",
+                           "Q4 FY26") != "FY27"
+    assert anchored_period("EBITDA for the year stood at INR 300 crores, and we will continue to invest.",
+                           "Q4 FY26") != "FY27"
+    assert anchored_period("For the year we expect 18% growth.", "Q4 FY26") == "FY27"
+    assert anchored_period("This compares with 15% in the same period last year; for the year we expect 18%",
+                           "Q2 FY27") == "FY27"
