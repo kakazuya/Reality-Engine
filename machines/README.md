@@ -9,6 +9,11 @@ This folder is about running the machines, not about the Reality Engine itself. 
   - `ar`: `.tmp/hy4_ar.sh`, log `hy4_ar.log`;
   - `results`: `.tmp/hy4_results.sh`, log `hy4_results.log` (Wolf's, 26 Nov; readers matched as its python children).
 - The loop scripts live in the gitignored `.tmp/`: keep `.tmp/hy4_*.sh` local through any Drive move.
+- Planned stop (27 Nov 07:45, Shivam's 08:00 ops stop): all three loops were stopped with `hy4_ctl.ps1 stop all` and
+  `D:/RealityEngine/hy4_out/OPS_PAUSED.txt` silences the hy4-loop / ungraded-checkpoint / idle rules (Wolf, 66ee2264).
+  To resume reading: delete `OPS_PAUSED.txt`, then `pwsh -File reality_engine/scripts/hy4_ctl.ps1 start` (each loop
+  resumes with `--resume`), then `hy4_ctl.ps1 status` and re-add the job_watch log watches (`hy4_tx`, `hy4_ar`,
+  `hy4_results` on the three loop logs, `--stall-seconds 18000`).
 - Git bash re-launches itself (`exec bash "$0"`, `$(...)` subshells) as new Windows processes, so one recorded PID
   never covers a loop. Every action therefore finds the loop's processes by their exact command line: bash running
   the loop script, and python readers whose `--out` is one of the loop's DBs. It then acts on those PIDs only, never
