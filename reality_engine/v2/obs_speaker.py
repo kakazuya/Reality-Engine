@@ -1876,6 +1876,10 @@ def _explicit_own_period(sent: str, q: int, fy: int) -> str:
         if not named:
             ym = next((m for m in _GUIDANCE_YEAR_CUE_RE.finditer(sent)
                        if fstart <= m.start() and m.end() <= fend), None)
+            if ym and not (_GUIDANCE_NOUN_RE.search(sent)
+                           or _FORWARD_CUE_RE.search(sent[ym.end():ym.end() + 25])):
+                ym = None               # Wolf review: "Revenue for the year was X ... we expect" is the
+                                        # reported year, not the guidance year
             if ym and not _for_the_year_names_base(sent) \
                     and not _CMP_BEFORE_PERIOD_RE.search(sent[max(0, ym.start() - 20):ym.start()]) \
                     and _has_figure(sent[ym.end():]):

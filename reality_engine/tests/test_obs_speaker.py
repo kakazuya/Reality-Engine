@@ -1732,3 +1732,15 @@ def test_r8b_leading_for_fy_comma_binds_its_figure():
     assert ospeaker.anchored_period("For FY27, 20% to 25% revenue growth.", "Q2 FY27") == "FY27"
     assert ospeaker.anchored_period("For FY27, revenue growth.", "Q2 FY27") == ""   # no figure after the comma
     assert ospeaker.anchored_period("Our NIM for FY26 is 3.5%.", "Q1 FY26") == ""    # CUB keep-case
+
+
+def test_r8b_review_reported_year_with_later_forward_word_is_not_guidance_year():
+    """Wolf review of r8b: a reported 'for the year' figure never moves to the coming FY because a forward word follows."""
+    from reality_engine.v2.obs_speaker import anchored_period
+    assert anchored_period("Revenue for the year was INR 1,200 crores and we expect 15% growth next year.",
+                           "Q4 FY26") != "FY27"
+    assert anchored_period("EBITDA for the year stood at INR 300 crores, and we will continue to invest.",
+                           "Q4 FY26") != "FY27"
+    assert anchored_period("For the year we expect 18% growth.", "Q4 FY26") == "FY27"
+    assert anchored_period("This compares with 15% in the same period last year; for the year we expect 18%",
+                           "Q2 FY27") == "FY27"
