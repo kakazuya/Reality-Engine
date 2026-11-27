@@ -1,6 +1,6 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-26 22:59 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Generated 2026-11-27 08:07 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
 Undocumented: 0 tables and 7 of 84 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
@@ -229,63 +229,63 @@ Undocumented: 0 tables and 7 of 84 raw folders.
 | INFY_site_documents | 0 | 0.00 | - | yes |
 | input_cost_series | 0 | 0.00 | - | yes |
 | kec_transcripts | 0 | 0.00 | - | yes |
-| linked_docs | 56 | 0.24 | 2026-11-18 `sha_index.db` | **undocumented** |
+| linked_docs | 1 | 0.00 | 2026-11-18 `sha_index.db` | **undocumented** |
 | macro_pdfs | 0 | 0.00 | - | yes |
 | maruti_transcripts | 0 | 0.00 | - | yes |
 | material_announcement | 0 | 0.00 | - | yes |
-| nse_announcements | 697 | 0.66 | 2026-11-16 `download.log` | yes |
-| nse_shp_xbrl_pilot | 797 | 0.01 | 2026-11-12 `SHP_1741009_17102026084603_WEB.xml.gz` | yes |
+| nse_announcements | 0 | 0.00 | - | yes |
+| nse_shp_xbrl_pilot | 0 | 0.00 | - | yes |
 | nse_shp_xbrl_universe | 0 | 0.00 | - | **undocumented** |
 | originals_lists | 0 | 0.00 | - | yes |
-| pilot60_history | 11,796 | 30.62 | 2026-11-25 `manifest.csv` | yes |
+| pilot60_history | 0 | 0.00 | - | yes |
 | price_bands | 0 | 0.00 | - | yes |
 | raw_market/amfi_nav | 0 | 0.00 | - | yes |
-| raw_market/bse_bhav | 2,227 | 0.21 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/bse_block | 109 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/bse_bulk | 109 | 0.03 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/bse_corpact | 109 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/bse_deliv | 2,226 | 0.13 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/bse_index | 420 | 0.04 | 2026-11-22 `SPBSUTIP_2018.json` | yes |
-| raw_market/bse_insider | 109 | 0.01 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/commod | 14 | 0.01 | 2026-11-22 `worldbank_pink_sheet_monthly.xlsx` | yes |
-| raw_market/masters | 11 | 0.06 | 2026-10-08 `nse_SME_EQUITY_L.csv` | yes |
-| raw_market/mc_fiidii | 18 | 0.00 | 2026-11-22 `2018.csv` | yes |
-| raw_market/nsdl_fpi_daily | 109 | 0.01 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/nsdl_fpi_fortnight | 357 | 0.09 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/nsdl_limits | 3 | 0.00 | 2026-11-22 `breach_list_2026-11-22.html` | **undocumented** |
-| raw_market/nsdl_reports | 7 | 0.00 | 2026-11-22 `fpi_quarterly_2026-11-22.html` | **undocumented** |
-| raw_market/nse_block | 606 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/nse_bulk | 2,222 | 0.01 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/nse_cm | 2,224 | 0.12 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/nse_cm_isin | 2,224 | 0.12 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/nse_corpact | 109 | 0.01 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/nse_corpact_sme | 32 | 0.00 | 2026-11-22 `2018-12-01_2018-12-31.json` | yes |
-| raw_market/nse_fii_stats | 1,010 | 0.03 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/nse_full | 5 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/nse_index | 1,684 | 0.01 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/nse_integrated_equities | 7 | 0.00 | 2026-11-22 `page_007.json` | yes |
-| raw_market/nse_integrated_sme | 13 | 0.00 | 2026-11-22 `page_013.json` | yes |
-| raw_market/nse_mto | 2,224 | 0.12 | 2026-11-22 `_manifest.csv` | **undocumented** |
-| raw_market/nse_part_oi | 1,722 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/nse_part_vol | 1,723 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/nse_pit | 39 | 0.13 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/nse_pit_gg | 1 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
-| raw_market/nse_pit_gg_sme | 1 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/bse_bhav | 0 | 0.00 | - | yes |
+| raw_market/bse_block | 0 | 0.00 | - | yes |
+| raw_market/bse_bulk | 0 | 0.00 | - | yes |
+| raw_market/bse_corpact | 0 | 0.00 | - | yes |
+| raw_market/bse_deliv | 0 | 0.00 | - | yes |
+| raw_market/bse_index | 0 | 0.00 | - | yes |
+| raw_market/bse_insider | 0 | 0.00 | - | yes |
+| raw_market/commod | 0 | 0.00 | - | yes |
+| raw_market/masters | 0 | 0.00 | - | yes |
+| raw_market/mc_fiidii | 0 | 0.00 | - | yes |
+| raw_market/nsdl_fpi_daily | 0 | 0.00 | - | yes |
+| raw_market/nsdl_fpi_fortnight | 0 | 0.00 | - | yes |
+| raw_market/nsdl_limits | 0 | 0.00 | - | **undocumented** |
+| raw_market/nsdl_reports | 0 | 0.00 | - | **undocumented** |
+| raw_market/nse_block | 0 | 0.00 | - | yes |
+| raw_market/nse_bulk | 0 | 0.00 | - | yes |
+| raw_market/nse_cm | 0 | 0.00 | - | yes |
+| raw_market/nse_cm_isin | 0 | 0.00 | - | yes |
+| raw_market/nse_corpact | 0 | 0.00 | - | yes |
+| raw_market/nse_corpact_sme | 0 | 0.00 | - | yes |
+| raw_market/nse_fii_stats | 0 | 0.00 | - | yes |
+| raw_market/nse_full | 0 | 0.00 | - | yes |
+| raw_market/nse_index | 0 | 0.00 | - | yes |
+| raw_market/nse_integrated_equities | 0 | 0.00 | - | yes |
+| raw_market/nse_integrated_sme | 0 | 0.00 | - | yes |
+| raw_market/nse_mto | 0 | 0.00 | - | **undocumented** |
+| raw_market/nse_part_oi | 0 | 0.00 | - | yes |
+| raw_market/nse_part_vol | 0 | 0.00 | - | yes |
+| raw_market/nse_pit | 0 | 0.00 | - | yes |
+| raw_market/nse_pit_gg | 0 | 0.00 | - | yes |
+| raw_market/nse_pit_gg_sme | 0 | 0.00 | - | yes |
 | raw_market/nse_pit_gg_xml | 0 | 0.00 | - | yes |
-| raw_market/nse_results_equities | 1,042 | 0.09 | 2026-11-22 `_manifest.csv` | **undocumented** |
-| raw_market/nse_results_sme | 102 | 0.00 | 2026-11-22 `_manifest.csv` | **undocumented** |
-| raw_market/nse_results_xbrl | 5,872 | 0.15 | 2026-11-22 `INTEGRATED_FILING_NONINDAS_1760537_20112026064539_` | yes |
-| raw_market/nse_sast | 46 | 0.01 | 2026-11-22 `2018-12-01_2018-12-31.json` | yes |
-| raw_market/nse_short | 1,041 | 0.00 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nse_results_equities | 0 | 0.00 | - | **undocumented** |
+| raw_market/nse_results_sme | 0 | 0.00 | - | **undocumented** |
+| raw_market/nse_results_xbrl | 0 | 0.00 | - | yes |
+| raw_market/nse_sast | 0 | 0.00 | - | yes |
+| raw_market/nse_short | 0 | 0.00 | - | yes |
 | raw_market/nse_shp_index | 0 | 0.00 | - | yes |
-| raw_market/nse_sme | 1,422 | 0.01 | 2026-11-22 `_manifest.csv` | yes |
+| raw_market/nse_sme | 0 | 0.00 | - | yes |
 | rbi | 0 | 0.00 | - | yes |
 | reddit | 0 | 0.00 | - | yes |
 | results_notes_refetch | 0 | 0.00 | - | yes |
 | results_pdfs | 0 | 0.00 | - | yes |
 | runners | 0 | 0.00 | - | yes |
 | tax_sources | 0 | 0.00 | - | yes |
-| transcripts_raw | 17 | 0.01 | 2026-11-09 `sha_index.db` | yes |
-| user_research | 803 | 32.77 | 2026-11-02 `LISTENING_CHECK.md` | yes |
-| user_research_drive | 236 | 0.60 | 2026-10-26 `_native_blocked.txt` | yes |
+| transcripts_raw | 1 | 0.00 | 2026-11-09 `sha_index.db` | yes |
+| user_research | 2,103 | 2.00 | 2026-10-18 `video1462649034.mp4` | yes |
+| user_research_drive | 12 | 0.04 | 2026-10-21 `Saregama India Ltd — Research Report.docx` | yes |
 | vahan | 0 | 0.00 | - | yes |
