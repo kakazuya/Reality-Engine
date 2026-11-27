@@ -325,3 +325,7 @@ production start, not the later `Q1 FY27` expansion sentence). `test_obs_speaker
 ### Open for r8 (27 Nov, Eagle review of Wolf r7 fixes)
 - "Revenue for the year a year ago was 900" on a Q4 FY26 call reads FY26; a base cue ("a year ago", "last year") beside "for the year" must block the guidance-year rule (FY25 or empty).
 - `FY25-'26` through a bound-FY cue reads FY25 (worker open problem).
+
+### r8 FAILED (Eagle, 27 Nov 05:35) - r8b after cleanup, branch dsh/20261126T235250Z-423166af kept
+- Base-cue block over-reaches: "Revenue for the year was INR 1,200 crores against INR 1,000 crores last year" [Q4 FY26], "EBITDA for the year grew 20% over the previous year", "...same period last year; for the year we expect 18%" [Q2 FY27] all go empty. Block only when the base cue binds "for the year" itself.
+- Span misread already on main (r6 `_EXPLICIT_FY_RE`, and r8 `_BOUND_FY_CUE_RE`): "guidance for FY27 - 20% to 25% growth" [Q2 FY27] reads FY20. Only a consecutive pair is a span; Wolf fix + test on the r8 branch (8df16b14) covers the bound cue only - `_EXPLICIT_FY_RE` still needs it.
