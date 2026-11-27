@@ -179,11 +179,29 @@ def ssd_lines(rules: dict[str, Any], now: dt.datetime) -> list[str]:
     return [f"RULE ssd_only: database written on the HDD in the last hour: {p} ({cfg['source']})" for p in bad[:5]]
 
 
+PAUSE_FILE = Path("D:/RealityEngine/hy4_out/OPS_PAUSED.txt")
+
+
+def paused_reason(pause_file: Path | None = None) -> str:
+    """T-245 (Shivam 26 Nov: operations stop by 08:00 27 Nov, then cleanup only): the first line of the pause file.
+
+    While the file exists the hy4-loop, checkpoint-grade and reportee-idle rules stay quiet (a stop Shivam ordered
+    is not a breach); the heartbeat, worker-limit, quota and SSD rules still run. Delete the file to resume.
+    """
+    path = Path(pause_file or PAUSE_FILE)
+    try:
+        text = path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+    return (text.splitlines()[0] if text else "paused") or "paused"
+
+
 def check(now: dt.datetime | None = None, rules: dict[str, Any] | None = None,
-          cmdlines: list[str] | None = None) -> list[str]:
+          cmdlines: list[str] | None = None, pause_file: Path | None = None) -> list[str]:
     now = now or dt.datetime.now()
     rules = rules or load_rules()
     lines: list[str] = []
+    paused = paused_reason(pause_file)
     if not job_watch.waiter_alive(owner=job_watch.waiter_owner()):
         lines.append(f"RULE heartbeat: no live job_watch wait of this account ({job_watch.waiter_owner()}) - arm `python reality_engine/scripts/job_watch.py wait "
                      f"--timeout-seconds {rules['heartbeat']['max_timeout_s']}` in the background "
@@ -201,10 +219,10 @@ def check(now: dt.datetime | None = None, rules: dict[str, Any] | None = None,
     for out, n in sorted(readers.items()):
         if n > 1:   # a loop that survived TaskStop: two readers race on one output and lose pages (24 Nov, 3 times)
             lines.append(f"RULE hy4: {n} readers write {out} at once - kill the older loop's bash and its reader")
-    if not any(hy4["loop_pattern"] in c for c in cmds):
+    if not paused and not any(hy4["loop_pattern"] in c for c in cmds):
         lines.append(f"RULE hy4: the hy4 loop ({hy4['loop_pattern']}) is not running ({hy4['source']})")
     from reality_engine.v2 import read_gate  # noqa: PLC0415
-    for out in sorted(hy4_outputs(rules, cmds)):
+    for out in ([] if paused else sorted(hy4_outputs(rules, cmds))):
         for bad in read_gate.pending_checkpoints(out):
             name = bad.split(":", 1)[0]
             fix = read_gate.audit_dir(out) / name.replace(".jsonl", ".fix.md")
@@ -218,9 +236,9 @@ def check(now: dt.datetime | None = None, rules: dict[str, Any] | None = None,
     peak = in_peak(now, rules)
     dsh, agy = running_dsh(), running_agy()
     rep = rules["reportees"]
-    if not peak and dsh == 0:
+    if not paused and not peak and dsh == 0:
         lines.append(f"RULE idle: DeepSeek has no running job off-peak - brief one ({rep['deepseek']['source']})")
-    if peak and agy == 0:
+    if not paused and peak and agy == 0:
         lines.append(f"RULE idle: Hydrogen has no running job in DeepSeek peak hours - brief one "
                      f"({rep['hydrogen']['source']})")
     # 25 Nov (Shivam): Hydrogen may also run off-peak, alongside DeepSeek; no off-peak agy rule any more

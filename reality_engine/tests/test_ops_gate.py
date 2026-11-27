@@ -20,6 +20,7 @@ def env(monkeypatch, tmp_path):
     monkeypatch.setattr(og.job_watch, "waiter_alive", lambda **kw: True)
     monkeypatch.setattr(og, "running_dsh", lambda: 1)
     monkeypatch.setattr(og, "running_agy", lambda: 0)
+    monkeypatch.setattr(og, "PAUSE_FILE", tmp_path / "OPS_PAUSED.txt")   # the live pause file never leaks into tests
     return rules, tmp_path
 
 
@@ -204,3 +205,20 @@ def test_two_readers_on_one_output_is_a_breach(env):
     wrapper = 'bash -c "' + reader + '"'
     assert not any("readers write" in line for line in og.check(WED_NIGHT, rules, LOOP + [reader, wrapper]))
     assert not any("readers write" in line for line in og.check(WED_NIGHT, rules, LOOP + [reader]))
+
+
+def test_pause_file_quiets_loop_grade_and_idle_rules(env, monkeypatch):
+    """T-245: a stop Shivam ordered is not a breach; heartbeat and worker limit still run."""
+    from reality_engine.v2 import read_gate
+    rules, tmp = env
+    monkeypatch.setattr(og, "running_dsh", lambda: 0)
+    (tmp / "obs.db").write_bytes(b"")
+    d = read_gate.audit_dir(tmp / "obs.db")
+    d.mkdir()
+    (d / "ckpt_0001.jsonl").write_text("{}\n", encoding="utf-8")
+    assert og.check(WED_NIGHT, rules, [])                  # loop, grade and idle breaches
+    (tmp / "OPS_PAUSED.txt").write_text("T-245 stop 27 Nov 08:00 (Shivam)\n", encoding="utf-8")
+    assert og.paused_reason() == "T-245 stop 27 Nov 08:00 (Shivam)"
+    assert og.check(WED_NIGHT, rules, []) == []
+    monkeypatch.setattr(og.job_watch, "waiter_alive", lambda **kw: False)
+    assert any(line.startswith("RULE heartbeat") for line in og.check(WED_NIGHT, rules, []))
