@@ -323,5 +323,11 @@ production start, not the later `Q1 FY27` expansion sentence). `test_obs_speaker
 
 
 ### Open for r8 (27 Nov, Eagle review of Wolf r7 fixes)
-- "Revenue for the year a year ago was 900" on a Q4 FY26 call reads FY26; a base cue ("a year ago", "last year") beside "for the year" must block the guidance-year rule (FY25 or empty).
-- `FY25-'26` through a bound-FY cue reads FY25 (worker open problem).
+- [x] "Revenue for the year a year ago was 900" on a Q4 FY26 call reads FY26; a base cue ("a year ago", "last year") beside "for the year" must block the guidance-year rule (FY25 or empty). r8: the base cue blocks the guidance "for the year" branch and the call-year fallback, so the line stores empty.
+- [x] `FY25-'26` through a bound-FY cue reads FY25 (worker open problem). r8: the bound-FY cue accepts the two-year span and names the year ending in the second pair, FY26.
+
+## r8 follow-up (27 Nov 2026, DeepSeek): two narrow period fixes on r7
+
+`reality_engine/v2/obs_speaker.py`: `_BASE_YEAR_CUE_RE` and `_for_the_year_names_base` block the r7 guidance-year rule and the final `_REL_YEAR_RE` fallback when "for the year" sits beside a base cue; `_BOUND_FY_CUE_RE` now reads a two-year span and `_explicit_own_period` labels it by the ending year. Tests:
+`test_r8_base_year_cue_never_takes_the_guidance_or_call_year` and
+`test_r8_bound_fy_two_year_span_takes_the_ending_year` in `reality_engine/tests/test_obs_speaker.py` (85 passed; `test_observations.py` 177 passed). No reparse measure this round: operations stop 08:00.

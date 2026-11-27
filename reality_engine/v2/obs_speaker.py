@@ -1530,8 +1530,11 @@ _QUARTER_ENDED_RE = re.compile(r"\s*(?:ended|ending)\s+(?=" + _PRINTED_DATE_RE.p
 # T-242 r7: a named FY bound to its figure ("planned outlay for FY27") anchors that FY; a guidance
 # "for the year" is the call's guidance year; a past-tense recap keeps its own quarter; a completed
 # action keeps the call period; "X stood at <figure>" with only a YoY comparative is the call period.
+# T-242 r8: a two-year span ("FY25-26", "FY 25-'26") through the bound cue names the year ending in
+# the second pair, as the plain _EXPLICIT_FY_RE token already does.
 _BOUND_FY_CUE_RE = re.compile(
-    r"\b(?:for|in|during)\s+(?:the\s+)?(?:full\s+|financial\s+|fiscal\s+)?(?:year\s+)?FY\s*['’‘]?\s*[-–]?\s*(\d{2,4})\b",
+    r"\b(?:for|in|during)\s+(?:the\s+)?(?:full\s+|financial\s+|fiscal\s+)?(?:year\s+)?FY\s*['’‘]?\s*[-–]?\s*(\d{2,4})"
+    r"(?:\s*[-–/]\s*['’‘]?\s*(\d{2,4}))?\b",
     re.I)
 _PLAN_NOUN_RE = re.compile(
     r"\b(?:plan(?:s|ned|ning)?|guid(?:e|es|ed|ing|ance)|target(?:s|ed|ing)?|outlay|budget(?:s|ed)?)\b", re.I)
@@ -1547,6 +1550,10 @@ _YOY_RESULT_RE = re.compile(r"\b(?:year[- ]on[- ]year|y-o-y|yoy)\b", re.I)
 _STOOD_AT_RE = re.compile(r"\b(?:stood|stands|stand|reached|reaches)\b", re.I)
 _BARE_YEAR_RE = re.compile(r"\b(?:19|20)\d{2}\b")
 _BASE_CONNECTOR_RE = re.compile(r"\b(?:over|versus|vs\.?|against|compared\s+(?:to|with))\b", re.I)
+# T-242 r8: a base cue beside "for the year" names the base year, never the call/guidance year.
+_BASE_YEAR_CUE_RE = re.compile(
+    r"\b(?:(?:a|one)\s+year\s+(?:ago|earlier)|(?:last|previous|prior)\s+year"
+    r"|same\s+period\s+(?:last|previous)\s+year)\b", re.I)
 
 
 def _parse_printed_date(match: re.Match[str]) -> tuple[int, int, int | None, bool] | None:
@@ -1781,6 +1788,11 @@ def _completed_action_keeps_call(sent: str, call_q: str) -> str:
     return call_q
 
 
+def _for_the_year_names_base(sent: str) -> bool:
+    """T-242 r8: "for the year" beside a base cue ("a year ago", "last year") is the base year, not the call year."""
+    return bool(_GUIDANCE_YEAR_CUE_RE.search(sent) and _BASE_YEAR_CUE_RE.search(sent))
+
+
 def _explicit_own_period(sent: str, q: int, fy: int) -> str:
     """The call's own period when ``sent`` binds an explicit token to a figure; '' when it does not.
 
@@ -1807,6 +1819,8 @@ def _explicit_own_period(sent: str, q: int, fy: int) -> str:
     (f) a quarter cue ("in this quarter", "for the quarter", "this time") still anchors the figure before it
     when a forward word opens the sentence (TRIVENI, PSB); (g) a guidance "for the year" bound to a figure is
     the guidance year -- the coming FY on a Q4 call, the current FY on a Q1-Q3 call (HINDZINC FY26).
+    T-242 r8: (h) a "for the year" beside a base cue ("a year ago", "last year") is the base year and anchors
+    nothing; (i) the bound FY of a two-year span ("FY25-26") is the year ending in the second pair.
     """
     end_year, end_month, end_day = _period_end_date(q, fy)
     call_q = f"Q{q} FY{fy:02d}"
@@ -1828,7 +1842,8 @@ def _explicit_own_period(sent: str, q: int, fy: int) -> str:
                     return label
         if not named and _GUIDANCE_NOUN_RE.search(sent):
             ym = _GUIDANCE_YEAR_CUE_RE.search(sent)
-            if ym and not _CMP_BEFORE_PERIOD_RE.search(sent[max(0, ym.start() - 20):ym.start()]) \
+            if ym and not _for_the_year_names_base(sent) \
+                    and not _CMP_BEFORE_PERIOD_RE.search(sent[max(0, ym.start() - 20):ym.start()]) \
                     and _has_figure(sent[ym.end():]):
                 # T-242 r7: guidance "for the year" is the guidance year (the coming FY on a Q4 call)
                 return f"FY{(fy + 1 if q == 4 else fy) % 100:02d}"
@@ -1868,7 +1883,7 @@ def _explicit_own_period(sent: str, q: int, fy: int) -> str:
         start, end = _clause_span(sent, fm.start())
         if not _has_figure(sent[start:end]):
             continue
-        label = f"FY{int(fm.group(1)) % 100:02d}"
+        label = f"FY{int(fm.group(2) or fm.group(1)) % 100:02d}"
         if label == f"FY{fy:02d}" and q != 4 and not _PLAN_NOUN_RE.search(sent) \
                 and not re.search(r"\byear\b", fm.group(0), re.I):
             continue                    # the call's own year is not another period on a Q1-Q3 call (CUB)
@@ -1967,7 +1982,7 @@ def anchored_period(statement: str, call_period: str) -> str:
     for sent in sentences:
         if _sentence_blocked_for_anchor(sent, q, fy, end_ym):
             continue
-        if _REL_YEAR_RE.search(sent):
+        if _REL_YEAR_RE.search(sent) and not _for_the_year_names_base(sent):
             return f"FY{fy:02d}"
     return ""
 

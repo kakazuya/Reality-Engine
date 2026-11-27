@@ -1657,3 +1657,30 @@ def test_r7_review_recap_keeps_named_fy_and_this_time_last_year_is_comparative()
     assert anchored_period("This time last year revenue was INR 500 crores.", "Q2 FY27") != "Q2 FY27"
     assert anchored_period("On our last earnings call in January, I had shared that the company was targeting to "
                            "close Q4 with revenue of INR100 crores plus.", "Q4 FY26") == "Q4 FY26"
+
+
+# ------------------------------------------------ T-242 r8: base year cue and two-year FY span
+
+
+def test_r8_base_year_cue_never_takes_the_guidance_or_call_year():
+    """Eagle r7 review: "for the year a year ago" on a Q4 call is the base year, not the call/guidance year."""
+    assert ospeaker.anchored_period(
+        "Revenue for the year a year ago was 900 crores.", "Q4 FY26") in ("", "FY25")
+    # a guidance "for the year" with no base cue still takes the guidance year
+    assert ospeaker.anchored_period(
+        "In line with Board approved growth projects, our growth capex guidance for the year would be in the "
+        "range of $350 million to $400 million.", "Q4 FY26") == "FY27"
+    # a reported "for the year" with no base cue is still the call year
+    assert ospeaker.anchored_period("Finance costs for the year stood at 562 million.", "Q2 FY27") == "FY27"
+
+
+def test_r8_bound_fy_two_year_span_takes_the_ending_year():
+    """Eagle r7 review: "FY25-'26" through the bound-FY cue names FY26, as the plain FY token already does."""
+    assert ospeaker.anchored_period(
+        "Our guidance for FY25-'26 is revenue of INR 700 crores.", "Q2 FY26") == "FY26"
+    assert ospeaker.anchored_period(
+        "planned outlay for FY 25-26 stands at INR 250 crores", "Q2 FY26") == "FY26"
+    assert ospeaker.anchored_period(
+        "planned outlay for FY25-'26 stands at INR 250 crores", "Q2 FY26") == "FY26"
+    # a leading single-year FY keeps its own year
+    assert ospeaker.anchored_period("FY '25 revenue was INR 500 crores", "Q2 FY26") == "FY25"
