@@ -1,7 +1,7 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-27 08:07 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
-Undocumented: 0 tables and 7 of 84 raw folders.
+Generated 2026-11-27 11:38 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Undocumented: 0 tables and 7 of 83 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
 
@@ -286,6 +286,5 @@ Undocumented: 0 tables and 7 of 84 raw folders.
 | runners | 0 | 0.00 | - | yes |
 | tax_sources | 0 | 0.00 | - | yes |
 | transcripts_raw | 1 | 0.00 | 2026-11-09 `sha_index.db` | yes |
-| user_research | 2,103 | 2.00 | 2026-10-18 `video1462649034.mp4` | yes |
 | user_research_drive | 12 | 0.04 | 2026-10-21 `Saregama India Ltd — Research Report.docx` | yes |
 | vahan | 0 | 0.00 | - | yes |
