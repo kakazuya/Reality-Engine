@@ -3679,13 +3679,23 @@ The model never computes: `compute()` evaluates each calc expression with an AST
   2-3 worse). `tx394_grade_r2`: 0 of the 54 matched pack rows change (the 36 graded-R rows included; the one
   pack row the wider rule had anchored, ASTERDM p4, is empty again). `test_obs_speaker.py` 82 passed,
   `test_observations.py` 177 passed.
-  **r8 (27 Nov, DeepSeek):** a base cue beside "for the year" ("a year ago", "last year", "previous year",
-  "same period last year") names the base year and anchors nothing (Eagle's "Revenue for the year a year ago was
-  900 crores." on a Q4 FY26 call is empty, not FY26), while HINDZINC's guidance "for the year" stays FY27 and
-  "Finance costs for the year" stays FY27; the bound-FY cue reads a two-year span ("FY25-'26", "FY 25-26") as
+  **r8 (27 Nov, DeepSeek):** the bound-FY cue reads a two-year span ("FY25-'26", "FY 25-26") as
   the year ending in the second pair (FY26, where it read FY25 before), and the leading "FY '25" keeps FY25.
+  **r8b (27 Nov, DeepSeek; Eagle's r8 review):** a base cue ("a year ago", "last year", "previous year",
+  "same period last year") blocks the call/guidance year only when it binds "for the year" itself ("for the
+  year a year ago", "last year, for the year"); an own figure compared against or over the base keeps its year
+  ("Revenue for the year was INR 1,200 crores against INR 1,000 crores last year" on a Q4 FY26 call is FY26,
+  "... last year; for the year we expect 18%" is FY27), while "Revenue for the year a year ago was 900 crores."
+  stays empty. A two-year span needs consecutive years in the plain FY token too ("FY27 - 20% growth" / "- 25
+  crore" is FY27, never FY20/FY25; "FY27/28" is FY28), and a leading "For FY27," binds the FY to the figure
+  after the comma ("For FY27, 20% to 25% revenue growth." is FY27), while CUB's "NIM for FY26" on a Q1 call
+  stays empty.
   Tests `test_r8_base_year_cue_never_takes_the_guidance_or_call_year`,
-  `test_r8_bound_fy_two_year_span_takes_the_ending_year` (`test_obs_speaker.py` 85 passed,
+  `test_r8_bound_fy_two_year_span_takes_the_ending_year`,
+  `test_r8_review_span_needs_consecutive_years_not_a_figure`,
+  `test_r8b_base_cue_blocks_only_when_it_binds_for_the_year`,
+  `test_r8b_explicit_fy_span_needs_consecutive_years`,
+  `test_r8b_leading_for_fy_comma_binds_its_figure` (`test_obs_speaker.py` 89 passed,
   `test_observations.py` 177 passed); no reparse measure this round (operations stop 08:00).
 
 ### P. Checkpoint grading packs: one command, two rubrics (T-242, 25 Nov 2026)

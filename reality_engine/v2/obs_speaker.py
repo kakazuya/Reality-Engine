@@ -1531,11 +1531,14 @@ _QUARTER_ENDED_RE = re.compile(r"\s*(?:ended|ending)\s+(?=" + _PRINTED_DATE_RE.p
 # "for the year" is the call's guidance year; a past-tense recap keeps its own quarter; a completed
 # action keeps the call period; "X stood at <figure>" with only a YoY comparative is the call period.
 # T-242 r8: a two-year span ("FY25-26", "FY 25-'26") through the bound cue names the year ending in
-# the second pair, as the plain _EXPLICIT_FY_RE token already does.
+# the second pair; r8b: only a consecutive pair is a span ("FY27 - 20%" / "FY27 - 25 crore" is FY27),
+# in the bound cue and the plain _EXPLICIT_FY_RE token alike.
 _BOUND_FY_CUE_RE = re.compile(
     r"\b(?:for|in|during)\s+(?:the\s+)?(?:full\s+|financial\s+|fiscal\s+)?(?:year\s+)?FY\s*['’‘]?\s*[-–]?\s*(\d{2,4})"
     r"(?:\s*[-–/]\s*['’‘]?\s*(\d{2,4})(?![\d.]|\s*(?:%|per\s*cent|crore|cr\b|lakh|mn|million|bn|billion)))?\b",
     re.I)
+# T-242 r8b: a leading "For FY27," binds the FY to the figure after the comma ("For FY27, 20% ... growth.").
+_LEADING_FOR_FY_COMMA_RE = re.compile(r"\s*for\s+FY\s*['’‘]?\s*[-–]?\s*\d{2,4}\s*,", re.I)
 _PLAN_NOUN_RE = re.compile(
     r"\b(?:plan(?:s|ned|ning)?|guid(?:e|es|ed|ing|ance)|target(?:s|ed|ing)?|outlay|budget(?:s|ed)?)\b", re.I)
 _GUIDANCE_YEAR_CUE_RE = re.compile(
@@ -1550,7 +1553,7 @@ _YOY_RESULT_RE = re.compile(r"\b(?:year[- ]on[- ]year|y-o-y|yoy)\b", re.I)
 _STOOD_AT_RE = re.compile(r"\b(?:stood|stands|stand|reached|reaches)\b", re.I)
 _BARE_YEAR_RE = re.compile(r"\b(?:19|20)\d{2}\b")
 _BASE_CONNECTOR_RE = re.compile(r"\b(?:over|versus|vs\.?|against|compared\s+(?:to|with))\b", re.I)
-# T-242 r8: a base cue beside "for the year" names the base year, never the call/guidance year.
+# T-242 r8/r8b: a base cue bound directly to "for the year" names the base year, never the call/guidance year.
 _BASE_YEAR_CUE_RE = re.compile(
     r"\b(?:(?:a|one)\s+year\s+(?:ago|earlier)|(?:last|previous|prior)\s+year"
     r"|same\s+period\s+(?:last|previous)\s+year)\b", re.I)
@@ -1665,8 +1668,7 @@ def _sentence_blocked_for_anchor(sent: str, q: int, fy: int, end_ym: int, *, che
     for fm in _EXPLICIT_FY_RE.finditer(sent):
         if _COMPARATIVE_CUE_RE.search(sent[:fm.start()]):
             continue
-        fy_end = int(fm.group(2) or fm.group(1)) % 100
-        if fy_end != fy:
+        if _fy_token_end(fm) != fy:
             return True
     return False
 
@@ -1682,6 +1684,17 @@ def _clause_span(text: str, pos: int) -> tuple[int, int]:
     return start, len(text)
 
 
+def _fy_token_end(fm: re.Match[str]) -> int:
+    """T-242 r8b: the year an ``FYnn[-/]nn`` token names -- the ending year only when the pair is consecutive.
+
+    "FY27 - 20% growth" / "FY27 - 25 crore" is FY27 with a figure after the dash, never the FY20/FY25 span;
+    "FY25-26", "FY 25-'26" and "FY27/28" name the year ending in the second pair.
+    """
+    first = int(fm.group(1)) % 100
+    second = int(fm.group(2)) % 100 if fm.group(2) else None
+    return second if second is not None and second == (first + 1) % 100 else first
+
+
 def _named_periods(sent: str) -> list[tuple[int, int, str]]:
     """Named fiscal periods in ``sent`` as ``(start, end, label)``: ``Qn FYnn`` and ``FYnn``."""
     found: list[tuple[int, int, str]] = []
@@ -1691,7 +1704,7 @@ def _named_periods(sent: str) -> list[tuple[int, int, str]]:
     for fm in _EXPLICIT_FY_RE.finditer(sent):
         if any(start < fm.end() and fm.start() < end for start, end, _label in found):
             continue                       # the FY of a Qn FYnn label is not a bare year
-        found.append((fm.start(), fm.end(), f"FY{int(fm.group(2) or fm.group(1)) % 100:02d}"))
+        found.append((fm.start(), fm.end(), f"FY{_fy_token_end(fm):02d}"))
     found.sort()
     return found
 
@@ -1789,8 +1802,23 @@ def _completed_action_keeps_call(sent: str, call_q: str) -> str:
 
 
 def _for_the_year_names_base(sent: str) -> bool:
-    """T-242 r8: "for the year" beside a base cue ("a year ago", "last year") is the base year, not the call year."""
-    return bool(_GUIDANCE_YEAR_CUE_RE.search(sent) and _BASE_YEAR_CUE_RE.search(sent))
+    """T-242 r8/r8b: "for the year" itself is the base year only when the base cue binds it directly.
+
+    "for the year a year ago", "for the year, last year", "last year, for the year" name the base year; a base
+    cue across a clause break or a figure ("for the year was 1,200 crores against 1,000 crores last year", "for
+    the year grew 20% over the previous year") compares the reported own figure and binds nothing.
+    """
+    for ym in _GUIDANCE_YEAR_CUE_RE.finditer(sent):
+        for bm in _BASE_YEAR_CUE_RE.finditer(sent):
+            if bm.start() >= ym.end():
+                gap = sent[ym.end():bm.start()]
+            elif bm.end() <= ym.start():
+                gap = sent[bm.end():ym.start()]
+            else:
+                continue
+            if re.fullmatch(r"[\s,–—-]*", gap):
+                return True
+    return False
 
 
 def _explicit_own_period(sent: str, q: int, fy: int) -> str:
@@ -1821,6 +1849,10 @@ def _explicit_own_period(sent: str, q: int, fy: int) -> str:
     the guidance year -- the coming FY on a Q4 call, the current FY on a Q1-Q3 call (HINDZINC FY26).
     T-242 r8: (h) a "for the year" beside a base cue ("a year ago", "last year") is the base year and anchors
     nothing; (i) the bound FY of a two-year span ("FY25-26") is the year ending in the second pair.
+    T-242 r8b: (j) only a base cue sitting directly on "for the year" ("for the year a year ago", "last year,
+    for the year") blocks it -- a base across a clause break or a figure compares the own figure and keeps the
+    call/guidance year; (k) an FY span takes its ending year only when the pair is consecutive ("FY27 - 20%" is
+    FY27); (l) a leading "For FY27," binds the FY to the figure after the comma.
     """
     end_year, end_month, end_day = _period_end_date(q, fy)
     call_q = f"Q{q} FY{fy:02d}"
@@ -1840,14 +1872,16 @@ def _explicit_own_period(sent: str, q: int, fy: int) -> str:
             for start, _end, label in named:
                 if label == f"FY{fy:02d}" and not _CMP_BEFORE_PERIOD_RE.search(sent[max(0, start - 12):start]):
                     return label
-        if not named and _GUIDANCE_NOUN_RE.search(sent):
-            ym = _GUIDANCE_YEAR_CUE_RE.search(sent)
+        fstart, fend = _clause_span(sent, forward.start())
+        if not named:
+            ym = next((m for m in _GUIDANCE_YEAR_CUE_RE.finditer(sent)
+                       if fstart <= m.start() and m.end() <= fend), None)
             if ym and not _for_the_year_names_base(sent) \
                     and not _CMP_BEFORE_PERIOD_RE.search(sent[max(0, ym.start() - 20):ym.start()]) \
                     and _has_figure(sent[ym.end():]):
-                # T-242 r7: guidance "for the year" is the guidance year (the coming FY on a Q4 call)
+                # T-242 r7: guidance "for the year" is the guidance year (the coming FY on a Q4 call); r8b:
+                # only when it shares a clause with the forward cue ("... last year; for the year we expect 18%")
                 return f"FY{(fy + 1 if q == 4 else fy) % 100:02d}"
-        fstart, fend = _clause_span(sent, forward.start())
         in_clause = [p for p in named if fstart <= p[0] and p[1] <= fend]
         after = [p for p in in_clause if p[0] >= forward.end()]
         before = [p for p in in_clause if p[1] <= forward.start()]
@@ -1883,12 +1917,10 @@ def _explicit_own_period(sent: str, q: int, fy: int) -> str:
         start, end = _clause_span(sent, fm.start())
         if not _has_figure(sent[start:end]):
             continue
-        first = int(fm.group(1)) % 100
-        span_end = int(fm.group(2)) % 100 if fm.group(2) else None
-        # Wolf review: only a consecutive pair is a span ("FY27 - 20% growth" is FY27, never FY20)
-        label = f"FY{(span_end if span_end == (first + 1) % 100 else first):02d}"
+        label = f"FY{_fy_token_end(fm):02d}"   # a span's ending year only when the pair is consecutive
         if label == f"FY{fy:02d}" and q != 4 and not _PLAN_NOUN_RE.search(sent) \
-                and not re.search(r"\byear\b", fm.group(0), re.I):
+                and not re.search(r"\byear\b", fm.group(0), re.I) \
+                and not _LEADING_FOR_FY_COMMA_RE.match(sent):
             continue                    # the call's own year is not another period on a Q1-Q3 call (CUB)
         return label                    # "planned outlay for FY27" is FY27
     return ""

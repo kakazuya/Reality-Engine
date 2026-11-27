@@ -331,3 +331,27 @@ production start, not the later `Q1 FY27` expansion sentence). `test_obs_speaker
 `reality_engine/v2/obs_speaker.py`: `_BASE_YEAR_CUE_RE` and `_for_the_year_names_base` block the r7 guidance-year rule and the final `_REL_YEAR_RE` fallback when "for the year" sits beside a base cue; `_BOUND_FY_CUE_RE` now reads a two-year span and `_explicit_own_period` labels it by the ending year. Tests:
 `test_r8_base_year_cue_never_takes_the_guidance_or_call_year` and
 `test_r8_bound_fy_two_year_span_takes_the_ending_year` in `reality_engine/tests/test_obs_speaker.py` (85 passed; `test_observations.py` 177 passed). No reparse measure this round: operations stop 08:00.
+
+## r8b follow-up (27 Nov 2026, DeepSeek): the base cue binds "for the year" only; consecutive spans; leading "For FYnn,"
+
+Eagle's review of r8 (`r8 FAILED`) found the base-cue block over-reaching and two span/comma misses. r8b changes only
+`reality_engine/v2/obs_speaker.py` (`_for_the_year_names_base`, `_fy_token_end`, `_named_periods`,
+`_sentence_blocked_for_anchor`, `_explicit_own_period`, `_LEADING_FOR_FY_COMMA_RE`):
+
+- **The base cue blocks only when it binds "for the year" itself** ("for the year a year ago", "for the year, last
+  year", "last year, for the year"): no clause break or figure between the cue and the phrase. An own figure compared
+  against/over the base keeps its year: "Revenue for the year was INR 1,200 crores against INR 1,000 crores last
+  year" and "EBITDA for the year grew 20% over the previous year to INR 300 crores" on a Q4 FY26 call are FY26 (were
+  empty), and "... same period last year; for the year we expect 18%" on a Q2 FY27 call is FY27 (was empty; a
+  guidance "for the year" now needs only its forward cue's clause, not a `guidance` noun). "Revenue for the year a
+  year ago was 900 crores." stays empty.
+- **A two-year span needs a consecutive pair in `_EXPLICIT_FY_RE` too**, as the bound cue already did: "FY27 - 20%
+  to 25% growth is intact" / "for FY27 - 25 crore capex" are FY27 (were FY20/FY25), while "FY25-26", "FY 25-'26"
+  and "FY27/28" keep the ending year (FY26/FY26/FY28).
+- **A leading "For FY27," binds the FY to the figure after the comma**: "For FY27, 20% to 25% revenue growth." is
+  FY27 (was empty); CUB's "NIM for FY26 is 3.5%" on a Q1 call stays empty.
+
+Tests: `reality_engine/tests/test_obs_speaker.py` adds `test_r8b_base_cue_blocks_only_when_it_binds_for_the_year`,
+`test_r8b_explicit_fy_span_needs_consecutive_years` and `test_r8b_leading_for_fy_comma_binds_its_figure`, and Wolf's
+`test_r8_review_span_needs_consecutive_years_not_a_figure` now passes: 89 passed; `test_observations.py` 177 passed.
+No reparse measure this round: operations stop 08:00.
