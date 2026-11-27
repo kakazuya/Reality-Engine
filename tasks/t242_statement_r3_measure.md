@@ -369,3 +369,6 @@ the guidance "for the year" needs a guidance noun or a forward word within 25 ch
 - [Q4 FY26] "Revenue for the year was INR 1,200 crores and we expect 15% growth next year" and "EBITDA for the year stood at INR 300 crores, and we will continue to invest" -> FY26 (own reported figure; today empty).
 - [Q4 FY26] "We expect revenue for the year to be around INR 1,500 crores" -> FY27 (forward word before "for the year"; today empty).
 - After cleanup: count transcript rows read since the r6/r7 merges whose period came from a non-consecutive "FYnn - NN" span (e.g. FY20 on text naming FY27) in obs_transcripts_394_v3; re-anchor with r8b.
+
+### r9 FAILED (Eagle, 27 Nov 06:05) - r9b after cleanup, branch dsh/20261127T002143Z-c59dbb00 kept
+- [Q4 FY26] "We expected revenue for the year to be INR 1,100 crores, and it came in at INR 1,200 crores." -> FY27 (main: empty; right: FY26). The forward-word-before rule matches past-tense "expected". r9b: forward words exclude past tense (expected/targeted/guided/planned as a recap); test this line and its present-tense twin ("We expect revenue for the year to be INR 1,100 crores" -> FY27).
