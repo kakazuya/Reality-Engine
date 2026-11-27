@@ -64,3 +64,8 @@ cleanup - data-heavy files to Drive, keep essentials on the MSI - so it runs as 
 ## 2026-11-27 01:50 | raw\user_research to Drive too (replaces "kept local", 7 Nov)
 Rule: `raw\user_research` (member videos, screen recordings; 814 files, 32.8 GB) is uploaded and hash-checked like all raw.
 > Krde upload isko bhi
+
+## 2026-11-27 11:15 | Grade steady outputs every 5th checkpoint (T-246)
+Rule: an hy4 output whose last 2 grades passed (today transcripts, decks) is graded every 5th checkpoint; annual reports, results and anything just fixed or failing are graded at every checkpoint.
+Wolf's recommendation he answered: "grade every 5th checkpoint for transcripts and decks, and every checkpoint for annual reports and results. Shall I set that up?"
+> Ok, you have 30 min to update code and push merge

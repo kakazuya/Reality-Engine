@@ -5,7 +5,7 @@ description: Strict 60-row non-author grade of an hy4 (or any model) reading che
 
 # Checkpoint grade (maker-checker-verifier)
 
-Bar: >= 70% R and <= 5% W+J of 60 rows. The author of the prompt/gates never grades or records their own work:
+Bar: >= 70% R and <= 5% W+J of 60 rows. Which checkpoints (Shivam 27 Nov, T-246): an output whose last 2 grades passed is graded every 5th checkpoint only; after any fail, every checkpoint until 2 pass in a row (`read_gate.grade_needed`; ops_gate lists only the ones needed). The author of the prompt/gates never grades or records their own work:
 Eagle wrote transcript v3 + obs_speaker -> Wolf records transcript grades; Wolf owns deck + AR prompts -> Eagle or a non-author records those.
 
 ## 1. Build the pack

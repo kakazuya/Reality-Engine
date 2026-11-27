@@ -88,14 +88,42 @@ def audit_dir(out: str | Path) -> Path:
     return Path(f"{out}.audit")
 
 
+GRADE_EVERY = 5      # Shivam 27 Nov 2026: a steady output is graded every 5th checkpoint (every 10,000 pages)
+STEADY_PASSES = 2    # steady = its last 2 graded checkpoints both passed; any fail -> every checkpoint again
+
+
+def _ckpt_index(path: Path) -> int:
+    return int(path.name.split("_")[1].split(".")[0])
+
+
+def grade_needed(out: str | Path, k: int) -> bool:
+    """Does checkpoint ``k`` of ``out`` need a grade?  Shivam 27 Nov 2026 ("ok"): types that keep passing are graded
+    every GRADE_EVERY-th checkpoint; a failing or just-fixed output (any fail among its last STEADY_PASSES grades
+    before ``k``, or fewer grades than that) is graded at every checkpoint.  Skipped samples stay on disk for
+    surprise audits; the row checks still run on every row."""
+    if k % GRADE_EVERY == 0:
+        return True
+    d = audit_dir(out)
+    verdicts = []
+    for g in sorted(d.glob("ckpt_*.grade.json"), key=_ckpt_index) if d.is_dir() else []:
+        if _ckpt_index(g) < k:
+            try:
+                verdicts.append(json.loads(g.read_text(encoding="utf-8")).get("verdict"))
+            except (ValueError, OSError):
+                verdicts.append(None)
+    last = verdicts[-STEADY_PASSES:]
+    return len(last) < STEADY_PASSES or any(v != "pass" for v in last)
+
+
 def pending_checkpoints(out: str | Path) -> list[str]:
-    """Checkpoint samples with no grade, or a failed grade."""
+    """Checkpoint samples with no grade (when ``grade_needed``), or a failed grade."""
     d = audit_dir(out)
     bad = []
     for sample in sorted(d.glob("ckpt_*.jsonl")) if d.is_dir() else []:
         grade = sample.with_suffix(".grade.json")
         if not grade.is_file():
-            bad.append(f"{sample.name}: not graded")
+            if grade_needed(out, _ckpt_index(sample)):
+                bad.append(f"{sample.name}: not graded")
             continue
         verdict = json.loads(grade.read_text(encoding="utf-8")).get("verdict")
         if verdict != "pass":

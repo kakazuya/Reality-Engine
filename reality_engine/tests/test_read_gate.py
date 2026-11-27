@@ -189,3 +189,27 @@ def test_default_verified_allowed_only_at_or_under_ten_percent(tmp_path):
     assert rg.latest_grade_share(out) == 0.05 and rg.verified_allowed(out)
     (d / "ckpt_0002.grade.json").write_text(json.dumps({"verdict": "fail", "counts": "50/3/6/1"}), encoding="utf-8")
     assert not rg.verified_allowed(out)                               # 7/60 = 11.7% > 10%
+
+
+def test_default_steady_output_graded_every_fifth_checkpoint(tmp_path):
+    """Shivam 27 Nov 2026: a type that keeps passing is graded every 5th checkpoint; a fail restores every one."""
+    out = tmp_path / "o.db"
+    d = rg.audit_dir(out)
+    d.mkdir()
+    for k in range(1, 8):
+        (d / f"ckpt_{k:04d}.jsonl").write_text("{}", encoding="utf-8")
+
+    def grade(k, verdict):
+        (d / f"ckpt_{k:04d}.grade.json").write_text(json.dumps({"verdict": verdict}), encoding="utf-8")
+
+    assert rg.grade_needed(out, 1) and rg.grade_needed(out, 2)        # fewer than 2 grades: every checkpoint
+    grade(1, "pass")
+    grade(2, "pass")
+    assert not rg.grade_needed(out, 3) and not rg.grade_needed(out, 4)
+    assert rg.grade_needed(out, 5)                                    # every 5th is always graded
+    assert rg.pending_checkpoints(out) == ["ckpt_0005.jsonl: not graded"]
+    grade(5, "fail")
+    assert rg.grade_needed(out, 6) and rg.grade_needed(out, 7)        # a fail: every checkpoint again
+    assert "ckpt_0006.jsonl: not graded" in rg.pending_checkpoints(out)
+    grade(6, "pass")
+    assert rg.grade_needed(out, 7)                                    # one pass after a fail is not steady yet

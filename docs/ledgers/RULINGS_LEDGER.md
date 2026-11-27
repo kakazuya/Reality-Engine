@@ -701,3 +701,9 @@
 -- Raw files only on Drive (7 Nov): download, write the database, delete the copy after a Drive hash check; tests local till `raw_to_drive`. Kept local: `raw\user_research`. Tools/trackers (16 Nov): local, Drive or GitHub only; no cloud until deployed.
 +- Raw files only on Drive (7 Nov): download, write the database, delete the copy after a Drive hash check; tests local till `raw_to_drive`. `raw\user_research` goes to Drive too (27 Nov). Tools/trackers (16 Nov): local, Drive or GitHub only; no cloud until deployed.
 ```
+
+## 2026-11-27T11:19:49 | kakazuya (Wolf) | branch main
+```diff
+-- Architecture (8 Nov): the author never checks own code. Every extracted row passes the independent `row_checks.py` layer: `verified` / `unverified` (served labelled) / `quarantined` (never served); unsure = no row. Score only on frozen sets (10 Nov); s20 exam set gives the reported number. Structural rules, not per-company. Never block reading (26 Nov): all doc types read and load; a graded sample >10% W+J loads unverified; block only if >10% of the database is corrupt; Claude reviews and improves. [check: read_gate] Rows store read_model/gateway/harness, prompt_fp, read_at.
++- Architecture (8 Nov): authors never check own code. Every extracted row passes the independent `row_checks.py` layer: `verified` / `unverified` (served labelled) / `quarantined` (never served); unsure = no row; score only on frozen sets (10 Nov); s20 exam set gives the reported score. Structural rules only. Never block reading (26 Nov): all doc types read and load; graded sample >10% W+J loads unverified; block only if >10% of the DB is corrupt; Claude fixes. 2 passes = grade every 5th ckpt (27 Nov). [check: read_gate] Rows store read_model/gateway/harness, prompt_fp, read_at.
+```

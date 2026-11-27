@@ -2381,7 +2381,12 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   withdraws a pass, and any prompt edit changes the fingerprint so earlier passes stop counting. (2) Every 2,000
   pages in an output DB's `page_read` ledger write `<out>.audit/ckpt_NNNN.jsonl` (60 seeded rows) and STOP the running
   read (`stopped`); the next run on that DB refuses to start until each checkpoint has a `pass` grade (`read_gate grade --ckpt ... --verdict ...`).
-  A refused run prints `GATE: ...` and exits 3; `.tmp/hy4_always.sh` then moves to the next job. (3)
+  A refused run prints `GATE: ...` and exits 3; `.tmp/hy4_always.sh` then moves to the next job.
+  **Every 5th checkpoint (T-246, Shivam 27 Nov 2026):** `read_gate.grade_needed(out, k)` - an output whose last
+  2 graded checkpoints passed needs a grade only at every 5th checkpoint (`GRADE_EVERY`, i.e. every 10,000 pages);
+  any fail among its last 2 grades (or fewer than 2 grades) means every checkpoint is graded again, so failing and
+  just-fixed outputs (AR, results today) are graded each time; skipped samples stay on disk for surprise audits and
+  `pending_checkpoints` (hence ops_gate) leaves them out. (3)
   `read_gate status --out <db>` shows gates, pending checkpoints and ledger counts; the managers' 25-minute heartbeats
   grade pending checkpoints (never the reader's author). First entries 24 Nov: transcript `fail` (Eagle, 110 rows:
   40 right) and Shivam's override scoped to `obs_transcripts_fy27`. Tests `reality_engine/tests/test_read_gate.py`.
