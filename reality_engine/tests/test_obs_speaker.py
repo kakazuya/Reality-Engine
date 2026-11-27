@@ -1684,3 +1684,11 @@ def test_r8_bound_fy_two_year_span_takes_the_ending_year():
         "planned outlay for FY25-'26 stands at INR 250 crores", "Q2 FY26") == "FY26"
     # a leading single-year FY keeps its own year
     assert ospeaker.anchored_period("FY '25 revenue was INR 500 crores", "Q2 FY26") == "FY25"
+
+
+def test_r8_review_span_needs_consecutive_years_not_a_figure():
+    """Wolf review of r8: 'for FY27 - 20% growth' / '- 25 crore' is FY27; only 'FY27/28' style pairs are spans."""
+    from reality_engine.v2.obs_speaker import anchored_period
+    assert anchored_period("Our revenue guidance for FY27 - 20% to 25% growth is intact.", "Q2 FY27") == "FY27"
+    assert anchored_period("Our guidance for FY27 - 25 crore capex.", "Q2 FY27") == "FY27"
+    assert anchored_period("Planned outlay for FY27/28 stands at INR 250 crores.", "Q2 FY27") == "FY28"

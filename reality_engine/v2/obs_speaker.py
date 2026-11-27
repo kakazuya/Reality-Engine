@@ -1534,7 +1534,7 @@ _QUARTER_ENDED_RE = re.compile(r"\s*(?:ended|ending)\s+(?=" + _PRINTED_DATE_RE.p
 # the second pair, as the plain _EXPLICIT_FY_RE token already does.
 _BOUND_FY_CUE_RE = re.compile(
     r"\b(?:for|in|during)\s+(?:the\s+)?(?:full\s+|financial\s+|fiscal\s+)?(?:year\s+)?FY\s*['’‘]?\s*[-–]?\s*(\d{2,4})"
-    r"(?:\s*[-–/]\s*['’‘]?\s*(\d{2,4}))?\b",
+    r"(?:\s*[-–/]\s*['’‘]?\s*(\d{2,4})(?![\d.]|\s*(?:%|per\s*cent|crore|cr\b|lakh|mn|million|bn|billion)))?\b",
     re.I)
 _PLAN_NOUN_RE = re.compile(
     r"\b(?:plan(?:s|ned|ning)?|guid(?:e|es|ed|ing|ance)|target(?:s|ed|ing)?|outlay|budget(?:s|ed)?)\b", re.I)
@@ -1883,7 +1883,10 @@ def _explicit_own_period(sent: str, q: int, fy: int) -> str:
         start, end = _clause_span(sent, fm.start())
         if not _has_figure(sent[start:end]):
             continue
-        label = f"FY{int(fm.group(2) or fm.group(1)) % 100:02d}"
+        first = int(fm.group(1)) % 100
+        span_end = int(fm.group(2)) % 100 if fm.group(2) else None
+        # Wolf review: only a consecutive pair is a span ("FY27 - 20% growth" is FY27, never FY20)
+        label = f"FY{(span_end if span_end == (first + 1) % 100 else first):02d}"
         if label == f"FY{fy:02d}" and q != 4 and not _PLAN_NOUN_RE.search(sent) \
                 and not re.search(r"\byear\b", fm.group(0), re.I):
             continue                    # the call's own year is not another period on a Q1-Q3 call (CUB)
