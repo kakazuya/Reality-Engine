@@ -330,7 +330,7 @@ production start, not the later `Q1 FY27` expansion sentence). `test_obs_speaker
 
 `reality_engine/v2/obs_speaker.py`: `_BASE_YEAR_CUE_RE` and `_for_the_year_names_base` block the r7 guidance-year rule and the final `_REL_YEAR_RE` fallback when "for the year" sits beside a base cue; `_BOUND_FY_CUE_RE` now reads a two-year span and `_explicit_own_period` labels it by the ending year. Tests:
 `test_r8_base_year_cue_never_takes_the_guidance_or_call_year` and
-`test_r8_bound_fy_two_year_span_takes_the_ending_year` in `reality_engine/tests/test_obs_speaker.py` (85 passed; `test_observations.py` 177 passed). No reparse measure this round: operations stop 08:00.
+`test_r8_bound_fy_two_year_span_takes_the_ending_year` in `reality_engine/tests/test_obs_speaker.py` (85 passed when the r8 note was written; Wolf's `test_r8_review_span_needs_consecutive_years_not_a_figure` was added after and failed until r8b, so the branch collects 86; `test_observations.py` 177 passed). No reparse measure this round: operations stop 08:00.
 
 ## r8b follow-up (27 Nov 2026, DeepSeek): the base cue binds "for the year" only; consecutive spans; leading "For FYnn,"
 
