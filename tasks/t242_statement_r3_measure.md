@@ -364,3 +364,8 @@ Wolf review of r8b (27 Nov 05:50): dropping the `guidance`-noun requirement move
 coming FY ("Revenue for the year was INR 1,200 crores and we expect 15% growth next year" [Q4 FY26] -> FY27). Fix:
 the guidance "for the year" needs a guidance noun or a forward word within 25 characters after it;
 `test_r8b_review_reported_year_with_later_forward_word_is_not_guidance_year`: 90 passed.
+
+### Open for r9 (Eagle, 27 Nov; empty, not wrong)
+- [Q4 FY26] "Revenue for the year was INR 1,200 crores and we expect 15% growth next year" and "EBITDA for the year stood at INR 300 crores, and we will continue to invest" -> FY26 (own reported figure; today empty).
+- [Q4 FY26] "We expect revenue for the year to be around INR 1,500 crores" -> FY27 (forward word before "for the year"; today empty).
+- After cleanup: count transcript rows read since the r6/r7 merges whose period came from a non-consecutive "FYnn - NN" span (e.g. FY20 on text naming FY27) in obs_transcripts_394_v3; re-anchor with r8b.
