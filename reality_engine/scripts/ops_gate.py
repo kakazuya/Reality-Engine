@@ -202,7 +202,9 @@ def check(now: dt.datetime | None = None, rules: dict[str, Any] | None = None,
     rules = rules or load_rules()
     lines: list[str] = []
     paused = paused_reason(pause_file)
-    if not job_watch.waiter_alive(owner=job_watch.waiter_owner()):
+    # paused with nothing to watch: `job_watch wait` exits at once by design, so no heartbeat can stay alive (T-245)
+    idle_pause = bool(paused) and not job_watch.live_jobs() and not job_watch.live_registered()
+    if not idle_pause and not job_watch.waiter_alive(owner=job_watch.waiter_owner()):
         lines.append(f"RULE heartbeat: no live job_watch wait of this account ({job_watch.waiter_owner()}) - arm `python reality_engine/scripts/job_watch.py wait "
                      f"--timeout-seconds {rules['heartbeat']['max_timeout_s']}` in the background "
                      f"({rules['heartbeat']['source']})")

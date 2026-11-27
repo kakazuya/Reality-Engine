@@ -2365,7 +2365,7 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   fresh check takes 1-7 s. Tests `reality_engine/tests/test_ops_gate.py`.
   **Pause (T-245, 27 Nov 2026):** while `D:/RealityEngine/hy4_out/OPS_PAUSED.txt` exists (`ops_gate.PAUSE_FILE`; first
   line = reason, e.g. Shivam's 08:00 stop), `paused_reason()` makes `check` skip the hy4-loop, checkpoint-grade and idle
-  rules - a stop Shivam ordered is not a breach; heartbeat, reportees, quota and ssd_only still run. Delete the file
+  rules - a stop Shivam ordered is not a breach; heartbeat too when job_watch has nothing live (its `wait` exits at once by design); reportees, quota and ssd_only still run. Delete the file
   when operations resume (`hy4_ctl.ps1 start`). Test `test_pause_file_quiets_loop_grade_and_idle_rules`.
 - **hy4 raw replies kept (`page_reply`, T-241, 24 Nov 2026).** Every page `observations.run` reads stores the reader's raw
   JSONL reply in `page_reply(doc_key, page, fingerprint, raw, read_at)` (`fingerprint` = `<doc_type>:<read_gate

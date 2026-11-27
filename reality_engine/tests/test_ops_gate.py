@@ -221,4 +221,8 @@ def test_pause_file_quiets_loop_grade_and_idle_rules(env, monkeypatch):
     assert og.paused_reason() == "T-245 stop 27 Nov 08:00 (Shivam)"
     assert og.check(WED_NIGHT, rules, []) == []
     monkeypatch.setattr(og.job_watch, "waiter_alive", lambda **kw: False)
+    monkeypatch.setattr(og.job_watch, "live_jobs", lambda *a, **kw: ["job"])
     assert any(line.startswith("RULE heartbeat") for line in og.check(WED_NIGHT, rules, []))
+    monkeypatch.setattr(og.job_watch, "live_jobs", lambda *a, **kw: [])
+    monkeypatch.setattr(og.job_watch, "live_registered", lambda *a, **kw: False)
+    assert og.check(WED_NIGHT, rules, []) == []          # paused, nothing to watch: wait exits at once by design
